@@ -67,7 +67,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
     setState(() => _redeeming = true);
     try {

@@ -557,10 +557,10 @@ class _MyPostsScreenState extends State<MyPostsScreen> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
     try {
       await context.read<VyraApi>().deletePost(post.id);
-      _load();
+      if (mounted) _load();
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
