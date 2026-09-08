@@ -1,0 +1,48 @@
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.jks
+*.keystore
+key.properties
+
+# Dependencies
+node_modules/
+.npm/
+
+# Build outputs
+dist/
+build/
+*.apk
+*.aab
+*.zip
+*.tar.gz
+
+# Flutter & Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.lock.old
+
+# Android build & IDE
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+apps/mobile/android/app/build/
+*.iml
+.idea/
+
+# OS / Editor
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -1,0 +1,426 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../api/client.dart';
+import '../../theme.dart';
+import '../../widgets/common.dart';
+
+/// ONBOARDING — runs right after signup (or on login, if a previous session
+/// never finished it). Collects body info, fitness goal, diet preference,
+/// and primary sport, then calls [VyraApi.completeOnboarding] once at the
+/// end — every step just holds local state until then.
+class OnboardingFlow extends StatefulWidget {
+  const OnboardingFlow({required this.onComplete, super.key});
+
+  final VoidCallback onComplete;
+
+  @override
+  State<OnboardingFlow> createState() => _OnboardingFlowState();
+}
+
+class _OnboardingFlowState extends State<OnboardingFlow> {
+  final _pageController = PageController();
+  int _step = 0;
+  static const _totalSteps = 6;
+
+  // Collected state
+  DateTime? _dob;
+  String? _gender;
+  final _cityController = TextEditingController();
+  final _heightController = TextEditingController(text: '170');
+  final _weightController = TextEditingController(text: '65');
+  String? _disabilityAnswer; // 'no' | 'yes' | 'other'
+  String? _fitnessGoal;
+  String? _dietPreference;
+  bool _dietToggle = true;
+  String? _primarySport;
+
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _cityController.dispose();
+    _heightController.dispose();
+    _weightController.dispose();
+    super.dispose();
+  }
+
+  bool get _canContinue {
+    switch (_step) {
+      case 0: return _dob != null && _gender != null;
+      case 1: return _heightController.text.isNotEmpty && _weightController.text.isNotEmpty;
+      case 2: return _disabilityAnswer != null;
+      case 3: return _fitnessGoal != null;
+      case 4: return _dietPreference != null;
+      case 5: return _primarySport != null;
+      default: return true;
+    }
+  }
+
+  Future<void> _next() async {
+    if (_step < _totalSteps - 1) {
+      setState(() => _step++);
+      _pageController.nextPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+      return;
+    }
+    await _finish();
+  }
+
+  void _back() {
+    if (_step == 0) return; // first step — nothing to go back to, since this
+    // screen isn't pushed on top of anything (it's shown directly by the
+    // app's root state once an account exists but onboarding isn't done).
+    setState(() => _step--);
+    _pageController.previousPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+  }
+
+  Future<void> _finish() async {
+    setState(() { _saving = true; _error = null; });
+    try {
+      await context.read<VyraApi>().completeOnboarding(
+        dob: _dob!.toIso8601String().split('T').first,
+        gender: _gender,
+        heightCm: double.tryParse(_heightController.text),
+        weightKg: double.tryParse(_weightController.text),
+        disabilityFlag: _disabilityAnswer != 'no',
+        fitnessGoal: _fitnessGoal,
+        dietToggle: _dietToggle,
+        dietPreference: _dietPreference,
+        city: _cityController.text.trim().isEmpty ? null : _cityController.text.trim(),
+        primarySport: _primarySport,
+      );
+      if (!mounted) return;
+      widget.onComplete();
+    } on ApiException catch (e) {
+      setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: VColor.bg,
+      appBar: AppBar(
+        backgroundColor: VColor.bg,
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: _back),
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: VSpace.sm),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(VRadius.pill),
+            child: LinearProgressIndicator(
+              value: (_step + 1) / _totalSteps,
+              backgroundColor: VColor.surfaceRaised,
+              color: VColor.accent,
+              minHeight: 6,
+            ),
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _stepBasicInfo(),
+                  _stepBodyInfo(),
+                  _stepAccessibility(),
+                  _stepGoal(),
+                  _stepDiet(),
+                  _stepSportAndReady(),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(VSpace.base),
+              child: Column(
+                children: [
+                  if (_error != null) ...[
+                    Text(_error!, style: const TextStyle(color: VColor.crit, fontSize: 13)),
+                    const SizedBox(height: VSpace.sm),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(VRadius.pill),
+                        gradient: (_canContinue && !_saving)
+                            ? const LinearGradient(colors: [VColor.accent, VColor.accentGreen])
+                            : null,
+                        color: (_canContinue && !_saving) ? null : VColor.surfaceRaised,
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(VRadius.pill),
+                          onTap: (_canContinue && !_saving) ? _next : null,
+                          child: Center(
+                            child: _saving
+                                ? const SizedBox(width: 20, height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: VColor.textOnAccent))
+                                : Text(_step == _totalSteps - 1 ? 'Build my plan' : 'Continue',
+                                    style: TextStyle(
+                                        fontSize: 16, fontWeight: FontWeight.w700,
+                                        color: (_canContinue) ? VColor.textOnAccent : VColor.textLow)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Steps
+  // ---------------------------------------------------------------------------
+
+  Widget _stepShell({required String title, required String subtitle, required Widget child}) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(VSpace.base),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(color: VColor.text, fontSize: 24, fontWeight: FontWeight.w800)),
+          const SizedBox(height: VSpace.xs),
+          Text(subtitle, style: const TextStyle(color: VColor.textMid, fontSize: 14)),
+          const SizedBox(height: VSpace.xl),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _choiceCard({
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+    String? subtitle,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: VSpace.sm),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(VRadius.lg),
+        child: Container(
+          padding: const EdgeInsets.all(VSpace.base),
+          decoration: BoxDecoration(
+            color: selected ? VColor.accentGlow : VColor.surface,
+            borderRadius: BorderRadius.circular(VRadius.lg),
+            border: Border.all(color: selected ? VColor.accent : VColor.line),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: selected ? VColor.accent : VColor.textMid),
+              const SizedBox(width: VSpace.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: TextStyle(
+                        color: selected ? VColor.text : VColor.textMid,
+                        fontWeight: FontWeight.w600, fontSize: 15)),
+                    if (subtitle != null)
+                      Text(subtitle, style: const TextStyle(color: VColor.textLow, fontSize: 12)),
+                  ],
+                ),
+              ),
+              if (selected) const Icon(Icons.check_circle, color: VColor.accent, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _stepBasicInfo() {
+    return _stepShell(
+      title: 'About you',
+      subtitle: 'Used to personalize your plan — never shown on your public profile.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('DATE OF BIRTH', style: TextStyle(color: VColor.textMid, fontSize: 11, letterSpacing: 1)),
+          const SizedBox(height: VSpace.xs),
+          InkWell(
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: DateTime(2000, 1, 1),
+                firstDate: DateTime(1940),
+                lastDate: DateTime.now(),
+              );
+              if (picked != null) setState(() => _dob = picked);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(VSpace.base),
+              decoration: BoxDecoration(
+                color: VColor.surface,
+                borderRadius: BorderRadius.circular(VRadius.lg),
+                border: Border.all(color: VColor.line),
+              ),
+              child: Row(children: [
+                const Icon(Icons.cake_outlined, color: VColor.textLow, size: 20),
+                const SizedBox(width: VSpace.sm),
+                Text(_dob == null ? 'Select date' : _dob!.toIso8601String().split('T').first,
+                    style: TextStyle(color: _dob == null ? VColor.textLow : VColor.text)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: VSpace.lg),
+          const Text('GENDER', style: TextStyle(color: VColor.textMid, fontSize: 11, letterSpacing: 1)),
+          const SizedBox(height: VSpace.xs),
+          for (final g in const [
+            ('male', 'Male'), ('female', 'Female'),
+            ('other', 'Other'), ('prefer_not_to_say', 'Prefer not to say'),
+          ])
+            _choiceCard(label: g.$2, icon: Icons.person_outline,
+                selected: _gender == g.$1, onTap: () => setState(() => _gender = g.$1)),
+          const SizedBox(height: VSpace.lg),
+          const Text('CITY (OPTIONAL)', style: TextStyle(color: VColor.textMid, fontSize: 11, letterSpacing: 1)),
+          const SizedBox(height: VSpace.xs),
+          TextField(
+            controller: _cityController,
+            style: const TextStyle(color: VColor.text),
+            decoration: const InputDecoration(hintText: 'e.g. Ghaziabad'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepBodyInfo() {
+    return _stepShell(
+      title: 'Body basics',
+      subtitle: 'Powers your calorie targets and workout intensity.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('HEIGHT (CM)', style: TextStyle(color: VColor.textMid, fontSize: 11, letterSpacing: 1)),
+          const SizedBox(height: VSpace.xs),
+          TextField(
+            controller: _heightController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: VColor.text),
+            decoration: const InputDecoration(suffixText: 'cm'),
+          ),
+          const SizedBox(height: VSpace.lg),
+          const Text('WEIGHT (KG)', style: TextStyle(color: VColor.textMid, fontSize: 11, letterSpacing: 1)),
+          const SizedBox(height: VSpace.xs),
+          TextField(
+            controller: _weightController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: VColor.text),
+            decoration: const InputDecoration(suffixText: 'kg'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepAccessibility() {
+    return _stepShell(
+      title: 'Any physical considerations?',
+      subtitle: 'So we can route you to seated or low-impact routines where it helps.',
+      child: Column(
+        children: [
+          _choiceCard(label: 'No', icon: Icons.check,
+              selected: _disabilityAnswer == 'no', onTap: () => setState(() => _disabilityAnswer = 'no')),
+          _choiceCard(label: 'Yes', icon: Icons.accessible,
+              selected: _disabilityAnswer == 'yes', onTap: () => setState(() => _disabilityAnswer = 'yes')),
+          _choiceCard(label: 'Prefer not to say', icon: Icons.remove_red_eye_outlined,
+              selected: _disabilityAnswer == 'other', onTap: () => setState(() => _disabilityAnswer = 'other')),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepGoal() {
+    const goals = [
+      ('lose_weight', 'Lose weight', Icons.trending_down),
+      ('gain_weight', 'Gain weight', Icons.trending_up),
+      ('maintain', 'Maintain fitness', Icons.balance),
+      ('general_wellness', 'General wellness', Icons.favorite_outline),
+    ];
+    return _stepShell(
+      title: "What's your goal?",
+      subtitle: 'We\'ll shape your daily plan around this.',
+      child: Column(
+        children: [
+          for (final g in goals)
+            _choiceCard(label: g.$2, icon: g.$3,
+                selected: _fitnessGoal == g.$1, onTap: () => setState(() => _fitnessGoal = g.$1)),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepDiet() {
+    const prefs = [
+      ('veg_no_egg', 'Vegetarian (no egg)', Icons.eco_outlined),
+      ('veg_with_egg', 'Vegetarian (with egg)', Icons.egg_outlined),
+      ('non_veg', 'Non-vegetarian', Icons.set_meal_outlined),
+    ];
+    return _stepShell(
+      title: 'Dietary preference',
+      subtitle: 'Every recipe and meal suggestion respects this — always.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final p in prefs)
+            _choiceCard(label: p.$2, icon: p.$3,
+                selected: _dietPreference == p.$1, onTap: () => setState(() => _dietPreference = p.$1)),
+          const SizedBox(height: VSpace.sm),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            activeColor: VColor.accent,
+            title: const Text('Enable diet planning', style: TextStyle(color: VColor.text)),
+            subtitle: const Text('Turn off to hide meal plans app-wide.',
+                style: TextStyle(color: VColor.textLow, fontSize: 12)),
+            value: _dietToggle,
+            onChanged: (v) => setState(() => _dietToggle = v),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepSportAndReady() {
+    const sports = [
+      ('run', 'Running', Icons.directions_run),
+      ('ride', 'Cycling', Icons.directions_bike),
+      ('walk', 'Walking', Icons.directions_walk),
+      ('yoga', 'Yoga', Icons.self_improvement),
+      ('other', 'Something else', Icons.sports_gymnastics),
+    ];
+    return _stepShell(
+      title: 'Primary sport',
+      subtitle: 'You can change this any time from your profile.',
+      child: Column(
+        children: [
+          for (final s in sports)
+            _choiceCard(label: s.$2, icon: s.$3,
+                selected: _primarySport == s.$1, onTap: () => setState(() => _primarySport = s.$1)),
+          const SizedBox(height: VSpace.lg),
+          const VDisclaimer(
+            'Your plan is generated the moment you tap "Build my plan" — workouts, '
+            'diet targets, and your first challenges will all be waiting on Home.',
+          ),
+        ],
+      ),
+    );
+  }
+}

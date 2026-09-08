@@ -1,0 +1,56 @@
+services:
+  - type: web
+    name: vyra-api
+    runtime: node
+    rootDir: .
+    plan: free
+    buildCommand: |
+      npm install --prefer-offline --workspaces --if-present &&
+      cd packages/types && npm run build && cd ../.. &&
+      cd services/api && npm run build
+    startCommand: node services/api/dist/index.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: HEALTH_ENCRYPTION_KEY_V1
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        # Comma-separated list of allowed frontend origins.
+        # Example: https://vyra.app,https://www.vyra.app
+        sync: false
+      - key: GEMINI_API_KEY
+        # Primary Gemini key — used as fallback for all features
+        sync: false
+      - key: GEMINI_RECIPE_API_KEY
+        # Separate quota pool for AI Recipe generation
+        sync: false
+      - key: GEMINI_FOOD_API_KEY
+        # Separate quota pool for Food Scan
+        sync: false
+      - key: GEMINI_LAB_API_KEY
+        # Separate quota pool for Lab Report Scan
+        sync: false
+      - key: GEMINI_CHAT_API_KEY
+        # Separate quota pool for AI Coach Chat
+        sync: false
+      - key: GEMINI_EVENTS_API_KEY
+        # Separate quota pool for Events Discovery
+        sync: false
+      - key: RATE_LIMIT_DISABLED
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vyra-db
+          property: connectionString
+
+databases:
+  - name: vyra-db
+    plan: free
+    databaseName: vyra
+    user: vyra

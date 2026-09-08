@@ -1,0 +1,14 @@
+{
+  "name": "vyra-monorepo",
+  "private": true,
+  "workspaces": ["packages/*", "services/*"],
+  "scripts": {
+    "build:types": "cd packages/types && npm install && npm run build",
+    "build:api": "cd services/api && npm install && npm run build",
+    "build": "npm run build:types && npm run build:api",
+    "start": "cd services/api && npm start",
+    "dev": "cd services/api && npm run dev",
+    "test": "cd services/api && npm test",
+    "test:e2e": "node test_api_e2e.mjs"
+  }
+}

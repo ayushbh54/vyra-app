@@ -1,0 +1,26 @@
+{
+  "name": "@vyra/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsc -p tsconfig.json && node dist/index.js",
+    "test": "tsc -p tsconfig.json && node --test 'dist/**/*.test.js'",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "verify:gemini": "tsc -p tsconfig.json && node dist/scripts/verify-gemini.js",
+    "db:migrate": "for f in db/migrations/*.sql; do psql \"$DATABASE_URL\" -f \"$f\"; done"
+  },
+  "dependencies": {
+    "@vyra/types": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.6.2"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}

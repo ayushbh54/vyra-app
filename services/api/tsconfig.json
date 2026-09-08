@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "rootDir": "./src",
+    "outDir": "./dist"
+    // No `paths` alias: @vyra/types resolves through the workspace node_modules
+    // link to its BUILT output. One resolution route for both tsc and node means
+    // what the type checker sees is exactly what runs.
+  },
+  "include": ["src/**/*.ts"]
+}

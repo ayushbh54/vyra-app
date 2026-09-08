@@ -1,0 +1,47 @@
+name: vyra
+description: VYRA — AI-powered personalized fitness and wellness ecosystem.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── Networking & Storage ───────────────────────────────────────────────────
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
+
+  # ── State management ────────────────────────────────────────────────────────
+  provider: ^6.1.2
+
+  # ── Internationalisation ────────────────────────────────────────────────────
+  intl: ^0.20.3
+
+  # ── Maps & GPS ─────────────────────────────────────────────────────────────
+  geolocator: ^13.0.1
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # ── Camera / Image picker (food scan) ──────────────────────────────────────
+  image_picker: ^1.1.2
+  
+  # ── URL Launcher (social links, emergency contacts) ────────────────────────
+  url_launcher: ^6.3.0
+
+  # ── Health platform sync (Google Fit / Health Connect / Apple Health) ─────
+  health: ^13.3.2
+
+  # ── Permissions ────────────────────────────────────────────────────────────
+  permission_handler: ^11.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  # Fonts are loaded from Google Fonts at runtime — no asset bundling needed.
