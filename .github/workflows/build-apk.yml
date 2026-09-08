@@ -33,25 +33,18 @@ jobs:
       - name: Install Flutter Dependencies
         run: |
           cd apps/mobile
+          chmod +x android/gradlew
           flutter pub get
 
       - name: Build Release APK (Connected to Render Backend)
         run: |
           cd apps/mobile
-          flutter build apk --release --split-per-abi \
-            --dart-define=VYRA_API_URL=https://vyra-api.onrender.com
-
-      - name: Build Universal Release APK
-        run: |
-          cd apps/mobile
           flutter build apk --release \
             --dart-define=VYRA_API_URL=https://vyra-api.onrender.com
 
-      - name: Upload APKs Artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vyra-release-apks
-          path: |
-            apps/mobile/build/app/outputs/flutter-apk/app-release.apk
-            apps/mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          name: vyra-release-apk
+          path: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
