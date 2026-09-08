@@ -37,11 +37,19 @@ jobs:
           flutter pub get
 
       - name: Build Release APK (Connected to Render Backend)
+        shell: bash
         run: |
+          set -o pipefail
           cd apps/mobile
           flutter build apk --release -v \
             --dart-define=VYRA_API_URL=https://vyra-api.onrender.com \
-            --android-skip-build-dependency-validation
+            --android-skip-build-dependency-validation 2>&1 | tee /tmp/flutter_build.log
+
+      - name: Show Build Log Tail on Failure
+        if: failure()
+        run: |
+          echo "==================== BUILD FAILED: LAST 150 LINES ===================="
+          tail -n 150 /tmp/flutter_build.log || true
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -49,3 +57,11 @@ jobs:
           name: vyra-release-apk
           path: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-failure-log
+          path: /tmp/flutter_build.log
+          retention-days: 7
