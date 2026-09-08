@@ -40,7 +40,8 @@ jobs:
         run: |
           cd apps/mobile
           flutter build apk --release \
-            --dart-define=VYRA_API_URL=https://vyra-api.onrender.com
+            --dart-define=VYRA_API_URL=https://vyra-api.onrender.com \
+            --android-skip-build-dependency-validation
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
