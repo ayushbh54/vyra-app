@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-// Read .env
-const envFile = readFileSync('.env', 'utf-8');
+// Read .env if present
+let envFile = '';
+try { envFile = readFileSync('.env', 'utf-8'); } catch {}
 const envVars = { ...process.env };
 for (const line of envFile.split('\n')) {
   const trimmed = line.trim();

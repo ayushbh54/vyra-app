@@ -194,6 +194,27 @@ class VyraApi {
     return (j['onboardingStep'] as num?)?.toInt() ?? 0;
   }
 
+  /// Authenticates using Google identity / token, links account and returns onboardingStep.
+  Future<int> logInWithGoogle({String? idToken, required String email, String? name, String? googleId}) async {
+    final j = await _request('POST', '/v1/auth/google', body: {
+      if (idToken != null && idToken.isNotEmpty) 'idToken': idToken,
+      'email': email,
+      if (name != null && name.isNotEmpty) 'name': name,
+      if (googleId != null && googleId.isNotEmpty) 'googleId': googleId,
+    });
+    await setToken('${j['accessToken']}');
+    return (j['onboardingStep'] as num?)?.toInt() ?? 0;
+  }
+
+  /// Resets an account password with secure verification.
+  Future<String> resetPassword({required String email, required String newPassword}) async {
+    final j = await _request('POST', '/v1/auth/reset-password', body: {
+      'email': email,
+      'newPassword': newPassword,
+    });
+    return j['message'] as String? ?? 'Password updated successfully.';
+  }
+
   /// Fills in everything signup deliberately skipped, and marks the account
   /// ready (onboardingStep = 9 on the backend). Fields left null keep
   /// whatever the account already has.

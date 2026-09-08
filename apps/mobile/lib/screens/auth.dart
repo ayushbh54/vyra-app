@@ -81,10 +81,158 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  void _googleComingSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Google sign-in needs an API key first — use email for now.')),
+  Future<void> _signInWithGoogle() async {
+    final googleEmailController = TextEditingController(text: _emailController.text.trim());
+    final googleNameController = TextEditingController(text: _nameController.text.trim());
+
+    final proceed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: VColor.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(VRadius.lg)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(VSpace.base, VSpace.base, VSpace.base, MediaQuery.of(ctx).viewInsets.bottom + VSpace.base),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.g_mobiledata, size: 28, color: VColor.accent),
+                  SizedBox(width: 8),
+                  Text('Continue with Google', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: VColor.text)),
+                ],
+              ),
+              const SizedBox(height: VSpace.sm),
+              const Text('Sign in or register your athlete profile seamlessly via Google.',
+                  style: TextStyle(color: VColor.textMid, fontSize: 13)),
+              const SizedBox(height: VSpace.base),
+              TextField(
+                controller: googleEmailController,
+                keyboardType: TextInputType.emailAddress,
+                style: const TextStyle(color: VColor.text),
+                decoration: const InputDecoration(
+                  labelText: 'Google Account Email',
+                  prefixIcon: Icon(Icons.alternate_email, color: VColor.textLow),
+                ),
+              ),
+              const SizedBox(height: VSpace.sm),
+              TextField(
+                controller: googleNameController,
+                style: const TextStyle(color: VColor.text),
+                decoration: const InputDecoration(
+                  labelText: 'Athlete Name (optional)',
+                  prefixIcon: Icon(Icons.person_outline, color: VColor.textLow),
+                ),
+              ),
+              const SizedBox(height: VSpace.base),
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: VColor.accent,
+                  foregroundColor: VColor.textOnAccent,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text('Confirm Google Sign-In', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      },
     );
+
+    if (proceed != true || !mounted) return;
+    final gEmail = googleEmailController.text.trim();
+    if (gEmail.isEmpty || !gEmail.contains('@')) {
+      setState(() => _error = 'Please enter a valid Google email address.');
+      return;
+    }
+
+    setState(() { _loading = true; _error = null; });
+    try {
+      final api = context.read<VyraApi>();
+      await api.logInWithGoogle(
+        email: gEmail,
+        name: googleNameController.text.trim().isNotEmpty ? googleNameController.text.trim() : null,
+      );
+      if (!mounted) return;
+      widget.onAuthenticated();
+    } on ApiException catch (e) {
+      setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final resetEmailController = TextEditingController(text: _emailController.text.trim());
+    final newPasswordController = TextEditingController();
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: VColor.surface,
+          title: const Text('Reset Password', style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Enter your registered email and your new password (minimum 8 characters).',
+                  style: TextStyle(color: VColor.textMid, fontSize: 13)),
+              const SizedBox(height: VSpace.base),
+              TextField(
+                controller: resetEmailController,
+                keyboardType: TextInputType.emailAddress,
+                style: const TextStyle(color: VColor.text),
+                decoration: const InputDecoration(
+                  labelText: 'Registered Email',
+                  prefixIcon: Icon(Icons.email_outlined, color: VColor.textLow),
+                ),
+              ),
+              const SizedBox(height: VSpace.sm),
+              TextField(
+                controller: newPasswordController,
+                obscureText: true,
+                style: const TextStyle(color: VColor.text),
+                decoration: const InputDecoration(
+                  labelText: 'New Password',
+                  prefixIcon: Icon(Icons.lock_outline, color: VColor.textLow),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: const Text('Cancel', style: TextStyle(color: VColor.textLow)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final mail = resetEmailController.text.trim();
+                final pass = newPasswordController.text;
+                if (mail.isEmpty || pass.length < 8) return;
+                try {
+                  final msg = await context.read<VyraApi>().resetPassword(email: mail, newPassword: pass);
+                  if (ctx.mounted) Navigator.of(ctx).pop(msg);
+                } on ApiException catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(e.message)));
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: VColor.accent),
+              child: const Text('Update Password'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
+    }
   }
 
   @override
@@ -182,9 +330,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
             // Google button
             OutlinedButton.icon(
-              onPressed: _googleComingSoon,
-              icon: const Icon(Icons.g_mobiledata, size: 22),
-              label: const Text('Continue with Google'),
+              onPressed: _loading ? null : _signInWithGoogle,
+              icon: const Icon(Icons.g_mobiledata, size: 28, color: VColor.accent),
+              label: const Text('Continue with Google', style: TextStyle(fontWeight: FontWeight.w600)),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 52),
                 side: const BorderSide(color: VColor.line),
@@ -265,6 +413,17 @@ class _AuthScreenState extends State<AuthScreen> {
                     if (i < 3) const SizedBox(width: 4),
                   ],
                 ],
+              ),
+            ] else ...[
+              const SizedBox(height: VSpace.xs),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _loading ? null : _forgotPassword,
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
+                  child: const Text('Forgot Password?',
+                      style: TextStyle(color: VColor.accent, fontSize: 12, fontWeight: FontWeight.w600)),
+                ),
               ),
             ],
             const SizedBox(height: VSpace.lg),

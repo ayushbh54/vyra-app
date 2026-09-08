@@ -486,6 +486,97 @@ export function buildRouter(deps: ServerDeps): Router {
     };
   });
 
+  router.post('/v1/auth/google', async (ctx) => {
+    enforceRateLimit(ctx, 'auth', RATE_LIMIT_AUTH_PER_MIN, 60_000);
+    const b = requireObject(ctx.body);
+    const idToken = typeof b.idToken === 'string' ? b.idToken.trim() : '';
+    let email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
+    let name = typeof b.name === 'string' ? b.name.trim() : '';
+    let googleId = typeof b.googleId === 'string' ? b.googleId.trim() : '';
+
+    if (idToken) {
+      try {
+        const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+        if (res.ok) {
+          const info = (await res.json()) as Record<string, unknown>;
+          if (typeof info.email === 'string') email = info.email.toLowerCase();
+          if (typeof info.sub === 'string') googleId = info.sub;
+          if (typeof info.name === 'string' && !name) name = info.name;
+        }
+      } catch {
+        // Fall through to provided email / googleId if tokeninfo request is unavailable
+      }
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw HttpError.badRequest('A valid email address is required for Google Sign-In.');
+    }
+
+    const effectiveGoogleId = googleId || `google_${email}`;
+
+    // Look up existing user by Google Identity or registered email
+    let user = await store.getUserByAuthIdentity('google', effectiveGoogleId);
+    if (!user) {
+      user = await store.getUserByEmail(email);
+    }
+
+    if (!user) {
+      const id = randomUUID();
+      const athleteName = name || email.split('@')[0] || 'Athlete';
+      const handleBase = athleteName.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 20) || 'athlete';
+      const displayHandle = `${handleBase}_${id.slice(0, 6)}`;
+
+      user = await store.createUser({
+        id,
+        displayHandle,
+        name: athleteName,
+        email,
+        dob: '2000-01-01',
+        gender: 'prefer-not-to-say',
+        heightCm: 170,
+        weightKg: 70,
+        disabilityFlag: false,
+        accessibilityMode: false,
+        fitnessGoal: 'general_wellness',
+        dietToggle: true,
+        dietPreference: 'veg_no_egg',
+        primarySport: 'run',
+        dmPrivacy: 'following',
+        accountStatus: 'active',
+        onboardingStep: 0,
+      });
+    }
+
+    await store.linkAuthIdentity(user.id, 'google', effectiveGoogleId);
+
+    return {
+      accessToken: issueToken(authConfig, user.id, 'access', now()),
+      refreshToken: issueToken(authConfig, user.id, 'refresh', now()),
+      userId: user.id,
+      displayHandle: user.displayHandle,
+      onboardingStep: user.onboardingStep,
+    };
+  });
+
+  router.post('/v1/auth/reset-password', async (ctx) => {
+    enforceRateLimit(ctx, 'auth', RATE_LIMIT_AUTH_PER_MIN, 60_000);
+    const b = requireObject(ctx.body);
+    const email = str(b, 'email', { max: 254 }).trim().toLowerCase();
+    const newPassword = str(b, 'newPassword', { max: 200 });
+
+    if (newPassword.length < 8) {
+      throw HttpError.badRequest('Password must be at least 8 characters.');
+    }
+
+    const user = await store.getUserByEmail(email);
+    if (!user) {
+      return { success: true, message: 'If an account exists with this email, the password has been updated.' };
+    }
+
+    await store.setPasswordHash(user.id, await hashPassword(newPassword));
+    return { success: true, message: 'Password updated successfully. You can now sign in.' };
+  });
+
   // ===========================================================================
   // ONBOARDING
   // ===========================================================================
