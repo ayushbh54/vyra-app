@@ -39,7 +39,7 @@ class VyraApi {
   VyraApi({String? baseUrl, http.Client? client})
       : baseUrl = baseUrl ?? const String.fromEnvironment(
           'VYRA_API_URL',
-          defaultValue: 'http://10.0.2.2:4000',
+          defaultValue: 'https://vyra-app.onrender.com',
         ),
         _http = client ?? http.Client();
 

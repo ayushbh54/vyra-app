@@ -50,7 +50,7 @@ jobs:
           set -o pipefail
           cd apps/mobile
           flutter build apk --release -v \
-            --dart-define=VYRA_API_URL=https://vyra-api.onrender.com \
+            --dart-define=VYRA_API_URL=https://vyra-app.onrender.com \
             --android-skip-build-dependency-validation 2>&1 | tee /tmp/flutter_build.log
 
       - name: Show Build Log Tail on Failure
