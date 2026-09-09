@@ -106,6 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
       }
     }
+
   }
 
   @override

@@ -314,8 +314,9 @@ class VyraApi {
   }
 
   Future<Leaderboard> leaderboard({String scope = 'world'}) async {
+    final s = scope == 'global' ? 'world' : scope;
     return Leaderboard.fromJson(
-      await _request('GET', '/v1/leaderboard?scope=$scope', cacheKey: 'lb.$scope'),
+      await _request('GET', '/v1/leaderboard?scope=$s', cacheKey: 'lb.$s'),
     );
   }
 

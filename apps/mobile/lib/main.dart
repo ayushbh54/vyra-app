@@ -39,8 +39,13 @@ class VyraApp extends StatelessWidget {
         themeMode: ThemeMode.dark,
         darkTheme: buildVyraTheme(),
         home: const _Bootstrap(),
+        // Named route so screens can call pushNamedAndRemoveUntil('/') on logout.
+        routes: {
+          '/': (_) => const _Bootstrap(),
+        },
       ),
     );
+
   }
 }
 

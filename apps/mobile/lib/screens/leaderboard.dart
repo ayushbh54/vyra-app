@@ -19,7 +19,7 @@ class LeaderboardScreen extends StatefulWidget {
 class _LeaderboardScreenState extends State<LeaderboardScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabs;
-  final _scopes = ['global', 'friends'];
+  final _scopes = ['world', 'friends'];
   bool _loading = true;
   String? _error;
 
@@ -31,7 +31,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
     _tabs.addListener(() { if (_tabs.indexIsChanging) _load(_scopes[_tabs.index]); });
-    _load('global');
+    _load('world');
   }
 
   @override

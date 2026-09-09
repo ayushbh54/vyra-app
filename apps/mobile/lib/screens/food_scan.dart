@@ -31,14 +31,14 @@ class _FoodScanItem {
   final String confidence; // 'high' | 'medium' | 'low'
 
   _FoodScanItem.fromJson(Map<String, dynamic> j)
-      : name       = '${j['name']}',
-        portion    = '${j['portion']}',
-        calories   = (j['calories'] as num).round(),
-        proteinG   = (j['proteinG'] as num).toDouble(),
-        carbsG     = (j['carbsG'] as num).toDouble(),
-        fatG       = (j['fatG'] as num).toDouble(),
-        fiberG     = (j['fiberG'] as num).toDouble(),
-        confidence = '${j['confidence']}';
+      : name       = '${j['name'] ?? ''}',
+        portion    = '${j['portion'] ?? ''}',
+        calories   = ((j['calories'] as num?) ?? 0).round(),
+        proteinG   = ((j['proteinG'] as num?) ?? 0).toDouble(),
+        carbsG     = ((j['carbsG'] as num?) ?? 0).toDouble(),
+        fatG       = ((j['fatG'] as num?) ?? 0).toDouble(),
+        fiberG     = ((j['fiberG'] as num?) ?? 0).toDouble(),
+        confidence = '${j['confidence'] ?? 'medium'}';
 }
 
 class _FoodScanScreenState extends State<FoodScanScreen> {

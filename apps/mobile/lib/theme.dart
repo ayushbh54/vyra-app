@@ -24,6 +24,8 @@ class VColor {
   static const text = Color(0xFFDFE2F0); // on-surface
   static const textMid = Color(0xFFBBC9CF); // on-surface-variant
   static const textLow = Color(0xFF859399); // outline, used directly as muted text/icons
+  static const textMuted = textLow; // alias used in chat/cards — same tone as textLow
+  static const textDim = textLow;   // alias used in profile/edit — same tone as textLow
   static const textOnAccent = Color(0xFF003543); // on-primary — dark text on a cyan/green fill
 
   static const accent = Color(0xFF00D2FF); // primary-container — cyan

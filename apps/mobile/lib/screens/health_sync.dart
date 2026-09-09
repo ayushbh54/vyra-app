@@ -20,7 +20,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../theme.dart';
+import '../theme.dart';
 import '../widgets/common.dart';
 import '../api/client.dart';
 import '../services/health_sync_service.dart';

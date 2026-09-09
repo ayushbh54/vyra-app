@@ -40,7 +40,8 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   }
 
   Future<void> _call(String phone) async {
-    final uri = Uri(scheme: 'tel', path: phone);
+    final cleanPhone = phone.replaceAll(RegExp(r'[\s\-]'), '');
+    final uri = Uri(scheme: 'tel', path: cleanPhone);
     if (!await launchUrl(uri)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

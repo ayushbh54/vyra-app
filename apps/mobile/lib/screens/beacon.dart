@@ -66,7 +66,7 @@ class _BeaconScreenState extends State<BeaconScreen> {
     final contacts = <BeaconContact>[];
     for (var i = 0; i < 3; i++) {
       final name = _names[i].text.trim();
-      final phone = _phones[i].text.trim();
+      final phone = _phones[i].text.trim().replaceAll(RegExp(r'[\s\-]'), '');
       if (name.isNotEmpty && phone.isNotEmpty) contacts.add(BeaconContact(name: name, phone: phone));
     }
     try {
@@ -85,7 +85,7 @@ class _BeaconScreenState extends State<BeaconScreen> {
     final validContacts = <({String name, String phone})>[];
     for (var i = 0; i < 3; i++) {
       final n = _names[i].text.trim();
-      final p = _phones[i].text.trim();
+      final p = _phones[i].text.trim().replaceAll(RegExp(r'[\s\-]'), '');
       if (p.isNotEmpty) validContacts.add((name: n.isNotEmpty ? n : 'Contact ${i + 1}', phone: p));
     }
 
