@@ -195,10 +195,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('You', style: Theme.of(context).textTheme.headlineMedium),
-              IconButton(
-                icon: const Icon(Icons.settings_outlined, color: VColor.textMid, size: 24),
-                tooltip: 'Settings & Preferences',
-                onPressed: () => pushScreen(context, 'Settings', const SettingsScreen()),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded, color: VColor.warn, size: 22),
+                    tooltip: 'Log Out',
+                    onPressed: () => _confirmLogout(),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.settings_outlined, color: VColor.textMid, size: 24),
+                    tooltip: 'Settings & Preferences',
+                    onPressed: () => pushScreen(context, 'Settings', const SettingsScreen()),
+                  ),
+                ],
               ),
             ],
           ),
@@ -326,6 +336,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   label: 'Trophy Case',
                   subtitle: 'Activity milestones',
                   onTap: () => pushScreen(context, 'Trophy Case', const TrophyCaseScreen()),
+                ),
+                const Divider(height: 1, color: VColor.line),
+                _QuickLink(
+                  icon: Icons.logout_rounded,
+                  iconColor: VColor.warn,
+                  textColor: VColor.warn,
+                  label: 'Log Out',
+                  subtitle: 'Sign out of your VYRA account safely',
+                  onTap: () => _confirmLogout(),
                 ),
               ],
             ),
@@ -919,12 +938,16 @@ class _QuickLink extends StatelessWidget {
     required this.label,
     required this.subtitle,
     required this.onTap,
+    this.iconColor,
+    this.textColor,
   });
 
   final IconData icon;
   final String label;
   final String subtitle;
   final VoidCallback onTap;
+  final Color? iconColor;
+  final Color? textColor;
 
   @override
   Widget build(BuildContext context) {
@@ -934,13 +957,19 @@ class _QuickLink extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: VSpace.base, vertical: VSpace.md),
         child: Row(
           children: [
-            Icon(icon, color: VColor.accent, size: 22),
+            Icon(icon, color: iconColor ?? VColor.accent, size: 22),
             const SizedBox(width: VSpace.base),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: textColor ?? VColor.text,
+                    ),
+                  ),
                   Text(subtitle, style: const TextStyle(color: VColor.textLow, fontSize: 12)),
                 ],
               ),

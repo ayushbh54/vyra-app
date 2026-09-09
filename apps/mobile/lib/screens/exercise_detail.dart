@@ -370,6 +370,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 // ANIMATED VISUAL MOVEMENT GUIDE (Custom Biomechanical Simulation Canvas)
 // ─────────────────────────────────────────────────────────────────────────────
+enum ExercisePerspective { side, front }
+
 class _ExerciseVisualGuide extends StatefulWidget {
   const _ExerciseVisualGuide({required this.item, this.movement});
 
@@ -384,10 +386,17 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
   late AnimationController _animCtrl;
   bool _isPlaying = true;
   double _speedMultiplier = 1.0;
+  ExercisePerspective _perspective = ExercisePerspective.side;
 
   @override
   void initState() {
     super.initState();
+    final s = widget.item.slug.toLowerCase().replaceAll('_', '-');
+    if (s.contains('bicep') || s.contains('shoulder') || s.contains('press') || s.contains('curl')) {
+      _perspective = ExercisePerspective.front;
+    } else {
+      _perspective = ExercisePerspective.side;
+    }
     _animCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 3600),
@@ -466,7 +475,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
       decoration: BoxDecoration(
         color: VColor.surfaceRaised,
         borderRadius: BorderRadius.circular(VRadius.lg),
-        border: Border.all(color: VColor.accent.withOpacity(0.2)),
+        border: Border.all(color: VColor.accent.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -498,7 +507,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: VColor.steel.withOpacity(0.5),
+                          color: VColor.steel.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(VRadius.sm),
                         ),
                         child: Text('${_speedMultiplier}x',
@@ -519,6 +528,96 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
             ),
           ),
 
+          // ── Dual View Selector: Side View vs Front View ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: VSpace.base, vertical: 4),
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: VColor.surface,
+                borderRadius: BorderRadius.circular(VRadius.full),
+                border: Border.all(color: VColor.line),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _perspective = ExercisePerspective.side);
+                      },
+                      borderRadius: BorderRadius.circular(VRadius.full),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        decoration: BoxDecoration(
+                          color: _perspective == ExercisePerspective.side ? VColor.accent : Colors.transparent,
+                          borderRadius: BorderRadius.circular(VRadius.full),
+                        ),
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.view_sidebar_rounded,
+                              size: 14,
+                              color: _perspective == ExercisePerspective.side ? VColor.textOnAccent : VColor.textMid,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Side View',
+                              style: TextStyle(
+                                color: _perspective == ExercisePerspective.side ? VColor.textOnAccent : VColor.textMid,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _perspective = ExercisePerspective.front);
+                      },
+                      borderRadius: BorderRadius.circular(VRadius.full),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        decoration: BoxDecoration(
+                          color: _perspective == ExercisePerspective.front ? VColor.accent : Colors.transparent,
+                          borderRadius: BorderRadius.circular(VRadius.full),
+                        ),
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.accessibility_new_rounded,
+                              size: 14,
+                              color: _perspective == ExercisePerspective.front ? VColor.textOnAccent : VColor.textMid,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Front View',
+                              style: TextStyle(
+                                color: _perspective == ExercisePerspective.front ? VColor.textOnAccent : VColor.textMid,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           // Simulation Canvas
           SizedBox(
             height: 180,
@@ -533,6 +632,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                       painter: _BiomechanicalPainter(
                         animationProgress: _animCtrl.value,
                         exerciseSlug: widget.item.slug.toLowerCase(),
+                        perspective: _perspective,
                       ),
                     ),
                     // Phase indicator overlay
@@ -546,7 +646,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: VColor.bg.withOpacity(0.85),
+                              color: VColor.bg.withValues(alpha: 0.85),
                               borderRadius: BorderRadius.circular(VRadius.sm),
                               border: Border.all(color: VColor.line),
                             ),
@@ -558,7 +658,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: VColor.accent.withOpacity(0.15),
+                              color: VColor.accent.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(VRadius.sm),
                             ),
                             child: Row(
@@ -595,10 +695,12 @@ class _BiomechanicalPainter extends CustomPainter {
   _BiomechanicalPainter({
     required this.animationProgress,
     required this.exerciseSlug,
+    required this.perspective,
   });
 
   final double animationProgress;
   final String exerciseSlug;
+  final ExercisePerspective perspective;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -607,7 +709,7 @@ class _BiomechanicalPainter extends CustomPainter {
 
     // Floor line
     final groundPaint = Paint()
-      ..color = VColor.line.withOpacity(0.6)
+      ..color = VColor.line.withValues(alpha: 0.6)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     canvas.drawLine(Offset(20, groundY), Offset(size.width - 20, groundY), groundPaint);
@@ -623,9 +725,19 @@ class _BiomechanicalPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final muscleGlowPaint = Paint()
-      ..color = VColor.accentGreen.withOpacity(0.6)
+      ..color = VColor.accentGreen.withValues(alpha: 0.6)
       ..style = PaintingStyle.fill
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+
+    final dumbbellPaint = Paint()
+      ..color = VColor.accentCyan
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+
+    final wallPaint = Paint()
+      ..color = VColor.accent.withValues(alpha: 0.4)
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.square;
 
     // Sine curve cycle for smooth back-and-forth movement (0 -> 1 -> 0)
     final cycle = (math.sin(animationProgress * 2 * math.pi - math.pi / 2) + 1) / 2;
@@ -635,387 +747,686 @@ class _BiomechanicalPainter extends CustomPainter {
 
     if (s.contains('bridge') || s.contains('glute')) {
       // ── 1. GLUTE BRIDGE KINEMATICS ──
-      // Lying horizontally, feet flat on floor, lifting hips/pelvis up to bridge
-      final shoulder = Offset(cx - 60, groundY - 14);
-      final head = Offset(cx - 85, groundY - 18);
-      final foot = Offset(cx + 60, groundY - 4);
+      if (perspective == ExercisePerspective.side) {
+        final shoulder = Offset(cx - 60, groundY - 14);
+        final head = Offset(cx - 85, groundY - 18);
+        final foot = Offset(cx + 60, groundY - 4);
 
-      final hipY = (groundY - 14) - (cycle * 52);
-      final hip = Offset(cx - 10, hipY);
-      final knee = Offset(cx + 35, hipY - 12);
+        final hipY = (groundY - 14) - (cycle * 52);
+        final hip = Offset(cx - 10, hipY);
+        final knee = Offset(cx + 35, hipY - 12);
 
-      if (cycle > 0.4) {
-        canvas.drawCircle(hip, 18 * cycle, muscleGlowPaint);
+        if (cycle > 0.4) {
+          canvas.drawCircle(hip, 18 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 11, jointPaint..color = VColor.text);
+        canvas.drawLine(shoulder, hip, bonePaint);
+        canvas.drawLine(hip, knee, bonePaint);
+        canvas.drawLine(knee, foot, bonePaint);
+        canvas.drawLine(shoulder, Offset(cx - 20, groundY - 4), bonePaint..strokeWidth = 3);
+
+        canvas.drawCircle(shoulder, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(hip, 6, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(knee, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(foot, 4, jointPaint..color = VColor.accent);
+      } else {
+        // FRONT VIEW: Facing athlete on mat, knees aligned, pelvis driving up
+        final footL = Offset(cx - 36, groundY - 4);
+        final footR = Offset(cx + 36, groundY - 4);
+        final head = Offset(cx, groundY - 92);
+        final shoulderL = Offset(cx - 34, groundY - 78);
+        final shoulderR = Offset(cx + 34, groundY - 78);
+
+        final lift = cycle * 34;
+        final pelvisY = groundY - 44 - lift;
+        final pelvis = Offset(cx, pelvisY);
+        final kneeL = Offset(cx - 32, groundY - 36 - (lift * 0.45));
+        final kneeR = Offset(cx + 32, groundY - 36 - (lift * 0.45));
+
+        if (cycle > 0.4) {
+          canvas.drawCircle(pelvis, 20 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 11, jointPaint..color = VColor.text);
+        canvas.drawLine(shoulderL, Offset(cx - 48, groundY - 12), bonePaint..strokeWidth = 3);
+        canvas.drawLine(shoulderR, Offset(cx + 48, groundY - 12), bonePaint..strokeWidth = 3);
+        canvas.drawLine(Offset(cx, shoulderL.dy), pelvis, bonePaint..strokeWidth = 6);
+        canvas.drawLine(pelvis, kneeL, bonePaint);
+        canvas.drawLine(pelvis, kneeR, bonePaint);
+        canvas.drawLine(kneeL, footL, bonePaint);
+        canvas.drawLine(kneeR, footR, bonePaint);
+
+        canvas.drawCircle(shoulderL, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(shoulderR, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(pelvis, 6, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(kneeL, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(kneeR, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(footL, 4, jointPaint..color = VColor.accent);
+        canvas.drawCircle(footR, 4, jointPaint..color = VColor.accent);
       }
-
-      canvas.drawCircle(head, 11, jointPaint..color = VColor.text);
-      canvas.drawLine(shoulder, hip, bonePaint);
-      canvas.drawLine(hip, knee, bonePaint);
-      canvas.drawLine(knee, foot, bonePaint);
-      canvas.drawLine(shoulder, Offset(cx - 20, groundY - 4), bonePaint..strokeWidth = 3);
-
-      canvas.drawCircle(shoulder, 5, jointPaint..color = VColor.accent);
-      canvas.drawCircle(hip, 6, jointPaint..color = VColor.accentGreen);
-      canvas.drawCircle(knee, 5, jointPaint..color = VColor.accent);
-      canvas.drawCircle(foot, 4, jointPaint..color = VColor.accent);
     } else if (s.contains('bicep') || s.contains('curl')) {
       // ── 2. DUMBBELL BICEP CURL KINEMATICS ──
-      // Standing upright holding dumbbells, curling from waist to shoulders
-      final head = Offset(cx, groundY - 135);
-      final chest = Offset(cx, groundY - 110);
-      final hip = Offset(cx, groundY - 65);
-      final footL = Offset(cx - 18, groundY - 4);
-      final footR = Offset(cx + 18, groundY - 4);
+      if (perspective == ExercisePerspective.front) {
+        final head = Offset(cx, groundY - 135);
+        final chest = Offset(cx, groundY - 110);
+        final hip = Offset(cx, groundY - 65);
+        final footL = Offset(cx - 18, groundY - 4);
+        final footR = Offset(cx + 18, groundY - 4);
 
-      // Legs
-      canvas.drawLine(hip, footL, bonePaint);
-      canvas.drawLine(hip, footR, bonePaint);
-      // Spine
-      canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
-      canvas.drawLine(head, chest, bonePaint);
-      canvas.drawLine(chest, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, footL, bonePaint);
+        canvas.drawLine(hip, footR, bonePaint);
+        canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
+        canvas.drawLine(head, chest, bonePaint);
+        canvas.drawLine(chest, hip, bonePaint..strokeWidth = 6);
 
-      // Arms: Shoulder -> Elbow (fixed at ribs) -> Forearm curling up
-      final shoulderL = Offset(chest.dx - 22, chest.dy + 4);
-      final shoulderR = Offset(chest.dx + 22, chest.dy + 4);
-      final elbowL = Offset(shoulderL.dx - 4, chest.dy + 38);
-      final elbowR = Offset(shoulderR.dx + 4, chest.dy + 38);
+        final shoulderL = Offset(chest.dx - 22, chest.dy + 4);
+        final shoulderR = Offset(chest.dx + 22, chest.dy + 4);
+        final elbowL = Offset(shoulderL.dx - 4, chest.dy + 38);
+        final elbowR = Offset(shoulderR.dx + 4, chest.dy + 38);
 
-      // Hand moves along circular arc from bottom (hanging) to top (shoulder height)
-      final curlAngle = (1.0 - cycle) * 1.5; // 0 = curled at shoulder, 1.5 rad = hanging down
-      final handXL = elbowL.dx - (math.sin(curlAngle) * 28);
-      final handYL = elbowL.dy + (math.cos(curlAngle) * 32);
-      final handXR = elbowR.dx + (math.sin(curlAngle) * 28);
-      final handYR = elbowR.dy + (math.cos(curlAngle) * 32);
+        final curlAngle = (1.0 - cycle) * 1.5;
+        final handXL = elbowL.dx - (math.sin(curlAngle) * 28);
+        final handYL = elbowL.dy + (math.cos(curlAngle) * 32);
+        final handXR = elbowR.dx + (math.sin(curlAngle) * 28);
+        final handYR = elbowR.dy + (math.cos(curlAngle) * 32);
 
-      final handL = Offset(handXL, handYL);
-      final handR = Offset(handXR, handYR);
+        final handL = Offset(handXL, handYL);
+        final handR = Offset(handXR, handYR);
 
-      // Biceps muscle glow when curling
-      if (cycle > 0.3) {
-        canvas.drawCircle(Offset(elbowL.dx - 2, elbowL.dy - 14), 14 * cycle, muscleGlowPaint);
-        canvas.drawCircle(Offset(elbowR.dx + 2, elbowR.dy - 14), 14 * cycle, muscleGlowPaint);
+        if (cycle > 0.3) {
+          canvas.drawCircle(Offset(elbowL.dx - 2, elbowL.dy - 14), 14 * cycle, muscleGlowPaint);
+          canvas.drawCircle(Offset(elbowR.dx + 2, elbowR.dy - 14), 14 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawLine(shoulderL, elbowL, bonePaint..strokeWidth = 5);
+        canvas.drawLine(shoulderR, elbowR, bonePaint..strokeWidth = 5);
+        canvas.drawLine(elbowL, handL, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbowR, handR, bonePaint..strokeWidth = 4);
+
+        canvas.drawLine(Offset(handL.dx - 9, handL.dy), Offset(handL.dx + 9, handL.dy), dumbbellPaint);
+        canvas.drawLine(Offset(handL.dx - 9, handL.dy - 6), Offset(handL.dx - 9, handL.dy + 6), dumbbellPaint..strokeWidth = 5);
+        canvas.drawLine(Offset(handL.dx + 9, handL.dy - 6), Offset(handL.dx + 9, handL.dy + 6), dumbbellPaint..strokeWidth = 5);
+        canvas.drawLine(Offset(handR.dx - 9, handR.dy), Offset(handR.dx + 9, handR.dy), dumbbellPaint..strokeWidth = 4);
+        canvas.drawLine(Offset(handR.dx - 9, handR.dy - 6), Offset(handR.dx - 9, handR.dy + 6), dumbbellPaint..strokeWidth = 5);
+        canvas.drawLine(Offset(handR.dx + 9, handR.dy - 6), Offset(handR.dx + 9, handR.dy + 6), dumbbellPaint..strokeWidth = 5);
+
+        canvas.drawCircle(shoulderL, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(shoulderR, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(elbowL, 4, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(elbowR, 4, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(handL, 4, jointPaint..color = VColor.accentCyan);
+        canvas.drawCircle(handR, 4, jointPaint..color = VColor.accentCyan);
+      } else {
+        // SIDE VIEW: Standing profile facing right, elbow pinned at side, curling upward
+        final head = Offset(cx - 10, groundY - 135);
+        final chest = Offset(cx - 8, groundY - 110);
+        final hip = Offset(cx - 12, groundY - 65);
+        final knee = Offset(cx - 8, groundY - 34);
+        final foot = Offset(cx - 4, groundY - 4);
+
+        canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
+        canvas.drawLine(head, chest, bonePaint);
+        canvas.drawLine(chest, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, knee, bonePaint);
+        canvas.drawLine(knee, foot, bonePaint);
+
+        final shoulder = Offset(chest.dx + 2, chest.dy + 4);
+        final elbow = Offset(shoulder.dx + 1, chest.dy + 38);
+
+        final curlAngle = (1.0 - cycle) * 1.55;
+        final handX = elbow.dx + (math.sin(curlAngle) * 32);
+        final handY = elbow.dy + (math.cos(curlAngle) * 32);
+        final hand = Offset(handX, handY);
+
+        if (cycle > 0.3) {
+          canvas.drawCircle(Offset(shoulder.dx + 6, shoulder.dy + 16), 15 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawLine(shoulder, elbow, bonePaint..strokeWidth = 5);
+        canvas.drawLine(elbow, hand, bonePaint..strokeWidth = 4);
+
+        canvas.drawLine(Offset(hand.dx - 10, hand.dy), Offset(hand.dx + 10, hand.dy), dumbbellPaint);
+        canvas.drawLine(Offset(hand.dx - 10, hand.dy - 6), Offset(hand.dx - 10, hand.dy + 6), dumbbellPaint..strokeWidth = 5);
+        canvas.drawLine(Offset(hand.dx + 10, hand.dy - 6), Offset(hand.dx + 10, hand.dy + 6), dumbbellPaint..strokeWidth = 5);
+
+        canvas.drawCircle(shoulder, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(elbow, 4, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(hand, 4, jointPaint..color = VColor.accentCyan);
+        canvas.drawCircle(hip, 5, jointPaint..color = VColor.accent);
       }
-
-      // Draw upper arms
-      canvas.drawLine(shoulderL, elbowL, bonePaint..strokeWidth = 5);
-      canvas.drawLine(shoulderR, elbowR, bonePaint..strokeWidth = 5);
-      // Draw forearms
-      canvas.drawLine(elbowL, handL, bonePaint..strokeWidth = 4);
-      canvas.drawLine(elbowR, handR, bonePaint..strokeWidth = 4);
-
-      // Draw Dumbbells in hands
-      final dumbbellPaint = Paint()
-        ..color = VColor.accentCyan
-        ..strokeWidth = 4
-        ..strokeCap = StrokeCap.round;
-      // Left dumbbell
-      canvas.drawLine(Offset(handL.dx - 9, handL.dy), Offset(handL.dx + 9, handL.dy), dumbbellPaint);
-      canvas.drawLine(Offset(handL.dx - 9, handL.dy - 6), Offset(handL.dx - 9, handL.dy + 6), dumbbellPaint..strokeWidth = 5);
-      canvas.drawLine(Offset(handL.dx + 9, handL.dy - 6), Offset(handL.dx + 9, handL.dy + 6), dumbbellPaint..strokeWidth = 5);
-      // Right dumbbell
-      canvas.drawLine(Offset(handR.dx - 9, handR.dy), Offset(handR.dx + 9, handR.dy), dumbbellPaint..strokeWidth = 4);
-      canvas.drawLine(Offset(handR.dx - 9, handR.dy - 6), Offset(handR.dx - 9, handR.dy + 6), dumbbellPaint..strokeWidth = 5);
-      canvas.drawLine(Offset(handR.dx + 9, handR.dy - 6), Offset(handR.dx + 9, handR.dy + 6), dumbbellPaint..strokeWidth = 5);
-
-      // Joints
-      canvas.drawCircle(shoulderL, 5, jointPaint..color = VColor.accent);
-      canvas.drawCircle(shoulderR, 5, jointPaint..color = VColor.accent);
-      canvas.drawCircle(elbowL, 4, jointPaint..color = VColor.accentGreen);
-      canvas.drawCircle(elbowR, 4, jointPaint..color = VColor.accentGreen);
-      canvas.drawCircle(handL, 4, jointPaint..color = VColor.accentCyan);
-      canvas.drawCircle(handR, 4, jointPaint..color = VColor.accentCyan);
     } else if (s.contains('wall-sit') || (s.contains('wall') && s.contains('sit'))) {
       // ── 3. WALL SIT KINEMATICS (Isometric Hold Against Wall) ──
-      final wallX = cx - 35;
-      final wallPaint = Paint()
-        ..color = VColor.accent.withOpacity(0.4)
-        ..strokeWidth = 5
-        ..strokeCap = StrokeCap.square;
-      // Vertical Wall
-      canvas.drawLine(Offset(wallX, groundY - 140), Offset(wallX, groundY), wallPaint);
+      if (perspective == ExercisePerspective.side) {
+        final wallX = cx - 35;
+        canvas.drawLine(Offset(wallX, groundY - 140), Offset(wallX, groundY), wallPaint);
 
-      // Back flat against wall
-      final hip = Offset(wallX + 8, groundY - 50);
-      final torsoTop = Offset(wallX + 8, groundY - 105);
-      final head = Offset(wallX + 8, torsoTop.dy - 16);
+        final hip = Offset(wallX + 8, groundY - 50);
+        final torsoTop = Offset(wallX + 8, groundY - 105);
+        final head = Offset(wallX + 8, torsoTop.dy - 16);
+        final knee = Offset(wallX + 50, hip.dy);
+        final foot = Offset(knee.dx, groundY - 4);
 
-      // Thighs horizontal at 90 degrees
-      final knee = Offset(wallX + 50, hip.dy);
-      // Shins vertical down to feet on floor
-      final foot = Offset(knee.dx, groundY - 4);
+        final pulse = 0.5 + (0.5 * cycle);
+        canvas.drawCircle(Offset((hip.dx + knee.dx) / 2, hip.dy), 16 * pulse, muscleGlowPaint);
 
-      // Pulse muscle glow on quadriceps
-      final pulse = 0.5 + (0.5 * cycle);
-      canvas.drawCircle(Offset((hip.dx + knee.dx) / 2, hip.dy), 16 * pulse, muscleGlowPaint);
+        canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
+        canvas.drawLine(torsoTop, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, knee, bonePaint..strokeWidth = 6);
+        canvas.drawLine(knee, foot, bonePaint..strokeWidth = 5);
+        canvas.drawLine(torsoTop, Offset(knee.dx - 10, knee.dy - 8), bonePaint..strokeWidth = 4);
 
-      // Head & Torso against wall
-      canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
-      canvas.drawLine(torsoTop, hip, bonePaint..strokeWidth = 6);
-      // Legs (Thigh -> Shin)
-      canvas.drawLine(hip, knee, bonePaint..strokeWidth = 6);
-      canvas.drawLine(knee, foot, bonePaint..strokeWidth = 5);
-      // Arms resting forward on knees
-      canvas.drawLine(torsoTop, Offset(knee.dx - 10, knee.dy - 8), bonePaint..strokeWidth = 4);
+        canvas.drawCircle(torsoTop, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(hip, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(knee, 6, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(foot, 4, jointPaint..color = VColor.accent);
+      } else {
+        // FRONT VIEW: Back to wall, thighs parallel, knees directly above feet
+        canvas.drawRect(Rect.fromLTWH(cx - 50, groundY - 130, 100, 80), Paint()..color = VColor.steel.withValues(alpha: 0.2)..style = PaintingStyle.fill);
 
-      canvas.drawCircle(torsoTop, 5, jointPaint..color = VColor.accent);
-      canvas.drawCircle(hip, 5, jointPaint..color = VColor.accentGreen);
-      canvas.drawCircle(knee, 6, jointPaint..color = VColor.accentGreen);
-      canvas.drawCircle(foot, 4, jointPaint..color = VColor.accent);
+        final head = Offset(cx, groundY - 138);
+        final chest = Offset(cx, groundY - 110);
+        final hipL = Offset(cx - 16, groundY - 50);
+        final hipR = Offset(cx + 16, groundY - 50);
+        final kneeL = Offset(cx - 28, groundY - 50);
+        final kneeR = Offset(cx + 28, groundY - 50);
+        final footL = Offset(cx - 28, groundY - 4);
+        final footR = Offset(cx + 28, groundY - 4);
+
+        final pulse = 0.5 + (0.5 * cycle);
+        canvas.drawCircle(Offset(cx - 22, groundY - 50), 14 * pulse, muscleGlowPaint);
+        canvas.drawCircle(Offset(cx + 22, groundY - 50), 14 * pulse, muscleGlowPaint);
+
+        canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
+        canvas.drawLine(head, chest, bonePaint);
+        canvas.drawLine(chest, Offset(cx, groundY - 50), bonePaint..strokeWidth = 6);
+        canvas.drawLine(hipL, kneeL, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hipR, kneeR, bonePaint..strokeWidth = 6);
+        canvas.drawLine(kneeL, footL, bonePaint..strokeWidth = 5);
+        canvas.drawLine(kneeR, footR, bonePaint..strokeWidth = 5);
+        canvas.drawLine(Offset(cx - 20, chest.dy), Offset(cx + 15, chest.dy + 15), bonePaint..strokeWidth = 4);
+        canvas.drawLine(Offset(cx + 20, chest.dy), Offset(cx - 15, chest.dy + 15), bonePaint..strokeWidth = 4);
+
+        canvas.drawCircle(kneeL, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(kneeR, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(footL, 4, jointPaint..color = VColor.accent);
+        canvas.drawCircle(footR, 4, jointPaint..color = VColor.accent);
+      }
     } else if (s.contains('wall-push')) {
       // ── 4. WALL PUSH-UP KINEMATICS ──
-      final wallX = cx + 55;
-      final wallPaint = Paint()
-        ..color = VColor.accent.withOpacity(0.4)
-        ..strokeWidth = 5;
-      canvas.drawLine(Offset(wallX, groundY - 140), Offset(wallX, groundY), wallPaint);
+      if (perspective == ExercisePerspective.side) {
+        final wallX = cx + 55;
+        canvas.drawLine(Offset(wallX, groundY - 140), Offset(wallX, groundY), wallPaint);
 
-      // Feet anchored on floor
-      final foot = Offset(cx - 50, groundY - 4);
-      // Body leans into wall as cycle goes 0 -> 1 -> 0
-      final lean = cycle * 24;
-      final hand = Offset(wallX - 3, groundY - 80);
-      final shoulder = Offset(cx + 20 + lean, groundY - 80);
-      final elbow = Offset(cx + 8 + (lean * 0.4), groundY - 60);
-      final hip = Offset(cx - 15 + (lean * 0.7), groundY - 45);
-      final head = Offset(shoulder.dx + 16, shoulder.dy - 12);
+        final foot = Offset(cx - 50, groundY - 4);
+        final lean = cycle * 24;
+        final hand = Offset(wallX - 3, groundY - 80);
+        final shoulder = Offset(cx + 20 + lean, groundY - 80);
+        final elbow = Offset(cx + 8 + (lean * 0.4), groundY - 60);
+        final hip = Offset(cx - 15 + (lean * 0.7), groundY - 45);
+        final head = Offset(shoulder.dx + 16, shoulder.dy - 12);
 
-      if (cycle > 0.4) {
-        canvas.drawCircle(shoulder, 18 * cycle, muscleGlowPaint);
+        if (cycle > 0.4) {
+          canvas.drawCircle(shoulder, 18 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 11, jointPaint..color = VColor.text);
+        canvas.drawLine(shoulder, hip, bonePaint..strokeWidth = 5);
+        canvas.drawLine(hip, foot, bonePaint..strokeWidth = 5);
+        canvas.drawLine(shoulder, elbow, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbow, hand, bonePaint..strokeWidth = 4);
+
+        canvas.drawCircle(shoulder, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(elbow, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(hand, 5, jointPaint..color = VColor.accentCyan);
+        canvas.drawCircle(hip, 5, jointPaint..color = VColor.accent);
+      } else {
+        // FRONT/REAR VIEW: Pressing against wall, elbows bending symmetrically
+        final drop = cycle * 16;
+        final head = Offset(cx, groundY - 120 + drop);
+        final chest = Offset(cx, groundY - 95 + drop);
+        final hip = Offset(cx, groundY - 50 + (drop * 0.6));
+        final footL = Offset(cx - 14, groundY - 4);
+        final footR = Offset(cx + 14, groundY - 4);
+
+        final handL = Offset(cx - 44, groundY - 82);
+        final handR = Offset(cx + 44, groundY - 82);
+        final shoulderL = Offset(cx - 24, chest.dy);
+        final shoulderR = Offset(cx + 24, chest.dy);
+        final elbowL = Offset(cx - 40 - (cycle * 8), chest.dy + 8);
+        final elbowR = Offset(cx + 40 + (cycle * 8), chest.dy + 8);
+
+        if (cycle > 0.4) {
+          canvas.drawCircle(shoulderL, 16 * cycle, muscleGlowPaint);
+          canvas.drawCircle(shoulderR, 16 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 11, jointPaint..color = VColor.text);
+        canvas.drawLine(head, chest, bonePaint);
+        canvas.drawLine(chest, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, footL, bonePaint);
+        canvas.drawLine(hip, footR, bonePaint);
+        canvas.drawLine(shoulderL, elbowL, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbowL, handL, bonePaint..strokeWidth = 4);
+        canvas.drawLine(shoulderR, elbowR, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbowR, handR, bonePaint..strokeWidth = 4);
+
+        canvas.drawCircle(handL, 5, jointPaint..color = VColor.accentCyan);
+        canvas.drawCircle(handR, 5, jointPaint..color = VColor.accentCyan);
+        canvas.drawCircle(shoulderL, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(shoulderR, 5, jointPaint..color = VColor.accentGreen);
       }
-
-      // Head & Plank
-      canvas.drawCircle(head, 11, jointPaint..color = VColor.text);
-      canvas.drawLine(shoulder, hip, bonePaint..strokeWidth = 5);
-      canvas.drawLine(hip, foot, bonePaint..strokeWidth = 5);
-      // Arms (Shoulder -> Elbow -> Hand on wall)
-      canvas.drawLine(shoulder, elbow, bonePaint..strokeWidth = 4);
-      canvas.drawLine(elbow, hand, bonePaint..strokeWidth = 4);
-
-      canvas.drawCircle(shoulder, 5, jointPaint..color = VColor.accentGreen);
-      canvas.drawCircle(elbow, 5, jointPaint..color = VColor.accent);
-      canvas.drawCircle(hand, 5, jointPaint..color = VColor.accentCyan);
-      canvas.drawCircle(hip, 5, jointPaint..color = VColor.accent);
     } else if (s.contains('calf') || s.contains('raise')) {
       // ── 5. CALF RAISE KINEMATICS ──
-      // Standing upright, rising onto balls of feet with ankle extension
-      final lift = cycle * 28; // body rises by 28px
-      final footX = cx;
-      final ankleY = groundY - 8 - lift;
-      final knee = Offset(footX, groundY - 55 - lift);
-      final hip = Offset(footX, groundY - 95 - lift);
-      final torsoTop = Offset(footX, groundY - 135 - lift);
-      final head = Offset(footX, torsoTop.dy - 16);
+      final lift = cycle * 28;
+      if (perspective == ExercisePerspective.side) {
+        final footX = cx;
+        final ankleY = groundY - 8 - lift;
+        final knee = Offset(footX, groundY - 55 - lift);
+        final hip = Offset(footX, groundY - 95 - lift);
+        final torsoTop = Offset(footX, groundY - 135 - lift);
+        final head = Offset(footX, torsoTop.dy - 16);
 
-      // Calves glow during lift
-      if (cycle > 0.3) {
-        canvas.drawCircle(Offset(footX, groundY - 32 - lift), 16 * cycle, muscleGlowPaint);
+        if (cycle > 0.3) {
+          canvas.drawCircle(Offset(footX - 4, groundY - 32 - lift), 16 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
+        canvas.drawLine(head, torsoTop, bonePaint);
+        canvas.drawLine(torsoTop, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, knee, bonePaint);
+        canvas.drawLine(knee, Offset(footX, ankleY), bonePaint);
+        canvas.drawLine(Offset(footX, ankleY), Offset(footX + 16, groundY - 4), bonePaint..strokeWidth = 4);
+        canvas.drawLine(torsoTop, Offset(footX - 18, hip.dy + 8), bonePaint..strokeWidth = 3);
+        canvas.drawLine(torsoTop, Offset(footX + 18, hip.dy + 8), bonePaint..strokeWidth = 3);
+
+        canvas.drawCircle(hip, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(knee, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(Offset(footX, ankleY), 5, jointPaint..color = VColor.accentGreen);
+      } else {
+        // FRONT VIEW: Dual calf extension
+        final hip = Offset(cx, groundY - 95 - lift);
+        final torsoTop = Offset(cx, groundY - 135 - lift);
+        final head = Offset(cx, torsoTop.dy - 16);
+        final ankleL = Offset(cx - 18, groundY - 8 - lift);
+        final ankleR = Offset(cx + 18, groundY - 8 - lift);
+        final kneeL = Offset(cx - 18, groundY - 55 - lift);
+        final kneeR = Offset(cx + 18, groundY - 55 - lift);
+
+        if (cycle > 0.3) {
+          canvas.drawCircle(Offset(cx - 18, groundY - 32 - lift), 14 * cycle, muscleGlowPaint);
+          canvas.drawCircle(Offset(cx + 18, groundY - 32 - lift), 14 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
+        canvas.drawLine(head, torsoTop, bonePaint);
+        canvas.drawLine(torsoTop, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, kneeL, bonePaint);
+        canvas.drawLine(hip, kneeR, bonePaint);
+        canvas.drawLine(kneeL, ankleL, bonePaint);
+        canvas.drawLine(kneeR, ankleR, bonePaint);
+        canvas.drawLine(ankleL, Offset(cx - 18, groundY - 4), bonePaint..strokeWidth = 4);
+        canvas.drawLine(ankleR, Offset(cx + 18, groundY - 4), bonePaint..strokeWidth = 4);
+        canvas.drawLine(torsoTop, Offset(cx - 24, hip.dy), bonePaint..strokeWidth = 3);
+        canvas.drawLine(torsoTop, Offset(cx + 24, hip.dy), bonePaint..strokeWidth = 3);
+
+        canvas.drawCircle(ankleL, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(ankleR, 5, jointPaint..color = VColor.accentGreen);
       }
-
-      // Head & Torso
-      canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
-      canvas.drawLine(head, torsoTop, bonePaint);
-      canvas.drawLine(torsoTop, hip, bonePaint..strokeWidth = 6);
-      // Legs
-      canvas.drawLine(hip, knee, bonePaint);
-      canvas.drawLine(knee, Offset(footX, ankleY), bonePaint);
-      // Foot (toes touching ground, heel elevated)
-      canvas.drawLine(Offset(footX, ankleY), Offset(footX + 16, groundY - 4), bonePaint..strokeWidth = 4);
-      // Arms on hips
-      canvas.drawLine(torsoTop, Offset(footX - 18, hip.dy + 8), bonePaint..strokeWidth = 3);
-      canvas.drawLine(torsoTop, Offset(footX + 18, hip.dy + 8), bonePaint..strokeWidth = 3);
-
-      canvas.drawCircle(hip, 5, jointPaint..color = VColor.accent);
-      canvas.drawCircle(knee, 5, jointPaint..color = VColor.accent);
-      canvas.drawCircle(Offset(footX, ankleY), 5, jointPaint..color = VColor.accentGreen);
     } else if (s.contains('knee-push')) {
       // ── 6. KNEE PUSH-UP KINEMATICS ──
-      final knee = Offset(cx - 55, groundY - 6);
-      final foot = Offset(cx - 78, groundY - 24); // feet curled up off floor
-      final hand = Offset(cx + 40, groundY - 4);
+      if (perspective == ExercisePerspective.side) {
+        final knee = Offset(cx - 55, groundY - 6);
+        final foot = Offset(cx - 78, groundY - 24);
+        final hand = Offset(cx + 40, groundY - 4);
 
-      final drop = cycle * 30;
-      final shoulder = Offset(cx + 35, (groundY - 48) + drop);
-      final elbow = Offset(cx + 18, (groundY - 32) + (drop * 0.7));
-      final hip = Offset(cx - 10, (groundY - 32) + (drop * 0.7));
-      final head = Offset(cx + 56, shoulder.dy - 8);
+        final drop = cycle * 30;
+        final shoulder = Offset(cx + 35, (groundY - 48) + drop);
+        final elbow = Offset(cx + 18, (groundY - 32) + (drop * 0.7));
+        final hip = Offset(cx - 10, (groundY - 32) + (drop * 0.7));
+        final head = Offset(cx + 56, shoulder.dy - 8);
 
-      if (cycle > 0.5) {
-        canvas.drawCircle(shoulder, 18 * cycle, muscleGlowPaint);
+        if (cycle > 0.5) {
+          canvas.drawCircle(shoulder, 18 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 10, jointPaint..color = VColor.text);
+        canvas.drawLine(shoulder, hip, bonePaint);
+        canvas.drawLine(hip, knee, bonePaint);
+        canvas.drawLine(knee, foot, bonePaint..strokeWidth = 3);
+        canvas.drawLine(shoulder, elbow, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbow, hand, bonePaint..strokeWidth = 4);
+
+        canvas.drawCircle(shoulder, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(elbow, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(hand, 4, jointPaint..color = VColor.accent);
+        canvas.drawCircle(knee, 5, jointPaint..color = VColor.accent);
+      } else {
+        // FRONT VIEW: Facing forward, chest lowering between hands
+        final drop = cycle * 28;
+        final chest = Offset(cx, (groundY - 48) + drop);
+        final head = Offset(cx, chest.dy - 16);
+        final handL = Offset(cx - 48, groundY - 4);
+        final handR = Offset(cx + 48, groundY - 4);
+        final shoulderL = Offset(cx - 24, chest.dy);
+        final shoulderR = Offset(cx + 24, chest.dy);
+        final elbowL = Offset(cx - 44 - (cycle * 8), chest.dy + 8);
+        final elbowR = Offset(cx + 44 + (cycle * 8), chest.dy + 8);
+
+        if (cycle > 0.5) {
+          canvas.drawCircle(chest, 20 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 11, jointPaint..color = VColor.text);
+        canvas.drawLine(shoulderL, shoulderR, bonePaint..strokeWidth = 5);
+        canvas.drawLine(chest, Offset(cx, groundY - 20), bonePaint..strokeWidth = 6);
+        canvas.drawLine(shoulderL, elbowL, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbowL, handL, bonePaint..strokeWidth = 4);
+        canvas.drawLine(shoulderR, elbowR, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbowR, handR, bonePaint..strokeWidth = 4);
+
+        canvas.drawCircle(shoulderL, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(shoulderR, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(handL, 4, jointPaint..color = VColor.accent);
+        canvas.drawCircle(handR, 4, jointPaint..color = VColor.accent);
       }
-
-      canvas.drawCircle(head, 10, jointPaint..color = VColor.text);
-      canvas.drawLine(shoulder, hip, bonePaint);
-      canvas.drawLine(hip, knee, bonePaint);
-      canvas.drawLine(knee, foot, bonePaint..strokeWidth = 3); // feet raised
-      canvas.drawLine(shoulder, elbow, bonePaint..strokeWidth = 4);
-      canvas.drawLine(elbow, hand, bonePaint..strokeWidth = 4);
-
-      canvas.drawCircle(shoulder, 5, jointPaint..color = VColor.accentGreen);
-      canvas.drawCircle(elbow, 5, jointPaint..color = VColor.accent);
-      canvas.drawCircle(hand, 4, jointPaint..color = VColor.accent);
-      canvas.drawCircle(knee, 5, jointPaint..color = VColor.accent);
     } else if (s.contains('push-up') || s.contains('pushup') || s.contains('chest-press')) {
       // ── 7. STANDARD PUSH-UP KINEMATICS ──
-      final foot = Offset(cx - 70, groundY - 6);
-      final hand = Offset(cx + 40, groundY - 4);
+      if (perspective == ExercisePerspective.side) {
+        final foot = Offset(cx - 70, groundY - 6);
+        final hand = Offset(cx + 40, groundY - 4);
 
-      final drop = cycle * 32;
-      final shoulder = Offset(cx + 40, (groundY - 50) + drop);
-      final elbow = Offset(cx + 22, (groundY - 35) + (drop * 0.7));
-      final hip = Offset(cx - 15, (groundY - 38) + (drop * 0.7));
-      final head = Offset(cx + 62, shoulder.dy - 8);
+        final drop = cycle * 32;
+        final shoulder = Offset(cx + 40, (groundY - 50) + drop);
+        final elbow = Offset(cx + 22, (groundY - 35) + (drop * 0.7));
+        final hip = Offset(cx - 15, (groundY - 38) + (drop * 0.7));
+        final head = Offset(cx + 62, shoulder.dy - 8);
 
-      if (cycle > 0.5) {
-        canvas.drawCircle(shoulder, 18 * cycle, muscleGlowPaint);
+        if (cycle > 0.5) {
+          canvas.drawCircle(shoulder, 18 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 10, jointPaint..color = VColor.text);
+        canvas.drawLine(shoulder, hip, bonePaint);
+        canvas.drawLine(hip, foot, bonePaint);
+        canvas.drawLine(shoulder, elbow, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbow, hand, bonePaint..strokeWidth = 4);
+
+        canvas.drawCircle(shoulder, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(elbow, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(hand, 4, jointPaint..color = VColor.accent);
+        canvas.drawCircle(hip, 5, jointPaint..color = VColor.accent);
+      } else {
+        // FRONT VIEW: Full plank facing user, chest lowering between hands
+        final drop = cycle * 30;
+        final chest = Offset(cx, (groundY - 52) + drop);
+        final head = Offset(cx, chest.dy - 16);
+        final handL = Offset(cx - 52, groundY - 4);
+        final handR = Offset(cx + 52, groundY - 4);
+        final shoulderL = Offset(cx - 26, chest.dy);
+        final shoulderR = Offset(cx + 26, chest.dy);
+        final elbowL = Offset(cx - 48 - (cycle * 8), chest.dy + 7);
+        final elbowR = Offset(cx + 48 + (cycle * 8), chest.dy + 7);
+        final hip = Offset(cx, groundY - 34 + (drop * 0.5));
+
+        if (cycle > 0.5) {
+          canvas.drawCircle(chest, 22 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 11, jointPaint..color = VColor.text);
+        canvas.drawLine(shoulderL, shoulderR, bonePaint..strokeWidth = 5);
+        canvas.drawLine(chest, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, Offset(cx, groundY - 6), bonePaint..strokeWidth = 5);
+        canvas.drawLine(shoulderL, elbowL, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbowL, handL, bonePaint..strokeWidth = 4);
+        canvas.drawLine(shoulderR, elbowR, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbowR, handR, bonePaint..strokeWidth = 4);
+
+        canvas.drawCircle(shoulderL, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(shoulderR, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(handL, 4, jointPaint..color = VColor.accent);
+        canvas.drawCircle(handR, 4, jointPaint..color = VColor.accent);
       }
-
-      canvas.drawCircle(head, 10, jointPaint..color = VColor.text);
-      canvas.drawLine(shoulder, hip, bonePaint);
-      canvas.drawLine(hip, foot, bonePaint);
-      canvas.drawLine(shoulder, elbow, bonePaint..strokeWidth = 4);
-      canvas.drawLine(elbow, hand, bonePaint..strokeWidth = 4);
-
-      canvas.drawCircle(shoulder, 5, jointPaint..color = VColor.accentGreen);
-      canvas.drawCircle(elbow, 5, jointPaint..color = VColor.accent);
-      canvas.drawCircle(hand, 4, jointPaint..color = VColor.accent);
-      canvas.drawCircle(hip, 5, jointPaint..color = VColor.accent);
     } else if (s.contains('shoulder') || (s.contains('seated') && s.contains('press')) || s.contains('overhead')) {
-      // ── 8. SEATED SHOULDER PRESS KINEMATICS (Upright Chair / Wheelchair) ──
-      final chairX = cx - 10;
-      final seatY = groundY - 45;
-      final chairBackX = chairX - 22;
+      // ── 8. SEATED SHOULDER PRESS KINEMATICS ──
+      if (perspective == ExercisePerspective.front) {
+        final chairX = cx - 10;
+        final seatY = groundY - 45;
+        final chairBackX = chairX - 22;
 
-      final chairPaint = Paint()
-        ..color = VColor.accent.withOpacity(0.35)
-        ..strokeWidth = 4
-        ..strokeCap = StrokeCap.round
-        ..style = PaintingStyle.stroke;
-      canvas.drawLine(Offset(chairBackX, seatY - 55), Offset(chairBackX, seatY), chairPaint);
-      canvas.drawLine(Offset(chairBackX - 4, seatY), Offset(chairX + 26, seatY), chairPaint);
-      canvas.drawLine(Offset(chairBackX, seatY), Offset(chairBackX, groundY), chairPaint..strokeWidth = 3);
-      canvas.drawLine(Offset(chairX + 22, seatY), Offset(chairX + 22, groundY), chairPaint..strokeWidth = 3);
+        final chairPaint = Paint()
+          ..color = VColor.accent.withValues(alpha: 0.35)
+          ..strokeWidth = 4
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke;
+        canvas.drawLine(Offset(chairBackX, seatY - 55), Offset(chairBackX, seatY), chairPaint);
+        canvas.drawLine(Offset(chairBackX - 4, seatY), Offset(chairX + 26, seatY), chairPaint);
+        canvas.drawLine(Offset(chairBackX, seatY), Offset(chairBackX, groundY), chairPaint..strokeWidth = 3);
+        canvas.drawLine(Offset(chairX + 22, seatY), Offset(chairX + 22, groundY), chairPaint..strokeWidth = 3);
 
-      final hip = Offset(chairX - 8, seatY - 6);
-      final knee = Offset(chairX + 30, seatY);
-      final foot = Offset(chairX + 32, groundY - 4);
+        final hip = Offset(chairX - 8, seatY - 6);
+        final knee = Offset(chairX + 30, seatY);
+        final foot = Offset(chairX + 32, groundY - 4);
 
-      final torsoTop = Offset(chairX - 5, seatY - 58);
-      final head = Offset(chairX - 4, torsoTop.dy - 18);
-      final shoulderL = Offset(torsoTop.dx - 14, torsoTop.dy + 4);
-      final shoulderR = Offset(torsoTop.dx + 14, torsoTop.dy + 4);
+        final torsoTop = Offset(chairX - 5, seatY - 58);
+        final head = Offset(chairX - 4, torsoTop.dy - 18);
+        final shoulderL = Offset(torsoTop.dx - 14, torsoTop.dy + 4);
+        final shoulderR = Offset(torsoTop.dx + 14, torsoTop.dy + 4);
 
-      final pressHeight = cycle * 44;
-      final handYL = (torsoTop.dy - 8) - pressHeight;
-      final handYR = (torsoTop.dy - 8) - pressHeight;
-      final handXL = shoulderL.dx - 8 + (cycle * 4);
-      final handXR = shoulderR.dx + 8 - (cycle * 4);
+        final pressHeight = cycle * 44;
+        final handYL = (torsoTop.dy - 8) - pressHeight;
+        final handYR = (torsoTop.dy - 8) - pressHeight;
+        final handXL = shoulderL.dx - 8 + (cycle * 4);
+        final handXR = shoulderR.dx + 8 - (cycle * 4);
 
-      final elbowYL = (torsoTop.dy + 14) - (cycle * 24);
-      final elbowYR = (torsoTop.dy + 14) - (cycle * 24);
-      final elbowXL = shoulderL.dx - 18 + (cycle * 6);
-      final elbowXR = shoulderR.dx + 18 - (cycle * 6);
+        final elbowYL = (torsoTop.dy + 14) - (cycle * 24);
+        final elbowYR = (torsoTop.dy + 14) - (cycle * 24);
+        final elbowXL = shoulderL.dx - 18 + (cycle * 6);
+        final elbowXR = shoulderR.dx + 18 - (cycle * 6);
 
-      final handL = Offset(handXL, handYL);
-      final handR = Offset(handXR, handYR);
-      final elbowL = Offset(elbowXL, elbowYL);
-      final elbowR = Offset(elbowXR, elbowYR);
+        final handL = Offset(handXL, handYL);
+        final handR = Offset(handXR, handYR);
+        final elbowL = Offset(elbowXL, elbowYL);
+        final elbowR = Offset(elbowXR, elbowYR);
 
-      if (cycle > 0.4) {
-        canvas.drawCircle(shoulderL, 16 * cycle, muscleGlowPaint);
-        canvas.drawCircle(shoulderR, 16 * cycle, muscleGlowPaint);
+        if (cycle > 0.4) {
+          canvas.drawCircle(shoulderL, 16 * cycle, muscleGlowPaint);
+          canvas.drawCircle(shoulderR, 16 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
+        canvas.drawLine(head, torsoTop, bonePaint);
+        canvas.drawLine(torsoTop, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, knee, bonePaint);
+        canvas.drawLine(knee, foot, bonePaint);
+
+        canvas.drawLine(shoulderL, elbowL, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbowL, handL, bonePaint..strokeWidth = 4);
+        canvas.drawLine(shoulderR, elbowR, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbowR, handR, bonePaint..strokeWidth = 4);
+
+        canvas.drawLine(Offset(handL.dx - 10, handL.dy), Offset(handL.dx + 10, handL.dy), dumbbellPaint);
+        canvas.drawLine(Offset(handL.dx - 10, handL.dy - 5), Offset(handL.dx - 10, handL.dy + 5), dumbbellPaint..strokeWidth = 5);
+        canvas.drawLine(Offset(handL.dx + 10, handL.dy - 5), Offset(handL.dx + 10, handL.dy + 5), dumbbellPaint..strokeWidth = 5);
+        canvas.drawLine(Offset(handR.dx - 10, handR.dy), Offset(handR.dx + 10, handR.dy), dumbbellPaint..strokeWidth = 4);
+        canvas.drawLine(Offset(handR.dx - 10, handR.dy - 5), Offset(handR.dx - 10, handR.dy + 5), dumbbellPaint..strokeWidth = 5);
+        canvas.drawLine(Offset(handR.dx + 10, handR.dy - 5), Offset(handR.dx + 10, handR.dy + 5), dumbbellPaint..strokeWidth = 5);
+
+        canvas.drawCircle(shoulderL, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(shoulderR, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(elbowL, 4, jointPaint..color = VColor.accent);
+        canvas.drawCircle(elbowR, 4, jointPaint..color = VColor.accent);
+        canvas.drawCircle(handL, 4, jointPaint..color = VColor.accentCyan);
+        canvas.drawCircle(handR, 4, jointPaint..color = VColor.accentCyan);
+      } else {
+        // SIDE VIEW: Seated in profile against chair back, vertical overhead press path
+        final chairBackX = cx - 18;
+        final seatY = groundY - 45;
+        final chairPaint = Paint()
+          ..color = VColor.accent.withValues(alpha: 0.35)
+          ..strokeWidth = 4
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke;
+        canvas.drawLine(Offset(chairBackX, seatY - 60), Offset(chairBackX, seatY), chairPaint);
+        canvas.drawLine(Offset(chairBackX, seatY), Offset(cx + 25, seatY), chairPaint);
+        canvas.drawLine(Offset(chairBackX, seatY), Offset(chairBackX, groundY), chairPaint..strokeWidth = 3);
+        canvas.drawLine(Offset(cx + 20, seatY), Offset(cx + 20, groundY), chairPaint..strokeWidth = 3);
+
+        final hip = Offset(chairBackX + 8, seatY - 6);
+        final knee = Offset(cx + 22, seatY);
+        final foot = Offset(cx + 24, groundY - 4);
+        final torsoTop = Offset(chairBackX + 8, seatY - 58);
+        final head = Offset(chairBackX + 8, torsoTop.dy - 18);
+        final shoulder = Offset(torsoTop.dx + 4, torsoTop.dy + 4);
+
+        final pressHeight = cycle * 48;
+        final handY = (torsoTop.dy - 4) - pressHeight;
+        final hand = Offset(shoulder.dx, handY);
+        final elbowY = (torsoTop.dy + 16) - (cycle * 26);
+        final elbow = Offset(shoulder.dx - 4 + (cycle * 4), elbowY);
+
+        if (cycle > 0.4) {
+          canvas.drawCircle(shoulder, 16 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
+        canvas.drawLine(head, torsoTop, bonePaint);
+        canvas.drawLine(torsoTop, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, knee, bonePaint);
+        canvas.drawLine(knee, foot, bonePaint);
+        canvas.drawLine(shoulder, elbow, bonePaint..strokeWidth = 4);
+        canvas.drawLine(elbow, hand, bonePaint..strokeWidth = 4);
+
+        canvas.drawLine(Offset(hand.dx - 10, hand.dy), Offset(hand.dx + 10, hand.dy), dumbbellPaint);
+        canvas.drawLine(Offset(hand.dx - 10, hand.dy - 5), Offset(hand.dx - 10, hand.dy + 5), dumbbellPaint..strokeWidth = 5);
+        canvas.drawLine(Offset(hand.dx + 10, hand.dy - 5), Offset(hand.dx + 10, hand.dy + 5), dumbbellPaint..strokeWidth = 5);
+
+        canvas.drawCircle(shoulder, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(elbow, 4, jointPaint..color = VColor.accent);
+        canvas.drawCircle(hand, 4, jointPaint..color = VColor.accentCyan);
       }
-
-      canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
-      canvas.drawLine(head, torsoTop, bonePaint);
-      canvas.drawLine(torsoTop, hip, bonePaint..strokeWidth = 6);
-      canvas.drawLine(hip, knee, bonePaint);
-      canvas.drawLine(knee, foot, bonePaint);
-
-      canvas.drawLine(shoulderL, elbowL, bonePaint..strokeWidth = 4);
-      canvas.drawLine(elbowL, handL, bonePaint..strokeWidth = 4);
-      canvas.drawLine(shoulderR, elbowR, bonePaint..strokeWidth = 4);
-      canvas.drawLine(elbowR, handR, bonePaint..strokeWidth = 4);
-
-      final dumbbellPaint = Paint()
-        ..color = VColor.accentCyan
-        ..strokeWidth = 4
-        ..strokeCap = StrokeCap.round
-        ..style = PaintingStyle.stroke;
-      canvas.drawLine(Offset(handL.dx - 10, handL.dy), Offset(handL.dx + 10, handL.dy), dumbbellPaint);
-      canvas.drawLine(Offset(handL.dx - 10, handL.dy - 5), Offset(handL.dx - 10, handL.dy + 5), dumbbellPaint..strokeWidth = 5);
-      canvas.drawLine(Offset(handL.dx + 10, handL.dy - 5), Offset(handL.dx + 10, handL.dy + 5), dumbbellPaint..strokeWidth = 5);
-
-      canvas.drawLine(Offset(handR.dx - 10, handR.dy), Offset(handR.dx + 10, handR.dy), dumbbellPaint..strokeWidth = 4);
-      canvas.drawLine(Offset(handR.dx - 10, handR.dy - 5), Offset(handR.dx - 10, handR.dy + 5), dumbbellPaint..strokeWidth = 5);
-      canvas.drawLine(Offset(handR.dx + 10, handR.dy - 5), Offset(handR.dx + 10, handR.dy + 5), dumbbellPaint..strokeWidth = 5);
-
-      canvas.drawCircle(shoulderL, 5, jointPaint..color = VColor.accentGreen);
-      canvas.drawCircle(shoulderR, 5, jointPaint..color = VColor.accentGreen);
-      canvas.drawCircle(elbowL, 4, jointPaint..color = VColor.accent);
-      canvas.drawCircle(elbowR, 4, jointPaint..color = VColor.accent);
-      canvas.drawCircle(handL, 4, jointPaint..color = VColor.accentCyan);
-      canvas.drawCircle(handR, 4, jointPaint..color = VColor.accentCyan);
     } else if (s.contains('squat') || s.contains('lunge')) {
       // ── 9. SQUAT KINEMATICS ──
-      final footL = Offset(cx - 25, groundY - 4);
-      final footR = Offset(cx + 25, groundY - 4);
-
       final squatDepth = cycle * 42;
-      final hip = Offset(cx - 8, groundY - 60 + squatDepth);
-      final kneeL = Offset(cx - 30, groundY - 32 + (squatDepth * 0.4));
-      final kneeR = Offset(cx + 20, groundY - 32 + (squatDepth * 0.4));
+      if (perspective == ExercisePerspective.side) {
+        // SIDE VIEW: Hips hinge back, knees flex forward, chest upright
+        final foot = Offset(cx + 8, groundY - 4);
+        final knee = Offset(cx + 24, groundY - 32 + (squatDepth * 0.35));
+        final hip = Offset(cx - 20, groundY - 60 + squatDepth);
+        final chest = Offset(cx - 4, hip.dy - 38);
+        final head = Offset(cx, chest.dy - 18);
 
-      final chest = Offset(cx + 2, hip.dy - 38);
-      final head = Offset(cx + 4, chest.dy - 18);
+        if (cycle > 0.5) {
+          canvas.drawCircle(knee, 16 * cycle, muscleGlowPaint);
+          canvas.drawCircle(hip, 16 * cycle, muscleGlowPaint);
+        }
 
-      if (cycle > 0.5) {
-        canvas.drawCircle(kneeL, 16 * cycle, muscleGlowPaint);
-        canvas.drawCircle(hip, 16 * cycle, muscleGlowPaint);
+        canvas.drawCircle(head, 11, jointPaint..color = VColor.text);
+        canvas.drawLine(head, chest, bonePaint);
+        canvas.drawLine(chest, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, knee, bonePaint..strokeWidth = 6);
+        canvas.drawLine(knee, foot, bonePaint..strokeWidth = 5);
+        canvas.drawLine(chest, Offset(cx + 34, chest.dy + 4), bonePaint..strokeWidth = 3);
+
+        canvas.drawCircle(hip, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(knee, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(foot, 4, jointPaint..color = VColor.accent);
+      } else {
+        // FRONT VIEW: Wide stance, knees tracking outward over toes, hips sinking
+        final footL = Offset(cx - 32, groundY - 4);
+        final footR = Offset(cx + 32, groundY - 4);
+        final hip = Offset(cx, groundY - 65 + squatDepth);
+        final kneeL = Offset(cx - 36, groundY - 34 + (squatDepth * 0.4));
+        final kneeR = Offset(cx + 36, groundY - 34 + (squatDepth * 0.4));
+        final chest = Offset(cx, hip.dy - 38);
+        final head = Offset(cx, chest.dy - 18);
+
+        if (cycle > 0.5) {
+          canvas.drawCircle(kneeL, 14 * cycle, muscleGlowPaint);
+          canvas.drawCircle(kneeR, 14 * cycle, muscleGlowPaint);
+        }
+
+        canvas.drawCircle(head, 11, jointPaint..color = VColor.text);
+        canvas.drawLine(head, chest, bonePaint);
+        canvas.drawLine(chest, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, kneeL, bonePaint);
+        canvas.drawLine(hip, kneeR, bonePaint);
+        canvas.drawLine(kneeL, footL, bonePaint);
+        canvas.drawLine(kneeR, footR, bonePaint);
+        canvas.drawLine(chest, Offset(cx - 14, chest.dy + 12), bonePaint..strokeWidth = 3);
+        canvas.drawLine(chest, Offset(cx + 14, chest.dy + 12), bonePaint..strokeWidth = 3);
+
+        canvas.drawCircle(hip, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(kneeL, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(kneeR, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(footL, 4, jointPaint..color = VColor.accent);
+        canvas.drawCircle(footR, 4, jointPaint..color = VColor.accent);
       }
-
-      canvas.drawCircle(head, 11, jointPaint..color = VColor.text);
-      canvas.drawLine(head, chest, bonePaint);
-      canvas.drawLine(chest, hip, bonePaint);
-      canvas.drawLine(hip, kneeL, bonePaint);
-      canvas.drawLine(hip, kneeR, bonePaint);
-      canvas.drawLine(kneeL, footL, bonePaint);
-      canvas.drawLine(kneeR, footR, bonePaint);
-      canvas.drawLine(chest, Offset(cx + 34, chest.dy + 4), bonePaint..strokeWidth = 3);
-
-      canvas.drawCircle(hip, 5, jointPaint..color = VColor.accentGreen);
-      canvas.drawCircle(kneeL, 5, jointPaint..color = VColor.accent);
-      canvas.drawCircle(kneeR, 5, jointPaint..color = VColor.accent);
     } else {
       // ── 10. CARDIO / RHYTHMIC FIGURE ──
-      final baseCenter = Offset(cx, groundY - 60);
-      final bobY = math.sin(animationProgress * 2 * math.pi) * 8;
-      final torsoTop = Offset(cx, baseCenter.dy - 30 + bobY);
-      final head = Offset(cx, torsoTop.dy - 16);
-      final hip = Offset(cx, baseCenter.dy + 15 + bobY);
+      if (perspective == ExercisePerspective.front) {
+        // FRONT VIEW: Jumping Jacks
+        final bobY = math.sin(animationProgress * 2 * math.pi) * 6;
+        final torsoTop = Offset(cx, groundY - 110 + bobY);
+        final head = Offset(cx, torsoTop.dy - 16);
+        final hip = Offset(cx, groundY - 65 + bobY);
 
-      final armSweep = math.sin(animationProgress * 2 * math.pi) * 22;
-      final legSweep = math.cos(animationProgress * 2 * math.pi) * 16;
+        final legSpread = cycle * 28;
+        final armLift = cycle * 44;
+        final footL = Offset(cx - 10 - legSpread, groundY - 4);
+        final footR = Offset(cx + 10 + legSpread, groundY - 4);
+        final handL = Offset(cx - 24 - (cycle * 8), torsoTop.dy + 18 - armLift);
+        final handR = Offset(cx + 24 + (cycle * 8), torsoTop.dy + 18 - armLift);
 
-      canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
-      canvas.drawLine(torsoTop, hip, bonePaint);
+        if (cycle > 0.4) {
+          canvas.drawCircle(torsoTop, 16 * cycle, muscleGlowPaint);
+        }
 
-      // Arms
-      canvas.drawLine(torsoTop, Offset(cx - 28, torsoTop.dy + 20 + armSweep), bonePaint);
-      canvas.drawLine(torsoTop, Offset(cx + 28, torsoTop.dy + 20 - armSweep), bonePaint);
+        canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
+        canvas.drawLine(head, torsoTop, bonePaint);
+        canvas.drawLine(torsoTop, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, footL, bonePaint);
+        canvas.drawLine(hip, footR, bonePaint);
+        canvas.drawLine(torsoTop, handL, bonePaint..strokeWidth = 4);
+        canvas.drawLine(torsoTop, handR, bonePaint..strokeWidth = 4);
 
-      // Legs
-      canvas.drawLine(hip, Offset(cx - 20, groundY - 4 - legSweep.abs()), bonePaint);
-      canvas.drawLine(hip, Offset(cx + 20, groundY - 4 - (16 - legSweep.abs())), bonePaint);
+        canvas.drawCircle(torsoTop, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(hip, 5, jointPaint..color = VColor.accent);
+        canvas.drawCircle(handL, 4, jointPaint..color = VColor.accent);
+        canvas.drawCircle(handR, 4, jointPaint..color = VColor.accent);
+      } else {
+        // SIDE VIEW: Running stride in profile
+        final bobY = math.sin(animationProgress * 2 * math.pi) * 8;
+        final torsoTop = Offset(cx + 4, groundY - 110 + bobY);
+        final head = Offset(cx + 6, torsoTop.dy - 16);
+        final hip = Offset(cx - 2, groundY - 65 + bobY);
 
-      canvas.drawCircle(torsoTop, 5, jointPaint..color = VColor.accentGreen);
-      canvas.drawCircle(hip, 5, jointPaint..color = VColor.accent);
+        final stride = math.sin(animationProgress * 2 * math.pi) * 26;
+        final footLead = Offset(cx + 22 + stride, groundY - 4 - (stride > 0 ? stride * 0.6 : 0));
+        final footTrail = Offset(cx - 18 - stride, groundY - 4 - (stride < 0 ? (-stride) * 0.6 : 0));
+
+        final handLead = Offset(cx - 18 - (stride * 0.8), torsoTop.dy + 20);
+        final handTrail = Offset(cx + 22 + (stride * 0.8), torsoTop.dy + 20);
+
+        canvas.drawCircle(head, 12, jointPaint..color = VColor.text);
+        canvas.drawLine(head, torsoTop, bonePaint);
+        canvas.drawLine(torsoTop, hip, bonePaint..strokeWidth = 6);
+        canvas.drawLine(hip, footLead, bonePaint);
+        canvas.drawLine(hip, footTrail, bonePaint);
+        canvas.drawLine(torsoTop, handLead, bonePaint..strokeWidth = 4);
+        canvas.drawLine(torsoTop, handTrail, bonePaint..strokeWidth = 4);
+
+        canvas.drawCircle(torsoTop, 5, jointPaint..color = VColor.accentGreen);
+        canvas.drawCircle(hip, 5, jointPaint..color = VColor.accent);
+      }
     }
   }
 
   @override
   bool shouldRepaint(covariant _BiomechanicalPainter oldDelegate) {
-    return oldDelegate.animationProgress != animationProgress || oldDelegate.exerciseSlug != exerciseSlug;
+    return oldDelegate.animationProgress != animationProgress ||
+        oldDelegate.exerciseSlug != exerciseSlug ||
+        oldDelegate.perspective != perspective;
   }
 }
 

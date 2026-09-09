@@ -119,6 +119,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: VColor.surface,
         leading: const BackButton(color: VColor.text),
         title: const Text('Settings', style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: VColor.warn),
+            tooltip: 'Log Out',
+            onPressed: _logout,
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(VSpace.base),
@@ -154,6 +161,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                     _load();
                   },
+                ),
+                const Divider(height: 1, color: VColor.line),
+                ListTile(
+                  leading: const Icon(Icons.logout_rounded, color: VColor.warn),
+                  title: const Text('Log Out', style: TextStyle(color: VColor.warn, fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Sign out of your VYRA account', style: TextStyle(color: VColor.textMid, fontSize: 12)),
+                  trailing: const Icon(Icons.chevron_right, color: VColor.textLow),
+                  onTap: _logout,
                 ),
               ],
             ),
