@@ -1754,6 +1754,247 @@ Respond in this exact JSON format:
     }
   });
 
+  // ===========================================================================
+  // REWARDS & PERKS CATALOG
+  // ===========================================================================
+
+  const REWARDS_CATALOG = [
+    {
+      id: 'cult_pass_7d',
+      title: 'Cult.fit 7-Day Free Pass',
+      description: 'Access any Cult.fit center for 7 consecutive days. Zero hidden fees.',
+      coinCost: 250,
+      category: 'fitness',
+      stock: 50,
+    },
+    {
+      id: 'fastandup_reload',
+      title: 'Fast&Up Electrolytes 25% Off',
+      description: 'Instant discount voucher for Fast&Up hydration tubes.',
+      coinCost: 120,
+      category: 'nutrition',
+      stock: 100,
+    },
+    {
+      id: 'vyra_pro_badge',
+      title: 'VYRA Verified Athlete Badge',
+      description: 'Showcase your dedication on your public profile & leaderboard.',
+      coinCost: 80,
+      category: 'digital',
+      stock: 9999,
+    },
+    {
+      id: 'decathlon_voucher',
+      title: 'Decathlon ₹250 Gift Voucher',
+      description: 'Valid on any sporting equipment online or in-store.',
+      coinCost: 400,
+      category: 'gear',
+      stock: 25,
+    },
+    {
+      id: 'smart_shaker',
+      title: 'Stainless Steel Insulated Shaker',
+      description: '750ml leak-proof protein shaker with measurement markings.',
+      coinCost: 350,
+      category: 'gear',
+      stock: 30,
+    },
+  ];
+
+  const userRedemptions = new Map<string, Array<{ id: string; rewardId: string; coinCost: number; redeemedAt: string }>>();
+
+  router.get('/v1/rewards', async () => {
+    return { items: REWARDS_CATALOG };
+  });
+
+  router.get('/v1/rewards/redemptions/mine', async (ctx) => {
+    const user = await requireUser(ctx);
+    return { items: userRedemptions.get(user.id) ?? [] };
+  });
+
+  router.post('/v1/rewards/:id/redeem', async (ctx) => {
+    const user = await requireUser(ctx);
+    const rewardId = ctx.params.id!;
+    const reward = REWARDS_CATALOG.find((r) => r.id === rewardId);
+    if (!reward) throw HttpError.notFound('Reward not found in catalog.');
+
+    const ledger = await store.listLedger(user.id);
+    const { balance } = computeBalance(ledger);
+    if (balance < reward.coinCost) {
+      throw HttpError.badRequest(`Not enough coins. You have ${balance} coins, but "${reward.title}" requires ${reward.coinCost} coins.`);
+    }
+
+    const redemptionId = randomUUID();
+    const redeemedAt = new Date(now()).toISOString();
+
+    await store.appendLedger(user.id, {
+      delta: -Math.abs(reward.coinCost),
+      reason: `Redeemed: ${reward.title}`,
+      sourceType: 'redemption',
+      sourceId: reward.id,
+      idempotencyKey: `redeem:${user.id}:${reward.id}:${redemptionId}`,
+      createdAt: redeemedAt,
+    });
+
+    const record = {
+      id: redemptionId,
+      rewardId: reward.id,
+      coinCost: reward.coinCost,
+      redeemedAt,
+    };
+
+    const existing = userRedemptions.get(user.id) ?? [];
+    existing.unshift(record);
+    userRedemptions.set(user.id, existing);
+
+    return { redemption: record };
+  });
+
+  // ===========================================================================
+  // CUSTOM CHALLENGES
+  // ===========================================================================
+
+  interface StoredCustomChallenge {
+    id: string;
+    title: string;
+    rules: string;
+    durationDays: number;
+    streak: number;
+    checkedInToday: boolean;
+    createdAt: string;
+    lastCheckinDate?: string;
+  }
+
+  const userCustomChallenges = new Map<string, StoredCustomChallenge[]>();
+
+  router.get('/v1/challenges/custom/mine', async (ctx) => {
+    const user = await requireUser(ctx);
+    const todayStr = today();
+    const list = userCustomChallenges.get(user.id) ?? [
+      {
+        id: 'default_water_streak',
+        title: 'Hydration Consistency (3L/day)',
+        rules: 'Drink at least 3 liters of water every day for 7 days.',
+        durationDays: 7,
+        streak: 1,
+        checkedInToday: false,
+        createdAt: new Date(now() - 86400000).toISOString(),
+        lastCheckinDate: daysAgo(1),
+      },
+    ];
+
+    const updated = list.map((c) => ({
+      ...c,
+      checkedInToday: c.lastCheckinDate === todayStr,
+    }));
+    userCustomChallenges.set(user.id, updated);
+
+    return { items: updated };
+  });
+
+  router.post('/v1/challenges/custom', async (ctx) => {
+    const user = await requireUser(ctx);
+    const b = requireObject(ctx.body);
+    const title = str(b, 'title', { max: 120 });
+    const rules = str(b, 'rules', { max: 500 });
+    const durationDays = num(b, 'durationDays', { min: 1, max: 365 });
+
+    const challenge: StoredCustomChallenge = {
+      id: randomUUID(),
+      title,
+      rules,
+      durationDays,
+      streak: 0,
+      checkedInToday: false,
+      createdAt: new Date(now()).toISOString(),
+    };
+
+    const existing = userCustomChallenges.get(user.id) ?? [];
+    existing.unshift(challenge);
+    userCustomChallenges.set(user.id, existing);
+
+    return { challenge };
+  });
+
+  router.post('/v1/challenges/:id/checkin', async (ctx) => {
+    const user = await requireUser(ctx);
+    const challengeId = ctx.params.id!;
+    const todayStr = today();
+
+    const list = userCustomChallenges.get(user.id) ?? [];
+    const target = list.find((c) => c.id === challengeId);
+    if (!target) throw HttpError.notFound('Challenge not found.');
+
+    if (target.lastCheckinDate !== todayStr) {
+      target.streak += 1;
+      target.checkedInToday = true;
+      target.lastCheckinDate = todayStr;
+
+      await store.appendLedger(user.id, {
+        delta: 15,
+        reason: `Checked in: ${target.title}`,
+        sourceType: 'challenge',
+        sourceId: target.id,
+        idempotencyKey: `challenge_checkin:${user.id}:${target.id}:${todayStr}`,
+        createdAt: new Date(now()).toISOString(),
+      });
+    }
+
+    return { streak: target.streak };
+  });
+
+  // ===========================================================================
+  // EMERGENCY CONTACTS
+  // ===========================================================================
+
+  interface StoredEmergencyContact {
+    id: string;
+    name: string;
+    phone: string;
+    relationship: string;
+  }
+
+  const userEmergencyContacts = new Map<string, StoredEmergencyContact[]>();
+
+  router.get('/v1/emergency-contacts', async (ctx) => {
+    const user = await requireUser(ctx);
+    return { items: userEmergencyContacts.get(user.id) ?? [] };
+  });
+
+  router.post('/v1/emergency-contacts', async (ctx) => {
+    const user = await requireUser(ctx);
+    const b = requireObject(ctx.body);
+    const name = str(b, 'name', { max: 80 });
+    const phone = str(b, 'phone', { max: 25 });
+    const relationship = str(b, 'relationship', { max: 40 });
+
+    const existing = userEmergencyContacts.get(user.id) ?? [];
+    if (existing.length >= 3) {
+      throw HttpError.badRequest('Maximum 3 emergency contacts allowed.');
+    }
+
+    const contact: StoredEmergencyContact = {
+      id: randomUUID(),
+      name,
+      phone,
+      relationship,
+    };
+
+    existing.push(contact);
+    userEmergencyContacts.set(user.id, existing);
+
+    return { contact };
+  });
+
+  router.delete('/v1/emergency-contacts/:id', async (ctx) => {
+    const user = await requireUser(ctx);
+    const contactId = ctx.params.id!;
+    const existing = userEmergencyContacts.get(user.id) ?? [];
+    const filtered = existing.filter((c) => c.id !== contactId);
+    userEmergencyContacts.set(user.id, filtered);
+    return { ok: true };
+  });
+
   return router;
 }
 

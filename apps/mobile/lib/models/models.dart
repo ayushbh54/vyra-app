@@ -63,7 +63,10 @@ class WorkoutPlan {
   });
 
   int get completedCount => entries.where((e) => e.isCompleted).length;
-  double get progress => goalMin <= 0 ? 1 : (achievedMin / goalMin).clamp(0, 1);
+  double get progress {
+    if (entries.isNotEmpty && completedCount >= entries.length) return 1.0;
+    return goalMin <= 0 ? 1 : (achievedMin / goalMin).clamp(0, 1);
+  }
   int get remainingMin => (goalMin - achievedMin).ceil().clamp(0, 9999);
 
   factory WorkoutPlan.fromJson(Map<String, dynamic> j) => WorkoutPlan(

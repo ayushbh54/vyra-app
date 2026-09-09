@@ -155,6 +155,12 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _header(BuildContext context, WorkoutPlan plan, Capacity capacity) {
+    final allDone = plan.entries.isNotEmpty && plan.completedCount >= plan.entries.length;
+    final headerTitle = capacity.isRestDay
+        ? 'Rest day'
+        : (allDone || plan.remainingMin <= 0)
+            ? 'Goal completed! 🎉'
+            : '${plan.remainingMin} min to go';
     return Row(
       children: [
         Expanded(
@@ -164,7 +170,7 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
               const VLabel('Today'),
               const SizedBox(height: 4),
               Text(
-                capacity.isRestDay ? 'Rest day' : '${plan.remainingMin} min to go',
+                headerTitle,
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
             ],
