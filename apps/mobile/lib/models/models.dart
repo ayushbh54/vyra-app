@@ -1356,6 +1356,9 @@ class UserProfile {
   final String disabilityType;
   final List<String> medicalConditions;
   final int onboardingStep;
+  final int followersCount;
+  final int followingCount;
+  final int activitiesCount;
 
   const UserProfile({
     required this.id,
@@ -1372,6 +1375,9 @@ class UserProfile {
     required this.disabilityType,
     required this.medicalConditions,
     required this.onboardingStep,
+    this.followersCount = 0,
+    this.followingCount = 0,
+    this.activitiesCount = 0,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
@@ -1390,6 +1396,9 @@ class UserProfile {
         medicalConditions:
             (j['medicalConditions'] as List? ?? []).map((e) => e.toString()).toList(),
         onboardingStep: _i(j['onboardingStep']),
+        followersCount: _i(j['followersCount']),
+        followingCount: _i(j['followingCount']),
+        activitiesCount: _i(j['activitiesCount']),
       );
 
   Map<String, dynamic> toJson() => {
@@ -1407,5 +1416,8 @@ class UserProfile {
         'disabilityType': disabilityType,
         'medicalConditions': medicalConditions,
         'onboardingStep': onboardingStep,
+        'followersCount': followersCount,
+        'followingCount': followingCount,
+        'activitiesCount': activitiesCount,
       };
 }

@@ -688,21 +688,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               InkWell(
                 borderRadius: BorderRadius.circular(VRadius.sm),
-                onTap: () => pushScreen(context, 'Athletes & Friends', const FriendsScreen()),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                onTap: () async {
+                  await pushScreen(context, 'Athletes & Friends', const FriendsScreen());
+                  if (mounted) _loadProfile();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   child: Column(
                     children: [
                       Text(
-                        '128',
-                        style: TextStyle(
+                        '${p?.followersCount ?? 0}',
+                        style: const TextStyle(
                           color: VColor.text,
                           fontWeight: FontWeight.w900,
                           fontSize: 18,
                         ),
                       ),
-                      SizedBox(height: 2),
-                      Text(
+                      const SizedBox(height: 2),
+                      const Text(
                         'Followers',
                         style: TextStyle(
                           color: VColor.textMid,
@@ -717,21 +720,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Container(width: 1, height: 28, color: VColor.line),
               InkWell(
                 borderRadius: BorderRadius.circular(VRadius.sm),
-                onTap: () => pushScreen(context, 'Athletes & Friends', const FriendsScreen()),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                onTap: () async {
+                  await pushScreen(context, 'Athletes & Friends', const FriendsScreen());
+                  if (mounted) _loadProfile();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   child: Column(
                     children: [
                       Text(
-                        '94',
-                        style: TextStyle(
+                        '${p?.followingCount ?? 0}',
+                        style: const TextStyle(
                           color: VColor.text,
                           fontWeight: FontWeight.w900,
                           fontSize: 18,
                         ),
                       ),
-                      SizedBox(height: 2),
-                      Text(
+                      const SizedBox(height: 2),
+                      const Text(
                         'Following',
                         style: TextStyle(
                           color: VColor.textMid,
@@ -744,20 +750,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               Container(width: 1, height: 28, color: VColor.line),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 child: Column(
                   children: [
                     Text(
-                      '24',
-                      style: TextStyle(
+                      '${p?.activitiesCount ?? 0}',
+                      style: const TextStyle(
                         color: VColor.text,
                         fontWeight: FontWeight.w900,
                         fontSize: 18,
                       ),
                     ),
-                    SizedBox(height: 2),
-                    Text(
+                    const SizedBox(height: 2),
+                    const Text(
                       'Activities',
                       style: TextStyle(
                         color: VColor.textMid,

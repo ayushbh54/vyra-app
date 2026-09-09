@@ -220,6 +220,7 @@ export function buildRouter(deps: ServerDeps): Router {
       user.disabilityFlag ||
       (user.disabilityType && user.disabilityType.toLowerCase() !== 'none'),
     );
+    const capacity = assessCapacity(windows, user.fitnessGoal);
     const sessions = placeSessions(windows, poolFor(isAdaptive), capacity.dailyGoalMin);
 
     const existing = await store.getPlan(userId, date);
@@ -1398,6 +1399,11 @@ export function buildRouter(deps: ServerDeps): Router {
 
   router.get('/v1/me', async (ctx) => {
     const user = await requireUser(ctx);
+    const [followers, following, activities] = await Promise.all([
+      store.listFollowers(user.id),
+      store.listFollowing(user.id),
+      store.listUserActivities(user.id, 500),
+    ]);
     return {
       id: user.id,
       displayHandle: user.displayHandle,
@@ -1413,6 +1419,9 @@ export function buildRouter(deps: ServerDeps): Router {
       disabilityType: user.disabilityType ?? 'none',
       medicalConditions: user.medicalConditions ?? [],
       onboardingStep: user.onboardingStep,
+      followersCount: followers.length,
+      followingCount: following.length,
+      activitiesCount: activities.length,
     };
   });
 
