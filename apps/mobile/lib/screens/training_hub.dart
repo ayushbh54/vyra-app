@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/screen_scaffold.dart';
+import 'exercise_detail.dart';
 import 'library.dart';
 import 'record.dart';
 
@@ -79,6 +80,46 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
     } finally {
       if (mounted) setState(() => _busySlug = null);
     }
+  }
+
+  Future<void> _openExercise(PlanEntry entry) async {
+    LibraryItem? item;
+    try {
+      final items = await context.read<VyraApi>().library();
+      for (final i in items) {
+        if (i.slug == entry.exerciseSlug) {
+          item = i;
+          break;
+        }
+      }
+    } catch (_) {}
+
+    item ??= LibraryItem(
+      slug: entry.exerciseSlug,
+      name: entry.name,
+      category: 'exercise',
+      subcategory: 'session',
+      bodyParts: const ['core', 'glutes', 'legs'],
+      difficulty: 'beginner',
+      instructions: const [
+        'Form check: align your head, neck and spine comfortably.',
+        'Follow the animated movement guide on screen.',
+        'Breathe rhythmically — exhale during muscle contraction.',
+      ],
+      audioScript: 'Maintain proper alignment and steady rhythm throughout.',
+      defaultDurationSec: entry.durationSec > 0 ? entry.durationSec : 60,
+      equipment: const [],
+      contraindications: const [],
+      isSeatedFriendly: false,
+      isLowImpact: true,
+      isRecoveryFor: const [],
+      thumbnailUrl: '',
+      gifUrl: '',
+    );
+
+    if (!mounted) return;
+    await pushScreen(context, entry.name, ExerciseDetailScreen(item: item));
+    if (mounted) _load();
   }
 
   @override
@@ -253,7 +294,8 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
               entry: entry,
               busy: _busySlug == entry.exerciseSlug,
               disabled: _busySlug != null,
-              onTap: () => _complete(entry),
+              onTap: () => _openExercise(entry),
+              onToggleCheck: () => _complete(entry),
             ),
           )),
     ];
@@ -350,12 +392,14 @@ class _ExerciseRow extends StatelessWidget {
     required this.busy,
     required this.disabled,
     required this.onTap,
+    required this.onToggleCheck,
   });
 
   final PlanEntry entry;
   final bool busy;
   final bool disabled;
   final VoidCallback onTap;
+  final VoidCallback onToggleCheck;
 
   @override
   Widget build(BuildContext context) {
@@ -363,63 +407,75 @@ class _ExerciseRow extends StatelessWidget {
 
     return Semantics(
       button: true,
-      checked: done,
-      label: '${entry.name}, ${entry.durationMin} minutes',
-      child: InkWell(
-        onTap: done || disabled ? null : onTap,
+      enabled: !disabled,
+      label: '${entry.name}, ${entry.durationMin} minutes. ${done ? "Completed" : "Tap to open exercise workout"}',
+      child: Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(VRadius.md),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 64),
-          padding: const EdgeInsets.all(VSpace.base),
-          decoration: BoxDecoration(
-            color: done ? VColor.bgLift : VColor.surface,
-            border: Border.all(color: done ? VColor.lineSoft : VColor.line),
-            borderRadius: BorderRadius.circular(VRadius.md),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: done ? VColor.accentGreen : Colors.transparent,
-                  border: Border.all(color: done ? VColor.accentGreen : VColor.textLow, width: 1.5),
+        child: InkWell(
+          onTap: disabled ? null : onTap,
+          borderRadius: BorderRadius.circular(VRadius.md),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 64),
+            padding: const EdgeInsets.all(VSpace.base),
+            decoration: BoxDecoration(
+              color: done ? VColor.bgLift : VColor.surface,
+              border: Border.all(color: done ? VColor.lineSoft : VColor.line),
+              borderRadius: BorderRadius.circular(VRadius.md),
+            ),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: disabled ? null : onToggleCheck,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: done ? VColor.accentGreen : Colors.transparent,
+                      border: Border.all(color: done ? VColor.accentGreen : VColor.textLow, width: 1.5),
+                    ),
+                    child: done
+                        ? const Icon(Icons.check, size: 18, color: VColor.textOnAccent)
+                        : null,
+                  ),
                 ),
-                child: done
-                    ? const Icon(Icons.check, size: 16, color: VColor.textOnAccent)
-                    : null,
-              ),
-              const SizedBox(width: VSpace.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      entry.name,
-                      style: TextStyle(
-                        color: done ? VColor.textLow : VColor.text,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        decoration: done ? TextDecoration.lineThrough : null,
+                const SizedBox(width: VSpace.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.name,
+                        style: TextStyle(
+                          color: done ? VColor.textLow : VColor.text,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          decoration: done ? TextDecoration.lineThrough : null,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${entry.durationMin} min'
-                      '${entry.scheduledAt != null ? " · ${entry.scheduledAt}" : ""}',
-                      style: const TextStyle(color: VColor.textLow, fontSize: 11.5),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        '${entry.durationMin} min'
+                        '${entry.scheduledAt != null ? " · ${entry.scheduledAt}" : ""}'
+                        ' · Tap for visual guide & timer',
+                        style: const TextStyle(color: VColor.textLow, fontSize: 11.5),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              if (busy)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: VColor.accent),
-                ),
-            ],
+                if (busy)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: VColor.accent),
+                  )
+                else
+                  const Icon(Icons.chevron_right, size: 20, color: VColor.textLow),
+              ],
+            ),
           ),
         ),
       ),

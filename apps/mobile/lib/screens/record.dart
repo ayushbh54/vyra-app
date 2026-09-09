@@ -358,13 +358,10 @@ class _RecordScreenState extends State<RecordScreen> {
         },
       ),
       children: [
-        // Dark-style OSM tile layer
+        // Clean OSM tile layer - free, high-res, zero watermark
         TileLayer(
-          urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.vyra.app',
-          // Fallback to standard OSM if CartoDB is unavailable
-          fallbackUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         ),
         // START marker (green dot)
         if (points.isNotEmpty)
