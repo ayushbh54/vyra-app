@@ -29,6 +29,7 @@ class VColor {
   static const textOnAccent = Color(0xFF003543); // on-primary — dark text on a cyan/green fill
 
   static const accent = Color(0xFF00D2FF); // primary-container — cyan
+  static const accentCyan = accent;        // alias for cyan accent used in exercise biomechanics
   static const accentDeep = Color(0xFF0099B8);
   static const accentGlow = Color(0x2E00D2FF);
 

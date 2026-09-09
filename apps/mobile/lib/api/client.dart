@@ -73,6 +73,10 @@ class VyraApi {
     }
   }
 
+  Future<void> logout() async {
+    await setToken(null);
+  }
+
   bool get isSignedIn => _token != null;
 
   // ---------------------------------------------------------------------------

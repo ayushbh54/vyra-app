@@ -44,6 +44,11 @@ jobs:
           chmod +x android/gradlew
           flutter pub get
 
+      - name: Analyze Flutter Code
+        run: |
+          cd apps/mobile
+          flutter analyze --no-fatal-infos
+
       - name: Build Release APK (Connected to Render Backend)
         shell: bash
         run: |
@@ -56,8 +61,10 @@ jobs:
       - name: Show Build Log Tail on Failure
         if: failure()
         run: |
-          echo "==================== BUILD FAILED: LAST 150 LINES ===================="
-          tail -n 150 /tmp/flutter_build.log || true
+          echo "==================== BUILD FAILED: ERROR LINES ===================="
+          grep -i -C 3 "error •" /tmp/flutter_build.log || true
+          echo "==================== BUILD FAILED: LAST 200 LINES ===================="
+          tail -n 200 /tmp/flutter_build.log || true
 
       - name: Publish Failure Log to Branch
         if: failure()
@@ -65,7 +72,13 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -B ci-build-logs
-          tail -n 250 /tmp/flutter_build.log > build_error_summary.txt
+          {
+            echo "=== FLUTTER ERRORS ==="
+            grep -i -C 3 "error •" /tmp/flutter_build.log || true
+            echo ""
+            echo "=== BUILD LOG TAIL ==="
+            tail -n 400 /tmp/flutter_build.log || true
+          } > build_error_summary.txt
           git add build_error_summary.txt
           git commit -m "chore: save CI failure log [skip ci]" || true
           git push -f origin ci-build-logs || true
