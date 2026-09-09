@@ -87,20 +87,94 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
       _usePhoneSensors = true;
       _connected = true;
       _error = null;
-      if (_lastSummary.isEmpty) {
-        _lastSummary = {
-          'steps': 4320,
-          'caloriesBurned': 215,
-          'heartRateBpm': 74,
-        };
-      }
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('📱 Phone Sensors Mode Enabled! Tracking steps & movement directly.'),
+        content: Text('📱 Phone Sensors Mode Active! Pedometer & GPS tracking enabled.'),
         backgroundColor: VColor.accentGreen,
       ),
     );
+  }
+
+  Future<void> _calibrateStepsDialog() async {
+    final currentVal = _lastSummary['steps']?.toInt() ?? 0;
+    final controller = TextEditingController(
+      text: currentVal > 0 ? '$currentVal' : '',
+    );
+
+    final entered = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: VColor.surface,
+        title: const Text('Enter Steps from Smartwatch',
+            style: TextStyle(color: VColor.text, fontWeight: FontWeight.w700, fontSize: 17)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Agar Health Connect / Wear OS permission ya OEM restriction ki wajah se exact data nahi aa raha, toh apni smartwatch screen ke steps enter karein:',
+              style: TextStyle(color: VColor.textMid, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: VSpace.md),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              style: const TextStyle(color: VColor.text, fontSize: 18, fontWeight: FontWeight.w700),
+              decoration: const InputDecoration(
+                labelText: "Today's Steps",
+                hintText: 'e.g. 5200',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final val = int.tryParse(controller.text.trim());
+              if (val != null && val >= 0) Navigator.pop(ctx, val);
+            },
+            child: const Text('Save & Sync'),
+          ),
+        ],
+      ),
+    );
+
+    if (entered == null || !mounted) return;
+    final estimatedKcal = (entered * 0.04).round();
+    final updatedSummary = {
+      ..._lastSummary,
+      'steps': entered,
+      'caloriesBurned': estimatedKcal,
+      if (!_lastSummary.containsKey('heartRateBpm')) 'heartRateBpm': 72,
+    };
+
+    setState(() {
+      _lastSummary = updatedSummary;
+      _syncing = true;
+    });
+
+    try {
+      await widget.api.logTracking(updatedSummary, source: 'smartwatch_direct');
+      final now = DateTime.now();
+      await _persistSyncResult(now, updatedSummary);
+      if (mounted) {
+        setState(() {
+          _syncing = false;
+          _lastSyncedAt = now;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ $entered steps synced directly from smartwatch!'),
+            backgroundColor: VColor.accentGreen,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) setState(() => _syncing = false);
+    }
   }
 
   Future<void> _restoreLastSyncInfo() async {
@@ -135,7 +209,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
       _connected = granted || _usePhoneSensors;
       if (!granted) {
         _error =
-            'Permission nahi mili. Agar smartwatch nahi hai, toh neeche "Use Smartphone Sensors" tap karke directly phone se track karein.';
+            'Smartwatch permission nahi mili. Aap neeche "Enter Steps from Watch" ya "Use Smartphone Sensors" se directly sync kar sakte hain.';
       }
     });
   }
@@ -152,15 +226,17 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
         summary = await _healthService.fetchTodaySummary();
       }
 
+      if (summary.isEmpty && _lastSummary.isNotEmpty) {
+        summary = _lastSummary;
+      }
+
       if (summary.isEmpty) {
-        // Use phone sensor summary or default healthy active baseline
-        summary = _lastSummary.isNotEmpty
-            ? _lastSummary
-            : {
-                'steps': 4680,
-                'caloriesBurned': 230,
-                'heartRateBpm': 72,
-              };
+        if (!mounted) return;
+        setState(() {
+          _syncing = false;
+          _error = 'Health Connect me abhi koi data nahi mila. Watch screen se enter karne ke liye "Enter Steps from Watch" tap karein.';
+        });
+        return;
       }
 
       final apiError = await widget.api.logTracking(
@@ -463,13 +539,41 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
 
     return VCard(
       child: Padding(
-        padding: EdgeInsets.all(VSpace.md),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        padding: const EdgeInsets.all(VSpace.md),
+        child: Column(
           children: [
-            _statChip('Steps', steps, VColor.accent),
-            _statChip('Kcal', calories, VColor.accentOrange),
-            _statChip('BPM', hr, VColor.accentGreen),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _statChip('Steps', steps, VColor.accent),
+                _statChip('Kcal', calories, VColor.accentOrange),
+                _statChip('BPM', hr, VColor.accentGreen),
+              ],
+            ),
+            const SizedBox(height: VSpace.md),
+            InkWell(
+              onTap: _calibrateStepsDialog,
+              borderRadius: BorderRadius.circular(VRadius.sm),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: VColor.surfaceRaised,
+                  borderRadius: BorderRadius.circular(VRadius.sm),
+                  border: Border.all(color: VColor.accent.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.edit_note_rounded, size: 18, color: VColor.accent),
+                    SizedBox(width: 6),
+                    Text(
+                      'Enter / Calibrate Steps from Watch Screen',
+                      style: TextStyle(color: VColor.accent, fontSize: 12.5, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),

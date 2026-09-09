@@ -33,6 +33,7 @@ import { analyzeFoodPhoto, FoodScanError } from './ai/foodscan';
 import { dietWarningForFood } from './ai/dietGuard';
 import { discoverEvents, EventDiscoveryError } from './ai/events';
 import { generateRecipe, RecipeGenerationError } from './ai/recipe';
+import { generateDietChart } from './ai/dietChart';
 import { tryCreateGeminiClient } from './ai/gemini';
 import { EXERCISES, LIBRARY_STATS, mediaFor } from './content/exercises';
 import { rateLimiter } from './rateLimit';
@@ -1016,6 +1017,27 @@ export function buildRouter(deps: ServerDeps): Router {
       }
       throw error;
     }
+  });
+
+  router.post('/v1/ai/diet-chart', async (ctx) => {
+    enforceRateLimit(ctx, 'ai', RATE_LIMIT_AI_PER_HOUR, 60 * 60_000);
+    const user = await requireUser(ctx);
+    const b = requireObject(ctx.body);
+
+    const symptoms = Array.isArray(b.symptoms) ? b.symptoms.map(String) : [];
+    const customCondition = typeof b.customCondition === 'string' ? b.customCondition : undefined;
+    const preference = typeof b.preference === 'string' ? b.preference : user.dietPreference;
+
+    const client = geminiRecipe || geminiChat;
+    const chart = await generateDietChart(client, {
+      symptoms,
+      customCondition,
+      preference,
+      targetCalories: typeof b.targetCalories === 'number' ? b.targetCalories : undefined,
+      gender: user.gender,
+    });
+
+    return chart;
   });
 
   router.post('/v1/lab-report', async (ctx) => {

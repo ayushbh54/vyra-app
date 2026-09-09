@@ -331,6 +331,24 @@ class VyraApi {
     return Recipe.fromJson(j, '${j['disclaimer'] ?? ''}');
   }
 
+  Future<DietChart> generateDietChart({
+    required List<String> symptoms,
+    String? customCondition,
+    String? preference,
+  }) async {
+    final j = await _request(
+      'POST',
+      '/v1/ai/diet-chart',
+      body: {
+        'symptoms': symptoms,
+        if (customCondition != null && customCondition.isNotEmpty) 'customCondition': customCondition,
+        if (preference != null && preference.isNotEmpty) 'preference': preference,
+      },
+      timeout: const Duration(seconds: 40),
+    );
+    return DietChart.fromJson(j);
+  }
+
   Future<LabAnalysis> analyseLabReport(List<Map<String, dynamic>> readings) async {
     return LabAnalysis.fromJson(
       await _request('POST', '/v1/lab-report', body: {'readings': readings}),

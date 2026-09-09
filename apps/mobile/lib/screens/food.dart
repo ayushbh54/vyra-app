@@ -5,16 +5,14 @@ import '../api/client.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import 'diet_chart.dart';
 
 /// TAB 2 — FOOD
 ///
-/// Two things live here: the AI recipe generator, and the Zero Sugar engine.
-///
-/// A note on placement: the brief lists Zero Sugar under Tab 1. It sits here
-/// instead, because a person thinks about sugar while thinking about food, not
-/// while looking at their workout. Tab 1 was also already the longest screen in
-/// the app, and a screen nobody scrolls to the bottom of is a screen whose last
-/// feature does not exist.
+/// Features:
+/// 1. My Diet Chart (Symptom-based AI clinical nutrition & 7-slot schedule)
+/// 2. AI recipe generator from kitchen ingredients
+/// 3. Zero Sugar tracking engine
 class FoodScreen extends StatefulWidget {
   const FoodScreen({super.key});
 
@@ -98,7 +96,82 @@ class _FoodScreenState extends State<FoodScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(VSpace.base, VSpace.base, VSpace.base, VSpace.xxxl),
         children: [
-          Text('Food', style: Theme.of(context).textTheme.headlineMedium),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Food & Nutrition', style: Theme.of(context).textTheme.headlineMedium),
+            ],
+          ),
+          const SizedBox(height: VSpace.md),
+
+          // ── My AI Diet Chart Banner (Top Option) ─────────────────────────
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DietChartScreen()),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(VSpace.md),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    VColor.accent.withValues(alpha: 0.22),
+                    VColor.accentGreen.withValues(alpha: 0.15),
+                    VColor.surfaceRaised,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(VRadius.lg),
+                border: Border.all(color: VColor.accent.withValues(alpha: 0.4), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: VColor.accent.withValues(alpha: 0.1),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: VColor.accent.withValues(alpha: 0.25),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.assignment_outlined, color: VColor.accent, size: 26),
+                  ),
+                  const SizedBox(width: VSpace.md),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'My Diet Chart',
+                              style: TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.w800),
+                            ),
+                            SizedBox(width: 6),
+                            VPill('AI Clinical', tone: CardTone.accent),
+                          ],
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'Symptom-based recommendations: What to eat, what NOT to eat, & full day meal plan.',
+                          style: TextStyle(color: VColor.textMid, fontSize: 12.5, height: 1.35),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, color: VColor.accent, size: 18),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: VSpace.lg),
 
           // ── AI recipe ────────────────────────────────────────────

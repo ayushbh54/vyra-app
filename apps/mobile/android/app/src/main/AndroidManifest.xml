@@ -19,14 +19,28 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29"/>
 
-    <!-- ── Health Connect (Steps + calories + active minutes) ── -->
+    <!-- ── Health Connect (Android 14+ OS framework) ── -->
     <uses-permission android:name="android.permission.health.READ_STEPS"/>
     <uses-permission android:name="android.permission.health.WRITE_STEPS"/>
     <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED"/>
+    <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED"/>
     <uses-permission android:name="android.permission.health.READ_HEART_RATE"/>
     <uses-permission android:name="android.permission.health.READ_DISTANCE"/>
     <uses-permission android:name="android.permission.health.READ_EXERCISE"/>
+
+    <!-- ── Health Connect (Android ≤ 13 companion APK) ── -->
+    <uses-permission android:name="androidx.health.permission.Steps.READ"/>
+    <uses-permission android:name="androidx.health.permission.Steps.WRITE"/>
+    <uses-permission android:name="androidx.health.permission.ActiveCaloriesBurned.READ"/>
+    <uses-permission android:name="androidx.health.permission.TotalCaloriesBurned.READ"/>
+    <uses-permission android:name="androidx.health.permission.HeartRate.READ"/>
+    <uses-permission android:name="androidx.health.permission.Distance.READ"/>
+    <uses-permission android:name="androidx.health.permission.Exercise.READ"/>
+
+    <!-- ── Physical Activity / Sensor Recognition ── -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="android.permission.BODY_SENSORS"/>
 
     <!-- ── Vibration (haptic feedback on coin earn) ── -->
     <uses-permission android:name="android.permission.VIBRATE"/>
@@ -65,6 +79,9 @@
                 <action android:name="android.intent.action.VIEW_PERMISSION_USAGE"/>
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS"/>
             </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
+            </intent-filter>
         </activity-alias>
 
         <meta-data
@@ -75,6 +92,10 @@
     <queries>
         <!-- Health Connect availability check -->
         <package android:name="com.google.android.apps.healthdata"/>
+        <!-- Google Fit availability check -->
+        <package android:name="com.google.android.apps.fitness"/>
+        <!-- Samsung Health availability check -->
+        <package android:name="com.sec.android.app.shealth"/>
         <!-- Text processing (Flutter engine) -->
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

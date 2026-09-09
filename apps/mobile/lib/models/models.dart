@@ -1154,3 +1154,142 @@ class MovementDefinition {
         avoidCheats: (j['avoidCheats'] as List? ?? []).map((e) => e.toString()).toList(),
       );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DIET CHART & CLINICAL NUTRITION MODELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+class FoodToAvoid {
+  final String item;
+  final String category;
+  final String reason;
+
+  const FoodToAvoid({
+    required this.item,
+    required this.category,
+    required this.reason,
+  });
+
+  factory FoodToAvoid.fromJson(Map<String, dynamic> j) => FoodToAvoid(
+        item: _s(j['item']),
+        category: _s(j['category']),
+        reason: _s(j['reason']),
+      );
+}
+
+class FoodToEat {
+  final String item;
+  final String category;
+  final String benefit;
+  final String howToConsume;
+
+  const FoodToEat({
+    required this.item,
+    required this.category,
+    required this.benefit,
+    required this.howToConsume,
+  });
+
+  factory FoodToEat.fromJson(Map<String, dynamic> j) => FoodToEat(
+        item: _s(j['item']),
+        category: _s(j['category']),
+        benefit: _s(j['benefit']),
+        howToConsume: _s(j['howToConsume']),
+      );
+}
+
+class DietMealSlot {
+  final String slot;
+  final String timeRange;
+  final String title;
+  final List<String> items;
+  final String rationale;
+
+  const DietMealSlot({
+    required this.slot,
+    required this.timeRange,
+    required this.title,
+    required this.items,
+    required this.rationale,
+  });
+
+  factory DietMealSlot.fromJson(Map<String, dynamic> j) => DietMealSlot(
+        slot: _s(j['slot']),
+        timeRange: _s(j['timeRange']),
+        title: _s(j['title']),
+        items: (j['items'] as List? ?? []).map((e) => e.toString()).toList(),
+        rationale: _s(j['rationale']),
+      );
+}
+
+class HerbalRemedy {
+  final String remedy;
+  final String timing;
+  final String purpose;
+
+  const HerbalRemedy({
+    required this.remedy,
+    required this.timing,
+    required this.purpose,
+  });
+
+  factory HerbalRemedy.fromJson(Map<String, dynamic> j) => HerbalRemedy(
+        remedy: _s(j['remedy']),
+        timing: _s(j['timing']),
+        purpose: _s(j['purpose']),
+      );
+}
+
+class DietChart {
+  final String id;
+  final String title;
+  final String conditionSummary;
+  final List<String> symptomsTargeted;
+  final String dietaryPreference;
+  final List<FoodToAvoid> foodsToAvoid;
+  final List<FoodToEat> foodsToEat;
+  final List<DietMealSlot> mealPlan;
+  final List<String> hydrationGuidelines;
+  final List<HerbalRemedy> herbalRemedies;
+  final List<String> goldenRules;
+  final String generatedAt;
+
+  const DietChart({
+    required this.id,
+    required this.title,
+    required this.conditionSummary,
+    required this.symptomsTargeted,
+    required this.dietaryPreference,
+    required this.foodsToAvoid,
+    required this.foodsToEat,
+    required this.mealPlan,
+    required this.hydrationGuidelines,
+    required this.herbalRemedies,
+    required this.goldenRules,
+    required this.generatedAt,
+  });
+
+  factory DietChart.fromJson(Map<String, dynamic> j) => DietChart(
+        id: _s(j['id']),
+        title: _s(j['title']),
+        conditionSummary: _s(j['conditionSummary']),
+        symptomsTargeted: (j['symptomsTargeted'] as List? ?? []).map((e) => e.toString()).toList(),
+        dietaryPreference: _s(j['dietaryPreference']),
+        foodsToAvoid: (j['foodsToAvoid'] as List? ?? [])
+            .map((e) => FoodToAvoid.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        foodsToEat: (j['foodsToEat'] as List? ?? [])
+            .map((e) => FoodToEat.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        mealPlan: (j['mealPlan'] as List? ?? [])
+            .map((e) => DietMealSlot.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        hydrationGuidelines:
+            (j['hydrationGuidelines'] as List? ?? []).map((e) => e.toString()).toList(),
+        herbalRemedies: (j['herbalRemedies'] as List? ?? [])
+            .map((e) => HerbalRemedy.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        goldenRules: (j['goldenRules'] as List? ?? []).map((e) => e.toString()).toList(),
+        generatedAt: _s(j['generatedAt']),
+      );
+}

@@ -89,24 +89,39 @@ class HealthSyncService {
     final DateTime now = DateTime.now();
     final DateTime midnight = DateTime(now.year, now.month, now.day);
 
-    // --- Steps (dedicated fast-path API) ---------------------------------
+    // --- Steps (First attempt: dedicated interval aggregation) -----------
     try {
-      final int? steps =
-          await _health.getTotalStepsInInterval(midnight, now);
+      final int? steps = await _health.getTotalStepsInInterval(midnight, now);
       if (steps != null && steps > 0) {
         summary['steps'] = steps;
       }
     } catch (_) {
-      // Leave 'steps' out of the map; don't fail the whole sync.
+      // Fall through to point-by-point aggregation
+    }
+
+    // --- Secondary attempt if steps is still missing or zero -------------
+    if (!summary.containsKey('steps') || (summary['steps'] ?? 0) <= 0) {
+      try {
+        final List<HealthDataPoint> stepPoints = await _health.getHealthDataFromTypes(
+          types: const [HealthDataType.STEPS],
+          startTime: midnight,
+          endTime: now,
+        );
+        final List<HealthDataPoint> dedupedSteps = _health.removeDuplicates(stepPoints);
+        num totalSteps = 0;
+        for (final p in dedupedSteps) {
+          final v = p.value;
+          if (v is NumericHealthValue) {
+            totalSteps += v.numericValue;
+          }
+        }
+        if (totalSteps > 0) {
+          summary['steps'] = totalSteps.round();
+        }
+      } catch (_) {}
     }
 
     // --- Active calories + heart rate -------------------------------------
-    // IMPORTANT (verified against health v13.3.x on pub.dev, Sep 2026):
-    // `getHealthDataFromTypes` takes NAMED parameters in this version
-    // (types / startTime / endTime / recordingMethodsToFilter).
-    // Older releases (<=11.x) used positional args
-    // `(startTime, endTime, types)` — that signature does NOT compile
-    // against health: ^13.3.2, so we use the named form below.
     try {
       final List<HealthDataPoint> points = await _health.getHealthDataFromTypes(
         types: const [
