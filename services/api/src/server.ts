@@ -1995,6 +1995,182 @@ Respond in this exact JSON format:
     return { ok: true };
   });
 
+  // ===========================================================================
+  // SOCIAL POSTS (Free-form posts distinct from GPS activities)
+  // ===========================================================================
+
+  interface StoredPost {
+    id: string;
+    userId: string;
+    body: string;
+    imageUrl?: string;
+    visibility: 'public' | 'followers';
+    linkedActivityId?: string;
+    kudosUserIds: Set<string>;
+    comments: Array<{
+      id: string;
+      userId: string;
+      body: string;
+      createdAt: string;
+    }>;
+    createdAt: string;
+  }
+
+  const posts = new Map<string, StoredPost>();
+
+  // Default welcome post
+  const defaultPostId = 'welcome_post';
+  posts.set(defaultPostId, {
+    id: defaultPostId,
+    userId: 'vyra_team',
+    body: 'Welcome to VYRA! Share your workouts, recipes, and daily victories with the community.',
+    visibility: 'public',
+    kudosUserIds: new Set<string>(),
+    comments: [],
+    createdAt: new Date(now() - 3600000).toISOString(),
+  });
+
+  async function shapePost(p: StoredPost, currentUserId: string) {
+    const author = await store.getUser(p.userId);
+    return {
+      id: p.id,
+      userId: p.userId,
+      body: p.body,
+      imageUrl: p.imageUrl ?? null,
+      visibility: p.visibility,
+      authorHandle: author?.displayHandle ?? (p.userId === 'vyra_team' ? 'vyra_official' : 'athlete'),
+      authorName: author?.name ?? (p.userId === 'vyra_team' ? 'VYRA Community' : 'Athlete'),
+      kudosGiven: p.kudosUserIds.has(currentUserId),
+      kudosCount: p.kudosUserIds.size,
+      commentCount: p.comments.length,
+      createdAt: p.createdAt,
+    };
+  }
+
+  router.post('/v1/posts', async (ctx) => {
+    const user = await requireUser(ctx);
+    const b = requireObject(ctx.body);
+    const body = str(b, 'body', { max: 2000 });
+    const imageUrl = typeof b.imageUrl === 'string' && b.imageUrl.trim() ? b.imageUrl.trim() : undefined;
+    const visibility = b.visibility === 'followers' ? 'followers' : 'public';
+    const linkedActivityId = typeof b.linkedActivityId === 'string' ? b.linkedActivityId : undefined;
+
+    const post: StoredPost = {
+      id: randomUUID(),
+      userId: user.id,
+      body,
+      imageUrl,
+      visibility,
+      linkedActivityId,
+      kudosUserIds: new Set<string>(),
+      comments: [],
+      createdAt: new Date(now()).toISOString(),
+    };
+
+    posts.set(post.id, post);
+    return { post: await shapePost(post, user.id) };
+  });
+
+  router.get('/v1/posts/feed', async (ctx) => {
+    const user = await requireUser(ctx);
+    const all = Array.from(posts.values());
+    all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const shaped = await Promise.all(all.map((p) => shapePost(p, user.id)));
+    return { items: shaped };
+  });
+
+  router.get('/v1/posts/mine', async (ctx) => {
+    const user = await requireUser(ctx);
+    const mine = Array.from(posts.values()).filter((p) => p.userId === user.id);
+    mine.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const shaped = await Promise.all(mine.map((p) => shapePost(p, user.id)));
+    return { items: shaped };
+  });
+
+  router.patch('/v1/posts/:id', async (ctx) => {
+    const user = await requireUser(ctx);
+    const post = posts.get(ctx.params.id!);
+    if (!post || post.userId !== user.id) throw HttpError.notFound('Post not found.');
+
+    const b = requireObject(ctx.body);
+    if (typeof b.body === 'string') post.body = b.body.slice(0, 2000);
+    if (b.visibility === 'public' || b.visibility === 'followers') post.visibility = b.visibility;
+
+    return { post: await shapePost(post, user.id) };
+  });
+
+  router.delete('/v1/posts/:id', async (ctx) => {
+    const user = await requireUser(ctx);
+    const post = posts.get(ctx.params.id!);
+    if (!post || post.userId !== user.id) throw HttpError.notFound('Post not found.');
+    posts.delete(post.id);
+    return { ok: true };
+  });
+
+  router.post('/v1/posts/:id/kudos', async (ctx) => {
+    const user = await requireUser(ctx);
+    const post = posts.get(ctx.params.id!);
+    if (!post) throw HttpError.notFound('Post not found.');
+
+    let given = false;
+    if (post.kudosUserIds.has(user.id)) {
+      post.kudosUserIds.delete(user.id);
+      given = false;
+    } else {
+      post.kudosUserIds.add(user.id);
+      given = true;
+    }
+
+    return { given, count: post.kudosUserIds.size };
+  });
+
+  router.get('/v1/posts/:id/comments', async (ctx) => {
+    const user = await requireUser(ctx);
+    const post = posts.get(ctx.params.id!);
+    if (!post) throw HttpError.notFound('Post not found.');
+
+    const shaped = await Promise.all(post.comments.map(async (c) => {
+      const author = await store.getUser(c.userId);
+      return {
+        id: c.id,
+        userId: c.userId,
+        body: c.body,
+        authorHandle: author?.displayHandle ?? 'athlete',
+        createdAt: c.createdAt,
+      };
+    }));
+
+    return { items: shaped };
+  });
+
+  router.post('/v1/posts/:id/comments', async (ctx) => {
+    const user = await requireUser(ctx);
+    const post = posts.get(ctx.params.id!);
+    if (!post) throw HttpError.notFound('Post not found.');
+
+    const b = requireObject(ctx.body);
+    const commentBody = str(b, 'body', { max: 1000 });
+
+    const comment = {
+      id: randomUUID(),
+      userId: user.id,
+      body: commentBody,
+      createdAt: new Date(now()).toISOString(),
+    };
+
+    post.comments.push(comment);
+
+    return {
+      comment: {
+        id: comment.id,
+        userId: user.id,
+        body: comment.body,
+        authorHandle: user.displayHandle,
+        createdAt: comment.createdAt,
+      },
+    };
+  });
+
   return router;
 }
 
