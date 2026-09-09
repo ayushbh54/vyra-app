@@ -103,6 +103,7 @@ class VRadius {
   static const double lg = 16;
   static const double xl = 22;
   static const double pill = 999;
+  static const double full = 999;
 }
 
 /// Minimum touch target, enforced in the button widgets rather than left to

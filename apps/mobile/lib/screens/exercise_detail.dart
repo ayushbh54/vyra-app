@@ -536,7 +536,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
                 color: VColor.surface,
-                borderRadius: BorderRadius.circular(VRadius.full),
+                borderRadius: BorderRadius.circular(VRadius.pill),
                 border: Border.all(color: VColor.line),
               ),
               child: Row(
@@ -547,12 +547,12 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                         HapticFeedback.selectionClick();
                         setState(() => _perspective = ExercisePerspective.side);
                       },
-                      borderRadius: BorderRadius.circular(VRadius.full),
+                      borderRadius: BorderRadius.circular(VRadius.pill),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         decoration: BoxDecoration(
                           color: _perspective == ExercisePerspective.side ? VColor.accent : Colors.transparent,
-                          borderRadius: BorderRadius.circular(VRadius.full),
+                          borderRadius: BorderRadius.circular(VRadius.pill),
                         ),
                         alignment: Alignment.center,
                         child: Row(
@@ -583,12 +583,12 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                         HapticFeedback.selectionClick();
                         setState(() => _perspective = ExercisePerspective.front);
                       },
-                      borderRadius: BorderRadius.circular(VRadius.full),
+                      borderRadius: BorderRadius.circular(VRadius.pill),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         decoration: BoxDecoration(
                           color: _perspective == ExercisePerspective.front ? VColor.accent : Colors.transparent,
-                          borderRadius: BorderRadius.circular(VRadius.full),
+                          borderRadius: BorderRadius.circular(VRadius.pill),
                         ),
                         alignment: Alignment.center,
                         child: Row(
