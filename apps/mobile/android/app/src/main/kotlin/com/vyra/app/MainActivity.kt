@@ -1,4 +1,4 @@
-package com.example.vyra
+package com.vyra.app
 
 import io.flutter.embedding.android.FlutterActivity
 
