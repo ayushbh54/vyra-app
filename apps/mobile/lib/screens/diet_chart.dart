@@ -43,7 +43,47 @@ class _DietChartScreenState extends State<DietChartScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchChart();
+    _loadProfileAndFetchChart();
+  }
+
+  Future<void> _loadProfileAndFetchChart() async {
+    try {
+      final p = await context.read<VyraApi>().getProfile();
+      if (p.medicalConditions.isNotEmpty) {
+        final mapped = <String>{};
+        for (final c in p.medicalConditions) {
+          switch (c) {
+            case 'fatty_liver':
+              mapped.add('🩺 Fatty Liver (Grade 1/2)');
+              break;
+            case 'diabetes':
+              mapped.add('🩸 High Blood Sugar (Diabetes)');
+              break;
+            case 'hypertension':
+            case 'cholesterol':
+              mapped.add('🫀 High Cholesterol & BP');
+              break;
+            case 'thyroid':
+            case 'pcos':
+              mapped.add('🦋 Thyroid / PCOS / PCOD');
+              break;
+            case 'gerd_acidity':
+              mapped.add('🔥 Acidity & Bloating (GERD)');
+              break;
+            case 'uric_acid_gout':
+              mapped.add('🥩 High Uric Acid & Gout');
+              break;
+          }
+        }
+        if (mapped.isNotEmpty && mounted) {
+          setState(() {
+            _selectedSymptoms.clear();
+            _selectedSymptoms.addAll(mapped);
+          });
+        }
+      }
+    } catch (_) {}
+    if (mounted) _fetchChart();
   }
 
   @override

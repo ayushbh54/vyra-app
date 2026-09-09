@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/client.dart';
 import '../theme.dart';
@@ -21,12 +23,31 @@ class AiChatScreen extends StatefulWidget {
 class _AiChatMessage {
   final String role; // 'user' or 'model'
   final String text;
-  _AiChatMessage(this.role, this.text);
+  final DateTime timestamp;
+  _AiChatMessage(this.role, this.text, [DateTime? timestamp])
+      : timestamp = timestamp ?? DateTime.now();
+
+  Map<String, dynamic> toJson() => {
+        'role': role,
+        'text': text,
+        'timestamp': timestamp.toIso8601String(),
+      };
+
+  factory _AiChatMessage.fromJson(Map<String, dynamic> json) => _AiChatMessage(
+        json['role'] as String? ?? 'model',
+        json['text'] as String? ?? '',
+        json['timestamp'] != null
+            ? DateTime.tryParse(json['timestamp'] as String)
+            : null,
+      );
 }
 
 class _AiChatScreenState extends State<AiChatScreen> {
-  final _controller  = TextEditingController();
-  final _scrollCtrl  = ScrollController();
+  static const _storageKey = 'vyra_chat_history_v1';
+  static const _convStorageKey = 'vyra_chat_conv_id';
+
+  final _controller = TextEditingController();
+  final _scrollCtrl = ScrollController();
   final List<_AiChatMessage> _messages = [];
   bool _loading = false;
   String? _error;
@@ -37,13 +58,94 @@ class _AiChatScreenState extends State<AiChatScreen> {
   @override
   void initState() {
     super.initState();
-    // Seed a welcome message so the screen never opens empty.
-    _messages.add(_AiChatMessage(
-      'model',
-      "Hey! I'm VYRA Coach, your AI-powered fitness and nutrition guide. "
-      "Ask me anything — workouts, meals, recovery, or your goals. "
-      "I'm not a doctor, so for medical questions always check with a professional. 💪",
-    ));
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _convId = prefs.getString(_convStorageKey);
+      final raw = prefs.getString(_storageKey);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw) as List;
+        final list = decoded
+            .map((e) => _AiChatMessage.fromJson(e as Map<String, dynamic>))
+            .toList();
+        if (list.isNotEmpty) {
+          setState(() {
+            _messages.clear();
+            _messages.addAll(list);
+          });
+          _scrollToBottom();
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // Fallback welcome message if no history exists yet
+    if (_messages.isEmpty) {
+      setState(() {
+        _messages.add(_AiChatMessage(
+          'model',
+          "Hey! I'm VYRA Coach, your AI-powered fitness and nutrition guide. "
+          "Ask me anything — workouts, meals, recovery, or your goals. "
+          "I'm not a doctor, so for medical questions always check with a professional. 💪",
+        ));
+      });
+    }
+  }
+
+  Future<void> _saveHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = jsonEncode(_messages.map((m) => m.toJson()).toList());
+      await prefs.setString(_storageKey, raw);
+      if (_convId != null) {
+        await prefs.setString(_convStorageKey, _convId!);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _clearChat() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: VColor.surface,
+        title: const Text('Clear Chat History?', style: TextStyle(color: VColor.text)),
+        content: const Text(
+          'Are you sure you want to reset your conversation with VYRA Coach?',
+          style: TextStyle(color: VColor.textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: VColor.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: VColor.warn),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_storageKey);
+        await prefs.remove(_convStorageKey);
+      } catch (_) {}
+      setState(() {
+        _convId = null;
+        _messages.clear();
+        _messages.add(_AiChatMessage(
+          'model',
+          "Chat reset! What would you like to focus on now? 🌟",
+        ));
+      });
+      _saveHistory();
+    }
   }
 
   @override
@@ -61,20 +163,23 @@ class _AiChatScreenState extends State<AiChatScreen> {
     setState(() {
       _messages.add(_AiChatMessage('user', text));
       _loading = true;
-      _error   = null;
+      _error = null;
     });
+    _saveHistory();
     _scrollToBottom();
 
     try {
-      final api  = context.read<VyraApi>();
+      final api = context.read<VyraApi>();
       final resp = await api.chatMessage(text, conversationId: _convId);
-      _convId    = resp['conversationId'] as String?;
+      _convId = resp['conversationId'] as String?;
       final reply = resp['reply'] as String? ?? '...';
       setState(() => _messages.add(_AiChatMessage('model', reply)));
+      _saveHistory();
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
       setState(() => _loading = false);
+      _saveHistory();
       _scrollToBottom();
     }
   }
@@ -118,6 +223,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ),
         ]),
         actions: [
+          IconButton(
+            tooltip: 'Clear Chat',
+            icon: const Icon(Icons.delete_sweep_outlined, color: VColor.textMuted, size: 20),
+            onPressed: _clearChat,
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Container(

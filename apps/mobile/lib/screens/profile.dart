@@ -11,9 +11,11 @@ import 'beacon.dart';
 import 'edit_profile.dart';
 import 'emergency_contacts.dart';
 import 'food.dart';
+import 'friends.dart';
 import 'health_sync.dart';
 import 'lab_report.dart';
 import 'leaderboard.dart';
+import 'settings.dart';
 import 'training_hub.dart';
 import 'trophy_case.dart';
 
@@ -57,6 +59,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
   LabAnalysis? _lab;
   bool _analysing = false;
   bool _savingMetrics = false;
+
+  UserProfile? _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final p = await context.read<VyraApi>().getProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (_) {}
+  }
+
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: VColor.surface,
+        title: const Text('Log Out of VYRA?', style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold)),
+        content: const Text(
+          'Your workouts, streaks, and health data remain safely synced to your account.',
+          style: TextStyle(color: VColor.textMid),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: VColor.textMid)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: VColor.warn),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final api = context.read<VyraApi>();
+      await api.logout();
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -140,7 +190,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(VSpace.base, VSpace.base, VSpace.base, VSpace.xxxl),
         children: [
-          Text('You', style: Theme.of(context).textTheme.headlineMedium),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('You', style: Theme.of(context).textTheme.headlineMedium),
+              IconButton(
+                icon: const Icon(Icons.settings_outlined, color: VColor.textMid, size: 24),
+                tooltip: 'Settings & Preferences',
+                onPressed: () => pushScreen(context, 'Settings', const SettingsScreen()),
+              ),
+            ],
+          ),
+          const SizedBox(height: VSpace.base),
+
+          // ── Athlete Profile & Followers Stats Card ──────────────────
+          _buildAthleteCard(),
           const SizedBox(height: VSpace.lg),
 
           // ── Quick links — screens that no longer have a bottom-nav slot
@@ -151,6 +215,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: EdgeInsets.zero,
             child: Column(
               children: [
+                _QuickLink(
+                  icon: Icons.settings_outlined,
+                  label: 'Settings & Preferences',
+                  subtitle: 'Timetable, adaptive mode, voice coach, cache, logout',
+                  onTap: () => pushScreen(context, 'Settings', const SettingsScreen()),
+                ),
+                const Divider(height: 1, color: VColor.line),
                 _QuickLink(
                   icon: Icons.watch_rounded,
                   label: 'Connect Smartwatch & Devices',
@@ -218,22 +289,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const Divider(height: 1, color: VColor.line),
                 _QuickLink(
                   icon: Icons.edit_outlined,
-                  label: 'Edit Profile',
-                  subtitle: 'Name, city, primary sport, weight',
+                  label: 'Edit Profile & Health Needs',
+                  subtitle: 'Identity, adaptive training, medical conditions',
                   onTap: () async {
                     try {
-                      final me = await context.read<VyraApi>().me();
+                      final p = _profile ?? await context.read<VyraApi>().getProfile();
                       if (!context.mounted) return;
-                      await pushScreen(
+                      final updated = await pushScreen<bool>(
                         context,
                         'Edit Profile',
                         EditProfileScreen(
-                          initialName: (me['name'] as String?) ?? '',
-                          initialCity: (me['city'] as String?) ?? '',
-                          initialPrimarySport: (me['primarySport'] as String?) ?? 'run',
-                          initialWeightKg: (me['weightKg'] as num?)?.toDouble() ?? 60,
+                          initialName: p.name,
+                          initialCity: p.city,
+                          initialPrimarySport: p.primarySport,
+                          initialWeightKg: p.weightKg > 0 ? p.weightKg : 60,
+                          initialDisabilityFlag: p.disabilityFlag,
+                          initialDisabilityType: p.disabilityType,
+                          initialMedicalConditions: p.medicalConditions,
                         ),
                       );
+                      if (updated == true && mounted) {
+                        _loadProfile();
+                      }
                     } on ApiException catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context)
@@ -405,6 +482,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+          const SizedBox(height: VSpace.xl),
+
+          // ── Explicit Log Out Button ──
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _confirmLogout(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: VColor.warn,
+                side: const BorderSide(color: VColor.warn, width: 1.2),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              icon: const Icon(Icons.logout_rounded, size: 20),
+              label: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            ),
+          ),
         ],
       ),
     );
@@ -473,6 +566,212 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
+  }
+
+  Widget _buildAthleteCard() {
+    final p = _profile;
+    final name = (p != null && p.name.trim().isNotEmpty) ? p.name.trim() : 'Vyra Athlete';
+    final handle = (p != null && p.displayHandle.trim().isNotEmpty) ? p.displayHandle.trim() : 'athlete';
+    final initials = name.split(' ').where((s) => s.isNotEmpty).map((s) => s[0].toUpperCase()).take(2).join();
+    final city = (p != null && p.city.trim().isNotEmpty) ? p.city.trim() : 'Global';
+    final sport = (p != null && p.primarySport.trim().isNotEmpty) ? p.primarySport.trim().toUpperCase() : 'RUN';
+
+    final isAdaptive = (p?.disabilityFlag == true) || (p?.disabilityType != null && p!.disabilityType != 'none');
+    final disabilityLabel = switch (p?.disabilityType) {
+      'wheelchair' => 'Wheelchair Athlete',
+      'mobility_impairment' => 'Adaptive Mobility',
+      'lower_body' => 'Seated / Low Impact',
+      'upper_body' => 'Gentle Arms / Cardio',
+      'bedbound_gentle' => 'Gentle Bed / Seated',
+      _ => 'Adaptive Athlete',
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(VSpace.base),
+      decoration: BoxDecoration(
+        color: VColor.surfaceRaised,
+        borderRadius: BorderRadius.circular(VRadius.lg),
+        border: Border.all(color: VColor.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row with Avatar, Name, Handle, City & Sport
+          Row(
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [VColor.accent, VColor.accent.withValues(alpha: 0.6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: VColor.accent.withValues(alpha: 0.8), width: 2),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  initials.isNotEmpty ? initials : 'VA',
+                  style: const TextStyle(
+                    color: VColor.textOnAccent,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: VSpace.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        color: VColor.text,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '@$handle',
+                      style: const TextStyle(
+                        color: VColor.textMid,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 14, color: VColor.textDim),
+                        const SizedBox(width: 3),
+                        Text(city, style: const TextStyle(color: VColor.textDim, fontSize: 12)),
+                        const SizedBox(width: 8),
+                        Container(width: 3, height: 3, decoration: const BoxDecoration(color: VColor.textDim, shape: BoxShape.circle)),
+                        const SizedBox(width: 8),
+                        Text(sport, style: const TextStyle(color: VColor.accent, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          if (isAdaptive || (p != null && p.medicalConditions.isNotEmpty)) ...[
+            const SizedBox(height: VSpace.md),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (isAdaptive)
+                  VPill('♿ $disabilityLabel', tone: CardTone.accent),
+                if (p != null && p.medicalConditions.isNotEmpty)
+                  VPill('🩺 ${p.medicalConditions.length} Health Focus Area${p.medicalConditions.length > 1 ? 's' : ''}', tone: CardTone.raised),
+              ],
+            ),
+          ],
+
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: VSpace.md),
+            child: Divider(height: 1, color: VColor.line),
+          ),
+
+          // ── Followers, Following & Activities Row ──────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(VRadius.sm),
+                onTap: () => pushScreen(context, 'Athletes & Friends', const FriendsScreen()),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  child: Column(
+                    children: [
+                      Text(
+                        '128',
+                        style: TextStyle(
+                          color: VColor.text,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Followers',
+                        style: TextStyle(
+                          color: VColor.textMid,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Container(width: 1, height: 28, color: VColor.line),
+              InkWell(
+                borderRadius: BorderRadius.circular(VRadius.sm),
+                onTap: () => pushScreen(context, 'Athletes & Friends', const FriendsScreen()),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  child: Column(
+                    children: [
+                      Text(
+                        '94',
+                        style: TextStyle(
+                          color: VColor.text,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Following',
+                        style: TextStyle(
+                          color: VColor.textMid,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Container(width: 1, height: 28, color: VColor.line),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                child: Column(
+                  children: [
+                    Text(
+                      '24',
+                      style: TextStyle(
+                        color: VColor.text,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Activities',
+                      style: TextStyle(
+                        color: VColor.textMid,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -6,6 +6,8 @@ import '../api/client.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/screen_scaffold.dart';
+import 'challenge_detail.dart';
 
 /// TAB 4 — CHALLENGES & REWARDS
 ///
@@ -111,6 +113,43 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
         _joinedCommunityChallenges.add(id);
       }
     });
+  }
+
+  void _openCustomDetail(CustomChallenge c) {
+    pushScreen(
+      context,
+      c.title,
+      ChallengeDetailScreen(
+        customChallenge: c,
+        onCheckedIn: (newStreak) {
+          setState(() {
+            _challenges = [
+              for (final item in _challenges ?? [])
+                if (item.id == c.id) item.copyWith(streak: newStreak, checkedInToday: true) else item,
+            ];
+          });
+        },
+      ),
+    );
+  }
+
+  void _openCommunityDetail(_CommunityChallengeData item) {
+    pushScreen(
+      context,
+      item.title,
+      ChallengeDetailScreen(
+        communityId: item.id,
+        title: item.title,
+        description: item.description,
+        badge: item.badge,
+        participants: item.participants,
+        rewardCoins: item.rewardCoins,
+        currentProgress: item.currentProgress,
+        progressLabel: item.progressLabel,
+        isJoined: _joinedCommunityChallenges.contains(item.id),
+        onToggleJoin: () => _toggleCommunityChallenge(item.id),
+      ),
+    );
   }
 
   @override
@@ -311,10 +350,14 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
           for (final c in _challenges!)
             Padding(
               padding: const EdgeInsets.only(bottom: VSpace.sm),
-              child: _ChallengeCard(
-                challenge: c,
-                busy: _checkingIn,
-                onCheckIn: () => _checkIn(c),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(VRadius.md),
+                onTap: () => _openCustomDetail(c),
+                child: _ChallengeCard(
+                  challenge: c,
+                  busy: _checkingIn,
+                  onCheckIn: () => _checkIn(c),
+                ),
               ),
             ),
       ],
@@ -398,10 +441,14 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
         for (final item in communityList)
           Padding(
             padding: const EdgeInsets.only(bottom: VSpace.sm),
-            child: _CommunityChallengeCard(
-              data: item,
-              isJoined: _joinedCommunityChallenges.contains(item.id),
-              onToggleJoin: () => _toggleCommunityChallenge(item.id),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(VRadius.md),
+              onTap: () => _openCommunityDetail(item),
+              child: _CommunityChallengeCard(
+                data: item,
+                isJoined: _joinedCommunityChallenges.contains(item.id),
+                onToggleJoin: () => _toggleCommunityChallenge(item.id),
+              ),
             ),
           ),
       ],

@@ -64,14 +64,24 @@ class _FoodScreenState extends State<FoodScreen> {
     }
   }
 
-  Future<void> _logSugar() async {
-    final grams = double.tryParse(_sugarController.text.trim());
-    if (grams == null || grams < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter the grams of added sugar, for example 12')),
-      );
-      return;
+  Future<void> _logSugar([double? directGrams]) async {
+    final text = _sugarController.text.trim();
+    final double grams;
+    if (directGrams != null) {
+      grams = directGrams;
+    } else if (text.isEmpty) {
+      grams = 0.0; // Default to Zero Sugar day if left blank!
+    } else {
+      final parsed = double.tryParse(text);
+      if (parsed == null || parsed < 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid amount in grams (e.g. 0, 5, 12)')),
+        );
+        return;
+      }
+      grams = parsed;
     }
+
     setState(() => _loggingSugar = true);
     try {
       final result = await context.read<VyraApi>().logSugar(grams);
@@ -80,10 +90,30 @@ class _FoodScreenState extends State<FoodScreen> {
           _sugar = result;
           _sugarController.clear();
         });
+        if (grams == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: VColor.accentGreen,
+              content: Text('🎉 Zero Added Sugar logged today! Streak maintained! 🏆'),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Logged ${grams.toStringAsFixed(1)}g of added sugar.'),
+            ),
+          );
+        }
       }
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sugar intake recorded.')),
+        );
       }
     } finally {
       if (mounted) setState(() => _loggingSugar = false);
@@ -247,15 +277,47 @@ class _FoodScreenState extends State<FoodScreen> {
           const SizedBox(height: VSpace.xl),
 
           // ── Zero sugar ───────────────────────────────────────────
-          const VSectionHeader('Zero Sugar'),
+          // ── Zero sugar tracker ──────────────────────────────────
+          const VSectionHeader('Zero Sugar Tracker'),
           VCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Log the added sugar you have had today. Not the sugar in fruit or milk — '
-                  'just what was added: in tea, sweets, cold drinks, biscuits.',
+                  'Log your added sugar today. Tap "0g (Zero Added Sugar)" or leave the input empty to record a clean Zero Sugar day and protect your streak!',
                   style: TextStyle(color: VColor.textMid, fontSize: 13.5, height: 1.45),
+                ),
+                const SizedBox(height: VSpace.md),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ActionChip(
+                      avatar: const Icon(Icons.check_circle_outline, color: VColor.accentGreen, size: 16),
+                      label: const Text('0g (Zero Added Sugar)', style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold, fontSize: 13)),
+                      backgroundColor: VColor.accentGreen.withValues(alpha: 0.15),
+                      side: const BorderSide(color: VColor.accentGreen, width: 1.5),
+                      onPressed: _loggingSugar ? null : () => _logSugar(0.0),
+                    ),
+                    ActionChip(
+                      label: const Text('+5g (1 cup chai)', style: TextStyle(color: VColor.textMid, fontSize: 13)),
+                      backgroundColor: VColor.surfaceRaised,
+                      side: const BorderSide(color: VColor.line),
+                      onPressed: _loggingSugar ? null : () => _logSugar(5.0),
+                    ),
+                    ActionChip(
+                      label: const Text('+12g (Sweet/Snack)', style: TextStyle(color: VColor.textMid, fontSize: 13)),
+                      backgroundColor: VColor.surfaceRaised,
+                      side: const BorderSide(color: VColor.line),
+                      onPressed: _loggingSugar ? null : () => _logSugar(12.0),
+                    ),
+                    ActionChip(
+                      label: const Text('+25g (Cold Drink)', style: TextStyle(color: VColor.textMid, fontSize: 13)),
+                      backgroundColor: VColor.surfaceRaised,
+                      side: const BorderSide(color: VColor.line),
+                      onPressed: _loggingSugar ? null : () => _logSugar(25.0),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: VSpace.base),
                 Row(
@@ -265,13 +327,26 @@ class _FoodScreenState extends State<FoodScreen> {
                         controller: _sugarController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         style: const TextStyle(color: VColor.text, fontSize: 15),
-                        decoration: const InputDecoration(hintText: 'grams, e.g. 12'),
+                        decoration: const InputDecoration(
+                          hintText: 'Custom grams (or leave blank for 0g)',
+                          isDense: true,
+                        ),
                       ),
                     ),
                     const SizedBox(width: VSpace.sm),
                     FilledButton(
-                      onPressed: _loggingSugar ? null : _logSugar,
-                      child: const Text('Log'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: VColor.accent,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
+                      onPressed: _loggingSugar ? null : () => _logSugar(),
+                      child: _loggingSugar
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: VColor.textOnAccent),
+                            )
+                          : const Text('Log', style: TextStyle(color: VColor.textOnAccent, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),

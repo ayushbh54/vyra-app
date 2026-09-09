@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../api/client.dart';
 import '../models/models.dart';
 import '../theme.dart';
@@ -28,8 +30,11 @@ class TrainingHubScreen extends StatefulWidget {
 
 class _TrainingHubScreenState extends State<TrainingHubScreen> {
   TodayData? _data;
+  UserProfile? _profile;
   String? _error;
   String? _busySlug;
+  String? _customWindowStart;
+  String? _customWindowEnd;
 
   @override
   void initState() {
@@ -39,10 +44,35 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
 
   Future<void> _load() async {
     try {
-      final data = await context.read<VyraApi>().today();
+      final api = context.read<VyraApi>();
+      final data = await api.today();
+      try {
+        _profile = await api.getProfile();
+      } catch (_) {}
+
+      // Retrieve locally completed exercises for this date to guarantee 0-loss of history
+      final prefs = await SharedPreferences.getInstance();
+      final localDone = prefs.getStringList('completed_exercises_${data.date}') ?? [];
+      _customWindowStart = prefs.getString('custom_window_start');
+      _customWindowEnd = prefs.getString('custom_window_end');
+
+      var updatedAchieved = data.plan.achievedMin;
+      final mergedEntries = data.plan.entries.map((e) {
+        final isDone = e.isCompleted || localDone.contains(e.exerciseSlug);
+        if (!e.isCompleted && isDone) {
+          updatedAchieved += (e.durationSec / 60.0);
+        }
+        return e.copyWith(isCompleted: isDone);
+      }).toList();
+
+      final mergedPlan = data.plan.copyWith(
+        entries: mergedEntries,
+        achievedMin: updatedAchieved,
+      );
+
       if (!mounted) return;
       setState(() {
-        _data = data;
+        _data = data.copyWith(plan: mergedPlan);
         _error = null;
       });
     } on ApiException catch (e) {
@@ -51,8 +81,119 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
     }
   }
 
+  Future<void> _setCustomWindow(String start, String end) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('custom_window_start', start);
+      await prefs.setString('custom_window_end', end);
+      setState(() {
+        _customWindowStart = start;
+        _customWindowEnd = end;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✨ Preferred workout slot set to $start – $end!'),
+            backgroundColor: VColor.accentGreen,
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _resetCustomWindow() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('custom_window_start');
+      await prefs.remove('custom_window_end');
+      setState(() {
+        _customWindowStart = null;
+        _customWindowEnd = null;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reset to auto-detected schedule.')),
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _openCustomWindowDialog() async {
+    final presets = [
+      ('🌅 Early Morning', '06:30', '08:00'),
+      ('☀️ Morning Prime', '08:00', '09:30'),
+      ('🥗 Midday Break', '12:30', '13:30'),
+      ('🌆 Evening Focus', '17:30', '19:00'),
+      ('🌙 Night Session', '20:00', '21:30'),
+    ];
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: VColor.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(VSpace.base),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Customize Workout Timing', style: TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.bold)),
+                IconButton(icon: const Icon(Icons.close, color: VColor.textLow), onPressed: () => Navigator.pop(ctx)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text('Choose when you prefer to exercise so VYRA optimizes your routine around your real life.', style: TextStyle(color: VColor.textMid, fontSize: 13)),
+            const SizedBox(height: VSpace.base),
+            for (final p in presets)
+              Padding(
+                padding: const EdgeInsets.only(bottom: VSpace.xs),
+                child: ListTile(
+                  tileColor: VColor.surfaceRaised,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  title: Text(p.$1, style: const TextStyle(color: VColor.text, fontWeight: FontWeight.w600, fontSize: 14)),
+                  trailing: Text('${p.$2} – ${p.$3}', style: const TextStyle(color: VColor.accent, fontWeight: FontWeight.bold, fontSize: 13)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _setCustomWindow(p.$2, p.$3);
+                  },
+                ),
+              ),
+            const SizedBox(height: VSpace.sm),
+            if (_customWindowStart != null)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _resetCustomWindow();
+                  },
+                  child: const Text('Reset to Automatic Schedule'),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _complete(PlanEntry entry) async {
     setState(() => _busySlug = entry.exerciseSlug);
+    // 1. Immediately cache locally in SharedPreferences so history survives session-outs
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dateKey = 'completed_exercises_${_data?.date ?? ''}';
+      final list = prefs.getStringList(dateKey) ?? [];
+      if (!list.contains(entry.exerciseSlug)) {
+        list.add(entry.exerciseSlug);
+        await prefs.setStringList(dateKey, list);
+      }
+    } catch (_) {}
+
     try {
       final result = await context
           .read<VyraApi>()
@@ -76,6 +217,8 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
       await _load();
     } on ApiException catch (e) {
       if (!mounted) return;
+      // Re-load will keep the locally persisted completion intact
+      await _load();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
       if (mounted) setState(() => _busySlug = null);
@@ -163,6 +306,48 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
               ),
             ]),
             const SizedBox(height: VSpace.base),
+            if (_profile?.accessibilityMode == true ||
+                _profile?.disabilityFlag == true ||
+                (_profile?.disabilityType != null &&
+                    _profile!.disabilityType.isNotEmpty &&
+                    _profile!.disabilityType.toLowerCase() != 'none')) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: VSpace.sm),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: VColor.accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: VColor.accent.withOpacity(0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.accessible_forward_rounded, color: VColor.accent, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Adaptive Seated Plan Active',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  color: VColor.accent,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'All exercises are 100% seated & mobility-friendly.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: VColor.textMuted,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             _goalExplanation(context, capacity),
             const SizedBox(height: VSpace.base),
             if (capacity.isRestDay)
@@ -303,7 +488,85 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
 
   List<Widget> _windows(BuildContext context, TodayData data) {
     return [
-      const VSectionHeader('Free windows we found'),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const VSectionHeader('Workout windows'),
+          TextButton.icon(
+            onPressed: _openCustomWindowDialog,
+            icon: const Icon(Icons.edit_calendar_rounded, size: 16, color: VColor.accent),
+            label: Text(
+              _customWindowStart != null ? 'Edit Timing' : 'Set My Timing',
+              style: const TextStyle(color: VColor.accent, fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+      if (_customWindowStart != null && _customWindowEnd != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: VSpace.sm),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [VColor.accent.withOpacity(0.18), VColor.surfaceRaised],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(VRadius.md),
+              border: Border.all(color: VColor.accent.withOpacity(0.4)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: VColor.accent.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.access_time_filled_rounded, color: VColor.accent, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            '$_customWindowStart – $_customWindowEnd',
+                            style: const TextStyle(color: VColor.text, fontSize: 15, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: VColor.accentGreenGlow,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: VColor.accentGreen.withOpacity(0.5)),
+                            ),
+                            child: const Text('CUSTOM ACTIVE', style: TextStyle(color: VColor.accentGreen, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Your custom daily workout slot. Workouts and alerts are matched here.',
+                        style: TextStyle(color: VColor.textMid, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18, color: VColor.textLow),
+                  tooltip: 'Reset timing',
+                  onPressed: _resetCustomWindow,
+                ),
+              ],
+            ),
+          ),
+        ),
       ...data.windows.map((w) => Padding(
             padding: const EdgeInsets.only(bottom: VSpace.sm),
             child: VCard(

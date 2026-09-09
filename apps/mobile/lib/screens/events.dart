@@ -6,6 +6,8 @@ import '../api/client.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/screen_scaffold.dart';
+import 'event_detail.dart';
 
 const _sportIcons = <String, IconData>{
   'run': Icons.directions_run,
@@ -55,6 +57,18 @@ class _EventsScreenState extends State<EventsScreen> {
     }
   }
 
+  Future<void> _openDetail(EventItem event) async {
+    await pushScreen(
+      context,
+      event.title,
+      EventDetailScreen(
+        event: event,
+        onRegisteredChanged: (_) => _load(),
+      ),
+    );
+    if (mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_error != null) return VErrorView(message: _error!, onRetry: _load);
@@ -74,39 +88,43 @@ class _EventsScreenState extends State<EventsScreen> {
         itemBuilder: (context, i) {
           final event = _events![i];
           final date = DateTime.tryParse(event.startsAt);
-          return VCard(
-            tone: CardTone.raised,
-            child: Row(
-              children: [
-                Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(
-                    color: VColor.accentGlow,
-                    borderRadius: BorderRadius.circular(VRadius.md),
+          return InkWell(
+            borderRadius: BorderRadius.circular(VRadius.md),
+            onTap: () => _openDetail(event),
+            child: VCard(
+              tone: CardTone.raised,
+              child: Row(
+                children: [
+                  Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      color: VColor.accentGlow,
+                      borderRadius: BorderRadius.circular(VRadius.md),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(_sportIcons[event.sport] ?? Icons.event, color: VColor.accent),
                   ),
-                  alignment: Alignment.center,
-                  child: Icon(_sportIcons[event.sport] ?? Icons.event, color: VColor.accent),
-                ),
-                const SizedBox(width: VSpace.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(event.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text(
-                        date != null
-                            ? '${DateFormat('MMM d, h:mm a').format(date.toLocal())} · ${event.location}'
-                            : event.location,
-                        style: const TextStyle(color: VColor.textLow, fontSize: 12),
-                      ),
-                    ],
+                  const SizedBox(width: VSpace.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(event.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text(
+                          date != null
+                              ? '${DateFormat('MMM d, h:mm a').format(date.toLocal())} · ${event.location}'
+                              : event.location,
+                          style: const TextStyle(color: VColor.textLow, fontSize: 12),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                OutlinedButton(
-                  onPressed: () => _toggleRegister(event),
-                  child: Text(event.registered ? 'Going' : 'Join'),
-                ),
-              ],
+                  OutlinedButton(
+                    onPressed: () => _toggleRegister(event),
+                    child: Text(event.registered ? 'Going' : 'Join'),
+                  ),
+                ],
+              ),
             ),
           );
         },

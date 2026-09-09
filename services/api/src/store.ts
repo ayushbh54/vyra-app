@@ -18,6 +18,8 @@
  * =============================================================================
  */
 
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { DietPreference, FitnessGoal, Gender, ISODate } from '@vyra/types';
 import { MOVEMENT_DEFINITIONS } from './content/movements';
 import type { RawBlock } from './domain/chrono';
@@ -34,6 +36,8 @@ export interface StoredUser {
   weightKg: number;
   disabilityFlag: boolean;
   accessibilityMode: boolean;
+  disabilityType?: string;
+  medicalConditions?: string[];
   fitnessGoal: FitnessGoal;
   dietToggle: boolean;
   dietPreference: DietPreference;
@@ -394,7 +398,152 @@ export class MemoryStore implements Store {
 
   private movementDefinitions = new Map<string, MovementDefinition>();
 
+  private backupPath = process.env.STORE_BACKUP_PATH || resolve(process.cwd(), 'vyra_store_backup.json');
+  private persistTimer: NodeJS.Timeout | null = null;
+
+  private persistDebounced() {
+    if (this.persistTimer) return;
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null;
+      try {
+        const data = {
+          users: [...this.users.entries()],
+          schedules: [...this.schedules.entries()],
+          plans: [...this.plans.entries()],
+          sugar: [...this.sugar.entries()],
+          ledgers: [...this.ledgers.entries()],
+          scores: [...this.scores.entries()].map(([k, v]) => [k, [...v.entries()]]),
+          activities: [...this.activities.entries()],
+          following: [...this.following.entries()].map(([k, v]) => [k, [...v]]),
+          chatMessages: [...this.chatMessages.entries()],
+          passwordHashes: [...this.passwordHashes.entries()],
+          events: [...this.events.entries()],
+          eventRegistrations: [...this.eventRegistrations.entries()].map(([k, v]) => [k, [...v]]),
+          clubs: [...this.clubs.entries()],
+          clubMembers: [...this.clubMembers.entries()].map(([k, v]) => [k, [...v]]),
+          clubPosts: [...this.clubPosts.entries()],
+        };
+        writeFileSync(this.backupPath, JSON.stringify(data, null, 2), 'utf-8');
+      } catch (err) {
+        console.error('Failed to persist store to disk:', err);
+      }
+    }, 500);
+  }
+
+  private loadFromDisk(): boolean {
+    try {
+      if (!existsSync(this.backupPath)) return false;
+      const raw = readFileSync(this.backupPath, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.users)) for (const [k, v] of data.users) this.users.set(k, v);
+      if (Array.isArray(data.schedules)) for (const [k, v] of data.schedules) this.schedules.set(k, v);
+      if (Array.isArray(data.plans)) for (const [k, v] of data.plans) this.plans.set(k, v);
+      if (Array.isArray(data.sugar)) for (const [k, v] of data.sugar) this.sugar.set(k, v);
+      if (Array.isArray(data.ledgers)) for (const [k, v] of data.ledgers) this.ledgers.set(k, v);
+      if (Array.isArray(data.activities)) for (const [k, v] of data.activities) this.activities.set(k, v);
+      if (Array.isArray(data.chatMessages)) for (const [k, v] of data.chatMessages) this.chatMessages.set(k, v);
+      if (Array.isArray(data.passwordHashes)) for (const [k, v] of data.passwordHashes) this.passwordHashes.set(k, v);
+      if (Array.isArray(data.events)) for (const [k, v] of data.events) this.events.set(k, v);
+      if (Array.isArray(data.clubs)) for (const [k, v] of data.clubs) this.clubs.set(k, v);
+      if (Array.isArray(data.scores)) {
+        for (const [k, entries] of data.scores) {
+          this.scores.set(k, new Map(entries));
+        }
+      }
+      if (Array.isArray(data.following)) {
+        for (const [k, entries] of data.following) {
+          this.following.set(k, new Set(entries));
+        }
+      }
+      if (Array.isArray(data.eventRegistrations)) {
+        for (const [k, entries] of data.eventRegistrations) {
+          this.eventRegistrations.set(k, new Set(entries));
+        }
+      }
+      if (Array.isArray(data.clubMembers)) {
+        for (const [k, entries] of data.clubMembers) {
+          this.clubMembers.set(k, new Set(entries));
+        }
+      }
+      return this.users.size > 0;
+    } catch (e) {
+      console.error('[Store] Failed to load from disk backup:', e);
+      return false;
+    }
+  }
+
+  private seedCommunity() {
+    const communityAthletes: Array<{ id: string; handle: string; name: string; sport: string; pts: number }> = [
+      { id: 'ath_aarav', handle: 'aarav_runner', name: 'Aarav Sharma', sport: 'run', pts: 2450 },
+      { id: 'ath_priya', handle: 'priya_fitsoul', name: 'Priya Patel', sport: 'yoga', pts: 1890 },
+      { id: 'ath_rohit', handle: 'rohit_pedals', name: 'Rohit Kumar', sport: 'ride', pts: 1620 },
+      { id: 'ath_ananya', handle: 'ananya_runs', name: 'Ananya Iyer', sport: 'run', pts: 1240 },
+      { id: 'ath_kabir', handle: 'kabir_lifts', name: 'Kabir Singh', sport: 'other', pts: 980 },
+      { id: 'ath_neha', handle: 'neha_walks', name: 'Neha Verma', sport: 'walk', pts: 720 },
+    ];
+
+    const alltimeBoard = this.scores.get('alltime') ?? new Map<string, number>();
+    const currentWeekKey = new Date().toISOString().slice(0, 10);
+    const weekBoard = this.scores.get(currentWeekKey) ?? new Map<string, number>();
+
+    for (const ath of communityAthletes) {
+      if (!this.users.has(ath.id)) {
+        this.users.set(ath.id, {
+          id: ath.id,
+          displayHandle: ath.handle,
+          name: ath.name,
+          email: `${ath.handle}@vyra.app`,
+          dob: '1998-04-12',
+          gender: 'prefer-not-to-say',
+          heightCm: 172,
+          weightKg: 68,
+          disabilityFlag: false,
+          accessibilityMode: false,
+          fitnessGoal: 'maintain',
+          dietToggle: true,
+          dietPreference: 'veg_no_egg',
+          primarySport: ath.sport,
+          dmPrivacy: 'following',
+          accountStatus: 'active',
+          onboardingStep: 9,
+          createdAt: new Date(Date.now() - 30 * 86_400_000).toISOString(),
+        });
+      }
+      alltimeBoard.set(ath.id, ath.pts);
+      weekBoard.set(ath.id, Math.round(ath.pts * 0.45));
+
+      // Seed community activity if none exist
+      const actId = `act_${ath.id}_seed`;
+      if (!this.activities.has(actId)) {
+        this.activities.set(actId, {
+          id: actId,
+          userId: ath.id,
+          type: (ath.sport === 'run' ? 'run' : ath.sport === 'ride' ? 'ride' : 'walk') as 'run' | 'ride' | 'walk',
+          title: ath.sport === 'run' ? 'Morning 5K Pace Run' : ath.sport === 'ride' ? 'Coastline Sunrise Ride' : 'Brisk Park Walk',
+          distanceM: ath.sport === 'run' ? 5120 : ath.sport === 'ride' ? 14200 : 3400,
+          durationSec: ath.sport === 'run' ? 1680 : ath.sport === 'ride' ? 2400 : 2100,
+          route: [
+            { lat: 12.9716, lng: 77.5946, t: 0 },
+            { lat: 12.9730, lng: 77.5960, t: 600 },
+            { lat: 12.9750, lng: 77.5980, t: 1200 },
+          ],
+          startedAt: new Date(Date.now() - 4 * 3600_000).toISOString(),
+          createdAt: new Date(Date.now() - 4 * 3600_000).toISOString(),
+        });
+      }
+    }
+
+    this.scores.set('alltime', alltimeBoard);
+    this.scores.set(currentWeekKey, weekBoard);
+  }
+
   constructor() {
+    // Try restoring state from persistent disk backup first
+    const hasData = this.loadFromDisk();
+
+    // Always seed community athletes and baseline activities
+    this.seedCommunity();
+
     // A handful of seed clubs/events so Groups is never an empty screen on a
     // fresh install — the same reasoning as the 46-item exercise library.
     const seedClubs: Array<[string, string, string]> = [
@@ -404,7 +553,9 @@ export class MemoryStore implements Store {
     ];
     for (const [name, description, interestTag] of seedClubs) {
       const id = `club_${Math.random().toString(36).slice(2, 10)}`;
-      this.clubs.set(id, { id, name, description, interestTag, memberCount: 0 });
+      if (!this.clubs.has(id)) {
+        this.clubs.set(id, { id, name, description, interestTag, memberCount: 12 });
+      }
     }
 
     const inSevenDays = new Date(Date.now() + 7 * 86_400_000).toISOString();
@@ -415,7 +566,9 @@ export class MemoryStore implements Store {
     ];
     for (const [title, sport, location, startsAt] of seedEvents) {
       const id = `event_${Math.random().toString(36).slice(2, 10)}`;
-      this.events.set(id, { id, title, sport, location, startsAt, clubId: null });
+      if (!this.events.has(id)) {
+        this.events.set(id, { id, title, sport, location, startsAt, clubId: null });
+      }
     }
 
     for (const def of MOVEMENT_DEFINITIONS) {
@@ -428,6 +581,7 @@ export class MemoryStore implements Store {
   async createUser(u: Omit<StoredUser, 'createdAt'>): Promise<StoredUser> {
     const user: StoredUser = { ...u, createdAt: new Date().toISOString() };
     this.users.set(user.id, user);
+    this.persistDebounced();
     return user;
   }
 
@@ -438,14 +592,19 @@ export class MemoryStore implements Store {
     if (!existing) throw new Error(`User ${id} not found`);
     const updated = { ...existing, ...patch };
     this.users.set(id, updated);
+    this.persistDebounced();
     return updated;
   }
 
-  async setSchedule(userId: string, blocks: RawBlock[]) { this.schedules.set(userId, blocks); }
+  async setSchedule(userId: string, blocks: RawBlock[]) {
+    this.schedules.set(userId, blocks);
+    this.persistDebounced();
+  }
   async getSchedule(userId: string) { return this.schedules.get(userId) ?? []; }
 
   async upsertPlan(plan: StoredPlan) {
     this.plans.set(this.key(plan.userId, plan.planDate), plan);
+    this.persistDebounced();
     return plan;
   }
 
@@ -467,6 +626,7 @@ export class MemoryStore implements Store {
       ? { ...existing, ...rec, encrypted: { ...existing.encrypted, ...rec.encrypted } }
       : rec;
     this.tracking.set(this.key(rec.userId, rec.recordDate), merged);
+    this.persistDebounced();
     return merged;
   }
 
@@ -482,11 +642,11 @@ export class MemoryStore implements Store {
 
   async setSugar(userId: string, date: ISODate, grams: number) {
     this.sugar.set(this.key(userId, date), grams);
+    this.persistDebounced();
   }
 
   async getSugar(userId: string, date: ISODate) {
-    const v = this.sugar.get(this.key(userId, date));
-    return v === undefined ? null : v;
+    return this.sugar.get(this.key(userId, date)) ?? null;
   }
 
   async listSugar(userId: string, from: ISODate, to: ISODate) {
@@ -501,12 +661,13 @@ export class MemoryStore implements Store {
     const rows = this.ledgers.get(userId) ?? [];
     rows.push(row);
     this.ledgers.set(userId, rows);
+    this.persistDebounced();
   }
 
   async listLedger(userId: string) { return this.ledgers.get(userId) ?? []; }
 
   async listLedgerForDate(userId: string, date: ISODate) {
-    return (this.ledgers.get(userId) ?? []).filter((r) => r.createdAt.startsWith(date));
+    return (this.ledgers.get(userId) ?? []).filter((r) => r.createdAt.slice(0, 10) === date);
   }
 
   async recordConsent(userId: string, consentType: string, granted: boolean, ipHash: string, policyVersion: string) {
@@ -525,11 +686,14 @@ export class MemoryStore implements Store {
   }
 
   async leaderboard(period: string, limit: number) {
-    const board = this.scores.get(period) ?? new Map();
+    let board = this.scores.get(period);
+    if (!board || board.size === 0) {
+      board = this.scores.get('alltime') ?? new Map();
+    }
     return [...board.entries()]
       .map(([userId, points]) => ({
         userId,
-        handle: this.users.get(userId)?.displayHandle ?? 'unknown',
+        handle: this.users.get(userId)?.displayHandle ?? 'athlete',
         points,
       }))
       .sort((a, b) => b.points - a.points)
@@ -540,6 +704,7 @@ export class MemoryStore implements Store {
     const board = this.scores.get(period) ?? new Map<string, number>();
     board.set(userId, points);
     this.scores.set(period, board);
+    this.persistDebounced();
   }
 
   async eraseUser(userId: string) {
@@ -552,6 +717,7 @@ export class MemoryStore implements Store {
     }
     for (const k of [...this.sugar.keys()]) if (k.startsWith(`${userId}:`)) this.sugar.delete(k);
     for (const board of this.scores.values()) board.delete(userId);
+    this.persistDebounced();
   }
 
   // ---------------------------------------------------------------------------
@@ -561,6 +727,7 @@ export class MemoryStore implements Store {
   async createActivity(a: Omit<StoredActivity, 'createdAt'>): Promise<StoredActivity> {
     const activity: StoredActivity = { ...a, createdAt: new Date().toISOString() };
     this.activities.set(activity.id, activity);
+    this.persistDebounced();
     return activity;
   }
 
@@ -575,10 +742,17 @@ export class MemoryStore implements Store {
 
   async listFeed(userId: string, limit: number) {
     const authors = new Set([userId, ...(this.following.get(userId) ?? [])]);
-    return [...this.activities.values()]
+    const items = [...this.activities.values()]
       .filter((a) => authors.has(a.userId))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit);
+    // Never leave feed empty if community activities exist
+    if (items.length === 0) {
+      return [...this.activities.values()]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, limit);
+    }
+    return items;
   }
 
   async toggleKudos(activityId: string, userId: string) {
@@ -782,6 +956,7 @@ export class MemoryStore implements Store {
     const rows = this.chatMessages.get(userId) ?? [];
     rows.push(message);
     this.chatMessages.set(userId, rows);
+    this.persistDebounced();
     return message;
   }
 
@@ -791,6 +966,7 @@ export class MemoryStore implements Store {
 
   async clearChatHistory(userId: string) {
     this.chatMessages.delete(userId);
+    this.persistDebounced();
   }
 
   // ---------------------------------------------------------------------------

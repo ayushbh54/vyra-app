@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/client.dart';
 import '../models/models.dart';
@@ -23,19 +26,51 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
+  static const _feedCacheKey = 'vyra_cached_feed_v1';
   List<ActivityItem>? _items;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _loadCachedFeed();
     _load();
+  }
+
+  Future<void> _loadCachedFeed() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_feedCacheKey);
+      if (raw != null && raw.isNotEmpty && _items == null) {
+        final decoded = jsonDecode(raw) as List;
+        final cached = decoded
+            .map((e) => ActivityItem.fromJson(e as Map<String, dynamic>))
+            .toList();
+        if (cached.isNotEmpty && mounted && _items == null) {
+          setState(() => _items = cached);
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveCachedFeed(List<ActivityItem> items) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = jsonEncode(items.map((i) => i.toJson()).toList());
+      await prefs.setString(_feedCacheKey, raw);
+    } catch (_) {}
   }
 
   Future<void> _load() async {
     try {
       final items = await context.read<VyraApi>().feed();
-      if (mounted) setState(() { _items = items; _error = null; });
+      if (mounted) {
+        setState(() {
+          _items = items;
+          _error = null;
+        });
+        _saveCachedFeed(items);
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     }

@@ -56,7 +56,8 @@ export function loadAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig
   }
   return {
     secret,
-    accessTtlSec: Number(env.JWT_ACCESS_TTL ?? 900),
+    // 30 days default access TTL so mobile athletes don't get logged out after 15 minutes of inactivity
+    accessTtlSec: Number(env.JWT_ACCESS_TTL ?? 2_592_000),
     refreshTtlSec: Number(env.JWT_REFRESH_TTL ?? 2_592_000),
   };
 }

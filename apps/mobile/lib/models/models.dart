@@ -38,6 +38,14 @@ class PlanEntry {
 
   int get durationMin => (durationSec / 60).round();
 
+  PlanEntry copyWith({bool? isCompleted}) => PlanEntry(
+        exerciseSlug: exerciseSlug,
+        name: name,
+        durationSec: durationSec,
+        isCompleted: isCompleted ?? this.isCompleted,
+        scheduledAt: scheduledAt,
+      );
+
   factory PlanEntry.fromJson(Map<String, dynamic> j) => PlanEntry(
         exerciseSlug: _s(j['exerciseSlug']),
         name: _s(j['name'], 'Exercise'),
@@ -61,6 +69,18 @@ class WorkoutPlan {
     required this.achievedMin,
     required this.entries,
   });
+
+  WorkoutPlan copyWith({
+    List<PlanEntry>? entries,
+    double? achievedMin,
+  }) =>
+      WorkoutPlan(
+        planDate: planDate,
+        goalMin: goalMin,
+        capacityMin: capacityMin,
+        achievedMin: achievedMin ?? this.achievedMin,
+        entries: entries ?? this.entries,
+      );
 
   int get completedCount => entries.where((e) => e.isCompleted).length;
   double get progress {
@@ -219,6 +239,17 @@ class TodayData {
     required this.dietEnabled,
     required this.disclaimer,
   });
+
+  TodayData copyWith({WorkoutPlan? plan}) => TodayData(
+        date: date,
+        plan: plan ?? this.plan,
+        windows: windows,
+        capacity: capacity,
+        effort: effort,
+        coins: coins,
+        dietEnabled: dietEnabled,
+        disclaimer: disclaimer,
+      );
 
   factory TodayData.fromJson(Map<String, dynamic> j) => TodayData(
         date: _s(j['date']),
@@ -718,6 +749,22 @@ class ActivityItem {
     if (h > 0) return '${h}h ${m}m';
     return '${m}m ${s}s';
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'userId': userId,
+        'type': type,
+        'title': title,
+        'distanceM': distanceM,
+        'durationSec': durationSec,
+        'route': route.map((r) => r.toJson()).toList(),
+        'startedAt': startedAt,
+        'createdAt': createdAt,
+        'authorHandle': authorHandle,
+        'authorName': authorName,
+        'kudosGiven': kudosGiven,
+        'commentCount': commentCount,
+      };
 
   factory ActivityItem.fromJson(Map<String, dynamic> j) => ActivityItem(
         id: _s(j['id']),
@@ -1292,4 +1339,73 @@ class DietChart {
         goldenRules: (j['goldenRules'] as List? ?? []).map((e) => e.toString()).toList(),
         generatedAt: _s(j['generatedAt']),
       );
+}
+
+class UserProfile {
+  final String id;
+  final String displayHandle;
+  final String name;
+  final String city;
+  final String primarySport;
+  final double weightKg;
+  final double heightCm;
+  final String dob;
+  final String gender;
+  final bool disabilityFlag;
+  final bool accessibilityMode;
+  final String disabilityType;
+  final List<String> medicalConditions;
+  final int onboardingStep;
+
+  const UserProfile({
+    required this.id,
+    required this.displayHandle,
+    required this.name,
+    required this.city,
+    required this.primarySport,
+    required this.weightKg,
+    required this.heightCm,
+    required this.dob,
+    required this.gender,
+    required this.disabilityFlag,
+    required this.accessibilityMode,
+    required this.disabilityType,
+    required this.medicalConditions,
+    required this.onboardingStep,
+  });
+
+  factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
+        id: _s(j['id']),
+        displayHandle: _s(j['displayHandle']),
+        name: _s(j['name']),
+        city: _s(j['city']),
+        primarySport: _s(j['primarySport']),
+        weightKg: _d(j['weightKg']),
+        heightCm: _d(j['heightCm']),
+        dob: _s(j['dob']),
+        gender: _s(j['gender']),
+        disabilityFlag: _b(j['disabilityFlag']),
+        accessibilityMode: _b(j['accessibilityMode']),
+        disabilityType: _s(j['disabilityType'], 'none'),
+        medicalConditions:
+            (j['medicalConditions'] as List? ?? []).map((e) => e.toString()).toList(),
+        onboardingStep: _i(j['onboardingStep']),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'displayHandle': displayHandle,
+        'name': name,
+        'city': city,
+        'primarySport': primarySport,
+        'weightKg': weightKg,
+        'heightCm': heightCm,
+        'dob': dob,
+        'gender': gender,
+        'disabilityFlag': disabilityFlag,
+        'accessibilityMode': accessibilityMode,
+        'disabilityType': disabilityType,
+        'medicalConditions': medicalConditions,
+        'onboardingStep': onboardingStep,
+      };
 }

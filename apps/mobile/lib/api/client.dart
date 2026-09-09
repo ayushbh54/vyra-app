@@ -468,6 +468,11 @@ class VyraApi {
   // Profile edit
   // ---------------------------------------------------------------------------
 
+  Future<UserProfile> getProfile() async {
+    final j = await _request('GET', '/v1/me', cacheKey: 'profile.me');
+    return UserProfile.fromJson(j);
+  }
+
   Future<Map<String, dynamic>> me() async {
     return _request('GET', '/v1/me');
   }
@@ -477,12 +482,20 @@ class VyraApi {
     String? city,
     String? primarySport,
     double? weightKg,
+    bool? disabilityFlag,
+    bool? accessibilityMode,
+    String? disabilityType,
+    List<String>? medicalConditions,
   }) async {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
     if (city != null) body['city'] = city;
     if (primarySport != null) body['primarySport'] = primarySport;
     if (weightKg != null) body['weightKg'] = weightKg;
+    if (disabilityFlag != null) body['disabilityFlag'] = disabilityFlag;
+    if (accessibilityMode != null) body['accessibilityMode'] = accessibilityMode;
+    if (disabilityType != null) body['disabilityType'] = disabilityType;
+    if (medicalConditions != null) body['medicalConditions'] = medicalConditions;
     await _request('PATCH', '/v1/me', body: body);
   }
 
