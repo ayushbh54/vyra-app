@@ -29,11 +29,12 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
 
   // Track joined community challenges locally
   final Set<String> _joinedCommunityChallenges = {'comm_steps_50k', 'comm_nosugar_7d'};
+  final Set<String> _joinedSpecialChallenges = {'spec_zero_sugar'};
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _load();
   }
 
@@ -228,7 +229,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                     tabs: const [
                       Tab(text: 'Personal'),
                       Tab(text: 'Community'),
-                      Tab(text: 'Coins & Wallet'),
+                      Tab(text: 'Bio-Hacks'),
+                      Tab(text: 'Wallet'),
                     ],
                   ),
                 ),
@@ -247,6 +249,7 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                 children: [
                   _buildPersonalChallengesTab(),
                   _buildCommunityChallengesTab(),
+                  _buildSpecialBioHacksTab(),
                   _buildCoinsAndWalletTab(),
                 ],
               ),
@@ -464,11 +467,295 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
               ),
             ),
           ),
+  // ── TAB 3: SPECIAL METABOLIC BIO-HACKS (Stitch Page 48) ───────────────────
+  Widget _buildSpecialBioHacksTab() {
+    final bioHacks = [
+      (
+        id: 'spec_zero_sugar',
+        title: 'Zero Sugar Reset',
+        subtitle: '30-Day Insulin Sensitivity Protocol',
+        duration: '30 Days',
+        adherence: 0.60,
+        dayText: 'Day 18 / 30',
+        reward: 500,
+        tag: 'INSULIN SENSITIVITY',
+        tagColor: VColor.accent,
+        icon: Icons.no_food_rounded,
+        rules: [
+          'Zero refined sugars, syrups & sweetened sodas',
+          'AI Food Camera validation on logged meals',
+          'Stabilize fasting insulin & eliminate dopamine cravings',
+        ],
+      ),
+      (
+        id: 'spec_intermittent_fasting',
+        title: '16:8 Intermittent Fasting',
+        subtitle: 'Cellular Autophagy & Circadian Fasting',
+        duration: '21 Days',
+        adherence: 0.45,
+        dayText: 'Day 9 / 21',
+        reward: 450,
+        tag: 'CELLULAR AUTOPHAGY',
+        tagColor: VColor.accentGreen,
+        icon: Icons.schedule_rounded,
+        rules: [
+          'Strict 16-hour fasting window (8-hour eating window)',
+          'Zero caloric beverages during fasting (water, black coffee only)',
+          'Enhances mitochondrial biogenesis & fat oxidation',
+        ],
+      ),
+      (
+        id: 'spec_keto_shift',
+        title: 'Keto Metabolic Shift',
+        subtitle: 'Ketogenic Adaptation & Carb Depletion',
+        duration: '14 Days',
+        adherence: 0.20,
+        dayText: 'Day 3 / 14',
+        reward: 400,
+        tag: 'KETONE BURNING',
+        tagColor: VColor.accentOrange,
+        icon: Icons.local_fire_department_rounded,
+        rules: [
+          'Under 25g net carbs per day',
+          'High healthy fats (avocado, MCT, nuts, omega-3)',
+          'Achieve steady blood ketone concentration > 0.5 mmol/L',
+        ],
+      ),
+      (
+        id: 'spec_clean_water',
+        title: '3.5L Pure Water Protocol',
+        subtitle: 'Deep Cellular Hydration & Detox',
+        duration: '7 Days',
+        adherence: 0.70,
+        dayText: 'Day 5 / 7',
+        reward: 200,
+        tag: 'CELLULAR HYDRATION',
+        tagColor: VColor.accent,
+        icon: Icons.water_drop_rounded,
+        rules: [
+          'Drink minimum 3.5 liters pure water daily',
+          'Pinch of Himalayan pink salt for natural electrolytes',
+          'Zero artificial coloring, zero synthetic energy drinks',
+        ],
+      ),
+      (
+        id: 'spec_no_junk',
+        title: 'No Ultra-Processed Food',
+        subtitle: '100% Single-Ingredient Whole Foods',
+        duration: '30 Days',
+        adherence: 0.10,
+        dayText: 'Day 3 / 30',
+        reward: 600,
+        tag: 'CLEAN BIOLOGY',
+        tagColor: VColor.accentGreen,
+        icon: Icons.eco_rounded,
+        rules: [
+          'Zero package foods with more than 3 ingredients',
+          'Zero seed oils (canola, palm, soybean oil)',
+          '100% natural bio-available protein, complex fiber & fresh produce',
+        ],
+      ),
+    ];
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(VSpace.base, VSpace.sm, VSpace.base, VSpace.xxxl),
+      children: [
+        Row(
+          children: [
+            const VHeaderBadge(label: 'CLINICAL NUTRITION PROTOCOLS', accentColor: VColor.accent),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: VColor.accentGreenGlow,
+                borderRadius: BorderRadius.circular(VRadius.pill),
+              ),
+              child: Text(
+                '${_joinedSpecialChallenges.length} ACTIVE',
+                style: const TextStyle(color: VColor.accentGreen, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Targeted bio-adaptive protocols engineered by Sports Physiologists for deep cellular optimization.',
+          style: TextStyle(color: VColor.textMid, fontSize: 13, height: 1.4),
+        ),
+        const SizedBox(height: VSpace.base),
+
+        for (final hack in bioHacks) ...[
+          Container(
+            margin: const EdgeInsets.only(bottom: VSpace.base),
+            padding: const EdgeInsets.all(VSpace.base),
+            decoration: BoxDecoration(
+              color: VColor.surfaceRaised,
+              borderRadius: BorderRadius.circular(VRadius.lg),
+              border: Border.all(
+                color: _joinedSpecialChallenges.contains(hack.id)
+                    ? hack.tagColor.withValues(alpha: 0.5)
+                    : VColor.line,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: hack.tagColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(VRadius.md),
+                        border: Border.all(color: hack.tagColor.withValues(alpha: 0.4)),
+                      ),
+                      child: Icon(hack.icon, color: hack.tagColor, size: 22),
+                    ),
+                    const SizedBox(width: VSpace.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: hack.tagColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  hack.tag,
+                                  style: TextStyle(color: hack.tagColor, fontSize: 9.5, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                hack.dayText,
+                                style: const TextStyle(color: VColor.textMid, fontSize: 11, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            hack.title,
+                            style: const TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            hack.subtitle,
+                            style: const TextStyle(color: VColor.textMid, fontSize: 12.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: VSpace.md),
+
+                // Adherence Progress Bar
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Protocol Adherence', style: TextStyle(color: VColor.textLow, fontSize: 11)),
+                    Text('${(hack.adherence * 100).round()}%',
+                        style: TextStyle(color: hack.tagColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: hack.adherence,
+                    minHeight: 6,
+                    color: hack.tagColor,
+                    backgroundColor: VColor.bg,
+                  ),
+                ),
+                const SizedBox(height: VSpace.md),
+
+                // Rules List
+                for (final rule in hack.rules)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.check_circle_outline_rounded, size: 14, color: hack.tagColor),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(rule, style: const TextStyle(color: VColor.textMid, fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: VSpace.sm),
+
+                // Join / Check-In Action
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.stars_rounded, color: VColor.accentOrange, size: 16),
+                        const SizedBox(width: 4),
+                        Text('+${hack.reward} Coins',
+                            style: const TextStyle(color: VColor.accentOrange, fontWeight: FontWeight.bold, fontSize: 13)),
+                      ],
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _joinedSpecialChallenges.contains(hack.id)
+                            ? VColor.accentGreen
+                            : VColor.surface,
+                        foregroundColor: _joinedSpecialChallenges.contains(hack.id)
+                            ? VColor.textOnAccent
+                            : VColor.text,
+                        side: BorderSide(
+                          color: _joinedSpecialChallenges.contains(hack.id)
+                              ? Colors.transparent
+                              : VColor.line,
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VRadius.pill)),
+                      ),
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          if (_joinedSpecialChallenges.contains(hack.id)) {
+                            _joinedSpecialChallenges.remove(hack.id);
+                          } else {
+                            _joinedSpecialChallenges.add(hack.id);
+                          }
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              _joinedSpecialChallenges.contains(hack.id)
+                                  ? '⚡ Protocol Armed! Maintain your daily streak.'
+                                  : 'Protocol exited.',
+                            ),
+                            backgroundColor: VColor.accentGreen,
+                          ),
+                        );
+                      },
+                      child: Text(
+                        _joinedSpecialChallenges.contains(hack.id) ? '✓ Active & Check In' : 'Join Protocol',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
 
-  // ── TAB 3: COINS & WALLET ──────────────────────────────────────────────────
+  // ── TAB 4: COINS & WALLET ──────────────────────────────────────────────────
   Widget _buildCoinsAndWalletTab() {
     if (_wallet == null) {
       return const Center(child: VLoading());
