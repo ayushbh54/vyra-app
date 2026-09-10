@@ -386,7 +386,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           const SizedBox(height: VSpace.sm),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            activeColor: VColor.accent,
+            activeThumbColor: VColor.accent,
             title: const Text('Enable diet planning', style: TextStyle(color: VColor.text)),
             subtitle: const Text('Turn off to hide meal plans app-wide.',
                 style: TextStyle(color: VColor.textLow, fontSize: 12)),

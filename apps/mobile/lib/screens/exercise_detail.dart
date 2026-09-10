@@ -186,7 +186,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: VColor.accent.withOpacity(0.35),
+                                color: VColor.accent.withValues(alpha: 0.35),
                                 blurRadius: 16,
                                 offset: const Offset(0, 4),
                               ),
@@ -238,7 +238,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: VColor.accent.withOpacity(0.15),
+                            color: VColor.accent.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(VRadius.sm),
                           ),
                           child: Text('${_movement!.phases.length} Phases',
@@ -1508,7 +1508,7 @@ class _AudioCoachPlayerState extends State<_AudioCoachPlayer> with SingleTickerP
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: _isPlaying ? VColor.accent : VColor.steel.withOpacity(0.5),
+                    color: _isPlaying ? VColor.accent : VColor.steel.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -1565,7 +1565,7 @@ class _AudioCoachPlayerState extends State<_AudioCoachPlayer> with SingleTickerP
           Container(
             padding: const EdgeInsets.all(VSpace.sm),
             decoration: BoxDecoration(
-              color: VColor.bg.withOpacity(0.5),
+              color: VColor.bg.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(VRadius.sm),
             ),
             child: Text(

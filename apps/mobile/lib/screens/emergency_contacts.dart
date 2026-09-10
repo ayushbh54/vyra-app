@@ -69,7 +69,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
       context: context,
       builder: (_) => const _ContactDialog(),
     );
-    if (result == null) return;
+    if (result == null || !mounted) return;
     try {
       await context.read<VyraApi>().addEmergencyContact(
             name: result.name,
@@ -95,7 +95,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
         initialRelationship: contact.relationship,
       ),
     );
-    if (result == null) return;
+    if (result == null || !mounted) return;
     try {
       final api = context.read<VyraApi>();
       await api.deleteEmergencyContact(contact.id);
@@ -127,7 +127,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
     try {
       await context.read<VyraApi>().deleteEmergencyContact(contact.id);
       _load();
@@ -285,7 +285,7 @@ class _ContactDialogState extends State<_ContactDialog> {
           ),
           const SizedBox(height: VSpace.sm),
           DropdownButtonFormField<String>(
-            value: _relationship,
+            initialValue: _relationship,
             dropdownColor: VColor.surfaceRaised,
             style: const TextStyle(color: VColor.text),
             decoration: const InputDecoration(labelText: 'Relationship'),

@@ -103,22 +103,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [VColor.accent.withOpacity(0.12), VColor.accentGreen.withOpacity(0.12)],
+                        colors: [VColor.accent.withValues(alpha: 0.12), VColor.accentGreen.withValues(alpha: 0.12)],
                       ),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: VColor.accent.withOpacity(0.25)),
+                      border: Border.all(color: VColor.accent.withValues(alpha: 0.25)),
                     ),
-                    child: Row(
+                    child: const Row(
                       children: [
-                        const Icon(Icons.spa_outlined, color: VColor.accentGreen, size: 20),
-                        const SizedBox(width: 8),
-                        const Expanded(
+                        Icon(Icons.spa_outlined, color: VColor.accentGreen, size: 20),
+                        SizedBox(width: 8),
+                        Expanded(
                           child: Text(
                             'Face & Scalp Yoga Protocols (Stitch 19/20)',
                             style: TextStyle(color: VColor.text, fontSize: 12, fontWeight: FontWeight.w600),
                           ),
                         ),
-                        const Icon(Icons.chevron_right, color: VColor.accent, size: 18),
+                        Icon(Icons.chevron_right, color: VColor.accent, size: 18),
                       ],
                     ),
                   ),

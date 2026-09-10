@@ -1816,7 +1816,10 @@ Respond in this exact JSON format:
     };
 
     if (!geminiLab) {
-      return fallbackAnalysis;
+      if (user.id.startsWith('demo-') && imageBase64.length > 500) {
+        return fallbackAnalysis;
+      }
+      throw HttpError.badRequest('AI lab report analysis is not configured. Set GEMINI_LAB_API_KEY or GEMINI_API_KEY.');
     }
 
     try {

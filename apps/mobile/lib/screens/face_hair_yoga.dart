@@ -348,18 +348,18 @@ class _FaceHairYogaScreenState extends State<FaceHairYogaScreen>
           ),
           child: Row(
             children: [
-              Expanded(
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const VHeaderBadge(label: 'SUBMENTAL & PLATYSMA', accentColor: VColor.accent),
-                    const SizedBox(height: 6),
-                    const Text(
+                    VHeaderBadge(label: 'SUBMENTAL & PLATYSMA', accentColor: VColor.accent),
+                    SizedBox(height: 6),
+                    Text(
                       'Face Yoga & Sculpting',
                       style: TextStyle(color: VColor.text, fontSize: 18, fontWeight: FontWeight.w800),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
+                    SizedBox(height: 4),
+                    Text(
                       'Targeted isometric facial exercises that tighten the jawline and drain puffiness.',
                       style: TextStyle(color: VColor.textMid, fontSize: 12.5),
                     ),
@@ -412,18 +412,18 @@ class _FaceHairYogaScreenState extends State<FaceHairYogaScreen>
           ),
           child: Row(
             children: [
-              Expanded(
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const VHeaderBadge(label: 'MICROVASCULAR PERFUSION', accentColor: VColor.accentGreen),
-                    const SizedBox(height: 6),
-                    const Text(
+                    VHeaderBadge(label: 'MICROVASCULAR PERFUSION', accentColor: VColor.accentGreen),
+                    SizedBox(height: 6),
+                    Text(
                       'Hair Yoga & Scalp Health',
                       style: TextStyle(color: VColor.text, fontSize: 18, fontWeight: FontWeight.w800),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
+                    SizedBox(height: 4),
+                    Text(
                       'Inverted asanas that surge microcapillary scalp perfusion by up to 38% and down-regulate shedding.',
                       style: TextStyle(color: VColor.textMid, fontSize: 12.5),
                     ),

@@ -79,7 +79,7 @@ class _FirstAidScreenState extends State<FirstAidScreen> with SingleTickerProvid
                   Container(
                     padding: const EdgeInsets.all(VSpace.base),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
+                      gradient: const LinearGradient(
                         colors: [
                           VColor.critSoft,
                           VColor.surfaceRaised,
@@ -236,21 +236,21 @@ class _FirstAidScreenState extends State<FirstAidScreen> with SingleTickerProvid
             borderRadius: BorderRadius.circular(VRadius.lg),
             border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.4)),
           ),
-          child: Column(
+          child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.verified_rounded, color: VColor.accentGreen, size: 20),
-                  const SizedBox(width: 8),
-                  const Text(
+                  Icon(Icons.verified_rounded, color: VColor.accentGreen, size: 20),
+                  SizedBox(width: 8),
+                  Text(
                     'Standard R.I.C.E Acute Sprain Formula',
                     style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              const Text(
+              SizedBox(height: 6),
+              Text(
                 'Apply within the first 24–48 hours of ankle sprains, knee twists, or tendon pulls.',
                 style: TextStyle(color: VColor.textMid, fontSize: 13),
               ),

@@ -140,7 +140,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: VSpace.base),
               DropdownButtonFormField<String>(
-                value: _sport,
+                initialValue: _sport,
                 dropdownColor: VColor.surfaceRaised,
                 style: const TextStyle(color: VColor.text),
                 decoration: const InputDecoration(labelText: 'Primary sport'),
@@ -173,7 +173,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 value: _disabilityFlag,
-                activeColor: VColor.accent,
+                activeThumbColor: VColor.accent,
                 title: const Text(
                   'Physically Differently Abled / Adaptive Mode',
                   style: TextStyle(color: VColor.text, fontWeight: FontWeight.w600, fontSize: 14.5),

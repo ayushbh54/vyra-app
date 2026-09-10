@@ -151,19 +151,23 @@ class _BoardTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (loading) return const Center(child: CircularProgressIndicator(color: VColor.accent));
-    if (error != null) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+    if (error != null) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Text(error!, style: const TextStyle(color: VColor.textMid, fontSize: 14), textAlign: TextAlign.center),
       const SizedBox(height: 12),
       TextButton(onPressed: onRetry, child: const Text('Retry', style: TextStyle(color: VColor.accent))),
     ]));
+    }
 
     final d = data;
-    if (d == null || d.rows.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+    if (d == null || d.rows.isEmpty) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       const Icon(Icons.emoji_events_rounded, color: VColor.textLow, size: 52),
       const SizedBox(height: 12),
       Text(scope == 'friends' ? 'Follow athletes to see them here.' : 'No data yet.',
           style: const TextStyle(color: VColor.textMid, fontSize: 14)),
     ]));
+    }
 
     return CustomScrollView(slivers: [
       // ── Self card ────────────────────────────────────────────────────────
@@ -204,11 +208,11 @@ class _SelfCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [tierColor.withOpacity(0.15), VColor.surface],
+          colors: [tierColor.withValues(alpha: 0.15), VColor.surface],
           begin: Alignment.topLeft, end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: tierColor.withOpacity(0.4)),
+        border: Border.all(color: tierColor.withValues(alpha: 0.4)),
       ),
       child: Column(children: [
         Row(children: [
@@ -306,7 +310,7 @@ class _PodiumSlot extends StatelessWidget {
         height: podiumH,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [tierColor.withOpacity(0.5), tierColor.withOpacity(0.2)],
+            colors: [tierColor.withValues(alpha: 0.5), tierColor.withValues(alpha: 0.2)],
             begin: Alignment.topCenter, end: Alignment.bottomCenter,
           ),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
@@ -336,7 +340,7 @@ class _RowCard extends StatelessWidget {
         color: row.isSelf ? VColor.accentGlow : VColor.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: row.isSelf ? VColor.accent.withOpacity(0.5) : VColor.line,
+          color: row.isSelf ? VColor.accent.withValues(alpha: 0.5) : VColor.line,
         ),
       ),
       child: Row(children: [
@@ -356,7 +360,7 @@ class _RowCard extends StatelessWidget {
           Text('${row.activityPoints}',
               style: TextStyle(color: tierColor, fontSize: 15, fontWeight: FontWeight.w700)),
           Text(row.tier,
-              style: TextStyle(color: tierColor.withOpacity(0.7), fontSize: 10)),
+              style: TextStyle(color: tierColor.withValues(alpha: 0.7), fontSize: 10)),
         ]),
       ]),
     );

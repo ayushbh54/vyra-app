@@ -160,14 +160,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  VColor.accent.withOpacity(0.22),
+                  VColor.accent.withValues(alpha: 0.22),
                   VColor.surfaceRaised,
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(VRadius.lg),
-              border: Border.all(color: VColor.accent.withOpacity(0.3)),
+              border: Border.all(color: VColor.accent.withValues(alpha: 0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,9 +178,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: VColor.accent.withOpacity(0.2),
+                        color: VColor.accent.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(VRadius.pill),
-                        border: Border.all(color: VColor.accent.withOpacity(0.4)),
+                        border: Border.all(color: VColor.accent.withValues(alpha: 0.4)),
                       ),
                       child: Row(
                         children: [
@@ -204,7 +204,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         decoration: BoxDecoration(
                           color: VColor.accentGreenGlow,
                           borderRadius: BorderRadius.circular(VRadius.pill),
-                          border: Border.all(color: VColor.accentGreen.withOpacity(0.4)),
+                          border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.4)),
                         ),
                         child: const Row(
                           children: [
@@ -375,9 +375,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           // ── Community Athletes Attending ──
           const VLabel('COMMUNITY ATHLETES'),
           const SizedBox(height: VSpace.xs),
-          VCard(
+          const VCard(
             tone: CardTone.normal,
-            child: const Row(
+            child: Row(
               children: [
                 SizedBox(
                   width: 90,

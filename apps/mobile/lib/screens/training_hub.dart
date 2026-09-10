@@ -196,6 +196,7 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
       }
     } catch (_) {}
 
+    if (!mounted) return;
     try {
       final result = await context
           .read<VyraApi>()
@@ -221,6 +222,7 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
       if (!mounted) return;
       // Re-load will keep the locally persisted completion intact
       await _load();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
       if (mounted) setState(() => _busySlug = null);
@@ -344,9 +346,9 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
                 margin: const EdgeInsets.only(bottom: VSpace.sm),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: VColor.accent.withOpacity(0.12),
+                  color: VColor.accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: VColor.accent.withOpacity(0.4)),
+                  border: Border.all(color: VColor.accent.withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   children: [
@@ -510,46 +512,46 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
           ),
           child: Row(
             children: [
-              Expanded(
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.directions_walk_rounded, color: VColor.accentGreen, size: 16),
-                        const SizedBox(width: 4),
-                        const Text('STEPS', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                        Icon(Icons.directions_walk_rounded, color: VColor.accentGreen, size: 16),
+                        SizedBox(width: 4),
+                        Text('STEPS', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
+                    SizedBox(height: 4),
+                    Text(
                       '6,420',
                       style: TextStyle(color: VColor.accentGreen, fontSize: 18, fontWeight: FontWeight.w800),
                     ),
-                    const Text('Goal 10,000', style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                    Text('Goal 10,000', style: TextStyle(color: VColor.textLow, fontSize: 10)),
                   ],
                 ),
               ),
               Container(width: 1, height: 36, color: VColor.lineSoft),
-              Expanded(
+              const Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 12),
+                  padding: EdgeInsets.only(left: 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.local_fire_department_rounded, color: VColor.accentOrange, size: 16),
-                          const SizedBox(width: 4),
-                          const Text('BURN', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                          Icon(Icons.local_fire_department_rounded, color: VColor.accentOrange, size: 16),
+                          SizedBox(width: 4),
+                          Text('BURN', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
+                      SizedBox(height: 4),
+                      Text(
                         '485 kcal',
                         style: TextStyle(color: VColor.accentOrange, fontSize: 18, fontWeight: FontWeight.w800),
                       ),
-                      const Text('Active output', style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                      Text('Active output', style: TextStyle(color: VColor.textLow, fontSize: 10)),
                     ],
                   ),
                 ),
@@ -561,11 +563,11 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      const Row(
                         children: [
-                          const Icon(Icons.timer_rounded, color: VColor.accent, size: 16),
-                          const SizedBox(width: 4),
-                          const Text('SESSION', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                          Icon(Icons.timer_rounded, color: VColor.accent, size: 16),
+                          SizedBox(width: 4),
+                          Text('SESSION', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -672,12 +674,12 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [VColor.accent.withOpacity(0.18), VColor.surfaceRaised],
+                colors: [VColor.accent.withValues(alpha: 0.18), VColor.surfaceRaised],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(VRadius.md),
-              border: Border.all(color: VColor.accent.withOpacity(0.4)),
+              border: Border.all(color: VColor.accent.withValues(alpha: 0.4)),
             ),
             child: Row(
               children: [
@@ -685,7 +687,7 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: VColor.accent.withOpacity(0.2),
+                    color: VColor.accent.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.access_time_filled_rounded, color: VColor.accent, size: 22),
@@ -707,7 +709,7 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
                             decoration: BoxDecoration(
                               color: VColor.accentGreenGlow,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: VColor.accentGreen.withOpacity(0.5)),
+                              border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.5)),
                             ),
                             child: const Text('CUSTOM ACTIVE', style: TextStyle(color: VColor.accentGreen, fontSize: 10, fontWeight: FontWeight.bold)),
                           ),

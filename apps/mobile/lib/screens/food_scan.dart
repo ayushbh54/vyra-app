@@ -70,6 +70,7 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
     setState(() { _scanning = true; _error = null; });
     try {
       final bytes  = await file.readAsBytes();
+      if (!mounted) return;
       final b64    = base64Encode(bytes);
       final mime   = file.path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
       final api    = context.read<VyraApi>();
@@ -152,7 +153,7 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
                 decoration: BoxDecoration(
                   color: VColor.accentGlow,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: VColor.accent.withOpacity(0.4)),
+                  border: Border.all(color: VColor.accent.withValues(alpha: 0.4)),
                 ),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   const Text('Total (estimated)', style: TextStyle(color: VColor.textMid, fontSize: 13)),
@@ -187,7 +188,7 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
                   label: const Text('New Scan'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: VColor.accent,
-                    side: BorderSide(color: VColor.accent.withOpacity(0.5)),
+                    side: BorderSide(color: VColor.accent.withValues(alpha: 0.5)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -219,7 +220,7 @@ class _PickButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: VColor.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(children: [
           Icon(icon, color: color, size: 36),
@@ -266,7 +267,7 @@ class _ErrorCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: VColor.critSoft,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: VColor.crit.withOpacity(0.3)),
+        border: Border.all(color: VColor.crit.withValues(alpha: 0.3)),
       ),
       child: Column(children: [
         Text(message, style: const TextStyle(color: VColor.crit, fontSize: 13), textAlign: TextAlign.center),
@@ -312,7 +313,7 @@ class _FoodItemCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
-                color: _confidenceColor.withOpacity(0.12),
+                color: _confidenceColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(item.confidence, style: TextStyle(color: _confidenceColor, fontSize: 10)),

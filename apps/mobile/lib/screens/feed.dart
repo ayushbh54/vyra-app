@@ -249,7 +249,7 @@ class _ActivityCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: VSpace.lg),
-                Icon(Icons.mode_comment_outlined, size: 16, color: VColor.textMid),
+                const Icon(Icons.mode_comment_outlined, size: 16, color: VColor.textMid),
                 const SizedBox(width: 4),
                 Text('${item.commentCount}',
                     style: const TextStyle(color: VColor.textMid, fontSize: 12)),

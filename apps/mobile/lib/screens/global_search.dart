@@ -363,10 +363,10 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
             decoration: BoxDecoration(
               color: VColor.surfaceRaised,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: VColor.accent.withOpacity(0.35)),
+              border: Border.all(color: VColor.accent.withValues(alpha: 0.35)),
               boxShadow: [
                 BoxShadow(
-                  color: VColor.accent.withOpacity(0.08),
+                  color: VColor.accent.withValues(alpha: 0.08),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
@@ -398,7 +398,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                     },
                     child: Container(
                       padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: VColor.surface,
                         shape: BoxShape.circle,
                       ),
@@ -454,7 +454,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                 boxShadow: selected
                     ? [
                         BoxShadow(
-                          color: VColor.accent.withOpacity(0.35),
+                          color: VColor.accent.withValues(alpha: 0.35),
                           blurRadius: 10,
                           offset: const Offset(0, 2),
                         ),
@@ -552,7 +552,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: VColor.surface,
-              border: Border.all(color: VColor.accent.withOpacity(0.4), width: 1.5),
+              border: Border.all(color: VColor.accent.withValues(alpha: 0.4), width: 1.5),
             ),
             alignment: Alignment.center,
             child: Text(
@@ -812,8 +812,8 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                   const Text('• Post', style: TextStyle(color: VColor.textLow, fontSize: 12)),
                 ],
               ),
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Icon(Icons.bolt, color: VColor.accent, size: 14),
                   SizedBox(width: 2),
                   Text('Matched', style: TextStyle(color: VColor.accent, fontSize: 11, fontWeight: FontWeight.bold)),
@@ -838,8 +838,8 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                 item.subtitle,
                 style: const TextStyle(color: VColor.textLow, fontSize: 11),
               ),
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Icon(Icons.favorite, color: VColor.accentGreen, size: 14),
                   SizedBox(width: 4),
                   Text(

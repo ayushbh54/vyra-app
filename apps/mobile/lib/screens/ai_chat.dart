@@ -235,7 +235,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
               decoration: BoxDecoration(
                 color: VColor.accentGreenGlow,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: VColor.accentGreen.withOpacity(0.4)),
+                border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.4)),
               ),
               child: const Text('LIVE', style: TextStyle(color: VColor.accentGreen, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
             ),
@@ -279,7 +279,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
             left: 12, right: 8, top: 10,
             bottom: MediaQuery.of(context).viewInsets.bottom + 12,
           ),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: VColor.surface,
             border: Border(top: BorderSide(color: VColor.line)),
           ),
@@ -314,7 +314,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: _loading ? VColor.surfaceHigh : VColor.accent,
-                  boxShadow: _loading ? [] : [BoxShadow(color: VColor.accentGlow, blurRadius: 10, spreadRadius: 1)],
+                  boxShadow: _loading ? [] : [const BoxShadow(color: VColor.accentGlow, blurRadius: 10, spreadRadius: 1)],
                 ),
                 child: Icon(
                   _loading ? Icons.hourglass_empty_rounded : Icons.send_rounded,
@@ -360,7 +360,7 @@ class _Bubble extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isUser ? VColor.accent.withOpacity(0.15) : VColor.surfaceRaised,
+                color: isUser ? VColor.accent.withValues(alpha: 0.15) : VColor.surfaceRaised,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -368,7 +368,7 @@ class _Bubble extends StatelessWidget {
                   bottomRight: Radius.circular(isUser ? 4 : 18),
                 ),
                 border: Border.all(
-                  color: isUser ? VColor.accent.withOpacity(0.3) : VColor.line,
+                  color: isUser ? VColor.accent.withValues(alpha: 0.3) : VColor.line,
                 ),
               ),
               child: Text(
@@ -467,7 +467,7 @@ class _ErrorBubble extends StatelessWidget {
       decoration: BoxDecoration(
         color: VColor.critSoft,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: VColor.crit.withOpacity(0.3)),
+        border: Border.all(color: VColor.crit.withValues(alpha: 0.3)),
       ),
       child: Text(message, style: const TextStyle(color: VColor.crit, fontSize: 13)),
     );

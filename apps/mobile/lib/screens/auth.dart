@@ -98,8 +98,8 @@ class _AuthScreenState extends State<AuthScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Icon(Icons.g_mobiledata, size: 28, color: VColor.accent),
                   SizedBox(width: 8),
                   Text('Continue with Google', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: VColor.text)),
@@ -243,9 +243,9 @@ class _AuthScreenState extends State<AuthScreen> {
       backgroundColor: VColor.bg,
       appBar: AppBar(
         backgroundColor: VColor.bg,
-        title: Row(
+        title: const Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             Text('VYRA', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 2)),
             SizedBox(width: 6),
             Icon(Icons.circle, size: 6, color: VColor.accent),
@@ -284,9 +284,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     ],
                   ),
                 ),
-                Row(
+                const Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
+                  children: [
                     Icon(Icons.bolt, size: 14, color: VColor.good),
                     SizedBox(width: 4),
                     Text('SECURE', style: TextStyle(
@@ -298,9 +298,9 @@ class _AuthScreenState extends State<AuthScreen> {
             const SizedBox(height: VSpace.lg),
 
             // Hero heading
-            Text.rich(
+            const Text.rich(
               TextSpan(children: [
-                const TextSpan(text: 'Step into the\n',
+                TextSpan(text: 'Step into the\n',
                     style: TextStyle(color: VColor.text, fontSize: 28, fontWeight: FontWeight.w800, height: 1.15)),
                 TextSpan(text: 'VYRA Ecosystem',
                     style: TextStyle(color: VColor.accent, fontSize: 28, fontWeight: FontWeight.w800, height: 1.15)),
@@ -341,14 +341,14 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
             const SizedBox(height: VSpace.lg),
 
-            Row(children: [
-              const Expanded(child: Divider(color: VColor.line)),
+            const Row(children: [
+              Expanded(child: Divider(color: VColor.line)),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: VSpace.sm),
+                padding: EdgeInsets.symmetric(horizontal: VSpace.sm),
                 child: Text('OR CONTINUE WITH EMAIL', style: TextStyle(
                     color: VColor.textLow, fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.w700)),
               ),
-              const Expanded(child: Divider(color: VColor.line)),
+              Expanded(child: Divider(color: VColor.line)),
             ]),
             const SizedBox(height: VSpace.lg),
 
@@ -450,7 +450,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     colors: [VColor.accent, VColor.accentGreen],
                     begin: Alignment.centerLeft, end: Alignment.centerRight,
                   ),
-                  boxShadow: [BoxShadow(color: VColor.accentGreenGlow, blurRadius: 18, spreadRadius: 1)],
+                  boxShadow: const [BoxShadow(color: VColor.accentGreenGlow, blurRadius: 18, spreadRadius: 1)],
                 ),
                 child: Material(
                   color: Colors.transparent,

@@ -14,12 +14,12 @@ class ChallengesHubScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
+    return const DefaultTabController(
       length: 3,
       child: SafeArea(
         child: Column(
           children: [
-            const TabBar(
+            TabBar(
               isScrollable: true,
               labelColor: VColor.accent,
               unselectedLabelColor: VColor.textMid,
@@ -30,7 +30,7 @@ class ChallengesHubScreen extends StatelessWidget {
                 Tab(text: 'Leaderboard'),
               ],
             ),
-            const Expanded(
+            Expanded(
               child: TabBarView(
                 children: [
                   ChallengesScreen(),

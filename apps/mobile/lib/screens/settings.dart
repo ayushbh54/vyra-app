@@ -191,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: VColor.accent.withOpacity(0.15),
+                        color: VColor.accent.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
@@ -306,7 +306,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  activeColor: VColor.accent,
+                  activeThumbColor: VColor.accent,
                   title: const Text('Spoken Form Cues', style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('Speaks real-time tempo and form guidance via device speaker.',
                       style: TextStyle(color: VColor.textLow, fontSize: 12)),

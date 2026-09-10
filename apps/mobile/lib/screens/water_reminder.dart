@@ -69,27 +69,27 @@ class _WaterReminderScreenState extends State<WaterReminderScreen> {
             ),
             child: Row(
               children: [
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.water_drop_rounded, color: VColor.accent, size: 16),
-                          const SizedBox(width: 6),
-                          const Text(
+                          Icon(Icons.water_drop_rounded, color: VColor.accent, size: 16),
+                          SizedBox(width: 6),
+                          Text(
                             'ACTIVE PROTOCOL',
                             style: TextStyle(color: VColor.accent, fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.8),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      const Text(
+                      SizedBox(height: 6),
+                      Text(
                         'Hydration Engine v4.2',
                         style: TextStyle(color: VColor.text, fontSize: 18, fontWeight: FontWeight.w800),
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
+                      SizedBox(height: 4),
+                      Text(
                         'Calibrated for cellular recovery and athletic endurance.',
                         style: TextStyle(color: VColor.textMid, fontSize: 12.5),
                       ),
@@ -203,7 +203,7 @@ class _WaterReminderScreenState extends State<WaterReminderScreen> {
                 ),
                 Switch(
                   value: _enabled,
-                  activeColor: VColor.accent,
+                  activeThumbColor: VColor.accent,
                   activeTrackColor: VColor.accent.withValues(alpha: 0.3),
                   onChanged: (val) {
                     HapticFeedback.selectionClick();
@@ -321,7 +321,7 @@ class _WaterReminderScreenState extends State<WaterReminderScreen> {
             title: const Text('Sound & Haptic Chime', style: TextStyle(color: VColor.text, fontSize: 14)),
             subtitle: const Text('Gentle sonic chime to keep focus during workouts', style: TextStyle(color: VColor.textLow, fontSize: 11.5)),
             value: _soundEnabled,
-            activeColor: VColor.accent,
+            activeThumbColor: VColor.accent,
             tileColor: VColor.surfaceRaised,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VRadius.lg)),
             onChanged: (val) => setState(() => _soundEnabled = val),

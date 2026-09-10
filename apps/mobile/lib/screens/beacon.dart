@@ -105,8 +105,10 @@ class _BeaconScreenState extends State<BeaconScreen> {
       var pos = await Geolocator.getLastKnownPosition();
       try {
         pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 7),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 7),
+          ),
         );
       } catch (_) {}
 
@@ -225,7 +227,7 @@ class _BeaconScreenState extends State<BeaconScreen> {
               children: [
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  activeColor: VColor.accentGreen,
+                  activeThumbColor: VColor.accentGreen,
                   title: const Text('Live Transmission: Auto-Broadcast', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                   subtitle: const Text('Broadcasting real-time GPS coordinates via encrypted mesh protocol.',
                       style: TextStyle(color: VColor.textLow, fontSize: 12)),

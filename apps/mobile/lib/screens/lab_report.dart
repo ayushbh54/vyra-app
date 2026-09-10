@@ -74,6 +74,7 @@ class _LabReportScreenState extends State<LabReportScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final bytes  = await file.readAsBytes();
+      if (!mounted) return;
       final b64    = base64Encode(bytes);
       final mime   = file.path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
       final result = await context.read<VyraApi>().scanLabReport(imageBase64: b64, mimeType: mime);
@@ -114,7 +115,7 @@ class _LabReportScreenState extends State<LabReportScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: VColor.accentGreenGlow,
-                    border: Border.all(color: VColor.accentGreen.withOpacity(0.4)),
+                    border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.4)),
                   ),
                   child: const Icon(Icons.biotech_rounded, color: VColor.accentGreen, size: 22),
                 ),
@@ -209,7 +210,7 @@ class _LabReportScreenState extends State<LabReportScreen> {
                 decoration: BoxDecoration(
                   color: VColor.accentGreenGlow,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: VColor.accentGreen.withOpacity(0.3)),
+                  border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.3)),
                 ),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Icon(Icons.tips_and_updates_rounded, color: VColor.accentGreen, size: 18),
@@ -251,7 +252,7 @@ class _ActionBtn extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 18),
       decoration: BoxDecoration(
         color: VColor.surface, borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Column(children: [
         Icon(icon, color: color, size: 28),
@@ -302,7 +303,7 @@ class _FindingCard extends StatelessWidget {
       Container(
         width: 36, height: 36,
         decoration: BoxDecoration(
-          shape: BoxShape.circle, color: _statusColor.withOpacity(0.15),
+          shape: BoxShape.circle, color: _statusColor.withValues(alpha: 0.15),
         ),
         child: Icon(_statusIcon, color: _statusColor, size: 18),
       ),
@@ -315,7 +316,7 @@ class _FindingCard extends StatelessWidget {
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(
-          color: _statusColor.withOpacity(0.15),
+          color: _statusColor.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(f.status.toUpperCase(),
@@ -359,7 +360,7 @@ class _AdjustmentCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: VColor.accentGreenGlow, borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: VColor.accentGreen.withOpacity(0.3)),
+            border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.3)),
           ),
           child: Text(food, style: const TextStyle(color: VColor.accentGreen, fontSize: 12)),
         )).toList()),

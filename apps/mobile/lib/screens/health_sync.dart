@@ -306,12 +306,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
       backgroundColor: VColor.bg,
       body: SafeArea(
         child: ListView(
-          padding: EdgeInsets.all(VSpace.md),
+          padding: const EdgeInsets.all(VSpace.md),
           children: [
             _buildHeader(context),
-            SizedBox(height: VSpace.lg),
+            const SizedBox(height: VSpace.lg),
             _buildHeroCard(),
-            SizedBox(height: VSpace.md),
+            const SizedBox(height: VSpace.md),
             _buildStatusCard(),
             const SizedBox(height: VSpace.md),
             _buildDevicesCard(),
@@ -368,13 +368,13 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
   }
 
   Widget _buildHeroCard() {
-    return VCard(
+    return const VCard(
       child: Padding(
-        padding: const EdgeInsets.all(VSpace.md),
+        padding: EdgeInsets.all(VSpace.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
                 Icon(Icons.watch_rounded, color: VColor.accent, size: 28),
                 SizedBox(width: VSpace.sm),
@@ -383,8 +383,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
                 Icon(Icons.monitor_heart, color: VColor.accentGreen, size: 24),
               ],
             ),
-            const SizedBox(height: VSpace.md),
-            const Text(
+            SizedBox(height: VSpace.md),
+            Text(
               'Smartwatch & Biometric Sync',
               style: TextStyle(
                 color: VColor.text,
@@ -392,8 +392,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: VSpace.xs),
-            const Text(
+            SizedBox(height: VSpace.xs),
+            Text(
               'Aapki smartwatch (Wear OS, Samsung Galaxy Watch, Apple Watch, '
               'Garmin, Fitbit, ya Amazfit) ka data Health Connect / HealthKit ke '
               'through real-time VYRA me sync hota hai — live BPM, daily steps aur calories.',

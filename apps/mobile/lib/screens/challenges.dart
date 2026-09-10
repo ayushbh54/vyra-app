@@ -281,12 +281,12 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
           padding: const EdgeInsets.all(VSpace.md),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [VColor.accent.withOpacity(0.18), VColor.surfaceRaised],
+              colors: [VColor.accent.withValues(alpha: 0.18), VColor.surfaceRaised],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(VRadius.lg),
-            border: Border.all(color: VColor.accent.withOpacity(0.35)),
+            border: Border.all(color: VColor.accent.withValues(alpha: 0.35)),
           ),
           child: Row(
             children: [
@@ -294,7 +294,7 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: VColor.accent.withOpacity(0.2),
+                  color: VColor.accent.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.emoji_events_rounded, color: VColor.accent, size: 24),
@@ -429,13 +429,13 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(VSpace.base, VSpace.sm, VSpace.base, VSpace.xxxl),
       children: [
-        VCard(
+        const VCard(
           tone: CardTone.accent,
           child: Row(
             children: [
-              const Icon(Icons.people_alt_rounded, color: VColor.accent, size: 28),
-              const SizedBox(width: VSpace.md),
-              const Expanded(
+              Icon(Icons.people_alt_rounded, color: VColor.accent, size: 28),
+              SizedBox(width: VSpace.md),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -954,7 +954,7 @@ class _CommunityChallengeCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: VColor.accent.withOpacity(0.12),
+                            color: VColor.accent.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(VRadius.sm),
                           ),
                           child: Text('+${data.rewardCoins} Coins',

@@ -131,7 +131,7 @@ class _RecordScreenState extends State<RecordScreen> {
     if (_elapsed.inSeconds < 60) return 0;
     final hours   = _elapsed.inSeconds / 3600;
     final met     = _sport.metValue;
-    final weight  = _fallbackWeightKg;
+    const weight  = _fallbackWeightKg;
     return (met * weight * hours).round();
   }
 
@@ -279,7 +279,7 @@ class _RecordScreenState extends State<RecordScreen> {
           content: Text(_sessionSteps > 0
               ? 'Saved! $_sessionSteps steps · ${_distanceKm.toStringAsFixed(2)} km'
               : 'Activity saved — check your Home feed.'),
-          backgroundColor: VColor.accentGreen.withOpacity(0.9),
+          backgroundColor: VColor.accentGreen.withValues(alpha: 0.9),
         ),
       );
       _discard();
@@ -374,7 +374,7 @@ class _RecordScreenState extends State<RecordScreen> {
                   color: VColor.accentGreen,
                   shape: BoxShape.circle,
                   border: Border.all(color: VColor.bg, width: 3),
-                  boxShadow: [BoxShadow(color: VColor.accentGreenGlow, blurRadius: 8)],
+                  boxShadow: const [BoxShadow(color: VColor.accentGreenGlow, blurRadius: 8)],
                 ),
               ),
             ),
@@ -419,7 +419,7 @@ class _RecordScreenState extends State<RecordScreen> {
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: VColor.surface.withOpacity(0.92),
+              color: VColor.surface.withValues(alpha: 0.92),
               shape: BoxShape.circle,
               border: Border.all(color: _followUser ? VColor.accent : VColor.line),
             ),
@@ -439,9 +439,9 @@ class _RecordScreenState extends State<RecordScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: VColor.surface.withOpacity(0.92),
+              color: VColor.surface.withValues(alpha: 0.92),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: VColor.accentGreen.withOpacity(0.4)),
+              border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.4)),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.directions_walk_rounded, color: VColor.accentGreen, size: 14),
@@ -466,9 +466,9 @@ class _RecordScreenState extends State<RecordScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: VColor.surface.withOpacity(0.92),
+              color: VColor.surface.withValues(alpha: 0.92),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: VColor.accentOrange.withOpacity(0.4)),
+              border: Border.all(color: VColor.accentOrange.withValues(alpha: 0.4)),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.local_fire_department_rounded,
@@ -515,9 +515,9 @@ class _RecordScreenState extends State<RecordScreen> {
                 const SizedBox(width: 8),
                 Expanded(child: Text(_locationError!,
                     style: const TextStyle(color: VColor.crit, fontSize: 12))),
-                TextButton(
+                const TextButton(
                   onPressed: Geolocator.openLocationSettings,
-                  child: const Text('Fix', style: TextStyle(color: VColor.accent, fontSize: 12)),
+                  child: Text('Fix', style: TextStyle(color: VColor.accent, fontSize: 12)),
                 ),
               ]),
             ),
@@ -560,7 +560,7 @@ class _RecordScreenState extends State<RecordScreen> {
               onTap: _start,
               child: Container(
                 width: 76, height: 76,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: VColor.accent,
                   shape: BoxShape.circle,
                   boxShadow: [BoxShadow(color: VColor.accentGlow, blurRadius: 28, spreadRadius: 3)],
@@ -585,7 +585,7 @@ class _RecordScreenState extends State<RecordScreen> {
         decoration: BoxDecoration(
           color: VColor.bg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 16)],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 16)],
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           // Drag handle
@@ -765,7 +765,7 @@ class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderState
         color: VColor.accent,
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 3),
-        boxShadow: [BoxShadow(color: VColor.accentGlow, blurRadius: 12, spreadRadius: 2)],
+        boxShadow: const [BoxShadow(color: VColor.accentGlow, blurRadius: 12, spreadRadius: 2)],
       ),
     ),
   );
@@ -796,7 +796,7 @@ class _StatCell extends StatelessWidget {
           )),
           if (unit != null)
             TextSpan(text: ' $unit', style: TextStyle(
-              color: accent.withOpacity(0.7),
+              color: accent.withValues(alpha: 0.7),
               fontSize: small ? 10 : 13,
             )),
         ],
@@ -822,7 +822,7 @@ class _RoundBtn extends StatelessWidget {
           color: filled ? color : VColor.surfaceRaised,
           shape: BoxShape.circle,
           border: filled ? null : Border.all(color: color, width: 2),
-          boxShadow: filled ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 12)] : null,
+          boxShadow: filled ? [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 12)] : null,
         ),
         child: Icon(icon, color: filled ? VColor.textOnAccent : color, size: 32),
       ),

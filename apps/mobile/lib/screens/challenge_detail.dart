@@ -187,12 +187,12 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
             padding: const EdgeInsets.all(VSpace.lg),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [VColor.accent.withOpacity(0.2), VColor.surfaceRaised],
+                colors: [VColor.accent.withValues(alpha: 0.2), VColor.surfaceRaised],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(VRadius.lg),
-              border: Border.all(color: VColor.accent.withOpacity(0.35)),
+              border: Border.all(color: VColor.accent.withValues(alpha: 0.35)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,7 +203,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: VColor.accent.withOpacity(0.18),
+                        color: VColor.accent.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(VRadius.pill),
                       ),
                       child: Text(
@@ -285,7 +285,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Day 1', style: TextStyle(color: VColor.textLow, fontSize: 11)),
+                      const Text('Day 1', style: TextStyle(color: VColor.textLow, fontSize: 11)),
                       Text('Goal: $daysTotal Days', style: const TextStyle(color: VColor.textLow, fontSize: 11)),
                     ],
                   ),

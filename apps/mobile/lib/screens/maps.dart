@@ -106,9 +106,9 @@ class _MapsScreenState extends State<MapsScreen> {
               child: VErrorView(message: _error!, onRetry: _load),
             ),
           if (_activities != null && routes.isEmpty && _error == null)
-            Positioned(
+            const Positioned(
               left: VSpace.base, right: VSpace.base, bottom: VSpace.xxxl,
-              child: const VEmptyState(
+              child: VEmptyState(
                 title: 'No routes yet',
                 body: 'Record an activity on the Record tab and it will show up here.',
               ),
