@@ -48,6 +48,7 @@ import {
 import {
   MemoryStore, type AdminRole, type Store, type StoredActivity, type StoredPlan,
 } from './store';
+import { lookupBarcode } from './nutrition/barcode';
 
 // -----------------------------------------------------------------------------
 // Helpers
@@ -1666,6 +1667,47 @@ export function buildRouter(deps: ServerDeps): Router {
     }
   });
 
+  router.get('/v1/nutrition/barcode/:code', async (ctx) => {
+    const code = ctx.params.code;
+    if (!code) throw HttpError.badRequest('Barcode is required.');
+    const result = await lookupBarcode(code);
+    if (!result) throw HttpError.notFound(`No product found for barcode ${code}.`);
+    return {
+      barcode: code,
+      name: result.name,
+      brand: result.brand ?? 'Verified Brand',
+      calories: Math.round(result.caloriesPer100g),
+      proteinG: result.proteinG,
+      carbsG: result.carbsG,
+      fatG: result.fatG,
+      fiberG: 0,
+      sodiumMg: 0,
+      novaScore: 3,
+      category: 'Packaged Food',
+      warnings: (result.allergens ?? []).map((a) => `Contains ${a}`),
+    };
+  });
+
+  router.get('/v1/food/barcode/:code', async (ctx) => {
+    const code = ctx.params.code;
+    if (!code) throw HttpError.badRequest('Barcode is required.');
+    const result = await lookupBarcode(code);
+    if (!result) throw HttpError.notFound(`No product found for barcode ${code}.`);
+    return {
+      barcode: code,
+      name: result.name,
+      brand: result.brand ?? 'Verified Brand',
+      calories: Math.round(result.caloriesPer100g),
+      proteinG: result.proteinG,
+      carbsG: result.carbsG,
+      fatG: result.fatG,
+      fiberG: 0,
+      sodiumMg: 0,
+      novaScore: 3,
+      category: 'Packaged Food',
+      warnings: (result.allergens ?? []).map((a) => `Contains ${a}`),
+    };
+  });
 
   // ---------------------------------------------------------------------------
   // Reports — user moderation (human review queue, never auto-action)
