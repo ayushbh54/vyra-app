@@ -7,6 +7,7 @@ import '../api/client.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import 'athlete_chat.dart';
 
 /// Search for athletes and follow them — the graph the Home feed and the
 /// Friends leaderboard both read from.
@@ -123,6 +124,21 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                   style: const TextStyle(color: VColor.textLow, fontSize: 12)),
                             ],
                           ),
+                        ),
+                        IconButton(
+                          tooltip: 'Direct Message',
+                          icon: const Icon(Icons.chat_bubble_outline_rounded, color: VColor.accent, size: 20),
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => AthleteChatScreen(
+                                  athleteId: user.id,
+                                  athleteName: user.name,
+                                  athleteHandle: user.handle,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                         OutlinedButton(
                           onPressed: () => _toggleFollow(user),

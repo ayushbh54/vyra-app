@@ -1421,3 +1421,54 @@ class UserProfile {
         'activitiesCount': activitiesCount,
       };
 }
+
+class ConversationItem {
+  final String id;
+  final String otherUserId;
+  final String otherHandle;
+  final String otherName;
+  final String? lastMessage;
+  final String lastMessageAt;
+
+  const ConversationItem({
+    required this.id,
+    required this.otherUserId,
+    required this.otherHandle,
+    required this.otherName,
+    this.lastMessage,
+    required this.lastMessageAt,
+  });
+
+  factory ConversationItem.fromJson(Map<String, dynamic> j) => ConversationItem(
+        id: j['id'] as String? ?? '',
+        otherUserId: j['otherUserId'] as String? ?? '',
+        otherHandle: j['otherHandle'] as String? ?? 'athlete',
+        otherName: j['otherName'] as String? ?? 'VYRA Athlete',
+        lastMessage: j['lastMessage'] as String?,
+        lastMessageAt: j['lastMessageAt'] as String? ?? '',
+      );
+}
+
+class DirectMessage {
+  final String id;
+  final String conversationId;
+  final String senderId;
+  final String body;
+  final String createdAt;
+
+  const DirectMessage({
+    required this.id,
+    required this.conversationId,
+    required this.senderId,
+    required this.body,
+    required this.createdAt,
+  });
+
+  factory DirectMessage.fromJson(Map<String, dynamic> j) => DirectMessage(
+        id: j['id'] as String? ?? '',
+        conversationId: j['conversationId'] as String? ?? '',
+        senderId: j['senderId'] as String? ?? '',
+        body: j['body'] as String? ?? '',
+        createdAt: j['createdAt'] as String? ?? '',
+      );
+}

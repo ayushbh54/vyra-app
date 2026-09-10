@@ -713,6 +713,36 @@ class VyraApi {
   }
 
   // ---------------------------------------------------------------------------
+  // Athlete 1-on-1 Direct Messaging (Stitch Pages 38b & 38c)
+  // ---------------------------------------------------------------------------
+
+  /// List user's active 1-on-1 direct message conversations
+  Future<List<ConversationItem>> listConversations() async {
+    final res = await _request('GET', '/v1/conversations');
+    final items = res['items'] as List<dynamic>? ?? [];
+    return items.map((e) => ConversationItem.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Start or get existing conversation with an athlete
+  Future<ConversationItem> startConversation(String userId) async {
+    final res = await _request('POST', '/v1/conversations', body: {'userId': userId});
+    return ConversationItem.fromJson(res);
+  }
+
+  /// List direct messages in a conversation
+  Future<List<DirectMessage>> listDirectMessages(String conversationId, {int limit = 50}) async {
+    final res = await _request('GET', '/v1/conversations/$conversationId/messages?limit=$limit');
+    final items = res['items'] as List<dynamic>? ?? [];
+    return items.map((e) => DirectMessage.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Send a direct message to an athlete in a conversation
+  Future<DirectMessage> sendDirectMessage(String conversationId, String body) async {
+    final res = await _request('POST', '/v1/conversations/$conversationId/messages', body: {'body': body});
+    return DirectMessage.fromJson(res['message'] as Map<String, dynamic>);
+  }
+
+  // ---------------------------------------------------------------------------
   // Food Scan — AI vision nutrition analysis
   // ---------------------------------------------------------------------------
 
