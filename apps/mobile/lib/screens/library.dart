@@ -9,6 +9,8 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/screen_scaffold.dart';
 import 'exercise_detail.dart';
+import 'face_hair_yoga.dart';
+import 'global_search.dart';
 
 const _categories = [
   (null, 'All'),
@@ -81,8 +83,47 @@ class _LibraryScreenState extends State<LibraryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Exercise Library', style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: VSpace.sm),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Exercise Library', style: Theme.of(context).textTheme.headlineMedium),
+                    IconButton(
+                      icon: const Icon(Icons.travel_explore, color: VColor.accent),
+                      onPressed: () => pushScreen(context, 'Global Search', const GlobalSearchScreen()),
+                      tooltip: 'Global Directory Search',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: VSpace.xs),
+                InkWell(
+                  onTap: () => pushScreen(context, 'Face & Scalp Yoga', const FaceHairYogaScreen()),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: VSpace.xs),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [VColor.accent.withOpacity(0.12), VColor.accentGreen.withOpacity(0.12)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: VColor.accent.withOpacity(0.25)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.spa_outlined, color: VColor.accentGreen, size: 20),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Face & Scalp Yoga Protocols (Stitch 19/20)',
+                            style: TextStyle(color: VColor.text, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, color: VColor.accent, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
                 TextField(
                   controller: _searchController,
                   onChanged: _onSearchChanged,

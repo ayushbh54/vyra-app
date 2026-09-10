@@ -12,6 +12,7 @@ import 'exercise_detail.dart';
 import 'health_sync.dart';
 import 'library.dart';
 import 'record.dart';
+import 'global_search.dart';
 
 /// TAB 1 — TRAINING HUB
 ///
@@ -453,6 +454,14 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
                   ),
                 ],
               ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.travel_explore, color: VColor.accent, size: 20),
+              onPressed: () => pushScreen(context, 'Global Search', const GlobalSearchScreen()),
+              tooltip: 'Search VYRA Directory',
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              padding: EdgeInsets.zero,
             ),
           ],
         ),

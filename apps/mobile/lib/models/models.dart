@@ -1472,3 +1472,94 @@ class DirectMessage {
         createdAt: j['createdAt'] as String? ?? '',
       );
 }
+
+class FollowUser {
+  final String id;
+  final String handle;
+  final String name;
+
+  const FollowUser({
+    required this.id,
+    required this.handle,
+    required this.name,
+  });
+
+  factory FollowUser.fromJson(Map<String, dynamic> j) => FollowUser(
+        id: j['id'] as String? ?? '',
+        handle: j['handle'] as String? ?? 'athlete',
+        name: j['name'] as String? ?? 'Athlete',
+      );
+}
+
+class BarcodeProduct {
+  final String barcode;
+  final String name;
+  final String brand;
+  final int calories;
+  final double proteinG;
+  final double carbsG;
+  final double fatG;
+  final double fiberG;
+  final int sodiumMg;
+  final int novaScore;
+  final String category;
+  final List<String> warnings;
+
+  const BarcodeProduct({
+    required this.barcode,
+    required this.name,
+    required this.brand,
+    required this.calories,
+    required this.proteinG,
+    required this.carbsG,
+    required this.fatG,
+    required this.fiberG,
+    required this.sodiumMg,
+    required this.novaScore,
+    required this.category,
+    required this.warnings,
+  });
+
+  factory BarcodeProduct.fromJson(Map<String, dynamic> j) => BarcodeProduct(
+        barcode: j['barcode'] as String? ?? '',
+        name: j['name'] as String? ?? 'Packaged Food',
+        brand: j['brand'] as String? ?? 'Verified Brand',
+        calories: _i(j['calories']),
+        proteinG: _d(j['proteinG']),
+        carbsG: _d(j['carbsG']),
+        fatG: _d(j['fatG']),
+        fiberG: _d(j['fiberG']),
+        sodiumMg: _i(j['sodiumMg']),
+        novaScore: _i(j['novaScore']) == 0 ? 3 : _i(j['novaScore']),
+        category: j['category'] as String? ?? 'Food',
+        warnings: (j['warnings'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      );
+}
+
+class WaterReminderConfig {
+  final bool enabled;
+  final int targetMl;
+  final int intervalMinutes;
+  final String startTime;
+  final String endTime;
+  final bool soundEnabled;
+
+  const WaterReminderConfig({
+    required this.enabled,
+    required this.targetMl,
+    required this.intervalMinutes,
+    required this.startTime,
+    required this.endTime,
+    required this.soundEnabled,
+  });
+
+  factory WaterReminderConfig.defaultConfig() => const WaterReminderConfig(
+        enabled: true,
+        targetMl: 3200,
+        intervalMinutes: 60,
+        startTime: '07:00',
+        endTime: '22:00',
+        soundEnabled: true,
+      );
+}
+

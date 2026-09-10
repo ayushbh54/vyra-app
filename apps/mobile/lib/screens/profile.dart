@@ -12,13 +12,13 @@ import 'edit_profile.dart';
 import 'emergency_contacts.dart';
 import 'first_aid.dart';
 import 'food.dart';
-import 'friends.dart';
 import 'health_sync.dart';
 import 'lab_report.dart';
 import 'leaderboard.dart';
 import 'settings.dart';
 import 'training_hub.dart';
 import 'trophy_case.dart';
+import 'user_follow_list.dart';
 
 /// TAB 5 — PROFILE, HEALTH & PRIVACY
 ///
@@ -717,7 +717,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               InkWell(
                 borderRadius: BorderRadius.circular(VRadius.sm),
                 onTap: () async {
-                  await pushScreen(context, 'Athletes & Friends', const FriendsScreen());
+                  await pushScreen(context, 'Followers', const UserFollowListScreen(initialTabIndex: 0));
                   if (mounted) _loadProfile();
                 },
                 child: Padding(
@@ -749,7 +749,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               InkWell(
                 borderRadius: BorderRadius.circular(VRadius.sm),
                 onTap: () async {
-                  await pushScreen(context, 'Athletes & Friends', const FriendsScreen());
+                  await pushScreen(context, 'Following', const UserFollowListScreen(initialTabIndex: 1));
                   if (mounted) _loadProfile();
                 },
                 child: Padding(

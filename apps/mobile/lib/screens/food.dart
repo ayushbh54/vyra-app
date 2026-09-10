@@ -5,8 +5,10 @@ import '../api/client.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import 'barcode_scan.dart';
 import 'diet_chart.dart';
 import 'food_scan.dart';
+import 'water_reminder.dart';
 
 /// TAB 2 — FOOD
 ///
@@ -319,6 +321,42 @@ class _FoodScreenState extends State<FoodScreen> {
                   },
                   icon: const Icon(Icons.assignment_rounded, size: 18, color: VColor.accentGreen),
                   label: const Text('My Diet Chart', style: TextStyle(color: VColor.text, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: VSpace.xs),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: VColor.accentOrange.withValues(alpha: 0.6)),
+                    backgroundColor: VColor.accentOrange.withValues(alpha: 0.08),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const BarcodeScanScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 18, color: VColor.accentOrange),
+                  label: const Text('Barcode Scan', style: TextStyle(color: VColor.text, fontWeight: FontWeight.w700)),
+                ),
+              ),
+              const SizedBox(width: VSpace.sm),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: VColor.accent.withValues(alpha: 0.6)),
+                    backgroundColor: VColor.accent.withValues(alpha: 0.08),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const WaterReminderScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.water_drop_rounded, size: 18, color: VColor.accent),
+                  label: const Text('Hydration 3.2L', style: TextStyle(color: VColor.text, fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
