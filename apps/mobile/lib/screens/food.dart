@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import 'diet_chart.dart';
+import 'food_scan.dart';
 
 /// TAB 2 — FOOD
 ///
@@ -127,36 +128,202 @@ class _FoodScreenState extends State<FoodScreen> {
         padding: const EdgeInsets.fromLTRB(VSpace.base, VSpace.base, VSpace.base, VSpace.xxxl),
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Food & Nutrition', style: Theme.of(context).textTheme.headlineMedium),
+              const VHeaderBadge(label: 'NUTRITION ENGINE HUB', accentColor: VColor.accent),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: VColor.accentGreenGlow,
+                  borderRadius: BorderRadius.circular(VRadius.pill),
+                  border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.4)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle_rounded, color: VColor.accentGreen, size: 12),
+                    SizedBox(width: 4),
+                    Text(
+                      'SYNCED',
+                      style: TextStyle(
+                        color: VColor.accentGreen,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: VSpace.md),
+          const SizedBox(height: 6),
+          const Text(
+            'FOOD & NUTRITION',
+            style: TextStyle(
+              color: VColor.text,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Daily Caloric Budget, Macronutrient Flux & Clinical Protocols',
+            style: TextStyle(color: VColor.textMid, fontSize: 13.5),
+          ),
+          const SizedBox(height: VSpace.base),
 
-          // ── My AI Diet Chart Banner (Top Option) ─────────────────────────
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const DietChartScreen()),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.all(VSpace.md),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    VColor.accent.withValues(alpha: 0.22),
-                    VColor.accentGreen.withValues(alpha: 0.15),
-                    VColor.surfaceRaised,
+          // ── Caloric Budget & Macronutrient Telemetry Card ───────────────
+          Container(
+            padding: const EdgeInsets.all(VSpace.base),
+            decoration: BoxDecoration(
+              color: VColor.surfaceRaised,
+              borderRadius: BorderRadius.circular(VRadius.lg),
+              border: Border.all(color: VColor.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('REMAINING BUDGET', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                        SizedBox(height: 2),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              '820',
+                              style: TextStyle(color: VColor.text, fontSize: 32, fontWeight: FontWeight.w800),
+                            ),
+                            SizedBox(width: 4),
+                            Text('kcal left', style: TextStyle(color: VColor.textMid, fontSize: 13, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: VColor.accentGreenGlow,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text('IN RANGE', style: TextStyle(color: VColor.accentGreen, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
                   ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(VRadius.lg),
-                border: Border.all(color: VColor.accent.withValues(alpha: 0.4), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
+                const SizedBox(height: VSpace.md),
+                // Macro Distribution Bars
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('PROTEIN', style: TextStyle(color: VColor.accent, fontSize: 10, fontWeight: FontWeight.bold)),
+                              Text('145g / 180g', style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: const LinearProgressIndicator(value: 0.80, minHeight: 6, color: VColor.accent, backgroundColor: VColor.bg),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: VSpace.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('CARBS', style: TextStyle(color: VColor.accentGreen, fontSize: 10, fontWeight: FontWeight.bold)),
+                              Text('160g / 220g', style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: const LinearProgressIndicator(value: 0.72, minHeight: 6, color: VColor.accentGreen, backgroundColor: VColor.bg),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: VSpace.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('FATS', style: TextStyle(color: VColor.accentOrange, fontSize: 10, fontWeight: FontWeight.bold)),
+                              Text('48g / 65g', style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: const LinearProgressIndicator(value: 0.73, minHeight: 6, color: VColor.accentOrange, backgroundColor: VColor.bg),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: VSpace.base),
+
+          // ── Quick Navigation 2-Button Action Row ────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: VColor.accent),
+                    backgroundColor: VColor.accent.withValues(alpha: 0.08),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const FoodScanScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.camera_alt_rounded, size: 18, color: VColor.accent),
+                  label: const Text('Scan Food AI', style: TextStyle(color: VColor.text, fontWeight: FontWeight.w700)),
+                ),
+              ),
+              const SizedBox(width: VSpace.sm),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: VColor.accentGreen),
+                    backgroundColor: VColor.accentGreen.withValues(alpha: 0.08),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const DietChartScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.assignment_rounded, size: 18, color: VColor.accentGreen),
+                  label: const Text('My Diet Chart', style: TextStyle(color: VColor.text, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: VSpace.base),
                     color: VColor.accent.withValues(alpha: 0.1),
                     blurRadius: 12,
                     offset: const Offset(0, 4),

@@ -400,3 +400,140 @@ class VStat extends StatelessWidget {
         ],
       );
 }
+
+// -----------------------------------------------------------------------------
+// Kinetic Obsidian Gradient Primary CTA & Header Components
+// -----------------------------------------------------------------------------
+
+class VGradientButton extends StatelessWidget {
+  const VGradientButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.trailingIcon,
+    this.isLoading = false,
+    this.gradient,
+    this.height = 54,
+    this.borderRadius,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final IconData? trailingIcon;
+  final bool isLoading;
+  final Gradient? gradient;
+  final double height;
+  final double? borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveGradient = gradient ??
+        const LinearGradient(
+          colors: [VColor.accent, VColor.accentGreen],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        );
+
+    final radius = BorderRadius.circular(borderRadius ?? VRadius.lg);
+
+    return Container(
+      width: double.infinity,
+      height: height,
+      decoration: BoxDecoration(
+        gradient: effectiveGradient,
+        borderRadius: radius,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x4D00D2FF),
+            blurRadius: 18,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: radius,
+          onTap: isLoading ? null : onPressed,
+          child: Center(
+            child: isLoading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      color: VColor.textOnAccent,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (icon != null) ...[
+                        Icon(icon, color: VColor.textOnAccent, size: 20),
+                        const SizedBox(width: VSpace.sm),
+                      ],
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: VColor.textOnAccent,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      if (trailingIcon != null) ...[
+                        const SizedBox(width: VSpace.sm),
+                        Icon(trailingIcon, color: VColor.textOnAccent, size: 20),
+                      ],
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class VHeaderBadge extends StatelessWidget {
+  const VHeaderBadge({
+    super.key,
+    required this.label,
+    this.accentColor = VColor.accent,
+  });
+
+  final String label;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: accentColor,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(color: accentColor.withValues(alpha: 0.8), blurRadius: 6),
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            color: accentColor,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
+    );
+  }
+}
+

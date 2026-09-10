@@ -9,6 +9,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/screen_scaffold.dart';
 import 'exercise_detail.dart';
+import 'health_sync.dart';
 import 'library.dart';
 import 'record.dart';
 
@@ -299,12 +300,39 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
               const SizedBox(width: VSpace.sm),
               Expanded(
                 child: OutlinedButton.icon(
+                  onPressed: () => pushScreen(
+                    context,
+                    'Smartwatch Sync',
+                    HealthSyncScreen(api: context.read<VyraApi>()),
+                  ),
+                  icon: const Icon(Icons.watch_rounded, size: 16, color: VColor.accentGreen),
+                  label: const Text('Watch Sync'),
+                ),
+              ),
+              const SizedBox(width: VSpace.sm),
+              Expanded(
+                child: OutlinedButton.icon(
                   onPressed: () => pushScreen(context, 'Exercise Library', const LibraryScreen()),
                   icon: const Icon(Icons.grid_view_rounded, size: 16, color: VColor.accent),
                   label: const Text('Library'),
                 ),
               ),
             ]),
+            if (plan.entries.isNotEmpty && !plan.entries.every((e) => e.isCompleted)) ...[
+              const SizedBox(height: VSpace.base),
+              VGradientButton(
+                label: 'Launch Workout Session (${plan.entries.where((e) => !e.isCompleted).length} moves)',
+                icon: Icons.play_arrow_rounded,
+                trailingIcon: Icons.arrow_forward_rounded,
+                onPressed: () {
+                  final nextExercise = plan.entries.firstWhere(
+                    (e) => !e.isCompleted,
+                    orElse: () => plan.entries.first,
+                  );
+                  _openExercise(nextExercise);
+                },
+              ),
+            ],
             const SizedBox(height: VSpace.base),
             if (_profile?.accessibilityMode == true ||
                 _profile?.disabilityFlag == true ||
@@ -382,39 +410,165 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
 
   Widget _header(BuildContext context, WorkoutPlan plan, Capacity capacity) {
     final allDone = plan.entries.isNotEmpty && plan.completedCount >= plan.entries.length;
-    final headerTitle = capacity.isRestDay
-        ? 'Rest day'
+    final headerStatus = capacity.isRestDay
+        ? 'REST & RECOVERY'
         : (allDone || plan.remainingMin <= 0)
-            ? 'Goal completed! 🎉'
-            : '${plan.remainingMin} min to go';
-    return Row(
+            ? 'GOAL ACHIEVED • 100%'
+            : 'AI REGIMEN OPTIMAL • ${plan.remainingMin} MIN LEFT';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const VLabel('Today'),
-              const SizedBox(height: 4),
-              Text(
-                headerTitle,
-                style: Theme.of(context).textTheme.headlineMedium,
+        Row(
+          children: [
+            const VHeaderBadge(label: 'CORE COMMAND HUB', accentColor: VColor.accent),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: VColor.accentGreenGlow,
+                borderRadius: BorderRadius.circular(VRadius.pill),
+                border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.4)),
               ),
-            ],
-          ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: VColor.accentGreen,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'AI ACTIVE',
+                    style: TextStyle(
+                      color: VColor.accentGreen,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        VRing(
-          progress: plan.progress,
-          size: 82,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${plan.completedCount}/${plan.entries.length}',
-                style: const TextStyle(
-                    color: VColor.text, fontSize: 17, fontWeight: FontWeight.w700),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            const Text(
+              'TRAINING',
+              style: TextStyle(
+                color: VColor.text,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
               ),
-              const Text('done',
-                  style: TextStyle(color: VColor.textLow, fontSize: 10, letterSpacing: 0.8)),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '• $headerStatus',
+              style: TextStyle(
+                color: capacity.isRestDay
+                    ? VColor.steel
+                    : allDone
+                        ? VColor.accentGreen
+                        : VColor.accent,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Adaptive AI Daily Regimen tailored to your biometrics',
+          style: TextStyle(color: VColor.textMid, fontSize: 13.5),
+        ),
+        const SizedBox(height: VSpace.base),
+        // 3-Metric Kinetic Telemetry Cluster (Steps=Green, Burn=Orange, Vitals=Cyan)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: VColor.surfaceRaised,
+            borderRadius: BorderRadius.circular(VRadius.lg),
+            border: Border.all(color: VColor.line),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.directions_walk_rounded, color: VColor.accentGreen, size: 16),
+                        const SizedBox(width: 4),
+                        const Text('STEPS', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      '6,420',
+                      style: TextStyle(color: VColor.accentGreen, fontSize: 18, fontWeight: FontWeight.w800),
+                    ),
+                    const Text('Goal 10,000', style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                  ],
+                ),
+              ),
+              Container(width: 1, height: 36, color: VColor.lineSoft),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.local_fire_department_rounded, color: VColor.accentOrange, size: 16),
+                          const SizedBox(width: 4),
+                          const Text('BURN', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        '485 kcal',
+                        style: TextStyle(color: VColor.accentOrange, fontSize: 18, fontWeight: FontWeight.w800),
+                      ),
+                      const Text('Active output', style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                    ],
+                  ),
+                ),
+              ),
+              Container(width: 1, height: 36, color: VColor.lineSoft),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.timer_rounded, color: VColor.accent, size: 16),
+                          const SizedBox(width: 4),
+                          const Text('SESSION', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${plan.achievedMin.round()} min',
+                        style: const TextStyle(color: VColor.accent, fontSize: 18, fontWeight: FontWeight.w800),
+                      ),
+                      Text('of ${plan.goalMin}m', style: const TextStyle(color: VColor.textLow, fontSize: 10)),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),

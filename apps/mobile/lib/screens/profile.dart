@@ -10,6 +10,7 @@ import 'ai_chat.dart';
 import 'beacon.dart';
 import 'edit_profile.dart';
 import 'emergency_contacts.dart';
+import 'first_aid.dart';
 import 'food.dart';
 import 'friends.dart';
 import 'health_sync.dart';
@@ -296,6 +297,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   subtitle: 'Up to 3 people, plus a one-tap 112 call',
                   onTap: () => pushScreen(
                       context, 'Emergency Contacts', const EmergencyContactsScreen()),
+                ),
+                const Divider(height: 1, color: VColor.line),
+                _QuickLink(
+                  icon: Icons.medical_services_outlined,
+                  label: 'First Aid Knowledge & Triage',
+                  subtitle: 'Gym emergencies, R.I.C.E acute injury formula & 112 SOS',
+                  onTap: () => pushScreen(
+                      context, 'First Aid Knowledge', const FirstAidScreen()),
                 ),
                 const Divider(height: 1, color: VColor.line),
                 _QuickLink(

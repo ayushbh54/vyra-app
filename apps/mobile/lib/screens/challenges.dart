@@ -164,33 +164,46 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Challenges', style: Theme.of(context).textTheme.headlineMedium),
+                    const VHeaderBadge(label: 'REWARDS & CHALLENGES • PHASE 04', accentColor: VColor.accent),
+                    const Spacer(),
                     if (_wallet != null)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: VColor.surfaceRaised,
                           borderRadius: BorderRadius.circular(VRadius.pill),
-                          border: Border.all(color: VColor.accent.withOpacity(0.3)),
+                          border: Border.all(color: VColor.accent.withValues(alpha: 0.4)),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.stars_rounded, color: VColor.accent, size: 16),
-                            const SizedBox(width: 5),
+                            const Icon(Icons.stars_rounded, color: VColor.accentOrange, size: 14),
+                            const SizedBox(width: 4),
                             Text(
                               '${_wallet!.balance.balance} Coins',
-                              style: const TextStyle(color: VColor.text, fontSize: 12, fontWeight: FontWeight.w700),
+                              style: const TextStyle(color: VColor.text, fontSize: 11, fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
                       ),
                   ],
                 ),
+                const SizedBox(height: 6),
+                const Text(
+                  'CHALLENGES',
+                  style: TextStyle(
+                    color: VColor.text,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                const Text('Build daily streaks, join community leagues & earn coins',
-                    style: TextStyle(color: VColor.textMid, fontSize: 13)),
+                const Text(
+                  'Build daily streaks, join community leagues & earn verified coins',
+                  style: TextStyle(color: VColor.textMid, fontSize: 13),
+                ),
                 const SizedBox(height: VSpace.md),
 
                 // ── Segmented Tab Selector ─────────────────────────────────

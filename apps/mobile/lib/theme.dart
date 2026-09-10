@@ -36,8 +36,9 @@ class VColor {
   static const accentGreen = Color(0xFF34FF8C); // secondary-container
   static const accentGreenGlow = Color(0x2E34FF8C);
 
-  static const accentOrange = Color(0xFFFFAF81); // tertiary-container
-  static const accentOrangeGlow = Color(0x2EFFAF81);
+  static const accentOrange = Color(0xFFFF7700); // design: neon orange — calories, burn, heart zones
+  static const accentOrangeGlow = Color(0x33FF7700);
+  static const accentOrangeSoft = Color(0xFFFFAF81); // muted orange for secondary use
 
   static const good = accentGreen; // success/streak — same green as the AI-status accent
   static const warn = Color(0xFFFFC93C);

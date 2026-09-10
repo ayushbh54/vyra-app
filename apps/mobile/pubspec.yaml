@@ -34,6 +34,9 @@ dependencies:
   # ── Health platform sync (Google Fit / Health Connect / Apple Health) ─────
   health: ^13.3.2
 
+  # ── Audio Coach Text-to-Speech ─────────────────────────────────────────────
+  flutter_tts: ^4.0.2
+
   # ── Permissions ────────────────────────────────────────────────────────────
   permission_handler: ^11.3.1
 
