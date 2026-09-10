@@ -323,52 +323,6 @@ class _FoodScreenState extends State<FoodScreen> {
               ),
             ],
           ),
-          const SizedBox(height: VSpace.base),
-                    color: VColor.accent.withValues(alpha: 0.1),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: VColor.accent.withValues(alpha: 0.25),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.assignment_outlined, color: VColor.accent, size: 26),
-                  ),
-                  const SizedBox(width: VSpace.md),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              'My Diet Chart',
-                              style: TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.w800),
-                            ),
-                            SizedBox(width: 6),
-                            VPill('AI Clinical', tone: CardTone.accent),
-                          ],
-                        ),
-                        SizedBox(height: 3),
-                        Text(
-                          'Symptom-based recommendations: What to eat, what NOT to eat, & full day meal plan.',
-                          style: TextStyle(color: VColor.textMid, fontSize: 12.5, height: 1.35),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.arrow_forward_ios_rounded, color: VColor.accent, size: 18),
-                ],
-              ),
-            ),
-          ),
           const SizedBox(height: VSpace.lg),
 
           // ── AI recipe ────────────────────────────────────────────

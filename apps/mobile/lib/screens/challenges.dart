@@ -467,6 +467,10 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
               ),
             ),
           ),
+      ],
+    );
+  }
+
   // ── TAB 3: SPECIAL METABOLIC BIO-HACKS (Stitch Page 48) ───────────────────
   Widget _buildSpecialBioHacksTab() {
     final bioHacks = [

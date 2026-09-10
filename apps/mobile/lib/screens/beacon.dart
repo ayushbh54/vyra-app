@@ -25,7 +25,6 @@ class _BeaconScreenState extends State<BeaconScreen> {
   bool _loading = true;
   String? _error;
   bool _saving = false;
-  String? _lastBroadcastLocation;
 
   @override
   void initState() {
@@ -116,7 +115,6 @@ class _BeaconScreenState extends State<BeaconScreen> {
       final mapLink = 'https://maps.google.com/?q=$lat,$lng';
       final alertMsg = '🚨 VYRA Live Beacon Alert: I am active on VYRA and sharing my live safety location. Track me in real-time here: $mapLink';
 
-      setState(() => _lastBroadcastLocation = '$lat, $lng');
 
       // Launch SMS composer with pre-filled numbers and live Google Maps link
       final phoneList = validContacts.map((c) => c.phone).join(';');

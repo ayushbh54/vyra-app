@@ -61,10 +61,14 @@ jobs:
       - name: Show Build Log Tail on Failure
         if: failure()
         run: |
-          echo "==================== BUILD FAILED: ERROR LINES ===================="
-          grep -i -C 3 "error •" /tmp/flutter_build.log || true
-          echo "==================== BUILD FAILED: LAST 200 LINES ===================="
-          tail -n 200 /tmp/flutter_build.log || true
+          echo "==================== BUILD FAILED ===================="
+          if [ -f /tmp/flutter_build.log ]; then
+            grep -i -C 3 "error •" /tmp/flutter_build.log || true
+            echo "==================== LAST 200 LINES ===================="
+            tail -n 200 /tmp/flutter_build.log || true
+          else
+            echo "No /tmp/flutter_build.log found — failure occurred before or during analysis step."
+          fi
 
       - name: Publish Failure Log to Branch
         if: failure()
@@ -73,11 +77,16 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -B ci-build-logs
           {
-            echo "=== FLUTTER ERRORS ==="
-            grep -i -C 3 "error •" /tmp/flutter_build.log || true
-            echo ""
-            echo "=== BUILD LOG TAIL ==="
-            tail -n 400 /tmp/flutter_build.log || true
+            echo "=== BUILD FAILURE DIAGNOSTIC ==="
+            if [ -f /tmp/flutter_build.log ]; then
+              echo "=== FLUTTER BUILD ERRORS ==="
+              grep -i -C 3 "error •" /tmp/flutter_build.log || true
+              echo ""
+              echo "=== BUILD LOG TAIL ==="
+              tail -n 400 /tmp/flutter_build.log || true
+            else
+              echo "Build failed before flutter build apk step was reached."
+            fi
           } > build_error_summary.txt
           git add build_error_summary.txt
           git commit -m "chore: save CI failure log [skip ci]" || true
