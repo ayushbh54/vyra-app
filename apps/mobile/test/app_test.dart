@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vyra/models/models.dart';
 import 'package:vyra/theme.dart';
@@ -58,4 +59,21 @@ void main() {
       expect(user.name, equals('Alex Vance'));
     });
   });
+
+  group('VYRA Dual Theme Engine Tests', () {
+    test('buildVyraLightTheme produces valid Light Material3 theme', () {
+      final light = buildVyraLightTheme();
+      expect(light.brightness, equals(Brightness.light));
+      expect(light.colorScheme.primary, equals(const Color(0xFF0284C7)));
+      expect(light.scaffoldBackgroundColor, equals(const Color(0xFFF8FAFC)));
+    });
+
+    test('buildVyraDarkTheme produces valid Dark Material3 theme', () {
+      final dark = buildVyraDarkTheme();
+      expect(dark.brightness, equals(Brightness.dark));
+      expect(dark.colorScheme.primary, equals(const Color(0xFF00D2FF)));
+      expect(dark.scaffoldBackgroundColor, equals(const Color(0xFF0F131D)));
+    });
+  });
 }
+

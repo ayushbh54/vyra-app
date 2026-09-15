@@ -6,15 +6,20 @@ import 'api/client.dart';
 import 'screens/auth.dart';
 import 'screens/challenges_hub.dart';
 import 'screens/food.dart';
+import 'screens/global_search.dart';
+import 'screens/messages_inbox.dart';
 import 'screens/onboarding/onboarding_flow.dart';
 import 'screens/profile.dart';
 import 'screens/social_hub.dart';
 import 'screens/training_hub.dart';
 import 'theme.dart';
+import 'theme_manager.dart';
 import 'widgets/common.dart';
+import 'widgets/vyra_drawer.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ThemeManager.instance.init();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
@@ -31,21 +36,23 @@ class VyraApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Provider<VyraApi>(
       create: (_) => VyraApi(),
-      child: MaterialApp(
-        title: 'VYRA',
-        debugShowCheckedModeBanner: false,
-        theme: buildVyraTheme(),
-        // The app is dark by design, not by preference — see theme.dart.
-        themeMode: ThemeMode.dark,
-        darkTheme: buildVyraTheme(),
-        home: const _Bootstrap(),
-        // Named route so screens can call pushNamedAndRemoveUntil('/') on logout.
-        routes: {
-          '/': (_) => const _Bootstrap(),
+      child: ValueListenableBuilder<ThemeMode>(
+        valueListenable: ThemeManager.instance.themeModeNotifier,
+        builder: (context, themeMode, _) {
+          return MaterialApp(
+            title: 'VYRA',
+            debugShowCheckedModeBanner: false,
+            theme: buildVyraLightTheme(),
+            darkTheme: buildVyraDarkTheme(),
+            themeMode: themeMode,
+            home: const _Bootstrap(),
+            routes: {
+              '/': (_) => const _Bootstrap(),
+            },
+          );
         },
       ),
     );
-
   }
 }
 
@@ -249,9 +256,104 @@ class _HomeShellState extends State<HomeShell> {
     ProfileScreen(),
   ];
 
+  static const _titles = [
+    'Training',
+    'Food & Nutrition',
+    'Athlete Social',
+    'Challenges & Cups',
+    'My Profile',
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const VyraDrawer(),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: VColor.surface,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu_rounded, color: VColor.text, size: 24),
+            tooltip: 'Open Profile Menu',
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0284C7), Color(0xFF00D2FF)],
+                ),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                'VYRA',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _titles[_index],
+              style: const TextStyle(
+                fontSize: 15.5,
+                fontWeight: FontWeight.w700,
+                color: VColor.text,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          // Global Search action
+          IconButton(
+            tooltip: 'Global Search',
+            icon: const Icon(Icons.search_rounded, color: VColor.textMid, size: 22),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const GlobalSearchScreen()),
+            ),
+          ),
+          // Instagram-style direct message button
+          IconButton(
+            tooltip: 'Direct Messages & Athlete Chat',
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(
+                  Icons.near_me_outlined,
+                  color: VColor.text,
+                  size: 23,
+                ),
+                Positioned(
+                  right: -2,
+                  top: -2,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00D2FF),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: VColor.surface, width: 1.5),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const MessagesInboxScreen()),
+              );
+            },
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       // IndexedStack keeps each tab's state alive, so switching away from a
       // half-finished GPS recording and back does not lose it.
       body: IndexedStack(index: _index, children: _screens),
