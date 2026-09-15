@@ -268,92 +268,106 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const VyraDrawer(),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: VColor.surface,
-        leading: Builder(
-          builder: (ctx) => IconButton(
-            icon: const Icon(Icons.menu_rounded, color: VColor.text, size: 24),
-            tooltip: 'Open Profile Menu',
-            onPressed: () => Scaffold.of(ctx).openDrawer(),
-          ),
-        ),
-        titleSpacing: 0,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0284C7), Color(0xFF00D2FF)],
-                ),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                'VYRA',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.1,
+      appBar: _index == 0
+          ? null
+          : AppBar(
+              elevation: 0,
+              backgroundColor: Theme.of(context).brightness == Brightness.dark ? VColor.surface : Colors.white,
+              leading: Builder(
+                builder: (ctx) => IconButton(
+                  icon: Icon(
+                    Icons.menu_rounded,
+                    color: Theme.of(context).brightness == Brightness.dark ? VColor.text : const Color(0xFF0F172A),
+                    size: 24,
+                  ),
+                  tooltip: 'Open Profile Menu',
+                  onPressed: () => Scaffold.of(ctx).openDrawer(),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              _titles[_index],
-              style: const TextStyle(
-                fontSize: 15.5,
-                fontWeight: FontWeight.w700,
-                color: VColor.text,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          // Global Search action
-          IconButton(
-            tooltip: 'Global Search',
-            icon: const Icon(Icons.search_rounded, color: VColor.textMid, size: 22),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const GlobalSearchScreen()),
-            ),
-          ),
-          // Instagram-style direct message button
-          IconButton(
-            tooltip: 'Direct Messages & Athlete Chat',
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(
-                  Icons.near_me_outlined,
-                  color: VColor.text,
-                  size: 23,
-                ),
-                Positioned(
-                  right: -2,
-                  top: -2,
-                  child: Container(
-                    width: 8,
-                    height: 8,
+              titleSpacing: 0,
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF00D2FF),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: VColor.surface, width: 1.5),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0284C7), Color(0xFF00D2FF)],
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'VYRA',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.1,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _titles[_index],
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).brightness == Brightness.dark ? VColor.text : const Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                // Global Search action
+                IconButton(
+                  tooltip: 'Global Search',
+                  icon: Icon(
+                    Icons.search_rounded,
+                    color: Theme.of(context).brightness == Brightness.dark ? VColor.textMid : const Color(0xFF64748B),
+                    size: 22,
+                  ),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const GlobalSearchScreen()),
+                  ),
                 ),
+                // Instagram-style direct message button
+                IconButton(
+                  tooltip: 'Direct Messages & Athlete Chat',
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(
+                        Icons.near_me_outlined,
+                        color: Theme.of(context).brightness == Brightness.dark ? VColor.text : const Color(0xFF0F172A),
+                        size: 23,
+                      ),
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00D2FF),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Theme.of(context).brightness == Brightness.dark ? VColor.surface : Colors.white,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const MessagesInboxScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(width: 4),
               ],
             ),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MessagesInboxScreen()),
-              );
-            },
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
+
       // IndexedStack keeps each tab's state alive, so switching away from a
       // half-finished GPS recording and back does not lose it.
       body: IndexedStack(index: _index, children: _screens),

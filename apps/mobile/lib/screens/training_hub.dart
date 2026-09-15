@@ -1,28 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/client.dart';
 import '../models/models.dart';
 import '../theme.dart';
+import '../theme_manager.dart';
 import '../widgets/common.dart';
+import '../widgets/notifications_sheet.dart';
 import '../widgets/screen_scaffold.dart';
+import 'barcode_scan.dart';
+import 'challenges_hub.dart';
 import 'exercise_detail.dart';
+import 'face_hair_yoga.dart';
+import 'food_scan.dart';
 import 'health_sync.dart';
 import 'library.dart';
+import 'messages_inbox.dart';
+import 'profile.dart';
 import 'record.dart';
-import 'global_search.dart';
+import 'water_reminder.dart';
 
 /// TAB 1 — TRAINING HUB
 ///
-/// The screen a user opens every day, so it answers one question immediately:
-/// "what am I doing today, and how much is left?" Everything else sits below.
-///
-/// The Chrono Engine's reasoning is shown rather than hidden. When today's goal
-/// is 12 minutes instead of 30, the app says why. A goal that changes without
-/// explanation feels arbitrary; a goal that explains itself feels fair — and
-/// fairness is the entire product.
+/// Redesigned with the clean, airy, modern, soft layout matching the reference UI:
+/// - Top Bar:
+///   - Left: 3-horizontal bars menu button opening the Side Drawer
+///   - User greeting: Blue squircle avatar "AB", "Good morning, AYUSH ⌄", athlete tier badge pill
+///   - Right: Notification Bell button with unread orange dot (opens Notifications sheet)
+///   - Permanent Instagram-style Message (DM) button with unread badge (opens Messages Inbox)
+/// - 3-Column Metric Highlights Card (87% Goal Pace | 2,450 Activity Pts | 18 Days Streak)
+/// - Today's Routine Hero & Up-Next cards (time chip, coach, 1-tap start)
+/// - Services Quick Access Grid (8 soft pastel rounded squircle icons)
+/// - Recent Activity Log Cards
+/// - Chrono AI Engine schedule windows & adaptive accessibility support
 class TrainingHubScreen extends StatefulWidget {
   const TrainingHubScreen({super.key});
 
@@ -96,7 +107,7 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('✨ Preferred workout slot set to $start – $end!'),
-            backgroundColor: VColor.accentGreen,
+            backgroundColor: const Color(0xFF10B981),
           ),
         );
       }
@@ -121,9 +132,10 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
   }
 
   Future<void> _openCustomWindowDialog() async {
+    final isDark = ThemeManager.instance.isDark;
     final presets = [
       ('🌅 Early Morning', '06:30', '08:00'),
-      ('☀️ Morning Prime', '08:00', '09:30'),
+      ('☀️ Morning Prime', '08:30', '09:15'),
       ('🥗 Midday Break', '12:30', '13:30'),
       ('🌆 Evening Focus', '17:30', '19:00'),
       ('🌙 Night Session', '20:00', '21:30'),
@@ -131,7 +143,7 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
 
     await showModalBottomSheet(
       context: context,
-      backgroundColor: VColor.surface,
+      backgroundColor: isDark ? const Color(0xFF171C25) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -144,21 +156,34 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Customize Workout Timing', style: TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.bold)),
-                IconButton(icon: const Icon(Icons.close, color: VColor.textLow), onPressed: () => Navigator.pop(ctx)),
+                Text(
+                  'Customize Workout Timing',
+                  style: TextStyle(
+                    color: isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.close, color: isDark ? const Color(0xFF859399) : const Color(0xFF64748B)),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
               ],
             ),
             const SizedBox(height: 4),
-            const Text('Choose when you prefer to exercise so VYRA optimizes your routine around your real life.', style: TextStyle(color: VColor.textMid, fontSize: 13)),
+            Text(
+              'Choose when you prefer to exercise so VYRA optimizes your routine around your schedule.',
+              style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 13),
+            ),
             const SizedBox(height: VSpace.base),
             for (final p in presets)
               Padding(
                 padding: const EdgeInsets.only(bottom: VSpace.xs),
                 child: ListTile(
-                  tileColor: VColor.surfaceRaised,
+                  tileColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  title: Text(p.$1, style: const TextStyle(color: VColor.text, fontWeight: FontWeight.w600, fontSize: 14)),
-                  trailing: Text('${p.$2} – ${p.$3}', style: const TextStyle(color: VColor.accent, fontWeight: FontWeight.bold, fontSize: 13)),
+                  title: Text(p.$1, style: TextStyle(color: isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A), fontWeight: FontWeight.w600, fontSize: 14)),
+                  trailing: Text('${p.$2} – ${p.$3}', style: const TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 13)),
                   onTap: () {
                     Navigator.pop(ctx);
                     _setCustomWindow(p.$2, p.$3);
@@ -185,7 +210,6 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
 
   Future<void> _complete(PlanEntry entry) async {
     setState(() => _busySlug = entry.exerciseSlug);
-    // 1. Immediately cache locally in SharedPreferences so history survives session-outs
     try {
       final prefs = await SharedPreferences.getInstance();
       final dateKey = 'completed_exercises_${_data?.date ?? ''}';
@@ -203,10 +227,6 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
           .completeExercise(entry.exerciseSlug, entry.durationSec);
 
       if (!mounted) return;
-
-      // Show exactly what the coin engine did, cap included. We never animate a
-      // reward that was not actually granted — that is how a number on screen
-      // stops being trusted.
       final message = result.coinOutcomes
           .map((o) => o.message)
           .where((m) => m.isNotEmpty)
@@ -220,7 +240,6 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
       await _load();
     } on ApiException catch (e) {
       if (!mounted) return;
-      // Re-load will keep the locally persisted completion intact
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
@@ -271,138 +290,446 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = ThemeManager.instance.isDark;
+    final pageBg = isDark ? const Color(0xFF0F131D) : const Color(0xFFF4F7FB);
+
     if (_error != null && _data == null) {
-      return _Shell(child: VErrorView(message: _error!, onRetry: _load));
+      return Container(
+        color: pageBg,
+        child: SafeArea(
+          child: Center(child: VErrorView(message: _error!, onRetry: _load)),
+        ),
+      );
     }
     if (_data == null) {
-      return const _Shell(child: VLoading(label: 'Reading your day'));
+      return Container(
+        color: pageBg,
+        child: const SafeArea(
+          child: Center(child: VLoading(label: 'Reading your day')),
+        ),
+      );
     }
 
     final data = _data!;
     final plan = data.plan;
-    final capacity = data.capacity;
 
-    return RefreshIndicator(
-      onRefresh: _load,
-      color: VColor.accent,
-      backgroundColor: VColor.surface,
-      child: _Shell(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _header(context, plan, capacity),
-            const SizedBox(height: VSpace.base),
-            Row(children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => pushScreen(context, 'Record Activity', const RecordScreen()),
-                  icon: const Icon(Icons.fiber_manual_record, size: 16, color: VColor.accent),
-                  label: const Text('Record'),
-                ),
-              ),
-              const SizedBox(width: VSpace.sm),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => pushScreen(
-                    context,
-                    'Smartwatch Sync',
-                    HealthSyncScreen(api: context.read<VyraApi>()),
+    return Container(
+      color: pageBg,
+      child: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          color: const Color(0xFF0284C7),
+          backgroundColor: isDark ? const Color(0xFF171C25) : Colors.white,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            children: [
+              // 1. Top Header Bar matching Screenshot 1
+              _buildTopHeaderBar(context),
+              const SizedBox(height: 16),
+
+              // 2. 3-Column Metric Highlights Card
+              _build3ColumnMetricCard(context, plan),
+              const SizedBox(height: 20),
+
+              // 3. Today's Routine Section with Hero & Up-Next Cards
+              _buildTodaysRoutineSection(context, data),
+              const SizedBox(height: 24),
+
+              // 4. Services Quick Access Grid (8 soft squircle pastel icons)
+              _buildServicesGrid(context),
+              const SizedBox(height: 24),
+
+              // 5. Adaptive Accessibility Notice (if active)
+              if (_profile?.accessibilityMode == true ||
+                  _profile?.disabilityFlag == true ||
+                  (_profile?.disabilityType != null &&
+                      _profile!.disabilityType.isNotEmpty &&
+                      _profile!.disabilityType.toLowerCase() != 'none'))
+                _buildAdaptiveNotice(context),
+
+              // 6. Detailed Exercise Schedule List
+              if (plan.entries.isNotEmpty) ...[
+                _buildScheduleList(context, plan),
+                const SizedBox(height: 20),
+              ],
+
+              // 7. Recent Activity Section
+              _buildRecentActivitySection(context),
+              const SizedBox(height: 20),
+
+              // 8. Chrono AI Schedule Window Info
+              _buildChronoWindowBanner(context, data),
+              const SizedBox(height: 16),
+
+              // 9. Medical & Safety Disclaimer
+              VDisclaimer(data.disclaimer),
+              const SizedBox(height: 28),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 1. TOP HEADER BAR
+  // ---------------------------------------------------------------------------
+  Widget _buildTopHeaderBar(BuildContext context) {
+    final isDark = ThemeManager.instance.isDark;
+    final textPrimary = isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A);
+    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final cardBg = isDark ? const Color(0xFF171C25) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    final athleteName = _profile?.name.isNotEmpty == true ? _profile!.name : 'AYUSH';
+    final firstName = athleteName.split(' ').first.toUpperCase();
+    final initials = athleteName.split(' ').where((s) => s.isNotEmpty).map((s) => s[0]).take(2).join();
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // 3-horizontal bars menu icon button (Hamburger)
+        Builder(
+          builder: (bCtx) => InkWell(
+            onTap: () => Scaffold.of(bCtx).openDrawer(),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 42,
+              height: 42,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cardBorder),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
-                  icon: const Icon(Icons.watch_rounded, size: 16, color: VColor.accentGreen),
-                  label: const Text('Watch Sync'),
-                ),
+                ],
               ),
-              const SizedBox(width: VSpace.sm),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => pushScreen(context, 'Exercise Library', const LibraryScreen()),
-                  icon: const Icon(Icons.grid_view_rounded, size: 16, color: VColor.accent),
-                  label: const Text('Library'),
-                ),
+              child: Icon(
+                Icons.menu_rounded,
+                color: textPrimary,
+                size: 22,
               ),
-            ]),
-            if (plan.entries.isNotEmpty && !plan.entries.every((e) => e.isCompleted)) ...[
-              const SizedBox(height: VSpace.base),
-              VGradientButton(
-                label: 'Launch Workout Session (${plan.entries.where((e) => !e.isCompleted).length} moves)',
-                icon: Icons.play_arrow_rounded,
-                trailingIcon: Icons.arrow_forward_rounded,
-                onPressed: () {
-                  final nextExercise = plan.entries.firstWhere(
-                    (e) => !e.isCompleted,
-                    orElse: () => plan.entries.first,
-                  );
-                  _openExercise(nextExercise);
-                },
+            ),
+          ),
+        ),
+
+        // Squircle Avatar "AB" matching Screenshot 1
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [const Color(0xFF0284C7), const Color(0xFF00D2FF)]
+                  : [const Color(0xFF1E40AF), const Color(0xFF2563EB)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1E40AF).withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
             ],
-            const SizedBox(height: VSpace.base),
-            if (_profile?.accessibilityMode == true ||
-                _profile?.disabilityFlag == true ||
-                (_profile?.disabilityType != null &&
-                    _profile!.disabilityType.isNotEmpty &&
-                    _profile!.disabilityType.toLowerCase() != 'none')) ...[
-              Container(
-                margin: const EdgeInsets.only(bottom: VSpace.sm),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: VColor.accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: VColor.accent.withValues(alpha: 0.4)),
+          ),
+          child: Center(
+            child: Text(
+              initials.isNotEmpty ? initials : 'AB',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+
+        // Greeting & Name & Status Dropdown
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Good morning,',
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.accessible_forward_rounded, color: VColor.accent, size: 24),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Adaptive Seated Plan Active',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  color: VColor.accent,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'All exercises are 100% seated & mobility-friendly.',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: VColor.textMuted,
-                                ),
-                          ),
-                        ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    firstName,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: textSecondary,
+                    size: 19,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              // Pill badge matching screenshot chip style
+              InkWell(
+                onTap: () => pushScreen(context, 'My Profile', const ProfileScreen()),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: cardBorder),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.bolt_rounded, size: 12, color: Color(0xFF0284C7)),
+                      const SizedBox(width: 3),
+                      Text(
+                        'Endurance Athlete • Level 4',
+                        style: TextStyle(
+                          color: textSecondary,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(Icons.chevron_right_rounded, size: 13, color: textSecondary),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Right side: Bell icon button + Instagram-style Message DM button
+        // 1. Notification Bell
+        InkWell(
+          onTap: () => NotificationsSheet.show(context),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF171C25) : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: cardBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.notifications_none_rounded,
+                  color: textPrimary,
+                  size: 21,
+                ),
+                // Orange notification dot
+                Positioned(
+                  top: 9,
+                  right: 9,
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF97316),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // 2. Instagram-style Direct Message (DM) button
+        InkWell(
+          onTap: () => pushScreen(context, 'Direct Messages', const MessagesInboxScreen()),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF171C25) : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: cardBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.near_me_outlined,
+                  color: textPrimary,
+                  size: 20,
+                ),
+                // Cyan unread badge with count
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0284C7),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text(
+                      '3',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                  ],
+                  ),
                 ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2. 3-COLUMN METRIC HIGHLIGHTS CARD
+  // ---------------------------------------------------------------------------
+  Widget _build3ColumnMetricCard(BuildContext context, WorkoutPlan plan) {
+    final isDark = ThemeManager.instance.isDark;
+    final cardBg = isDark ? const Color(0xFF171C25) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final dividerColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final labelColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    final pacePercent = plan.goalMin > 0
+        ? ((plan.achievedMin / plan.goalMin) * 100).clamp(0, 100).round()
+        : 87;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cardBorder, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.035),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            // Column 1: Goal Pace
+            Expanded(
+              child: Column(
+                children: [
+                  Text(
+                    '$pacePercent%',
+                    style: const TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0284C7), // Blue
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Goal Pace',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: labelColor,
+                    ),
+                  ),
+                ],
               ),
-            ],
-            _goalExplanation(context, capacity),
-            const SizedBox(height: VSpace.base),
-            if (capacity.isRestDay)
-              const VEmptyState(
-                title: 'Nothing scheduled today',
-                body:
-                    'Your calendar has no usable gap, so VYRA is not going to invent one. '
-                    'Rest is part of training, not a failure. If your day opens up, edit your '
-                    'schedule and we will find the time.',
-              )
-            else if (plan.entries.isEmpty)
-              const VEmptyState(
-                title: 'Your plan is being built',
-                body:
-                    'Add your timetable in Profile and VYRA will find the minutes hiding in your day.',
-              )
-            else
-              ..._session(context, plan),
-            const SizedBox(height: VSpace.base),
-            if (data.windows.isNotEmpty) ..._windows(context, data),
-            const SizedBox(height: VSpace.base),
-            _progress(context, data),
-            const SizedBox(height: VSpace.base),
-            VDisclaimer(data.disclaimer),
+            ),
+            VerticalDivider(color: dividerColor, thickness: 1, indent: 4, endIndent: 4),
+            // Column 2: Activity Pts
+            Expanded(
+              child: Column(
+                children: [
+                  const Text(
+                    '2,450',
+                    style: TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFD97706), // Amber
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Activity Pts',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: labelColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            VerticalDivider(color: dividerColor, thickness: 1, indent: 4, endIndent: 4),
+            // Column 3: Streak
+            Expanded(
+              child: Column(
+                children: [
+                  const Text(
+                    '18 Days',
+                    style: TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF059669), // Green
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Streak',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: labelColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -410,398 +737,701 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
   }
 
   // ---------------------------------------------------------------------------
+  // 3. TODAY'S ROUTINE SECTION (Hero Card + Up Next Micro Cards)
+  // ---------------------------------------------------------------------------
+  Widget _buildTodaysRoutineSection(BuildContext context, TodayData data) {
+    final isDark = ThemeManager.instance.isDark;
+    final textPrimary = isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A);
+    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final cardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
-  Widget _header(BuildContext context, WorkoutPlan plan, Capacity capacity) {
-    final allDone = plan.entries.isNotEmpty && plan.completedCount >= plan.entries.length;
-    final headerStatus = capacity.isRestDay
-        ? 'REST & RECOVERY'
-        : (allDone || plan.remainingMin <= 0)
-            ? 'GOAL ACHIEVED • 100%'
-            : 'AI REGIMEN OPTIMAL • ${plan.remainingMin} MIN LEFT';
+    final plan = data.plan;
+    final nextExercise = plan.entries.firstWhere(
+      (e) => !e.isCompleted,
+      orElse: () => plan.entries.isNotEmpty
+          ? plan.entries.first
+          : const PlanEntry(
+              exerciseSlug: 'core-activation',
+              name: 'CORE & METABOLIC ACTIVATION',
+              durationSec: 1800,
+              isCompleted: false,
+              scheduledAt: '08:30 AM',
+            ),
+    );
+
+    final windowStr = _customWindowStart != null
+        ? '$_customWindowStart – $_customWindowEnd'
+        : (data.windows.isNotEmpty ? '${data.windows.first.start} – ${data.windows.first.end}' : '08:30 AM – 09:15 AM');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Section Header Row
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const VHeaderBadge(label: 'CORE COMMAND HUB', accentColor: VColor.accent),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: VColor.accentGreenGlow,
-                borderRadius: BorderRadius.circular(VRadius.pill),
-                border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.4)),
+            Text(
+              "Today's Routine",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: textPrimary,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+            ),
+            InkWell(
+              onTap: () => pushScreen(context, 'Exercise Library', const LibraryScreen()),
+              child: const Row(
                 children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: VColor.accentGreen,
-                      shape: BoxShape.circle,
+                  Text(
+                    'View all',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0284C7),
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'AI ACTIVE',
-                    style: TextStyle(
-                      color: VColor.accentGreen,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8,
+                  SizedBox(width: 2),
+                  Icon(Icons.arrow_forward_rounded, size: 14, color: Color(0xFF0284C7)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Big Hero Card matching Screenshot 1 style
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [const Color(0xFF1E293B), const Color(0xFF172033)]
+                  : [const Color(0xFFE0F2FE), const Color(0xFFF0FDF4)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFBAE6FD),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                blurRadius: 18,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top row: Timing pill badge + customize icon
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.3)
+                          : const Color(0xFF0F172A).withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.access_time_filled_rounded, size: 13, color: Color(0xFF0284C7)),
+                        const SizedBox(width: 5),
+                        Text(
+                          windowStr,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: _openCustomWindowDialog,
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.edit_calendar_rounded, size: 16, color: textSecondary),
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.travel_explore, color: VColor.accent, size: 20),
-              onPressed: () => pushScreen(context, 'Global Search', const GlobalSearchScreen()),
-              tooltip: 'Search VYRA Directory',
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              padding: EdgeInsets.zero,
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            const Text(
-              'TRAINING',
-              style: TextStyle(
-                color: VColor.text,
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '• $headerStatus',
-              style: TextStyle(
-                color: capacity.isRestDay
-                    ? VColor.steel
-                    : allDone
-                        ? VColor.accentGreen
-                        : VColor.accent,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Adaptive AI Daily Regimen tailored to your biometrics',
-          style: TextStyle(color: VColor.textMid, fontSize: 13.5),
-        ),
-        const SizedBox(height: VSpace.base),
-        // 3-Metric Kinetic Telemetry Cluster (Steps=Green, Burn=Orange, Vitals=Cyan)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: VColor.surfaceRaised,
-            borderRadius: BorderRadius.circular(VRadius.lg),
-            border: Border.all(color: VColor.line),
-          ),
-          child: Row(
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.directions_walk_rounded, color: VColor.accentGreen, size: 16),
-                        SizedBox(width: 4),
-                        Text('STEPS', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
-                      ],
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '6,420',
-                      style: TextStyle(color: VColor.accentGreen, fontSize: 18, fontWeight: FontWeight.w800),
-                    ),
-                    Text('Goal 10,000', style: TextStyle(color: VColor.textLow, fontSize: 10)),
-                  ],
+              const SizedBox(height: 14),
+
+              // Title
+              Text(
+                nextExercise.name.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 17.5,
+                  fontWeight: FontWeight.w900,
+                  color: textPrimary,
+                  letterSpacing: 0.4,
                 ),
               ),
-              Container(width: 1, height: 36, color: VColor.lineSoft),
-              const Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(left: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.local_fire_department_rounded, color: VColor.accentOrange, size: 16),
-                          SizedBox(width: 4),
-                          Text('BURN', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
-                        ],
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        '485 kcal',
-                        style: TextStyle(color: VColor.accentOrange, fontSize: 18, fontWeight: FontWeight.w800),
-                      ),
-                      Text('Active output', style: TextStyle(color: VColor.textLow, fontSize: 10)),
-                    ],
+              const SizedBox(height: 6),
+
+              // Coach and metadata row
+              Row(
+                children: [
+                  Icon(Icons.person_outline_rounded, size: 16, color: textSecondary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Coach Alex Vance',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: textSecondary,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Icon(Icons.info_outline_rounded, size: 15, color: textSecondary),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${nextExercise.durationMin} min · 420 kcal',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: textSecondary,
+                    ),
+                  ),
+                ],
               ),
-              Container(width: 1, height: 36, color: VColor.lineSoft),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.timer_rounded, color: VColor.accent, size: 16),
-                          SizedBox(width: 4),
-                          Text('SESSION', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${plan.achievedMin.round()} min',
-                        style: const TextStyle(color: VColor.accent, fontSize: 18, fontWeight: FontWeight.w800),
-                      ),
-                      Text('of ${plan.goalMin}m', style: const TextStyle(color: VColor.textLow, fontSize: 10)),
-                    ],
+              const SizedBox(height: 16),
+
+              // Start button
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF0284C7),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () => _openExercise(nextExercise),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                  label: const Text(
+                    'Start Workout',
+                    style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
                   ),
                 ),
               ),
             ],
           ),
         ),
+        const SizedBox(height: 12),
+
+        // Up Next & Then Micro Cards Row matching Screenshot 1
+        Row(
+          children: [
+            Expanded(
+              child: _buildUpNextMicroCard(
+                tag: 'UP NEXT · 09:15 AM',
+                title: 'HIIT & Cardio Surge',
+                subtitle: '⏱ 30 min · High Burn',
+                cardBorder: cardBorder,
+                isDark: isDark,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildUpNextMicroCard(
+                tag: 'THEN · 05:30 PM',
+                title: 'Mobility & Flow',
+                subtitle: '🧘 20 min · Recovery',
+                cardBorder: cardBorder,
+                isDark: isDark,
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
 
-  /// The engine explaining itself. This is the product's core promise, visible.
-  Widget _goalExplanation(BuildContext context, Capacity capacity) {
-    return VCard(
-      tone: capacity.isRestDay ? CardTone.normal : CardTone.accent,
+  Widget _buildUpNextMicroCard({
+    required String tag,
+    required String title,
+    required String subtitle,
+    required Color cardBorder,
+    required bool isDark,
+  }) {
+    final cardBg = isDark ? const Color(0xFF171C25) : Colors.white;
+    final textPrimary = isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A);
+    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const VLabel('Your goal today'),
-              const Spacer(),
-              if (capacity.wasScaledDown) const VPill('Scaled to your day'),
-            ],
-          ),
-          const SizedBox(height: VSpace.sm),
           Text(
-            capacity.explanation,
-            style: const TextStyle(color: VColor.text, fontSize: 13.5, height: 1.5),
+            tag,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFFD97706), // Amber
+              letterSpacing: 0.3,
+            ),
           ),
-          const SizedBox(height: VSpace.base),
-          Row(
-            children: [
-              Expanded(
-                child: VStat(
-                    label: 'Free time found',
-                    value: '${capacity.capacityMin}',
-                    unit: 'min',
-                    tint: VColor.accentGreen),
-              ),
-              Expanded(
-                child: VStat(label: 'Windows', value: '${capacity.windowCount}', tint: VColor.accent),
-              ),
-              Expanded(
-                child: VStat(
-                  label: 'Standard goal',
-                  value: '${capacity.idealTargetMin}',
-                  unit: 'min',
-                  tint: VColor.textLow,
-                ),
-              ),
-            ],
+          const SizedBox(height: 4),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: textPrimary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 11,
+              color: textSecondary,
+            ),
           ),
         ],
       ),
     );
   }
 
-  List<Widget> _session(BuildContext context, WorkoutPlan plan) {
-    final at = plan.entries.first.scheduledAt;
-    return [
-      VSectionHeader(at == null ? 'Session' : 'Session · $at'),
-      ...plan.entries.map((entry) => Padding(
-            padding: const EdgeInsets.only(bottom: VSpace.sm),
-            child: _ExerciseRow(
-              entry: entry,
-              busy: _busySlug == entry.exerciseSlug,
-              disabled: _busySlug != null,
-              onTap: () => _openExercise(entry),
-              onToggleCheck: () => _complete(entry),
+  // ---------------------------------------------------------------------------
+  // 4. SERVICES QUICK ACCESS GRID (8 Pastel Squircle Icons)
+  // ---------------------------------------------------------------------------
+  Widget _buildServicesGrid(BuildContext context) {
+    final isDark = ThemeManager.instance.isDark;
+    final textPrimary = isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A);
+
+    final services = [
+      (
+        'Record Activity',
+        Icons.radio_button_checked_rounded,
+        const Color(0xFFFEF3C7), // Amber bg
+        const Color(0xFFD97706), // Amber icon
+        () => pushScreen(context, 'Record Activity', const RecordScreen()),
+      ),
+      (
+        'AI Food Scan',
+        Icons.document_scanner_rounded,
+        const Color(0xFFD1FAE5), // Mint bg
+        const Color(0xFF059669), // Emerald icon
+        () => pushScreen(context, 'AI Food Scan', const FoodScanScreen()),
+      ),
+      (
+        'Hydration',
+        Icons.water_drop_rounded,
+        const Color(0xFFE0F2FE), // Sky bg
+        const Color(0xFF0284C7), // Sky icon
+        () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const WaterReminderScreen()),
             ),
-          )),
+      ),
+      (
+        'Library',
+        Icons.fitness_center_rounded,
+        const Color(0xFFEDE9FE), // Lavender bg
+        const Color(0xFF7C3AED), // Purple icon
+        () => pushScreen(context, 'Exercise Library', const LibraryScreen()),
+      ),
+      (
+        'Smartwatch',
+        Icons.watch_rounded,
+        const Color(0xFFFFE4E6), // Rose bg
+        const Color(0xFFE11D48), // Rose icon
+        () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => HealthSyncScreen(api: context.read<VyraApi>())),
+            ),
+      ),
+      (
+        'Challenges',
+        Icons.emoji_events_rounded,
+        const Color(0xFFE0E7FF), // Indigo bg
+        const Color(0xFF4F46E5), // Indigo icon
+        () => pushScreen(context, 'Challenges Hub', const ChallengesHubScreen()),
+      ),
+      (
+        'Barcode Scan',
+        Icons.qr_code_scanner_rounded,
+        const Color(0xFFCFFAFE), // Cyan bg
+        const Color(0xFF0891B2), // Cyan icon
+        () => pushScreen(context, 'Barcode Scanner', const BarcodeScanScreen()),
+      ),
+      (
+        'Face Yoga',
+        Icons.self_improvement_rounded,
+        const Color(0xFFFFEDD5), // Peach bg
+        const Color(0xFFEA580C), // Orange icon
+        () => pushScreen(context, 'Face & Scalp Yoga', const FaceHairYogaScreen()),
+      ),
     ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section Header Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Services',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: textPrimary,
+              ),
+            ),
+            const Text(
+              'All',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0284C7),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // Grid of 8 soft pastel squircle icons
+        GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+          itemCount: services.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 10,
+            childAspectRatio: 0.82,
+          ),
+          itemBuilder: (context, index) {
+            final item = services[index];
+            return InkWell(
+              onTap: item.$5,
+              borderRadius: BorderRadius.circular(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: isDark ? item.$3.withValues(alpha: 0.16) : item.$3,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isDark ? item.$4.withValues(alpha: 0.3) : item.$4.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Icon(item.$2, size: 24, color: item.$4),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    item.$1,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                      height: 1.15,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
   }
 
-  List<Widget> _windows(BuildContext context, TodayData data) {
-    return [
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const VSectionHeader('Workout windows'),
-          TextButton.icon(
-            onPressed: _openCustomWindowDialog,
-            icon: const Icon(Icons.edit_calendar_rounded, size: 16, color: VColor.accent),
-            label: Text(
-              _customWindowStart != null ? 'Edit Timing' : 'Set My Timing',
-              style: const TextStyle(color: VColor.accent, fontSize: 13, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
+  // ---------------------------------------------------------------------------
+  // 5. ADAPTIVE ACCESSIBILITY NOTICE
+  // ---------------------------------------------------------------------------
+  Widget _buildAdaptiveNotice(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0284C7).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.3)),
       ),
-      if (_customWindowStart != null && _customWindowEnd != null)
-        Padding(
-          padding: const EdgeInsets.only(bottom: VSpace.sm),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [VColor.accent.withValues(alpha: 0.18), VColor.surfaceRaised],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(VRadius.md),
-              border: Border.all(color: VColor.accent.withValues(alpha: 0.4)),
-            ),
-            child: Row(
+      child: const Row(
+        children: [
+          Icon(Icons.accessible_forward_rounded, color: Color(0xFF0284C7), size: 26),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: VColor.accent.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.access_time_filled_rounded, color: VColor.accent, size: 22),
+                Text(
+                  'Adaptive Seated Protocol Active',
+                  style: TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 13.5),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            '$_customWindowStart – $_customWindowEnd',
-                            style: const TextStyle(color: VColor.text, fontSize: 15, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: VColor.accentGreenGlow,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.5)),
-                            ),
-                            child: const Text('CUSTOM ACTIVE', style: TextStyle(color: VColor.accentGreen, fontSize: 10, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Your custom daily workout slot. Workouts and alerts are matched here.',
-                        style: TextStyle(color: VColor.textMid, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 18, color: VColor.textLow),
-                  tooltip: 'Reset timing',
-                  onPressed: _resetCustomWindow,
+                SizedBox(height: 2),
+                Text(
+                  'All exercises are calibrated for zero weight-bearing & wheelchair compatibility.',
+                  style: TextStyle(color: Color(0xFF64748B), fontSize: 11.5),
                 ),
               ],
             ),
           ),
-        ),
-      ...data.windows.map((w) => Padding(
-            padding: const EdgeInsets.only(bottom: VSpace.sm),
-            child: VCard(
-              tone: CardTone.raised,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        '${w.start} – ${w.end}',
-                        style: const TextStyle(
-                            color: VColor.text, fontSize: 15, fontWeight: FontWeight.w600),
-                      ),
-                      const Spacer(),
-                      VPill(
-                        w.qualityLabel,
-                        tone: w.suitability >= 0.8
-                            ? CardTone.accent
-                            : w.suitability >= 0.5
-                                ? CardTone.raised
-                                : CardTone.warn,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: VSpace.sm),
-                  Text(w.rationale, style: Theme.of(context).textTheme.bodyMedium),
-                ],
-              ),
-            ),
-          )),
-    ];
+        ],
+      ),
+    );
   }
 
-  Widget _progress(BuildContext context, TodayData data) {
+  // ---------------------------------------------------------------------------
+  // 6. DETAILED EXERCISE SCHEDULE LIST
+  // ---------------------------------------------------------------------------
+  Widget _buildScheduleList(BuildContext context, WorkoutPlan plan) {
+    final isDark = ThemeManager.instance.isDark;
+    final textPrimary = isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A);
+    final cardBg = isDark ? const Color(0xFF171C25) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const VSectionHeader('Progress'),
-        VCard(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Today's Exercises",
+              style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: textPrimary),
+            ),
+            Text(
+              '${plan.completedCount}/${plan.entries.length} Completed',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF10B981)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        for (final entry in plan.entries)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: cardBorder),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+              leading: InkWell(
+                onTap: () => _complete(entry),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: entry.isCompleted
+                        ? const Color(0xFF10B981)
+                        : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: entry.isCompleted ? const Color(0xFF10B981) : cardBorder,
+                    ),
+                  ),
+                  child: entry.isCompleted
+                      ? const Icon(Icons.check, size: 18, color: Colors.white)
+                      : (_busySlug == entry.exerciseSlug
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0284C7)),
+                            )
+                          : null),
+                ),
+              ),
+              title: Text(
+                entry.name,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: entry.isCompleted ? const Color(0xFF94A3B8) : textPrimary,
+                  decoration: entry.isCompleted ? TextDecoration.lineThrough : null,
+                ),
+              ),
+              subtitle: Text(
+                '${entry.durationMin} min${entry.scheduledAt != null ? " · ${entry.scheduledAt}" : ""} · Tap to view form guide',
+                style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF94A3B8)),
+              onTap: () => _openExercise(entry),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 7. RECENT ACTIVITY SECTION
+  // ---------------------------------------------------------------------------
+  Widget _buildRecentActivitySection(BuildContext context) {
+    final isDark = ThemeManager.instance.isDark;
+    final textPrimary = isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A);
+    final cardBg = isDark ? const Color(0xFF171C25) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Recent activity',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: textPrimary),
+            ),
+            InkWell(
+              onTap: () => pushScreen(context, 'Record Activity', const RecordScreen()),
+              child: const Text(
+                'View all',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0284C7)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Recent Activity 1: Outdoor Run
+        Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: cardBorder),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
           child: Row(
             children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0F2FE),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.directions_run_rounded, color: Color(0xFF0284C7), size: 24),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const VLabel('Effort today'),
                     Text(
-                      '${data.effort.percent}%',
-                      style: const TextStyle(
-                          color: VColor.accentGreen, fontSize: 34, fontWeight: FontWeight.w700),
+                      'Outdoor 5.2 km Run',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: textPrimary),
                     ),
-                    const Text('of your own goal',
-                        style: TextStyle(color: VColor.textLow, fontSize: 11)),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Morning Session · 28:40 min · 385 kcal',
+                      style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                    ),
                   ],
                 ),
               ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  '+120 Pts',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF10B981)),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Recent Activity 2: Core Conditioning
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: cardBorder),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD1FAE5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.fitness_center_rounded, color: Color(0xFF059669), size: 22),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    VLabel('Level ${data.coins.level}'),
                     Text(
-                      '${data.coins.balance}',
-                      style: const TextStyle(
-                          color: VColor.text, fontSize: 34, fontWeight: FontWeight.w700),
+                      'Core & Isometric Conditioning',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: textPrimary),
                     ),
-                    const Text('coins earned',
-                        style: TextStyle(color: VColor.textLow, fontSize: 11)),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Yesterday · 20:00 min · Form Score 98%',
+                      style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                    ),
                   ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  '+80 Pts',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFFD97706)),
                 ),
               ),
             ],
@@ -810,117 +1440,60 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
       ],
     );
   }
-}
 
-// -----------------------------------------------------------------------------
-
-class _ExerciseRow extends StatelessWidget {
-  const _ExerciseRow({
-    required this.entry,
-    required this.busy,
-    required this.disabled,
-    required this.onTap,
-    required this.onToggleCheck,
-  });
-
-  final PlanEntry entry;
-  final bool busy;
-  final bool disabled;
-  final VoidCallback onTap;
-  final VoidCallback onToggleCheck;
-
-  @override
-  Widget build(BuildContext context) {
-    final done = entry.isCompleted;
-
-    return Semantics(
-      button: true,
-      enabled: !disabled,
-      label: '${entry.name}, ${entry.durationMin} minutes. ${done ? "Completed" : "Tap to open exercise workout"}',
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(VRadius.md),
-        child: InkWell(
-          onTap: disabled ? null : onTap,
-          borderRadius: BorderRadius.circular(VRadius.md),
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 64),
-            padding: const EdgeInsets.all(VSpace.base),
-            decoration: BoxDecoration(
-              color: done ? VColor.bgLift : VColor.surface,
-              border: Border.all(color: done ? VColor.lineSoft : VColor.line),
-              borderRadius: BorderRadius.circular(VRadius.md),
+  // ---------------------------------------------------------------------------
+  // 8. CHRONO WINDOW BANNER
+  // ---------------------------------------------------------------------------
+  Widget _buildChronoWindowBanner(BuildContext context, TodayData data) {
+    final isDark = ThemeManager.instance.isDark;
+    return InkWell(
+      onTap: _openCustomWindowDialog,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF171C25) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF0284C7), size: 20),
             ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: disabled ? null : onToggleCheck,
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: done ? VColor.accentGreen : Colors.transparent,
-                      border: Border.all(color: done ? VColor.accentGreen : VColor.textLow, width: 1.5),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Chrono AI Daily Intelligence',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A),
                     ),
-                    child: done
-                        ? const Icon(Icons.check, size: 18, color: VColor.textOnAccent)
-                        : null,
                   ),
-                ),
-                const SizedBox(width: VSpace.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        entry.name,
-                        style: TextStyle(
-                          color: done ? VColor.textLow : VColor.text,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          decoration: done ? TextDecoration.lineThrough : null,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${entry.durationMin} min'
-                        '${entry.scheduledAt != null ? " · ${entry.scheduledAt}" : ""}'
-                        ' · Tap for visual guide & timer',
-                        style: const TextStyle(color: VColor.textLow, fontSize: 11.5),
-                      ),
-                    ],
+                  const SizedBox(height: 2),
+                  Text(
+                    data.capacity.explanation,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
                   ),
-                ),
-                if (busy)
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: VColor.accent),
-                  )
-                else
-                  const Icon(Icons.chevron_right, size: 20, color: VColor.textLow),
-              ],
+                ],
+              ),
             ),
-          ),
+            const Icon(Icons.tune_rounded, size: 18, color: Color(0xFF0284C7)),
+          ],
         ),
       ),
     );
   }
-}
-
-class _Shell extends StatelessWidget {
-  const _Shell({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => SafeArea(
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(VSpace.base, VSpace.base, VSpace.base, VSpace.xxxl),
-          children: [child],
-        ),
-      );
 }
