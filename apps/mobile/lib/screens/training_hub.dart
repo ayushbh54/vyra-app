@@ -17,7 +17,6 @@ import 'food_scan.dart';
 import 'health_sync.dart';
 import 'library.dart';
 import 'messages_inbox.dart';
-import 'profile.dart';
 import 'record.dart';
 import 'water_reminder.dart';
 
@@ -204,6 +203,126 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showPersonaSwitcher(BuildContext context) {
+    final isDark = ThemeManager.instance.isDark;
+    final bg = isDark ? const Color(0xFF171C25) : Colors.white;
+    final textPrimary = isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.bolt_rounded, color: Color(0xFF0284C7), size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Chrono Engine Live Simulation',
+                            style: TextStyle(
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.w800,
+                              color: textPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Watch goals & workouts adapt live to real daily schedules:',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _personaOptionTile(ctx, 'student', 'Ayush Bhadoria (Student)', 'School, coaching · 17 usable minutes', Icons.school_rounded),
+                _personaOptionTile(ctx, 'nurse', 'Hospital Nurse', '12-hr shift · Scaled-down 15 min mobility recovery', Icons.medical_services_rounded),
+                _personaOptionTile(ctx, 'homemaker', 'Active Homemaker', 'Split day · 20 min daytime frequency', Icons.home_rounded),
+                _personaOptionTile(ctx, 'open', 'Remote Worker', 'Open calendar · 45 min peak metabolic burn', Icons.laptop_chromebook_rounded),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _personaOptionTile(BuildContext ctx, String id, String title, String subtitle, IconData icon) {
+    final isDark = ThemeManager.instance.isDark;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        tileColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+        leading: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 20, color: const Color(0xFF0284C7)),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13.5,
+            color: isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A),
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 11.5,
+            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+          ),
+        ),
+        trailing: const Icon(Icons.arrow_forward_rounded, size: 18, color: Color(0xFF0284C7)),
+        onTap: () async {
+          Navigator.pop(ctx);
+          try {
+            await context.read<VyraApi>().startDemoSession(id);
+            if (mounted) {
+              await _load();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('✨ Switched to $title! Goal & routine adapted.'),
+                    backgroundColor: const Color(0xFF10B981),
+                  ),
+                );
+              }
+            }
+          } catch (_) {}
+        },
       ),
     );
   }
@@ -468,30 +587,34 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    firstName,
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.2,
+              InkWell(
+                onTap: () => _showPersonaSwitcher(context),
+                borderRadius: BorderRadius.circular(8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      firstName,
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 3),
-                  Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: textSecondary,
-                    size: 19,
-                  ),
-                ],
+                    const SizedBox(width: 3),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: textSecondary,
+                      size: 19,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 2),
-              // Pill badge matching screenshot chip style
+              // Pill badge matching screenshot chip style (taps to switch Chrono persona live)
               InkWell(
-                onTap: () => pushScreen(context, 'My Profile', const ProfileScreen()),
+                onTap: () => _showPersonaSwitcher(context),
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -514,7 +637,7 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
                         ),
                       ),
                       const SizedBox(width: 2),
-                      Icon(Icons.chevron_right_rounded, size: 13, color: textSecondary),
+                      Icon(Icons.keyboard_arrow_down_rounded, size: 13, color: textSecondary),
                     ],
                   ),
                 ),
