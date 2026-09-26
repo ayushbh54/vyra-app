@@ -335,7 +335,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 backgroundColor: VColor.accent,
                 foregroundColor: Colors.black,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VRadius.base)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VRadius.md)),
                 elevation: 4,
               ),
             ),

@@ -14,7 +14,8 @@
     "db:migrate": "for f in db/migrations/*.sql; do psql \"$DATABASE_URL\" -f \"$f\"; done"
   },
   "dependencies": {
-    "@vyra/types": "*"
+    "@vyra/types": "*",
+    "pg": "^8.12.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

@@ -42,6 +42,18 @@ dependencies:
   # ── Permissions ────────────────────────────────────────────────────────────
   permission_handler: ^11.3.1
 
+  # ── Contact Sync (WhatsApp-style friend discovery) ─────────────────────────
+  contacts_service: ^0.6.3
+
+  # ── Cryptographic Hashing (SHA-256 for phone hash privacy) ─────────────────
+  crypto: ^3.0.3
+
+  # ── Local Notifications (motivational slogans, workout reminders) ──────────
+  flutter_local_notifications: ^17.2.1
+
+  # ── Timezone Support (notification scheduling) ─────────────────────────────
+  timezone: ^0.9.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

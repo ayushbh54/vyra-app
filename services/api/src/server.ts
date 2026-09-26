@@ -2430,13 +2430,16 @@ Respond in this exact JSON format:
 
   router.post('/v1/eraktkosh/donor/register', async (ctx) => {
     const b = (ctx.body && typeof ctx.body === 'object') ? ctx.body as Record<string, unknown> : {};
+    if (!b.fullName || !b.bloodGroup || !b.mobile || !b.city) {
+      throw HttpError.badRequest('fullName, bloodGroup, mobile, and city are required fields.');
+    }
     const donor = {
-      fullName: String(b.fullName || 'Ayush Singh Bhadoria'),
-      bloodGroup: String(b.bloodGroup || 'O+'),
-      mobile: String(b.mobile || '+91-9876543210'),
-      age: Number(b.age || 22),
+      fullName: String(b.fullName),
+      bloodGroup: String(b.bloodGroup),
+      mobile: String(b.mobile),
+      age: Number(b.age || 25),
       gender: String(b.gender || 'male'),
-      city: String(b.city || 'Ghaziabad'),
+      city: String(b.city),
     };
     const result = await eRaktKoshClient.preRegisterDonor(donor);
     return result;
@@ -2444,14 +2447,17 @@ Respond in this exact JSON format:
 
   router.post('/v1/eraktkosh/thalassemia/request', async (ctx) => {
     const b = (ctx.body && typeof ctx.body === 'object') ? ctx.body as Record<string, unknown> : {};
+    if (!b.patientName || !b.bloodGroup || !b.hospitalName) {
+      throw HttpError.badRequest('patientName, bloodGroup, and hospitalName are required fields.');
+    }
     const req = {
       patientId: String(b.patientId || randomUUID()),
-      patientName: String(b.patientName || 'Warrior Patient'),
-      bloodGroup: String(b.bloodGroup || 'A+'),
+      patientName: String(b.patientName),
+      bloodGroup: String(b.bloodGroup),
       unitsRequired: Number(b.unitsRequired || 1),
       transfusionDueDate: String(b.transfusionDueDate || new Date().toISOString().split('T')[0]),
-      hospitalName: String(b.hospitalName || 'District Hospital Ghaziabad'),
-      specialRequirement: (b.specialRequirement || 'Leukodepleted PRBC') as any,
+      hospitalName: String(b.hospitalName),
+      specialRequirement: (b.specialRequirement || 'Leukodepleted PRBC') as 'Leukodepleted PRBC' | 'Washed RBC' | 'Irradiated RBC',
     };
     const result = await eRaktKoshClient.submitThalassemiaRequest(req);
     return result;

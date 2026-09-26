@@ -1,8 +1,7 @@
 name: Build VYRA Release APK
 
+# Manual trigger only — automatic builds on push are disabled
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
 
 permissions:
@@ -31,7 +30,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
+          cache: false
 
       - name: Verify Flutter & Android Environment
         run: |
@@ -97,7 +96,7 @@ jobs:
         with:
           name: vyra-release-apk
           path: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 30
+          retention-days: 2
 
       - name: Upload Build Log on Failure
         if: failure()
@@ -105,4 +104,4 @@ jobs:
         with:
           name: build-failure-log
           path: /tmp/flutter_build.log
-          retention-days: 7
+          retention-days: 2

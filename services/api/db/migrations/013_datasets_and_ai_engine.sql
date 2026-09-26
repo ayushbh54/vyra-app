@@ -46,32 +46,28 @@ CREATE TYPE subscription_tier_t AS ENUM ('free','pro','elite','lifetime');
 --    Source: National Institute of Nutrition, Hyderabad + Open Food Facts India
 --    Load via: backend seed script (see scripts/seed_food_db.ts)
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE food_items (
-  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name_en          TEXT NOT NULL,
-  name_hi          TEXT,
-  name_local       JSONB,                      -- {"ta":"...", "te":"...", "ml":"..."}
-  category         TEXT NOT NULL,              -- 'cereal','dal','vegetable','fruit','dairy','meat','snack'
-  barcode          TEXT UNIQUE,                -- EAN-13 for packaged items
-  per_100g_kcal    NUMERIC(7,2) NOT NULL,
-  per_100g_protein NUMERIC(7,2) NOT NULL,
-  per_100g_carbs   NUMERIC(7,2) NOT NULL,
-  per_100g_fat     NUMERIC(7,2) NOT NULL,
-  per_100g_fiber   NUMERIC(7,2),
-  per_100g_iron    NUMERIC(7,2),
-  per_100g_calcium NUMERIC(7,2),
-  per_100g_vit_d   NUMERIC(7,2),
-  per_100g_vit_b12 NUMERIC(7,2),
-  allergens        TEXT[],                     -- ['gluten','dairy','nuts','eggs','soy','seafood']
-  is_veg           BOOLEAN NOT NULL DEFAULT TRUE,
-  is_vegan         BOOLEAN NOT NULL DEFAULT FALSE,
-  glycemic_index   SMALLINT,                   -- 0-100
-  data_source      TEXT NOT NULL DEFAULT 'NIN',
-  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX idx_food_category    ON food_items (category);
-CREATE INDEX idx_food_barcode     ON food_items (barcode) WHERE barcode IS NOT NULL;
-CREATE INDEX idx_food_name_search ON food_items USING gin(to_tsvector('english', name_en));
+ALTER TABLE food_items
+  ADD COLUMN IF NOT EXISTS name_en          TEXT,
+  ADD COLUMN IF NOT EXISTS name_hi          TEXT,
+  ADD COLUMN IF NOT EXISTS name_local       JSONB,
+  ADD COLUMN IF NOT EXISTS category         TEXT,
+  ADD COLUMN IF NOT EXISTS per_100g_kcal    NUMERIC(7,2),
+  ADD COLUMN IF NOT EXISTS per_100g_protein NUMERIC(7,2),
+  ADD COLUMN IF NOT EXISTS per_100g_carbs   NUMERIC(7,2),
+  ADD COLUMN IF NOT EXISTS per_100g_fat     NUMERIC(7,2),
+  ADD COLUMN IF NOT EXISTS per_100g_fiber   NUMERIC(7,2),
+  ADD COLUMN IF NOT EXISTS per_100g_iron    NUMERIC(7,2),
+  ADD COLUMN IF NOT EXISTS per_100g_calcium NUMERIC(7,2),
+  ADD COLUMN IF NOT EXISTS per_100g_vit_d   NUMERIC(7,2),
+  ADD COLUMN IF NOT EXISTS per_100g_vit_b12 NUMERIC(7,2),
+  ADD COLUMN IF NOT EXISTS is_veg           BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS is_vegan         BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS glycemic_index   SMALLINT,
+  ADD COLUMN IF NOT EXISTS data_source      TEXT NOT NULL DEFAULT 'NIN';
+
+CREATE INDEX IF NOT EXISTS idx_food_category ON food_items (category);
+CREATE INDEX IF NOT EXISTS idx_food_barcode ON food_items (barcode) WHERE barcode IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_food_name_search_en ON food_items USING gin(to_tsvector('english', coalesce(name_en, name)));
 
 COMMENT ON TABLE food_items IS
   'Primary food composition database. Seed from NIN (National Institute of Nutrition) '

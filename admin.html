@@ -2880,21 +2880,23 @@
         commonMistakesToAvoid: ['Knees caving inwards (valgus)', 'Heels lifting off ground']
       };
 
-      const promptMock = \\\`[GEMINI 1.5 RAG SYSTEM GROUNDING INJECTION]
-TARGET EXERCISE: \\\${ex.name} (\\\${ex.hindiName || ''})
-CATEGORY: \\\${(ex.category || '').toUpperCase()} | TARGET MUSCLES: \\\${(ex.primaryMuscles || [ex.primaryMuscle || '']).join(', ')}
+      const promptMock = `[GEMINI 1.5 RAG SYSTEM GROUNDING INJECTION]
+TARGET EXERCISE: ${ex.name} (${ex.hindiName || ''})
+CATEGORY: ${(ex.category || '').toUpperCase()} | TARGET MUSCLES: ${(ex.primaryMuscles || [ex.primaryMuscle || '']).join(', ')}
 BIOMECHANICAL SPECIFICATIONS:
-- Primary Joint: \\\${ex.kinematics?.primaryJoint || 'knee'}
-- Joint Flexion Target: \\\${ex.kinematics?.optimalFlexionDeg ? ex.kinematics.optimalFlexionDeg + '°' : 'Parallel'}
-- Kinetic Repetition Tempo: \\\${ex.kinematics?.tempo || '3-1-1-0'} (Eccentric-Pause-Concentric-Reset)
-- Respiration Protocol: \\\${ex.breathingPattern || ex.breathing || 'Inhale eccentric, exhale concentric'}
+- Primary Joint: ${ex.kinematics?.primaryJoint || 'knee'}
+- Joint Flexion Target: ${ex.kinematics?.optimalFlexionDeg ? ex.kinematics.optimalFlexionDeg + '°' : 'Parallel'}
+- Kinetic Repetition Tempo: ${ex.kinematics?.tempo || '3-1-1-0'} (Eccentric-Pause-Concentric-Reset)
+- Respiration Protocol: ${ex.breathingPattern || ex.breathing || 'Inhale eccentric, exhale concentric'}
 - Correct Form Cues:
-  * \\\${(ex.criticalFormChecklist || ex.formCues || []).join('\\n  * ')}
+  * ${(ex.criticalFormChecklist || ex.formCues || []).join('
+  * ')}
 - Critical Biomechanical Faults to Detect:
-  * \\\${(ex.commonMistakesToAvoid || ex.commonFaults || []).join('\\n  * ')}
+  * ${(ex.commonMistakesToAvoid || ex.commonFaults || []).join('
+  * ')}
 
 INSTRUCTION FOR GEMINI AGENT:
-Provide authoritative, supportive, zero-hallucination biomechanical feedback strictly within these ranges. Answer user queries in their preferred language (Hindi/English).\\\`;
+Provide authoritative, supportive, zero-hallucination biomechanical feedback strictly within these ranges. Answer user queries in their preferred language (Hindi/English).`;
 
       document.getElementById('gemini-prompt-preview').innerText = promptMock;
       openModal('modal-gemini');

@@ -351,19 +351,18 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
                                   setState(() => _isSaving = true);
                                   await AvatarCustomizationService.instance.updateProfile(_profile);
                                   await Future.delayed(const Duration(milliseconds: 300));
+                                  if (!mounted) return;
                                   setState(() => _isSaving = false);
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        backgroundColor: const Color(0xFF00D2FF),
-                                        content: const Text(
-                                          '3D Avatar Profile Saved Successfully!',
-                                          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-                                        ),
-                                        behavior: SnackBarBehavior.floating,
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      backgroundColor: const Color(0xFF00D2FF),
+                                      content: const Text(
+                                        '3D Avatar Profile Saved Successfully!',
+                                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
                                       ),
-                                    );
-                                  }
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF00D2FF),
