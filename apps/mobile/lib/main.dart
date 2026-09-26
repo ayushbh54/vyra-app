@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'api/client.dart';
@@ -12,6 +13,7 @@ import 'screens/onboarding/onboarding_flow.dart';
 import 'screens/profile.dart';
 import 'screens/social_hub.dart';
 import 'screens/training_hub.dart';
+import 'services/language_service.dart';
 import 'theme.dart';
 import 'theme_manager.dart';
 import 'widgets/common.dart';
@@ -19,7 +21,10 @@ import 'widgets/vyra_drawer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await ThemeManager.instance.init();
+  await Future.wait([
+    ThemeManager.instance.init(),
+    LanguageService.instance.init(),
+  ]);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
@@ -39,15 +44,28 @@ class VyraApp extends StatelessWidget {
       child: ValueListenableBuilder<ThemeMode>(
         valueListenable: ThemeManager.instance.themeModeNotifier,
         builder: (context, themeMode, _) {
-          return MaterialApp(
-            title: 'VYRA',
-            debugShowCheckedModeBanner: false,
-            theme: buildVyraLightTheme(),
-            darkTheme: buildVyraDarkTheme(),
-            themeMode: themeMode,
-            home: const _Bootstrap(),
-            routes: {
-              '/': (_) => const _Bootstrap(),
+          return AnimatedBuilder(
+            animation: LanguageService.instance,
+            builder: (context, _) {
+              return MaterialApp(
+                title: 'VYRA',
+                debugShowCheckedModeBanner: false,
+                theme: buildVyraLightTheme(),
+                darkTheme: buildVyraDarkTheme(),
+                themeMode: themeMode,
+                // ── Locale ────────────────────────────────────────────
+                locale: LanguageService.instance.locale,
+                supportedLocales: kVyraLanguages.map((l) => l.locale).toList(),
+                localizationsDelegates: const [
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
+                home: const _Bootstrap(),
+                routes: {
+                  '/': (_) => const _Bootstrap(),
+                },
+              );
             },
           );
         },

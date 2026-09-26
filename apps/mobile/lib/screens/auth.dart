@@ -81,6 +81,20 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> _fastGuestLogin() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final api = context.read<VyraApi>();
+      await api.logInAsGuest();
+      if (!mounted) return;
+      widget.onAuthenticated();
+    } on ApiException catch (e) {
+      setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _signInWithGoogle() async {
     final googleEmailController = TextEditingController(text: _emailController.text.trim());
     final googleNameController = TextEditingController(text: _nameController.text.trim());
@@ -311,6 +325,29 @@ class _AuthScreenState extends State<AuthScreen> {
                 style: TextStyle(color: VColor.textMid, fontSize: 14)),
             const SizedBox(height: VSpace.lg),
 
+            // Fast 1-Tap Guest Access (Instant Demo Login)
+            ElevatedButton.icon(
+              onPressed: _loading ? null : _fastGuestLogin,
+              icon: const Icon(Icons.bolt_rounded, size: 22, color: Colors.black),
+              label: const Text('⚡ Instant Guest Access (1-Tap Login)',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: VColor.accent,
+                foregroundColor: Colors.black,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VRadius.base)),
+                elevation: 4,
+              ),
+            ),
+            const SizedBox(height: VSpace.xs),
+            const Center(
+              child: Text(
+                'Instant access without typing • Link Google / Email anytime later',
+                style: TextStyle(color: VColor.textMid, fontSize: 11),
+              ),
+            ),
+            const SizedBox(height: VSpace.lg),
+
             // Segmented switch
             Container(
               padding: const EdgeInsets.all(4),
@@ -480,7 +517,7 @@ class _AuthScreenState extends State<AuthScreen> {
               Center(
                 child: TextButton(
                   onPressed: widget.onDemoRequested,
-                  child: const Text('Try a live demo instead',
+                  child: const Text('Explore Instant Access instead',
                       style: TextStyle(color: VColor.accent, fontSize: 13)),
                 ),
               ),

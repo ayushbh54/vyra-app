@@ -32,6 +32,7 @@
 
 import { GeminiClient, GeminiError } from './gemini';
 import type { StoredChatMessage } from '../store';
+import { buildGeminiExerciseGrounding } from '../content/exercise_dataset';
 
 export type ChatRole = StoredChatMessage['role'];
 export type ChatMessage = Pick<StoredChatMessage, 'role' | 'body'>;
@@ -74,6 +75,13 @@ export class ChatError extends Error {
 function buildPrompt(userMessage: string, history: ChatMessage[]): string {
   const recent = history.slice(-MAX_HISTORY_TURNS);
   const lines = recent.map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.body}`);
+  
+  // Grounding from verified exercise dataset
+  const grounding = buildGeminiExerciseGrounding(userMessage);
+  if (grounding) {
+    lines.push(`[System Grounding Context]:\n${grounding}`);
+  }
+
   lines.push(`User: ${userMessage}`, 'Assistant:');
   return lines.join('\n');
 }

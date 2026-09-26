@@ -31,7 +31,7 @@ async function runTests() {
   // Wait 1.5s for server to start
   await wait(1500);
 
-  const BASE = 'http://localhost:4000';
+  const BASE = 'http://127.0.0.1:4000';
   let passed = 0;
   let failed = 0;
 

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VYRA 3D Avatar Exercise Suite - Presentation Quality</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #080C14;
+      --card-bg: rgba(16, 22, 36, 0.85);
+      --cyan: #00D2FF;
+      --green: #34FF8C;
+      --orange: #FFAF81;
+      --purple: #B288FF;
+      --text: #DFE2F0;
+      --text-muted: #8896AB;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #05080E;
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 60px;
+    }
+
+    .slide-container {
+      width: 1200px;
+      height: 680px;
+      background: radial-gradient(circle at 75% 25%, #10192A 0%, #06090F 85%);
+      border-radius: 32px;
+      border: 1px solid rgba(0, 210, 255, 0.2);
+      box-shadow: 0 25px 80px rgba(0,0,0,0.8), 0 0 50px rgba(0, 210, 255, 0.1);
+      padding: 40px 50px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .slide-container::before {
+      content: '';
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(circle, rgba(0, 210, 255, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Slide Header */
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 25px;
+    }
+    .slide-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 210, 255, 0.1);
+      border: 1px solid rgba(0, 210, 255, 0.3);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--cyan);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .slide-title {
+      font-size: 32px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -0.8px;
+      line-height: 1.15;
+    }
+    .slide-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      max-width: 650px;
+    }
+    .slide-badge-rt {
+      background: rgba(52, 255, 140, 0.12);
+      border: 1px solid rgba(52, 255, 140, 0.35);
+      border-radius: 12px;
+      padding: 8px 16px;
+      text-align: right;
+    }
+    .slide-badge-title { font-size: 11px; font-weight: 800; color: var(--green); text-transform: uppercase; }
+    .slide-badge-sub { font-size: 12px; font-weight: 600; color: #fff; margin-top: 2px; }
+
+    /* Slide Content Layout */
+    .slide-body {
+      flex: 1;
+      display: flex;
+      gap: 40px;
+      align-items: center;
+    }
+
+    /* Left Phone Mockup */
+    .phone-mockup {
+      width: 320px;
+      height: 480px;
+      background: #0B0F19;
+      border-radius: 36px;
+      border: 5px solid #162030;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7), 0 0 30px rgba(0,210,255,0.15);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Customizer Studio Box */
+    .studio-box {
+      flex: 1;
+      background: rgba(14, 20, 32, 0.85);
+      border: 1px solid rgba(0, 210, 255, 0.2);
+      border-radius: 24px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      backdrop-filter: blur(10px);
+    }
+    .studio-row-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 8px;
+    }
+    .tone-swatches {
+      display: flex;
+      gap: 12px;
+    }
+    .tone-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 12px;
+    }
+    .tone-circle.active {
+      border-color: var(--cyan);
+      box-shadow: 0 0 14px var(--cyan);
+    }
+
+    .style-chip-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .style-chip {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .style-chip.active {
+      background: rgba(0, 210, 255, 0.15);
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    /* KPI Highlights List */
+    .feature-points {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+    }
+    .fp-card {
+      background: rgba(18, 25, 42, 0.7);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .fp-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .fp-title { font-size: 14px; font-weight: 800; color: #fff; }
+    .fp-desc { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+
+  <!-- SLIDE 1: 3D BIOMECHANICAL AVATAR & REAL-TIME JOINT HUD -->
+  <div class="slide-container" id="slide1">
+    <div class="slide-header">
+      <div>
+        <div class="slide-pill">⚡ Core Motion Architecture</div>
+        <div class="slide-title">3D Biomechanical Avatar & Joint HUD</div>
+        <div class="slide-desc">Real-time vector bone kinematics with live degree indicators, 180° touch rotation, and target muscle activation heatmaps.</div>
+      </div>
+      <div class="slide-badge-rt">
+        <div class="slide-badge-title">Kinematics Standard</div>
+        <div class="slide-badge-sub">60 FPS Hardware Render</div>
+      </div>
+    </div>
+
+    <div class="slide-body">
+      <!-- 3D Avatar Mockup Viewport -->
+      <div style="flex: 1.1; height: 460px; background: radial-gradient(circle at 50% 40%, #152136 0%, #080D16 85%); border-radius: 24px; border: 1.5px solid rgba(0, 210, 255, 0.3); position: relative; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.6);">
+        <!-- Top Toolbar -->
+        <div style="position:absolute; top:14px; left:16px; right:16px; display:flex; justify-content:space-between; z-index:20;">
+          <div style="background:rgba(11,15,25,0.85); border:1px solid rgba(0,210,255,0.4); padding:5px 12px; border-radius:20px; font-size:11px; font-weight:800; color:var(--cyan); display:flex; align-items:center; gap:6px;">
+            <span>🔄</span> 180° ORBIT ACTIVE (45° PERSPECTIVE)
+          </div>
+          <div style="display:flex; gap:8px;">
+            <div style="background:rgba(11,15,25,0.85); border:1px solid rgba(52,255,140,0.4); padding:5px 12px; border-radius:20px; font-size:11px; font-weight:800; color:var(--green);">
+              📐 FORM HUD [ON]
+            </div>
+            <div style="background:rgba(0,210,255,0.15); border:1px solid var(--cyan); padding:5px 12px; border-radius:20px; font-size:11px; font-weight:800; color:#fff;">
+              👤 MY FACE MESH
+            </div>
+          </div>
+        </div>
+
+        <!-- 3D High Fidelity Avatar SVG -->
+        <svg viewBox="0 0 540 420" style="width:100%; height:100%;">
+          <defs>
+            <radialGradient id="s1MuscleHeat" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#34FF8C" stop-opacity="0.9"/>
+              <stop offset="60%" stop-color="#34FF8C" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#34FF8C" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="s1ChestCore" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#00D2FF" stop-opacity="1"/>
+              <stop offset="50%" stop-color="#0077FF" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="#00D2FF" stop-opacity="0"/>
+            </radialGradient>
+            <filter id="s1Glow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="5"/>
+            </filter>
+          </defs>
+
+          <!-- Perspective Floor Grid -->
+          <line x1="40" y1="310" x2="500" y2="310" stroke="rgba(0, 210, 255, 0.3)" stroke-width="2"/>
+          <line x1="20" y1="340" x2="520" y2="340" stroke="rgba(0, 210, 255, 0.25)" stroke-width="2"/>
+          <line x1="0" y1="380" x2="540" y2="380" stroke="rgba(0, 210, 255, 0.15)" stroke-width="2"/>
+
+          <line x1="270" y1="300" x2="50" y2="420" stroke="rgba(0, 210, 255, 0.2)" stroke-width="1.5"/>
+          <line x1="270" y1="300" x2="130" y2="420" stroke="rgba(0, 210, 255, 0.18)" stroke-width="1.5"/>
+          <line x1="270" y1="300" x2="200" y2="420" stroke="rgba(0, 210, 255, 0.15)" stroke-width="1.5"/>
+          <line x1="270" y1="300" x2="270" y2="420" stroke="rgba(0, 210, 255, 0.2)" stroke-width="1.5"/>
+          <line x1="270" y1="300" x2="340" y2="420" stroke="rgba(0, 210, 255, 0.15)" stroke-width="1.5"/>
+          <line x1="270" y1="300" x2="410" y2="420" stroke="rgba(0, 210, 255, 0.18)" stroke-width="1.5"/>
+          <line x1="270" y1="300" x2="490" y2="420" stroke="rgba(0, 210, 255, 0.2)" stroke-width="1.5"/>
+
+          <!-- Contact Drop Shadows -->
+          <ellipse cx="205" cy="385" rx="34" ry="10" fill="rgba(0,0,0,0.7)"/>
+          <ellipse cx="340" cy="378" rx="30" ry="9" fill="rgba(0,0,0,0.7)"/>
+
+          <!-- Muscle Heatmap Glow (Quadriceps & Gluteus) -->
+          <circle cx="195" cy="305" r="32" fill="url(#s1MuscleHeat)" filter="url(#s1Glow)"/>
+          <circle cx="318" cy="295" r="28" fill="url(#s1MuscleHeat)" filter="url(#s1Glow)"/>
+          <ellipse cx="255" cy="255" rx="42" ry="22" fill="url(#s1MuscleHeat)" filter="url(#s1Glow)"/>
+
+          <!-- Torso Conduits -->
+          <line x1="265" y1="165" x2="255" y2="250" stroke="#334E68" stroke-width="12" stroke-linecap="round"/>
+          <line x1="265" y1="165" x2="255" y2="250" stroke="#00D2FF" stroke-width="3.5" stroke-linecap="round"/>
+
+          <!-- Pelvis Bar -->
+          <line x1="225" y1="255" x2="290" y2="250" stroke="#243B53" stroke-width="10" stroke-linecap="round"/>
+
+          <!-- Left Leg (Squat Flexed) -->
+          <line x1="225" y1="255" x2="175" y2="310" stroke="#334E68" stroke-width="14" stroke-linecap="round"/>
+          <line x1="225" y1="255" x2="175" y2="310" stroke="#34FF8C" stroke-width="4.5" stroke-linecap="round"/>
+          <line x1="175" y1="310" x2="205" y2="382" stroke="#334E68" stroke-width="12" stroke-linecap="round"/>
+          <line x1="175" y1="310" x2="205" y2="382" stroke="#00D2FF" stroke-width="3.5" stroke-linecap="round"/>
+          <line x1="198" y1="382" x2="224" y2="385" stroke="#627D98" stroke-width="8" stroke-linecap="round"/>
+
+          <!-- Right Leg (Squat Flexed with 3D perspective) -->
+          <line x1="290" y1="250" x2="330" y2="300" stroke="#1F2937" stroke-width="13" stroke-linecap="round"/>
+          <line x1="290" y1="250" x2="330" y2="300" stroke="#34FF8C" stroke-width="3.8" stroke-linecap="round"/>
+          <line x1="330" y1="300" x2="340" y2="375" stroke="#1F2937" stroke-width="11" stroke-linecap="round"/>
+          <line x1="330" y1="300" x2="340" y2="375" stroke="#00D2FF" stroke-width="3" stroke-linecap="round"/>
+          <line x1="335" y1="375" x2="355" y2="378" stroke="#4B5563" stroke-width="7" stroke-linecap="round"/>
+
+          <!-- Arms & Barbell -->
+          <line x1="238" y1="160" x2="210" y2="185" stroke="#334E68" stroke-width="9" stroke-linecap="round"/>
+          <line x1="210" y1="185" x2="228" y2="150" stroke="#334E68" stroke-width="9" stroke-linecap="round"/>
+          <line x1="295" y1="158" x2="325" y2="178" stroke="#334E68" stroke-width="9" stroke-linecap="round"/>
+          <line x1="325" y1="178" x2="308" y2="148" stroke="#334E68" stroke-width="9" stroke-linecap="round"/>
+
+          <!-- Heavy Barbell -->
+          <line x1="110" y1="148" x2="430" y2="142" stroke="#F1F5F9" stroke-width="6.5" stroke-linecap="round"/>
+          <!-- Weight plates left -->
+          <rect x="118" y="112" width="16" height="72" rx="4" fill="#141E30" stroke="#00D2FF" stroke-width="2.5"/>
+          <rect x="136" y="118" width="12" height="60" rx="3" fill="#1E2838" stroke="#00D2FF" stroke-width="2"/>
+          <circle cx="110" cy="148" r="5" fill="#00D2FF"/>
+          <!-- Weight plates right -->
+          <rect x="395" y="108" width="12" height="60" rx="3" fill="#1E2838" stroke="#00D2FF" stroke-width="2"/>
+          <rect x="409" y="102" width="16" height="72" rx="4" fill="#141E30" stroke="#00D2FF" stroke-width="2.5"/>
+          <circle cx="430" cy="142" r="5" fill="#00D2FF"/>
+
+          <!-- Precision Servo Joints -->
+          <circle cx="175" cy="310" r="13" fill="#0F172A" stroke="#94A3B8" stroke-width="3"/>
+          <circle cx="175" cy="310" r="6" fill="#34FF8C"/>
+          <circle cx="330" cy="300" r="11" fill="#0F172A" stroke="#94A3B8" stroke-width="2.5"/>
+          <circle cx="330" cy="300" r="5" fill="#34FF8C"/>
+
+          <!-- Arc Reactor Core -->
+          <circle cx="265" cy="188" r="18" fill="url(#s1ChestCore)" filter="url(#s1Glow)"/>
+          <circle cx="265" cy="188" r="8" fill="#0F172A" stroke="#00D2FF" stroke-width="2.5"/>
+          <circle cx="265" cy="188" r="3" fill="#FFFFFF"/>
+
+          <!-- Head & Visor -->
+          <ellipse cx="268" cy="122" rx="20" ry="24" fill="#243B53" stroke="#486581" stroke-width="2"/>
+          <path d="M248 118 C248 98 288 98 288 118 C288 104 250 104 248 118 Z" fill="#0F172A"/>
+          <polygon points="254,120 286,116 288,126 256,129" fill="#00D2FF" filter="url(#s1Glow)"/>
+          <polygon points="254,120 286,116 288,126 256,129" fill="#FFFFFF" opacity="0.8"/>
+
+          <!-- HUD CALLOUTS -->
+          <!-- Knee Flexion Callout -->
+          <g transform="translate(55, 275)">
+            <rect x="0" y="0" width="105" height="38" rx="8" fill="rgba(11, 15, 25, 0.95)" stroke="#34FF8C" stroke-width="2"/>
+            <text x="52" y="24" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="16" font-weight="900" fill="#34FF8C">75° KNEE</text>
+            <line x1="105" y1="19" x2="168" y2="307" stroke="#34FF8C" stroke-width="2"/>
+            <circle cx="168" cy="307" r="3.5" fill="#34FF8C"/>
+          </g>
+
+          <!-- Spine Angle Callout -->
+          <g transform="translate(365, 205)">
+            <rect x="0" y="0" width="115" height="38" rx="8" fill="rgba(11, 15, 25, 0.95)" stroke="#FFAF81" stroke-width="2"/>
+            <text x="57" y="24" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="15" font-weight="900" fill="#FFAF81">45° SPINE</text>
+            <line x1="0" y1="19" x2="-80" y2="10" stroke="#FFAF81" stroke-width="1.8" stroke-dasharray="3,3"/>
+          </g>
+        </svg>
+
+        <!-- Bottom Viewport Tags -->
+        <div style="position:absolute; bottom:14px; left:16px; right:16px; display:flex; justify-content:space-between; z-index:20;">
+          <div style="background:rgba(11,15,25,0.9); border:1px solid var(--green); padding:6px 14px; border-radius:10px; font-size:12px; font-weight:800; color:var(--green);">
+            ● Phase 2: Parallel Isometric Hold (1.0s)
+          </div>
+          <div style="background:rgba(0,210,255,0.15); border:1px solid var(--cyan); padding:6px 14px; border-radius:10px; font-size:12px; font-weight:800; color:var(--cyan);">
+            Target: Quadriceps & Gluteus
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature Bullet Points -->
+      <div class="feature-points">
+        <div class="fp-card">
+          <div class="fp-icon" style="background:rgba(0,210,255,0.15); color:var(--cyan); border:1px solid rgba(0,210,255,0.3);">🔄</div>
+          <div>
+            <div class="fp-title">Continuous 180° Touch Drag Rotation</div>
+            <div class="fp-desc">Athletes can drag anywhere on screen to inspect the motion from frontal, 45° perspective, or full side-profile angles.</div>
+          </div>
+        </div>
+
+        <div class="fp-card">
+          <div class="fp-icon" style="background:rgba(52,255,140,0.15); color:var(--green); border:1px solid rgba(52,255,140,0.3);">📐</div>
+          <div>
+            <div class="fp-title">Dynamic Joint Flexion Angle HUD</div>
+            <div class="fp-desc">Mathematical projection calculates live degree flexion (e.g. 75° knee flexion, 90° elbow) to teach golden-standard biomechanics.</div>
+          </div>
+        </div>
+
+        <div class="fp-card">
+          <div class="fp-icon" style="background:rgba(255,175,129,0.15); color:var(--orange); border:1px solid rgba(255,175,129,0.3);">🔥</div>
+          <div>
+            <div class="fp-title">Muscle Heatmap & Activation Glow</div>
+            <div class="fp-desc">Target muscle groups glow dynamically during contraction phases so athletes understand mind-muscle connection.</div>
+          </div>
+        </div>
+
+        <div class="fp-card">
+          <div class="fp-icon" style="background:rgba(178,136,255,0.15); color:var(--purple); border:1px solid rgba(178,136,255,0.3);">⏱</div>
+          <div>
+            <div class="fp-title">4-Phase Biomechanical Cadence Tempo</div>
+            <div class="fp-desc">Synchronized 3-1-1-0 tempo coach guides Eccentric Lowering, Isometric Pause, and Concentric Drive.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: 3D AVATAR FACE PERSONALIZATION & CYBORG STUDIO -->
+  <div class="slide-container" id="slide2">
+    <div class="slide-header">
+      <div>
+        <div class="slide-pill" style="color:var(--purple); border-color:rgba(178,136,255,0.3); background:rgba(178,136,255,0.1);">🧬 Athlete Identity Engine</div>
+        <div class="slide-title">3D Avatar Customization & Face Likeness Studio</div>
+        <div class="slide-desc">On-device photo scan extracts facial geometry or customizes skin tone gradients, athletic visors, and hair styles.</div>
+      </div>
+      <div class="slide-badge-rt" style="border-color:rgba(178,136,255,0.4);">
+        <div class="slide-badge-title" style="color:var(--purple);">Identity Engine</div>
+        <div class="slide-badge-sub">Cyborg vs Natural Face</div>
+      </div>
+    </div>
+
+    <div class="slide-body">
+      <!-- Avatar Face Head Model Close-Up -->
+      <div style="width: 380px; height: 460px; background: radial-gradient(circle at 50% 35%, #18243D 0%, #0A0F1D 85%); border-radius: 24px; border: 1.5px solid rgba(178,136,255,0.35); position: relative; overflow: hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow: 0 20px 50px rgba(0,0,0,0.6);">
+        <!-- Active Tag -->
+        <div style="position:absolute; top:16px; background:rgba(178,136,255,0.15); border:1px solid var(--purple); padding:5px 14px; border-radius:20px; font-size:11px; font-weight:800; color:var(--purple);">
+          PHOTO LIKENESS ACTIVE
+        </div>
+
+        <!-- High Def Face Vector -->
+        <svg viewBox="0 0 260 260" style="width:260px; height:260px;">
+          <defs>
+            <radialGradient id="faceSkinGrad" cx="40%" cy="35%" r="65%">
+              <stop offset="0%" stop-color="#E0A97E"/>
+              <stop offset="70%" stop-color="#C68958"/>
+              <stop offset="100%" stop-color="#8C5832"/>
+            </radialGradient>
+            <radialGradient id="visorShine" cx="30%" cy="30%" r="70%">
+              <stop offset="0%" stop-color="#00D2FF"/>
+              <stop offset="50%" stop-color="#0077FF"/>
+              <stop offset="100%" stop-color="#002266"/>
+            </radialGradient>
+          </defs>
+
+          <!-- Head Shape with Skin Gradient -->
+          <ellipse cx="130" cy="130" rx="68" ry="85" fill="url(#faceSkinGrad)" stroke="#4A2E1B" stroke-width="2.5"/>
+
+          <!-- Stylized Modern Athletic Hair -->
+          <path d="M66 115 C60 55 200 55 194 115 C185 80 75 80 66 115 Z" fill="#1C140E"/>
+          <path d="M80 80 Q130 50 180 80 Q130 65 80 80 Z" fill="#2E1F16"/>
+
+          <!-- Athletic Performance Visor (Neon Cyan) -->
+          <polygon points="72,118 188,118 182,145 78,145" fill="url(#visorShine)" stroke="#00D2FF" stroke-width="2"/>
+          <line x1="84" y1="124" x2="176" y2="124" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+
+          <!-- Nose Bridge & Mouth -->
+          <path d="M127 150 L125 168 L135 168" stroke="#8C5832" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <line x1="116" y1="184" x2="144" y2="184" stroke="#683F23" stroke-width="3" stroke-linecap="round"/>
+
+          <!-- Cybernetic Jaw Stubble Line -->
+          <path d="M78 148 C90 205 170 205 182 148" stroke="#00D2FF" stroke-width="1.8" stroke-dasharray="3,3" fill="none" opacity="0.6"/>
+
+          <!-- Ear Servos -->
+          <circle cx="61" cy="132" r="9" fill="#1A2436" stroke="#00D2FF" stroke-width="1.8"/>
+          <circle cx="61" cy="132" r="3.5" fill="#34FF8C"/>
+          <circle cx="199" cy="132" r="9" fill="#1A2436" stroke="#00D2FF" stroke-width="1.8"/>
+          <circle cx="199" cy="132" r="3.5" fill="#34FF8C"/>
+        </svg>
+
+        <div style="font-size:15px; font-weight:800; color:#fff; margin-top:10px;">Ayush S. Likeness Profile</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Mesh Resolution: 3,420 Vertices</div>
+      </div>
+
+      <!-- Studio Controls Box -->
+      <div class="studio-box">
+        <!-- Skin Tone Picker -->
+        <div>
+          <div class="studio-row-title">Skin Tone Gradient</div>
+          <div class="tone-swatches">
+            <div class="tone-circle" style="background:#F7D5BA;"></div>
+            <div class="tone-circle active" style="background:#C68958;">✓</div>
+            <div class="tone-circle" style="background:#9E643C;"></div>
+            <div class="tone-circle" style="background:#5C3822;"></div>
+            <div class="tone-circle" style="background:linear-gradient(135deg, #1E293B, #0F172A); border:1.5px solid #00D2FF; color:#00D2FF;">CYB</div>
+          </div>
+        </div>
+
+        <!-- Hair Style -->
+        <div>
+          <div class="studio-row-title">Hair & Headwear Style</div>
+          <div class="style-chip-group">
+            <div class="style-chip active">Modern Crop</div>
+            <div class="style-chip">Buzz Cut</div>
+            <div class="style-chip">Top Knot Bun</div>
+            <div class="style-chip">Stealth Helmet</div>
+          </div>
+        </div>
+
+        <!-- Visor Tint -->
+        <div>
+          <div class="studio-row-title">Athletic Visor Optical Tint</div>
+          <div class="style-chip-group">
+            <div class="style-chip active" style="border-color:#00D2FF; color:#00D2FF; background:rgba(0,210,255,0.12);">Neon Cyan</div>
+            <div class="style-chip" style="border-color:#34FF8C; color:#34FF8C; background:rgba(52,255,140,0.08);">Toxic Lime</div>
+            <div class="style-chip" style="border-color:#FFAF81; color:#FFAF81; background:rgba(255,175,129,0.08);">Sunset Coral</div>
+            <div class="style-chip" style="border-color:#DFE2F0; color:#DFE2F0; background:rgba(255,255,255,0.05);">Titanium Smoke</div>
+          </div>
+        </div>
+
+        <!-- Camera AI Likeness Match -->
+        <div style="background:rgba(0,210,255,0.08); border:1px solid rgba(0,210,255,0.25); border-radius:14px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:34px; height:34px; border-radius:8px; background:rgba(0,210,255,0.2); display:flex; align-items:center; justify-content:center; color:var(--cyan); font-size:16px;">📷</div>
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">Extract From Selfie / Photo</div>
+              <div style="font-size:11px; color:var(--text-muted);">Auto-aligns skin pigment and facial hair</div>
+            </div>
+          </div>
+          <div style="background:var(--cyan); color:#000; font-weight:800; font-size:11px; padding:6px 12px; border-radius:8px;">SCAN PHOTO</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

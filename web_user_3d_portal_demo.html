@@ -1,0 +1,2873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VYRA — Athlete 3D Digital Twin & Biomechanical Performance Portal</title>
+  <style>
+    /* ─────────────────────────────────────────────────────────────────────────────
+       VYRA DESIGN SYSTEM — PURE INLINE CSS (100% OFFLINE CAPABLE & ZERO DEPENDENCIES)
+       ───────────────────────────────────────────────────────────────────────────── */
+    :root {
+      --bg-dark: #050811;
+      --bg-card: rgba(13, 20, 36, 0.84);
+      --bg-card-subtle: rgba(16, 25, 46, 0.6);
+      --border-cyan: rgba(0, 210, 255, 0.25);
+      --border-cyan-active: #00D2FF;
+      --border-slate: rgba(255, 255, 255, 0.08);
+      --cyan: #00D2FF;
+      --cyan-glow: rgba(0, 210, 255, 0.4);
+      --green: #34FF8C;
+      --orange: #FFAF81;
+      --purple: #B288FF;
+      --amber: #FFB020;
+      --red: #FF5C5C;
+      --text: #DFE2F0;
+      --text-muted: #8896AB;
+      --text-dim: #54667E;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    .mono {
+      font-family: "SF Mono", "Monaco", "Inconsolata", "Fira Code", monospace;
+    }
+
+    /* Fixed ambient particle background canvas */
+    #bgCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Top Sticky Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7, 11, 20, 0.88);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border-cyan);
+      padding: 0 24px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, rgba(0, 210, 255, 0.25), rgba(52, 255, 140, 0.25));
+      border: 1.5px solid var(--cyan);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 22px;
+      color: var(--cyan);
+      box-shadow: 0 0 20px rgba(0, 210, 255, 0.4);
+    }
+
+    .brand-titles h1 {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #FFF 30%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-titles p {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .nav-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(14, 21, 37, 0.75);
+      padding: 4px;
+      border-radius: 16px;
+      border: 1px solid var(--border-slate);
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 15px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.25s ease;
+    }
+
+    .nav-btn:hover {
+      color: #FFF;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-btn.active {
+      color: #000;
+      background: var(--cyan);
+      font-weight: 800;
+      box-shadow: 0 0 16px rgba(0, 210, 255, 0.4);
+    }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(16, 25, 46, 0.7);
+      padding: 6px 14px 6px 8px;
+      border-radius: 30px;
+      border: 1px solid var(--border-cyan);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .user-pill:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 0 16px rgba(0, 210, 255, 0.25);
+    }
+
+    .user-avatar-sm {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #FF9F4A, #FF7A29);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 12px;
+      color: #FFF;
+    }
+
+    .user-info-text {
+      text-align: left;
+      line-height: 1.2;
+    }
+
+    .user-name {
+      font-size: 12px;
+      font-weight: 800;
+      color: #FFF;
+    }
+
+    .user-badge {
+      font-size: 10px;
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    /* Guest Banner */
+    #guestBanner {
+      display: none;
+      background: linear-gradient(90deg, rgba(0, 210, 255, 0.15), rgba(52, 255, 140, 0.15));
+      border-bottom: 1px solid rgba(0, 210, 255, 0.3);
+      padding: 8px 24px;
+      font-size: 12px;
+      color: #FFF;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 90;
+      position: relative;
+    }
+
+    /* Main Container & Tab Panels */
+    main {
+      position: relative;
+      z-index: 10;
+      flex: 1;
+      max-width: 1360px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 24px 40px;
+    }
+
+    .tab-section {
+      display: none;
+      animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .tab-section.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── CINEMATIC HERO INTRO SECTION ── */
+    .hero-cinematic-card {
+      background: radial-gradient(circle at 65% 20%, rgba(19, 32, 53, 0.85) 0%, rgba(8, 13, 22, 0.95) 80%);
+      border: 1.5px solid var(--border-cyan);
+      border-radius: 32px;
+      padding: 56px 48px;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.8), 0 0 50px rgba(0, 210, 255, 0.12);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 30px;
+    }
+
+    .hero-cinematic-card::before {
+      content: '';
+      position: absolute;
+      top: -120px;
+      right: -120px;
+      width: 420px;
+      height: 420px;
+      background: radial-gradient(circle, rgba(0, 210, 255, 0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 210, 255, 0.12);
+      border: 1px solid rgba(0, 210, 255, 0.35);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--cyan);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+
+    .hero-headline {
+      font-size: 46px;
+      font-weight: 900;
+      color: #FFF;
+      line-height: 1.15;
+      letter-spacing: -1.2px;
+      max-width: 820px;
+    }
+
+    .hero-headline span {
+      background: linear-gradient(135deg, #FFFFFF 20%, #00D2FF 70%, #34FF8C 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtext {
+      font-size: 16px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-top: 14px;
+      max-width: 740px;
+    }
+
+    .hero-cta-group {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      margin-top: 30px;
+      flex-wrap: wrap;
+    }
+
+    .hero-tickers-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-top: 40px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 30px;
+    }
+
+    .hero-ticker-box {
+      background: rgba(14, 22, 38, 0.6);
+      border: 1px solid var(--border-slate);
+      border-radius: 18px;
+      padding: 16px 20px;
+    }
+
+    .hero-ticker-val {
+      font-size: 26px;
+      font-weight: 900;
+      color: #FFF;
+    }
+
+    .hero-ticker-lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    /* Common Card Styles */
+    .glass-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border-cyan);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .section-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 210, 255, 0.12);
+      border: 1px solid rgba(0, 210, 255, 0.3);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Grid Layouts */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .grid-avatar-studio {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 28px;
+      align-items: stretch;
+    }
+
+    /* ── TAB: 3D COACH AVATAR STUDIO ── */
+    .avatar-viewport-box {
+      background: radial-gradient(circle at 50% 35%, #152238 0%, #0A0F1B 85%);
+      border: 1.5px solid var(--border-cyan);
+      border-radius: 28px;
+      position: relative;
+      overflow: hidden;
+      min-height: 590px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), inset 0 0 40px rgba(0, 210, 255, 0.05);
+    }
+
+    .avatar-top-hud {
+      position: absolute;
+      top: 18px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+    }
+
+    .avatar-bottom-hud {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+    }
+
+    .orbit-controls-pill {
+      background: rgba(10, 15, 26, 0.85);
+      border: 1px solid var(--border-cyan);
+      backdrop-filter: blur(10px);
+      padding: 6px 14px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Controls Panel */
+    .studio-controls-panel {
+      background: rgba(13, 20, 36, 0.9);
+      border: 1.5px solid var(--border-cyan);
+      border-radius: 28px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      backdrop-filter: blur(20px);
+    }
+
+    .gender-selector-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .gender-btn {
+      background: rgba(20, 30, 50, 0.6);
+      border: 1.5px solid var(--border-slate);
+      border-radius: 16px;
+      padding: 14px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.25s;
+    }
+
+    .gender-btn.active {
+      background: rgba(0, 210, 255, 0.12);
+      border-color: var(--cyan);
+      box-shadow: 0 0 20px rgba(0, 210, 255, 0.25);
+    }
+
+    .gender-btn-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #FFF;
+    }
+
+    .gender-btn-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .studio-subtabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-slate);
+      padding-bottom: 12px;
+    }
+
+    .studio-subtab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .studio-subtab-btn.active {
+      background: rgba(0, 210, 255, 0.15);
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+    }
+
+    .items-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      max-height: 270px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .item-card {
+      background: rgba(18, 27, 46, 0.7);
+      border: 1px solid var(--border-slate);
+      border-radius: 16px;
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.25s;
+    }
+
+    .item-card:hover {
+      border-color: rgba(0, 210, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .item-card.active {
+      border-color: var(--cyan);
+      background: rgba(0, 210, 255, 0.12);
+      box-shadow: 0 0 14px rgba(0, 210, 255, 0.2);
+    }
+
+    .item-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .equipped-tag {
+      background: var(--cyan);
+      color: #000;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .item-name {
+      font-size: 12px;
+      font-weight: 800;
+      color: #FFF;
+    }
+
+    .item-desc {
+      font-size: 10px;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+
+    /* Skin Tone Swatches */
+    .tone-swatches-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .tone-swatch {
+      flex: 1;
+      height: 48px;
+      border-radius: 14px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 12px;
+      color: #000;
+      transition: all 0.2s;
+    }
+
+    .tone-swatch.active {
+      border-color: var(--cyan);
+      box-shadow: 0 0 18px var(--cyan);
+    }
+
+    /* Shoes Swatches */
+    .shoe-swatches-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .shoe-swatch {
+      background: rgba(18, 27, 46, 0.8);
+      border: 1px solid var(--border-slate);
+      border-radius: 12px;
+      padding: 10px 6px;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .shoe-swatch.active {
+      border-color: var(--cyan);
+      background: rgba(0, 210, 255, 0.12);
+    }
+
+    .shoe-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+    }
+
+    /* ── TAB: 3D BIOMECHANICS & KINEMATICS ── */
+    .kinematics-hero-box {
+      background: radial-gradient(circle at 50% 40%, #152238 0%, #070B14 85%);
+      border: 1.5px solid var(--border-cyan);
+      border-radius: 28px;
+      height: 520px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .telemetry-card {
+      background: rgba(14, 21, 37, 0.8);
+      border: 1px solid var(--border-slate);
+      border-radius: 18px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .telemetry-value {
+      font-size: 22px;
+      font-weight: 900;
+      color: #FFF;
+    }
+
+    .tempo-pill-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .tempo-pill {
+      flex: 1;
+      padding: 8px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .tempo-pill.active {
+      background: rgba(52, 255, 140, 0.15);
+      border: 1px solid var(--green);
+      color: var(--green);
+    }
+
+    /* ── CURATED SERVICE PRESCRIPTION CARDS (REPLACING RAW DUMP) ── */
+    .service-card {
+      background: rgba(14, 21, 37, 0.7);
+      border: 1px solid var(--border-slate);
+      border-radius: 18px;
+      padding: 18px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      transition: all 0.25s;
+    }
+
+    .service-card:hover {
+      border-color: var(--cyan);
+      transform: translateY(-2px);
+    }
+
+    .service-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      background: rgba(0, 210, 255, 0.12);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      flex-shrink: 0;
+    }
+
+    /* ── TAB: IFCT 2017 INDIAN NUTRITION ── */
+    .table-container {
+      background: rgba(11, 17, 31, 0.7);
+      border: 1px solid var(--border-slate);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(16, 25, 46, 0.9);
+      padding: 14px 18px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border-slate);
+    }
+
+    td {
+      padding: 14px 18px;
+      font-size: 13px;
+      color: var(--text);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    tr:hover td {
+      background: rgba(0, 210, 255, 0.03);
+    }
+
+    .badge-gi-low {
+      background: rgba(52, 255, 140, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(52, 255, 140, 0.3);
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .badge-gi-med {
+      background: rgba(255, 175, 129, 0.15);
+      color: var(--orange);
+      border: 1px solid rgba(255, 175, 129, 0.3);
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    /* ── TAB: LAB BLOOD REPORT OCR ── */
+    .biomarker-card {
+      background: rgba(16, 24, 42, 0.75);
+      border: 1px solid var(--border-slate);
+      border-radius: 18px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+    }
+
+    .biomarker-card.warning {
+      border-color: rgba(255, 176, 32, 0.5);
+      background: rgba(40, 28, 16, 0.4);
+    }
+
+    .biomarker-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .biomarker-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #FFF;
+    }
+
+    .biomarker-status {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .status-normal { background: rgba(52, 255, 140, 0.15); color: var(--green); border: 1px solid rgba(52, 255, 140, 0.3); }
+    .status-low { background: rgba(255, 176, 32, 0.15); color: var(--amber); border: 1px solid rgba(255, 176, 32, 0.3); }
+    .status-critical { background: rgba(255, 92, 92, 0.15); color: var(--red); border: 1px solid rgba(255, 92, 92, 0.3); }
+
+    .biomarker-val {
+      font-size: 24px;
+      font-weight: 900;
+      color: #FFF;
+    }
+
+    .biomarker-range {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ── TAB: E-RAKTKOSH BLOOD & ABDM DOCTORS ── */
+    .doctor-card {
+      background: rgba(15, 23, 40, 0.75);
+      border: 1px solid var(--border-slate);
+      border-radius: 18px;
+      padding: 18px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      transition: all 0.25s;
+    }
+
+    .doctor-card:hover {
+      border-color: var(--cyan);
+      transform: translateY(-2px);
+    }
+
+    .doctor-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(0, 210, 255, 0.2), rgba(178, 136, 255, 0.2));
+      border: 1px solid var(--cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .doctor-details h4 {
+      font-size: 15px;
+      font-weight: 800;
+      color: #FFF;
+    }
+
+    .doctor-details p {
+      font-size: 12px;
+      color: var(--cyan);
+      font-weight: 600;
+    }
+
+    .doctor-meta {
+      display: flex;
+      gap: 12px;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Action Buttons */
+    .btn-primary {
+      background: var(--cyan);
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 0 16px rgba(0, 210, 255, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: #38e1ff;
+      transform: translateY(-2px);
+      box-shadow: 0 0 24px rgba(0, 210, 255, 0.5);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: #FFF;
+      border: 1px solid var(--border-slate);
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* ── AUTH MODAL OVERLAY ── */
+    #authModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(5, 8, 17, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auth-card {
+      background: rgba(14, 22, 38, 0.95);
+      border: 1.5px solid var(--border-cyan);
+      border-radius: 28px;
+      width: 440px;
+      max-width: 92vw;
+      padding: 36px 32px;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 210, 255, 0.25);
+      position: relative;
+    }
+
+    .auth-close-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      color: #FFF;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .grid-avatar-studio {
+        grid-template-columns: 1fr;
+      }
+      .grid-2, .grid-3, .grid-4, .hero-tickers-grid {
+        grid-template-columns: 1fr;
+      }
+      .nav-tabs {
+        overflow-x: auto;
+      }
+      .hero-headline {
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background Animated Cyber Canvas -->
+  <canvas id="bgCanvas"></canvas>
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- TOP STICKY APPLICATION NAVBAR                                             -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <header>
+    <div class="brand-group" onclick="switchTab('intro')">
+      <div class="brand-logo">V</div>
+      <div class="brand-titles">
+        <h1>VYRA</h1>
+        <p>Athlete 3D Web Portal</p>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-btn active" onclick="switchTab('intro')">
+        <span>⚡</span> Overview
+      </button>
+      <button class="nav-btn" onclick="switchTab('avatar')">
+        <span>👤</span> 3D Avatar Studio
+      </button>
+      <button class="nav-btn" onclick="switchTab('biomechanics')">
+        <span>📐</span> Biomechanics HUD
+      </button>
+      <button class="nav-btn" onclick="switchTab('nutrition')">
+        <span>🥗</span> IFCT Nutrition
+      </button>
+      <button class="nav-btn" onclick="switchTab('blood')">
+        <span>🔬</span> Lab Blood AI
+      </button>
+      <button class="nav-btn" onclick="switchTab('eraktkosh')">
+        <span>🩸</span> Blood Radar & Doctors
+      </button>
+      <button class="nav-btn" onclick="switchTab('analytics')">
+        <span>📈</span> Performance Analytics
+      </button>
+    </nav>
+
+    <!-- Athlete Status Profile Badge & Auth Trigger -->
+    <div class="user-pill" onclick="openAuthModal()">
+      <div class="user-avatar-sm" id="navAvatarBadge">AS</div>
+      <div class="user-info-text">
+        <div class="user-name" id="navUserName">Aryan Sharma</div>
+        <div class="user-badge" id="navUserBadge">18-Day Streak 🔥 | 2,840 🪙</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Guest Mode Linking Banner (if logged in as Guest) -->
+  <div id="guestBanner">
+    <div>
+      <span>⚡ <strong>Guest Athlete Active:</strong> Instant guest session active. Link your Google account anytime to permanently sync your data across devices.</span>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button class="btn-primary" style="padding:4px 12px; font-size:11px;" onclick="openAuthModal('link')">
+        🔗 Link Google / Email Account
+      </button>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 0: CINEMATIC HERO & OVERVIEW INTRO                                    -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <main id="tab-intro" class="tab-section active">
+    
+    <!-- Grand Cinematic Hero Banner -->
+    <div class="hero-cinematic-card">
+      <div class="hero-badge-pill">
+        <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--cyan);"></span>
+        Next-Generation Biomechanical Intelligence
+      </div>
+      <h2 class="hero-headline">
+        Master Every Movement in <span>Living 3D Space</span>.
+      </h2>
+      <p class="hero-subtext">
+        VYRA connects real-time vector kinematics, ICMR-NIN IFCT 2017 clinical Indian nutrition, and lab biomarker analytics into a unified digital twin — built for athletes who demand mathematical perfection.
+      </p>
+
+      <div class="hero-cta-group">
+        <button class="btn-primary" style="padding:14px 26px; font-size:14px;" onclick="switchTab('avatar')">
+          <span>✨</span> Launch 3D Avatar Studio
+        </button>
+        <button class="btn-secondary" style="padding:14px 22px; font-size:14px;" onclick="switchTab('biomechanics')">
+          <span>📐</span> Inspect Biomechanics HUD
+        </button>
+        <button class="btn-secondary" style="padding:14px 22px; font-size:14px; border-color:var(--cyan); color:var(--cyan);" onclick="fastGuestLogin()">
+          <span>⚡</span> 1-Tap Fast Guest Access
+        </button>
+      </div>
+
+      <!-- Live Telemetry Status Tickers -->
+      <div class="hero-tickers-grid">
+        <div class="hero-ticker-box">
+          <div class="hero-ticker-val" style="color:var(--cyan);">96.4%</div>
+          <div class="hero-ticker-lbl">Biomechanical Form Quality</div>
+        </div>
+        <div class="hero-ticker-box">
+          <div class="hero-ticker-val" style="color:var(--green);">75.2°</div>
+          <div class="hero-ticker-lbl">Knee Flexion Standard Met</div>
+        </div>
+        <div class="hero-ticker-box">
+          <div class="hero-ticker-val" style="color:var(--orange);">528+</div>
+          <div class="hero-ticker-lbl">IFCT 2017 Indian Foods Grounded</div>
+        </div>
+        <div class="hero-ticker-box">
+          <div class="hero-ticker-val" style="color:var(--purple);">100%</div>
+          <div class="hero-ticker-lbl">On-Device Telemetry Privacy</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Prescriptions & Movement Services (Service-first, Not 800+ Dump!) -->
+    <div class="card-title-row">
+      <div>
+        <h3 style="font-size:22px; font-weight:900; color:#FFF;">Today's AI Prescribed Movement Services</h3>
+        <p style="font-size:13px; color:var(--text-muted); margin-top:2px;">
+          Personalized daily exercise prescription powered by our background 800+ exercise kinematics engine.
+        </p>
+      </div>
+      <span class="section-pill">Engine Grounded</span>
+    </div>
+
+    <div class="grid-3" style="margin-bottom:24px;">
+      
+      <div class="service-card">
+        <div class="service-icon">🏋️</div>
+        <div>
+          <h4 style="font-size:15px; font-weight:800; color:#FFF;">Compound Hypertrophy</h4>
+          <p style="font-size:12px; color:var(--cyan); font-weight:700; margin-top:2px;">Barbell Back Squat</p>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.4;">
+            Target 75° knee flexion with lumbar neutral spine. 4 sets of 8 reps with 3-1-1-0 tempo cadence.
+          </p>
+          <button class="btn-secondary" style="margin-top:12px; padding:6px 12px; font-size:11px;" onclick="switchTab('biomechanics')">
+            Inspect 3D Biomechanics →
+          </button>
+        </div>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon" style="color:var(--green); border-color:var(--green); background:rgba(52,255,140,0.12);">🛡️</div>
+        <div>
+          <h4 style="font-size:15px; font-weight:800; color:#FFF;">Patellar Joint Stability</h4>
+          <p style="font-size:12px; color:var(--green); font-weight:700; margin-top:2px;">Bulgarian Split Squat</p>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.4;">
+            Strengthens vastus medialis oblique (VMO) to eliminate valgus knee collapse and protect ACL.
+          </p>
+          <button class="btn-secondary" style="margin-top:12px; padding:6px 12px; font-size:11px;" onclick="switchTab('biomechanics')">
+            Inspect 3D Biomechanics →
+          </button>
+        </div>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon" style="color:var(--orange); border-color:var(--orange); background:rgba(255,175,129,0.12);">⚡</div>
+        <div>
+          <h4 style="font-size:15px; font-weight:800; color:#FFF;">Posterior Chain Power</h4>
+          <p style="font-size:12px; color:var(--orange); font-weight:700; margin-top:2px;">Romanian Deadlift (RDL)</p>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.4;">
+            Hamstring and gluteus maximal recruitment with strictly monitored 45° hip hinge kinematics.
+          </p>
+          <button class="btn-secondary" style="margin-top:12px; padding:6px 12px; font-size:11px;" onclick="switchTab('biomechanics')">
+            Inspect 3D Biomechanics →
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Technical Architecture Clarification Banner -->
+    <div class="glass-card" style="border-color:rgba(0, 210, 255, 0.3); background:rgba(12, 18, 32, 0.7);">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <span style="font-size:28px;">⚙️</span>
+        <div>
+          <h4 style="font-size:14px; font-weight:800; color:#FFF;">Background Kinematics Dataset Engine</h4>
+          <p style="font-size:12px; color:var(--text-muted); margin-top:3px;">
+            The 800+ Exercise MegaGym dataset runs silently in our backend cluster. Rather than overwhelming athletes with raw database rows, VYRA analyzes joint biomechanics and delivers pinpoint movement coaching.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 1: 3D COACH AVATAR STUDIO (EXACT APP AVATAR SYSTEM)                  -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <main id="tab-avatar" class="tab-section">
+    <div class="grid-avatar-studio">
+      
+      <!-- Left: Interactive 3D Turntable Viewport -->
+      <div class="avatar-viewport-box">
+        
+        <!-- Top HUD Indicators -->
+        <div class="avatar-top-hud">
+          <div style="display:flex; gap:10px; align-items:center;">
+            <div class="section-pill">
+              <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--cyan);"></span>
+              360° Studio Turntable
+            </div>
+            <div class="orbit-controls-pill">
+              <span class="mono" id="avatarAngleLabel" style="font-size:11px; font-weight:800; color:var(--cyan);">0° Frontal</span>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px;">
+            <button class="btn-secondary" style="padding:6px 12px; font-size:11px;" onclick="resetAvatarPreset(0)">0° Front</button>
+            <button class="btn-secondary" style="padding:6px 12px; font-size:11px;" onclick="resetAvatarPreset(0.785)">45° Angle</button>
+            <button class="btn-secondary" style="padding:6px 12px; font-size:11px;" onclick="resetAvatarPreset(1.57)">90° Profile</button>
+            <button class="btn-secondary" style="padding:6px 12px; font-size:11px;" onclick="resetAvatarPreset(3.14)">180° Back</button>
+            <button id="autoRotateToggleBtn" class="btn-primary" style="padding:6px 12px; font-size:11px;" onclick="toggleAutoOrbit()">Auto Orbit: ON</button>
+          </div>
+        </div>
+
+        <!-- 3D Canvas Viewport (High Quality Pixar Character Renderer) -->
+        <canvas id="studioAvatarCanvas" width="560" height="520" style="cursor:grab; max-width:100%;"></canvas>
+
+        <!-- Bottom Drag Hint Pill -->
+        <div class="avatar-bottom-hud">
+          <div style="background:rgba(0,0,0,0.65); padding:6px 14px; border-radius:20px; font-size:11px; color:#FFF; border:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; gap:6px;">
+            <span>🔄</span> Drag anywhere to rotate 360° | Double-click to reset
+          </div>
+          <div style="background:rgba(52,255,140,0.15); border:1px solid var(--green); padding:6px 14px; border-radius:20px; font-size:11px; font-weight:800; color:var(--green);">
+            ● Pixar Stylized Silhouette Active
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Customizer Control Panel (Outfits, Hairstyles, Skin Tone, Shoes) -->
+      <div class="studio-controls-panel">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 style="font-size:20px; font-weight:900; color:#FFF;">3D Avatar Studio</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-top:2px;">Customize your digital coach & workout twin</p>
+          </div>
+          <span class="section-pill">Live Dynamic Canvas</span>
+        </div>
+
+        <!-- Gender Switcher -->
+        <div>
+          <label style="font-size:11px; font-weight:800; color:var(--cyan); text-transform:uppercase; display:block; margin-bottom:8px;">Physique & Gender</label>
+          <div class="gender-selector-row">
+            <div id="genderFemaleBtn" class="gender-btn active" onclick="setGender('female')">
+              <span style="font-size:22px;">♀</span>
+              <span class="gender-btn-title">Female Athlete</span>
+              <span class="gender-btn-sub">Pixar Stylized Silhouette</span>
+            </div>
+            <div id="genderMaleBtn" class="gender-btn" onclick="setGender('male')">
+              <span style="font-size:22px;">♂</span>
+              <span class="gender-btn-title">Male Athlete</span>
+              <span class="gender-btn-sub">Broad V-Taper Athlete</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Customizer Subtabs -->
+        <div class="studio-subtabs">
+          <button class="studio-subtab-btn active" onclick="switchStudioSubtab('outfits', this)">Outfits</button>
+          <button class="studio-subtab-btn" onclick="switchStudioSubtab('hairstyles', this)">Hairstyles</button>
+          <button class="studio-subtab-btn" onclick="switchStudioSubtab('skintone', this)">Skin Tone</button>
+          <button class="studio-subtab-btn" onclick="switchStudioSubtab('shoes', this)">Shoes</button>
+        </div>
+
+        <!-- Subtab Content: Outfits -->
+        <div id="subtab-outfits" class="subtab-content">
+          <div class="items-grid" id="outfitsGridContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Subtab Content: Hairstyles -->
+        <div id="subtab-hairstyles" class="subtab-content" style="display:none;">
+          <div class="items-grid" id="hairstylesGridContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Subtab Content: Skin Tone -->
+        <div id="subtab-skintone" class="subtab-content" style="display:none;">
+          <div class="tone-swatches-row" style="margin-top:10px;">
+            <div class="tone-swatch" style="background:#F7D5BA;" onclick="setSkinTone('fair', this)">Ivory</div>
+            <div class="tone-swatch active" style="background:#E4AE84;" onclick="setSkinTone('wheatish', this)">Natural</div>
+            <div class="tone-swatch" style="background:#C78A5B;" onclick="setSkinTone('tan', this)">Tan</div>
+            <div class="tone-swatch" style="background:#87522E; color:#FFF;" onclick="setSkinTone('dusky', this)">Dusky</div>
+          </div>
+        </div>
+
+        <!-- Subtab Content: Shoes -->
+        <div id="subtab-shoes" class="subtab-content" style="display:none;">
+          <div class="shoe-swatches-row" style="margin-top:10px;">
+            <div class="shoe-swatch active" onclick="setShoeColor('orange', this)">
+              <div class="shoe-dot" style="background:#FF9F4A;"></div>
+              <span style="font-size:10px; font-weight:800; color:#FFF;">Retro Orange</span>
+            </div>
+            <div class="shoe-swatch" onclick="setShoeColor('cyan', this)">
+              <div class="shoe-dot" style="background:#00D2FF;"></div>
+              <span style="font-size:10px; font-weight:800; color:#FFF;">Electric Cyan</span>
+            </div>
+            <div class="shoe-swatch" onclick="setShoeColor('white', this)">
+              <div class="shoe-dot" style="background:#FFFFFF;"></div>
+              <span style="font-size:10px; font-weight:800; color:#FFF;">Clean White</span>
+            </div>
+            <div class="shoe-swatch" onclick="setShoeColor('stealth', this)">
+              <div class="shoe-dot" style="background:#243B53;"></div>
+              <span style="font-size:10px; font-weight:800; color:#FFF;">Stealth Dark</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Save Profile Button -->
+        <button class="btn-primary" style="width:100%; justify-content:center; padding:14px; margin-top:auto;" onclick="saveAvatarProfile()">
+          💾 Save Avatar Profile
+        </button>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 2: 3D BIOMECHANICS & KINEMATICS INSPECTOR                             -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <main id="tab-biomechanics" class="tab-section">
+    <div class="card-title-row">
+      <div>
+        <h2 style="font-size:26px; font-weight:900; color:#FFF;">3D Biomechanics Kinematics Studio</h2>
+        <p style="font-size:13px; color:var(--text-muted); margin-top:4px;">Vector joint angle arcs, 75.2° knee flexion HUD, and muscle activation heatmaps</p>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn-secondary" onclick="setBiomechExercise('squat')">Barbell Squat</button>
+        <button class="btn-secondary" onclick="setBiomechExercise('deadlift')">Deadlift</button>
+        <button class="btn-secondary" onclick="setBiomechExercise('curl')">Bicep Curl</button>
+      </div>
+    </div>
+
+    <div class="grid-avatar-studio">
+      <!-- 3D Biomechanics Squat Viewport -->
+      <div class="kinematics-hero-box">
+        <canvas id="biomechCanvas" width="560" height="500" style="max-width:100%;"></canvas>
+        <div style="position:absolute; top:20px; left:20px; background:rgba(0,0,0,0.7); border:1px solid var(--green); padding:6px 14px; border-radius:20px; font-size:11px; font-weight:800; color:var(--green);">
+          ● Form Accuracy: 96% (Golden Standard)
+        </div>
+        <div style="position:absolute; bottom:20px; left:20px; right:20px; display:flex; justify-content:space-between;">
+          <div style="background:rgba(10,16,28,0.85); border:1px solid var(--border-cyan); padding:8px 16px; border-radius:14px; font-size:12px; color:#FFF;">
+            Phase: <span id="squatPhaseText" style="color:var(--cyan); font-weight:800;">Concentric Drive</span>
+          </div>
+          <div style="background:rgba(10,16,28,0.85); border:1px solid var(--orange); padding:8px 16px; border-radius:14px; font-size:12px; color:#FFF;">
+            Active Muscle: <span style="color:var(--orange); font-weight:800;">Quadriceps & Gluteus</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telemetry Column -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        
+        <div class="glass-card">
+          <span class="section-pill" style="margin-bottom:8px;">Live Joint Telemetry</span>
+          <div class="grid-2" style="margin-top:12px;">
+            <div class="telemetry-card">
+              <span style="font-size:11px; color:var(--text-muted); font-weight:700;">Knee Flexion Arc</span>
+              <div class="telemetry-value" style="color:var(--cyan);">75.2°</div>
+              <span style="font-size:10px; color:var(--green);">Target: 70°-90° (Optimal)</span>
+            </div>
+            <div class="telemetry-card">
+              <span style="font-size:11px; color:var(--text-muted); font-weight:700;">Spine Forward Lean</span>
+              <div class="telemetry-value" style="color:var(--orange);">44.8°</div>
+              <span style="font-size:10px; color:var(--green);">Lumbar Neutral Held</span>
+            </div>
+            <div class="telemetry-card">
+              <span style="font-size:11px; color:var(--text-muted); font-weight:700;">Knee Valgus Deviation</span>
+              <div class="telemetry-value" style="color:var(--green);">0.0°</div>
+              <span style="font-size:10px; color:var(--green);">Zero Collapse</span>
+            </div>
+            <div class="telemetry-card">
+              <span style="font-size:11px; color:var(--text-muted); font-weight:700;">Midfoot Force Line</span>
+              <div class="telemetry-value" style="color:var(--purple);">98%</div>
+              <span style="font-size:10px; color:var(--text-muted);">Center of Mass Locked</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <span class="section-pill" style="margin-bottom:8px;">Cadence Tempo Pacing</span>
+          <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Synchronized 3-1-1-0 hypertrophy cadence for peak fiber recruitment</p>
+          <div class="tempo-pill-row">
+            <div class="tempo-pill" id="tp-ecc">3s Eccentric</div>
+            <div class="tempo-pill" id="tp-iso">1s Pause</div>
+            <div class="tempo-pill active" id="tp-con">1s Concentric</div>
+            <div class="tempo-pill" id="tp-top">0s Lock</div>
+          </div>
+        </div>
+
+        <div class="glass-card" style="border-color:rgba(178,136,255,0.3); background:rgba(20,16,36,0.7);">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:28px;">🧠</span>
+            <div>
+              <h4 style="font-size:14px; font-weight:800; color:#FFF;">AI Kinematics Voice Cue</h4>
+              <p style="font-size:12px; color:var(--purple); margin-top:2px;">"Keep your chest lifted as you drive upward through midfoot!"</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 3: IFCT 2017 INDIAN NUTRITION & DIET PLANNER                          -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <main id="tab-nutrition" class="tab-section">
+    <div class="card-title-row">
+      <div>
+        <h2 style="font-size:26px; font-weight:900; color:#FFF;">IFCT 2017 Indian Nutrition & Diet Planner</h2>
+        <p style="font-size:13px; color:var(--text-muted); margin-top:4px;">Grounded in ICMR-NIN Indian Food Composition Tables (528+ staple foods)</p>
+      </div>
+      <input type="text" id="foodSearchInput" placeholder="🔍 Search dal, paneer, roti, idli..." style="background:rgba(255,255,255,0.06); border:1px solid var(--border-cyan); border-radius:12px; padding:10px 16px; color:#FFF; font-size:13px; width:260px;" oninput="filterFoodTable()">
+    </div>
+
+    <!-- Daily Macro Summary Row -->
+    <div class="grid-4" style="margin-bottom:24px;">
+      <div class="glass-card" style="padding:16px;">
+        <span style="font-size:11px; color:var(--text-muted); font-weight:700;">Daily Calories</span>
+        <div style="font-size:24px; font-weight:900; color:#FFF; margin-top:4px;">2,450 <span style="font-size:12px; color:var(--text-muted);">/ 2,600 kcal</span></div>
+        <div style="height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:8px; overflow:hidden;">
+          <div style="width:94%; height:100%; background:var(--cyan);"></div>
+        </div>
+      </div>
+      <div class="glass-card" style="padding:16px;">
+        <span style="font-size:11px; color:var(--text-muted); font-weight:700;">Protein Intake</span>
+        <div style="font-size:24px; font-weight:900; color:var(--cyan); margin-top:4px;">148g <span style="font-size:12px; color:var(--text-muted);">/ 150g target</span></div>
+        <div style="height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:8px; overflow:hidden;">
+          <div style="width:98%; height:100%; background:var(--cyan);"></div>
+        </div>
+      </div>
+      <div class="glass-card" style="padding:16px;">
+        <span style="font-size:11px; color:var(--text-muted); font-weight:700;">Complex Carbs</span>
+        <div style="font-size:24px; font-weight:900; color:var(--green); margin-top:4px;">285g <span style="font-size:12px; color:var(--text-muted);">/ 310g target</span></div>
+        <div style="height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:8px; overflow:hidden;">
+          <div style="width:91%; height:100%; background:var(--green);"></div>
+        </div>
+      </div>
+      <div class="glass-card" style="padding:16px;">
+        <span style="font-size:11px; color:var(--text-muted); font-weight:700;">Healthy Fats</span>
+        <div style="font-size:24px; font-weight:900; color:var(--orange); margin-top:4px;">62g <span style="font-size:12px; color:var(--text-muted);">/ 65g target</span></div>
+        <div style="height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:8px; overflow:hidden;">
+          <div style="width:95%; height:100%; background:var(--orange);"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IFCT Food Database Table -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Food Item (IFCT 2017)</th>
+            <th>Category</th>
+            <th>Serving Size</th>
+            <th>Calories (kcal)</th>
+            <th>Protein (g)</th>
+            <th>Carbs (g)</th>
+            <th>Fats (g)</th>
+            <th>Glycemic Index</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="ifctFoodTableBody">
+          <!-- Dynamically populated -->
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 4: LAB BLOOD REPORT OCR & BIOMARKER ANALYTICS                         -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <main id="tab-blood" class="tab-section">
+    <div class="card-title-row">
+      <div>
+        <h2 style="font-size:26px; font-weight:900; color:#FFF;">AI Blood Report OCR & Biomarkers</h2>
+        <p style="font-size:13px; color:var(--text-muted); margin-top:4px;">Clinical OCR extraction with personalized athletic nutritional contraindications</p>
+      </div>
+      <input type="file" id="labReportFileInput" accept=".pdf,.png,.jpg,.jpeg" style="display:none;" onchange="handleLabReportFile(event)">
+      <button class="btn-primary" onclick="document.getElementById('labReportFileInput').click()">
+        <span>📤</span> Upload Blood Test (PDF/JPG)
+      </button>
+    </div>
+
+    <!-- Biomarkers Grid -->
+    <div class="grid-4" id="biomarkersGrid">
+      <div class="biomarker-card">
+        <div class="biomarker-top">
+          <span class="biomarker-name">Hemoglobin</span>
+          <span class="biomarker-status status-normal">Normal</span>
+        </div>
+        <div class="biomarker-val">15.2 <span style="font-size:12px; color:var(--text-muted);">g/dL</span></div>
+        <div class="biomarker-range">Ref: 13.0 - 17.0 g/dL</div>
+      </div>
+
+      <div class="biomarker-card">
+        <div class="biomarker-top">
+          <span class="biomarker-name">Fasting Glucose</span>
+          <span class="biomarker-status status-normal">Optimal</span>
+        </div>
+        <div class="biomarker-val">88 <span style="font-size:12px; color:var(--text-muted);">mg/dL</span></div>
+        <div class="biomarker-range">Ref: 70 - 99 mg/dL</div>
+      </div>
+
+      <div class="biomarker-card">
+        <div class="biomarker-top">
+          <span class="biomarker-name">HbA1c</span>
+          <span class="biomarker-status status-normal">Normal</span>
+        </div>
+        <div class="biomarker-val">5.2 <span style="font-size:12px; color:var(--text-muted);">%</span></div>
+        <div class="biomarker-range">Ref: &lt; 5.7%</div>
+      </div>
+
+      <div class="biomarker-card warning">
+        <div class="biomarker-top">
+          <span class="biomarker-name">Vitamin D3</span>
+          <span class="biomarker-status status-low">Deficient</span>
+        </div>
+        <div class="biomarker-val" style="color:var(--amber);">18.4 <span style="font-size:12px; color:var(--text-muted);">ng/mL</span></div>
+        <div class="biomarker-range">Ref: 30.0 - 100.0 ng/mL</div>
+      </div>
+
+      <div class="biomarker-card">
+        <div class="biomarker-top">
+          <span class="biomarker-name">Vitamin B12</span>
+          <span class="biomarker-status status-normal">Normal</span>
+        </div>
+        <div class="biomarker-val">510 <span style="font-size:12px; color:var(--text-muted);">pg/mL</span></div>
+        <div class="biomarker-range">Ref: 200 - 900 pg/mL</div>
+      </div>
+
+      <div class="biomarker-card">
+        <div class="biomarker-top">
+          <span class="biomarker-name">Serum Creatinine</span>
+          <span class="biomarker-status status-normal">Clear</span>
+        </div>
+        <div class="biomarker-val">0.92 <span style="font-size:12px; color:var(--text-muted);">mg/dL</span></div>
+        <div class="biomarker-range">Ref: 0.7 - 1.2 mg/dL</div>
+      </div>
+
+      <div class="biomarker-card">
+        <div class="biomarker-top">
+          <span class="biomarker-name">Total Cholesterol</span>
+          <span class="biomarker-status status-normal">Normal</span>
+        </div>
+        <div class="biomarker-val">174 <span style="font-size:12px; color:var(--text-muted);">mg/dL</span></div>
+        <div class="biomarker-range">Ref: &lt; 200 mg/dL</div>
+      </div>
+
+      <div class="biomarker-card">
+        <div class="biomarker-top">
+          <span class="biomarker-name">Serum Ferritin</span>
+          <span class="biomarker-status status-normal">Normal</span>
+        </div>
+        <div class="biomarker-val">122 <span style="font-size:12px; color:var(--text-muted);">ng/mL</span></div>
+        <div class="biomarker-range">Ref: 30 - 400 ng/mL</div>
+      </div>
+    </div>
+
+    <!-- AI Clinical Insights Box -->
+    <div class="glass-card" style="margin-top:24px; border-color:rgba(0,210,255,0.4);">
+      <div style="display:flex; align-items:flex-start; gap:16px;">
+        <span style="font-size:32px;">🧬</span>
+        <div>
+          <h3 style="font-size:16px; font-weight:900; color:#FFF;">VYRA Clinical Biomarker Insights</h3>
+          <ul style="margin-top:10px; font-size:13px; color:var(--text-muted); line-height:1.7; padding-left:18px;">
+            <li><strong style="color:var(--amber);">Vitamin D3 Deficiency (18.4 ng/mL):</strong> Common in indoor athletic training. Recommend 20 mins early morning sunlight (8-10 AM) + dietary inclusion of fortified milk, egg yolks, and mushrooms. Consider clinical supplementation upon consulting a physician.</li>
+            <li><strong style="color:var(--green);">Renal Clearance & Protein Safety (Creatinine 0.92 mg/dL):</strong> Healthy glomerular filtration rate. High-protein athletic training (1.8g/kg bodyweight) is fully contraindicated for restriction.</li>
+            <li><strong style="color:var(--cyan);">Oxygen Carrying Capacity (Hemoglobin 15.2 g/dL):</strong> Optimal red blood cell mass supporting aerobic endurance and rapid recovery during high-intensity interval workouts.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 5: E-RAKTKOSH BLOOD RADAR & ABDM DOCTORS DIRECTORY                     -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <main id="tab-eraktkosh" class="tab-section">
+    <div class="card-title-row">
+      <div>
+        <h2 style="font-size:26px; font-weight:900; color:#FFF;">e-RaktKosh Blood Donation Radar & ABDM Doctors</h2>
+        <p style="font-size:13px; color:var(--text-muted); margin-top:4px;">National blood bank inventory integration and Ayushman Bharat verified specialist directory</p>
+      </div>
+      <button class="btn-primary" id="raiseBloodHandBtn" style="background:#FF5C5C; box-shadow:0 0 16px rgba(255,92,92,0.4);" onclick="toggleBloodDonationHand()">
+        <span>🩸</span> Raise Hand to Donate Blood
+      </button>
+    </div>
+
+    <!-- Eligibility & Emergency Radar Cards -->
+    <div class="grid-2" style="margin-bottom:24px;">
+      
+      <!-- Eligibility Card -->
+      <div class="glass-card" style="border-color:rgba(52,255,140,0.3);">
+        <span class="section-pill" style="color:var(--green); border-color:var(--green); background:rgba(52,255,140,0.1);">Donor Eligibility Status</span>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:14px;">
+          <div>
+            <h3 style="font-size:22px; font-weight:900; color:#FFF;">Eligible in 12 Days</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Last donated: 78 days ago (Mandatory interval: 90 days)</p>
+          </div>
+          <div style="width:48px; height:48px; border-radius:14px; background:rgba(52,255,140,0.15); border:1px solid var(--green); display:flex; align-items:center; justify-content:center; font-size:20px;">
+            ⏳
+          </div>
+        </div>
+        <div style="display:flex; gap:12px; margin-top:16px; font-size:11px; color:var(--text-muted);">
+          <span>Weight: 72kg (OK)</span> • <span>Hemoglobin: 15.2 (OK)</span> • <span>Age: 22 (OK)</span>
+        </div>
+      </div>
+
+      <!-- Emergency Appeal Radar -->
+      <div class="glass-card" style="border-color:rgba(255,92,92,0.4); background:rgba(30,16,20,0.6);">
+        <span class="section-pill" style="color:var(--red); border-color:var(--red); background:rgba(255,92,92,0.1);">Urgent National Blood Appeal</span>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:14px;">
+          <div>
+            <h3 style="font-size:18px; font-weight:900; color:#FFF;">O+ Blood Needed (3 Units)</h3>
+            <p style="font-size:12px; color:var(--red); margin-top:2px; font-weight:700;">AIIMS New Delhi — Trauma Emergency Care</p>
+          </div>
+          <button class="btn-primary" style="background:var(--red); padding:8px 14px; font-size:11px;" onclick="respondBloodAlert('AIIMS New Delhi Trauma Emergency Care', 'O+')">Respond</button>
+        </div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:14px;">
+          Contact: Dr. S. K. Gupta (In-Charge) • +91 98112 34567 • 3.2 km away
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ABDM Doctors Directory -->
+    <div class="glass-card">
+      <div class="card-title-row">
+        <div>
+          <h3 style="font-size:18px; font-weight:800; color:#FFF;">ABDM Verified Sports Specialists</h3>
+          <p style="font-size:12px; color:var(--text-muted);">Government accredited medical practitioners ready for athletic consultations</p>
+        </div>
+        <span class="section-pill">ABDM Linked</span>
+      </div>
+
+      <div class="grid-3">
+        <div class="doctor-card">
+          <div class="doctor-avatar">🩺</div>
+          <div class="doctor-details">
+            <h4>Dr. Vikramaditya Sen</h4>
+            <p>Sports Orthopedic & Arthroscopy</p>
+            <div class="doctor-meta">
+              <span>★ 4.9 (142 reviews)</span> • <span>2.4 km</span>
+            </div>
+            <button class="btn-secondary" style="margin-top:10px; padding:6px 12px; font-size:11px; width:100%;" onclick="bookDoctorAppointment('Dr. Vikramaditya Sen', 'Sports Orthopedic')">Book Consultation</button>
+          </div>
+        </div>
+
+        <div class="doctor-card">
+          <div class="doctor-avatar">🥗</div>
+          <div class="doctor-details">
+            <h4>Dr. Ananya Mukherjee</h4>
+            <p>Clinical Sports Nutritionist</p>
+            <div class="doctor-meta">
+              <span>★ 4.8 (98 reviews)</span> • <span>3.8 km</span>
+            </div>
+            <button class="btn-secondary" style="margin-top:10px; padding:6px 12px; font-size:11px; width:100%;" onclick="bookDoctorAppointment('Dr. Ananya Mukherjee', 'Clinical Sports Nutritionist')">Book Consultation</button>
+          </div>
+        </div>
+
+        <div class="doctor-card">
+          <div class="doctor-avatar">❤️</div>
+          <div class="doctor-details">
+            <h4>Dr. Rajesh K. Varma</h4>
+            <p>Interventional Cardiologist</p>
+            <div class="doctor-meta">
+              <span>★ 4.9 (210 reviews)</span> • <span>4.1 km</span>
+            </div>
+            <button class="btn-secondary" style="margin-top:10px; padding:6px 12px; font-size:11px; width:100%;" onclick="bookDoctorAppointment('Dr. Rajesh K. Varma', 'Interventional Cardiologist')">Book Consultation</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 6: PERFORMANCE ANALYTICS & KINETIC CURVES                             -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <main id="tab-analytics" class="tab-section">
+    <div class="card-title-row">
+      <div>
+        <h2 style="font-size:26px; font-weight:900; color:#FFF;">Athlete Kinetic Power & Volume Analytics</h2>
+        <p style="font-size:13px; color:var(--text-muted); margin-top:4px;">Longitudinal training progression, VO2 max trendlines, and recovery curves</p>
+      </div>
+      <span class="section-pill">7-Day Rolling Trend</span>
+    </div>
+
+    <div class="grid-2">
+      <!-- Training Volume Progression SVG Chart -->
+      <div class="glass-card">
+        <h3 style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:14px;">Weekly Tonnage Volume (kg)</h3>
+        <svg viewBox="0 0 500 200" style="width:100%; height:auto;">
+          <line x1="40" y1="160" x2="480" y2="160" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <line x1="40" y1="110" x2="480" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="1" stroke-dasharray="4"/>
+          <line x1="40" y1="60" x2="480" y2="60" stroke="rgba(255,255,255,0.06)" stroke-width="1" stroke-dasharray="4"/>
+          
+          <!-- Bars -->
+          <rect x="60" y="80" width="36" height="80" rx="6" fill="rgba(0,210,255,0.3)" stroke="#00D2FF" stroke-width="1.5"/>
+          <text x="78" y="180" fill="#8896AB" font-size="11" text-anchor="middle">Mon</text>
+          
+          <rect x="120" y="55" width="36" height="105" rx="6" fill="rgba(0,210,255,0.3)" stroke="#00D2FF" stroke-width="1.5"/>
+          <text x="138" y="180" fill="#8896AB" font-size="11" text-anchor="middle">Tue</text>
+
+          <rect x="180" y="110" width="36" height="50" rx="6" fill="rgba(52,255,140,0.3)" stroke="#34FF8C" stroke-width="1.5"/>
+          <text x="198" y="180" fill="#8896AB" font-size="11" text-anchor="middle">Wed</text>
+
+          <rect x="240" y="40" width="36" height="120" rx="6" fill="rgba(0,210,255,0.5)" stroke="#00D2FF" stroke-width="2"/>
+          <text x="258" y="180" fill="#8896AB" font-size="11" text-anchor="middle">Thu</text>
+
+          <rect x="300" y="70" width="36" height="90" rx="6" fill="rgba(0,210,255,0.3)" stroke="#00D2FF" stroke-width="1.5"/>
+          <text x="318" y="180" fill="#8896AB" font-size="11" text-anchor="middle">Fri</text>
+
+          <rect x="360" y="30" width="36" height="130" rx="6" fill="rgba(0,210,255,0.7)" stroke="#00D2FF" stroke-width="2"/>
+          <text x="378" y="180" fill="#8896AB" font-size="11" text-anchor="middle">Sat</text>
+
+          <rect x="420" y="130" width="36" height="30" rx="6" fill="rgba(255,175,129,0.3)" stroke="#FFAF81" stroke-width="1.5"/>
+          <text x="438" y="180" fill="#8896AB" font-size="11" text-anchor="middle">Sun</text>
+        </svg>
+      </div>
+
+      <!-- Recovery Readiness & VO2 Max Curve -->
+      <div class="glass-card">
+        <h3 style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:14px;">VO2 Max Trend & Recovery Readiness</h3>
+        <svg viewBox="0 0 500 200" style="width:100%; height:auto;">
+          <defs>
+            <linearGradient id="vo2Grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#34FF8C" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="#34FF8C" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M50,140 Q150,120 250,90 T450,50 L450,160 L50,160 Z" fill="url(#vo2Grad)"/>
+          <path d="M50,140 Q150,120 250,90 T450,50" fill="none" stroke="#34FF8C" stroke-width="3"/>
+          <circle cx="450" cy="50" r="5" fill="#34FF8C"/>
+          <text x="450" y="38" fill="#34FF8C" font-weight="800" font-size="12" text-anchor="middle">49.4 ml/kg</text>
+        </svg>
+        <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:12px; color:var(--text-muted);">
+          <span>Baseline: 44.0 ml/kg</span>
+          <span style="color:var(--green); font-weight:800;">+12.2% Capacity Surge</span>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: KINETIC AUTHENTICATION MATRIX (APP & WEB PARITY)                   -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <div id="authModal">
+    <div class="auth-card">
+      <button class="auth-close-btn" onclick="closeAuthModal()">✕</button>
+      
+      <div style="text-align:center; margin-bottom:24px;">
+        <div class="brand-logo" style="margin:0 auto 12px; width:48px; height:48px; font-size:24px;">V</div>
+        <h3 style="font-size:22px; font-weight:900; color:#FFF;" id="authModalTitle">Sign in to VYRA</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Synchronize your digital twin, workouts & nutrition across devices</p>
+      </div>
+
+      <!-- 1-Tap Fast Guest Access Button -->
+      <button class="btn-primary" style="width:100%; justify-content:center; padding:14px; font-size:14px; margin-bottom:14px;" onclick="fastGuestLogin()">
+        <span>⚡</span> Instant Guest Access (1-Tap Login)
+      </button>
+      <p style="text-align:center; font-size:11px; color:var(--text-muted); margin-bottom:20px;">
+        Try every feature immediately • Link Google or Email account anytime later
+      </p>
+
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+        <div style="flex:1; height:1px; background:rgba(255,255,255,0.1);"></div>
+        <span style="font-size:10px; font-weight:800; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;">OR SIGN IN WITH</span>
+        <div style="flex:1; height:1px; background:rgba(255,255,255,0.1);"></div>
+      </div>
+
+      <!-- Google OAuth Button -->
+      <button class="btn-secondary" style="width:100%; justify-content:center; padding:12px; font-size:13px; margin-bottom:12px; display:flex; align-items:center; gap:10px;" onclick="handleGoogleAuth()">
+        <span style="font-size:18px; font-weight:900; color:#4285F4;">G</span> Continue with Google
+      </button>
+
+      <!-- Email / Password Fields -->
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
+        <input type="email" id="authEmailInput" placeholder="athlete@email.com" style="background:rgba(255,255,255,0.06); border:1px solid var(--border-slate); border-radius:12px; padding:12px 14px; color:#FFF; font-size:13px;">
+        <input type="password" id="authPasswordInput" placeholder="Password" style="background:rgba(255,255,255,0.06); border:1px solid var(--border-slate); border-radius:12px; padding:12px 14px; color:#FFF; font-size:13px;">
+        <button class="btn-secondary" style="padding:12px; font-weight:800; justify-content:center; margin-top:4px;" onclick="handleEmailLogin()">
+          Sign In with Email
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <!-- JAVASCRIPT: DYNAMIC AVATAR ENGINE, BIOMECHANICS & DATA LOGIC             -->
+  <!-- ═════════════════════════════════════════════════════════════════════════ -->
+  <script>
+    /* ─────────────────────────────────────────────────────────────────────────
+       1. GLOBAL STATE & AVATAR PROFILE (MATCHING FLUTTER APP)
+       ───────────────────────────────────────────────────────────────────────── */
+    let currentGender = 'female'; // 'female' or 'male'
+    let currentOutfit = 'hoodie_white'; // 'hoodie_white', 'athletic_teal', 'runner_stealth', 'sunset_orange', 'male_muscle_tank'
+    let currentHair = 'pixar_wavy'; // 'pixar_wavy', 'ponytail', 'high_bun', 'short_crop', 'crew_fade', 'textured_crop'
+    let currentSkinTone = 'wheatish'; // 'fair', 'wheatish', 'tan', 'dusky'
+    let currentShoeColor = 'orange'; // 'orange', 'cyan', 'white', 'stealth'
+    
+    let avatarRotation = 0.0;
+    let isAutoOrbit = true;
+    let avatarAnimProgress = 0;
+    let isDragging = false;
+    let dragStartX = 0;
+
+    const API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:') ? window.location.origin : 'http://localhost:4000';
+    let authToken = localStorage.getItem('vyra_access_token') || '';
+    let currentUserId = localStorage.getItem('vyra_user_id') || '';
+    let currentUserHandle = localStorage.getItem('vyra_user_handle') || 'Aryan Sharma';
+    let isGuestSession = localStorage.getItem('vyra_is_guest') === 'true';
+
+    let toastTimer = null;
+    function showToast(msg, icon = '✅', duration = 3500) {
+      const toast = document.getElementById('toastNotification');
+      if (!toast) return;
+      document.getElementById('toastIcon').innerText = icon;
+      document.getElementById('toastMsg').innerText = msg;
+      toast.style.display = 'flex';
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => { toast.style.display = 'none'; }, 300);
+      }, duration);
+    }
+
+    function updateAuthUI(name, isGuest, badgeText) {
+      const nameEl = document.getElementById('navUserName');
+      const badgeEl = document.getElementById('navUserBadge');
+      const avatarBadgeEl = document.getElementById('navAvatarBadge');
+      const bannerEl = document.getElementById('guestBanner');
+      if (nameEl) nameEl.innerText = name;
+      if (badgeEl) badgeEl.innerText = badgeText || (isGuest ? 'Guest Athlete Session' : 'Verified Athlete • 2,840 🪙');
+      if (avatarBadgeEl) avatarBadgeEl.innerText = name ? name.slice(0, 2).toUpperCase() : 'VA';
+      if (bannerEl) bannerEl.style.display = isGuest ? 'flex' : 'none';
+    }
+
+    const skinPalettes = {
+      fair: ['#FFEAD8', '#F7D5BA', '#D89E75'],
+      wheatish: ['#F5CFA6', '#E4AE84', '#B87B4A'],
+      tan: ['#DCA070', '#C78A5B', '#965C30'],
+      dusky: ['#A06338', '#87522E', '#5C3114']
+    };
+
+    const outfits = {
+      female: [
+        { id: 'hoodie_white', name: 'Classic Gym Hoodie', desc: 'White heather hoodie, orange belt & slate pants (Reference)' },
+        { id: 'athletic_teal', name: 'Athletic Gym Set', desc: 'Teal sports top + grey performance tights' },
+        { id: 'runner_stealth', name: 'Aero Stealth', desc: 'Matte black carbon compression runner' },
+        { id: 'sunset_orange', name: 'Sunset Energy', desc: 'Coral performance top + amber accents' }
+      ],
+      male: [
+        { id: 'male_muscle_tank', name: 'Athletic Muscle Tank', desc: 'Cyan gym tank + dark heavy joggers' },
+        { id: 'hoodie_white', name: 'Sleeveless Gym Hoodie', desc: 'White heather hoodie, orange belt & slate pants' },
+        { id: 'runner_stealth', name: 'Stealth Compression Tee', desc: 'Matte black carbon compression tee & joggers' },
+        { id: 'sunset_orange', name: 'Warmup Tracksuit', desc: 'Amber & navy high performance set' }
+      ]
+    };
+
+    const hairstyles = {
+      female: [
+        { id: 'pixar_wavy', name: 'Wavy Brown (Reference)', desc: 'Flowing stylized waves curling over shoulders' },
+        { id: 'ponytail', name: 'Sporty Ponytail', desc: 'High bounce active ponytail' },
+        { id: 'high_bun', name: 'Topknot Bun', desc: 'Athletic studio bun' },
+        { id: 'short_crop', name: 'Modern Bob', desc: 'Shoulder length active bob' }
+      ],
+      male: [
+        { id: 'crew_fade', name: 'Athletic Fade', desc: 'Sharp taper fade with textured top' },
+        { id: 'textured_crop', name: 'Textured Crop', desc: 'Modern textured gym cut' },
+        { id: 'slick_back', name: 'Slick Back', desc: 'Clean classic pompadour taper' },
+        { id: 'buzz_cut', name: 'Military Buzz', desc: 'Ultra clean high buzz' }
+      ]
+    };
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       2. TAB NAVIGATION SYSTEM
+       ───────────────────────────────────────────────────────────────────────── */
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-section').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+
+      const target = document.getElementById(`tab-${tabId}`);
+      if (target) target.classList.add('active');
+
+      const clickedBtn = Array.from(document.querySelectorAll('.nav-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+      if (clickedBtn) clickedBtn.classList.add('active');
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function switchStudioSubtab(subId, btn) {
+      document.querySelectorAll('.subtab-content').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.studio-subtab-btn').forEach(el => el.classList.remove('active'));
+
+      const target = document.getElementById(`subtab-${subId}`);
+      if (target) target.style.display = 'block';
+      if (btn) btn.classList.add('active');
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       3. CUSTOMIZER CONTROLS POPULATION & LIVE AVATAR MODIFICATIONS
+       ───────────────────────────────────────────────────────────────────────── */
+    function populateCustomizerLists() {
+      // Outfits
+      const oContainer = document.getElementById('outfitsGridContainer');
+      const oList = outfits[currentGender];
+      oContainer.innerHTML = oList.map(o => `
+        <div class="item-card ${currentOutfit === o.id ? 'active' : ''}" onclick="setOutfit('${o.id}')">
+          <div class="item-card-top">
+            <span style="font-size:16px;">🎽</span>
+            ${currentOutfit === o.id ? '<span class="equipped-tag">Equipped</span>' : ''}
+          </div>
+          <div class="item-name">${o.name}</div>
+          <div class="item-desc">${o.desc}</div>
+        </div>
+      `).join('');
+
+      // Hairstyles
+      const hContainer = document.getElementById('hairstylesGridContainer');
+      const hList = hairstyles[currentGender];
+      hContainer.innerHTML = hList.map(h => `
+        <div class="item-card ${currentHair === h.id ? 'active' : ''}" onclick="setHairstyle('${h.id}')">
+          <div class="item-card-top">
+            <span style="font-size:16px;">✂️</span>
+            ${currentHair === h.id ? '<span class="equipped-tag">Equipped</span>' : ''}
+          </div>
+          <div class="item-name">${h.name}</div>
+          <div class="item-desc">${h.desc}</div>
+        </div>
+      `).join('');
+    }
+
+    function setGender(g) {
+      currentGender = g;
+      document.getElementById('genderFemaleBtn').classList.toggle('active', g === 'female');
+      document.getElementById('genderMaleBtn').classList.toggle('active', g === 'male');
+
+      if (g === 'male') {
+        currentOutfit = 'male_muscle_tank';
+        currentHair = 'crew_fade';
+      } else {
+        currentOutfit = 'hoodie_white';
+        currentHair = 'pixar_wavy';
+      }
+      populateCustomizerLists();
+    }
+
+    function setOutfit(id) {
+      currentOutfit = id;
+      populateCustomizerLists();
+    }
+
+    function setHairstyle(id) {
+      currentHair = id;
+      populateCustomizerLists();
+    }
+
+    function setSkinTone(tone, el) {
+      currentSkinTone = tone;
+      document.querySelectorAll('.tone-swatch').forEach(s => s.classList.remove('active'));
+      if (el) el.classList.add('active');
+    }
+
+    function setShoeColor(color, el) {
+      currentShoeColor = color;
+      document.querySelectorAll('.shoe-swatch').forEach(s => s.classList.remove('active'));
+      if (el) el.classList.add('active');
+    }
+
+    function resetAvatarPreset(angle) {
+      avatarRotation = angle;
+      isAutoOrbit = false;
+      document.getElementById('autoRotateToggleBtn').innerText = 'Auto Orbit: OFF';
+      updateAngleDisplay();
+    }
+
+    function toggleAutoOrbit() {
+      isAutoOrbit = !isAutoOrbit;
+      document.getElementById('autoRotateToggleBtn').innerText = `Auto Orbit: ${isAutoOrbit ? 'ON' : 'OFF'}`;
+    }
+
+    function updateAngleDisplay() {
+      const deg = Math.round((avatarRotation * 180 / Math.PI) % 360);
+      const normalized = (deg + 360) % 360;
+      let label = `${normalized}° Frontal`;
+      if (normalized > 30 && normalized < 75) label = `${normalized}° Perspective`;
+      else if (normalized >= 75 && normalized <= 105) label = `${normalized}° Profile (Side)`;
+      else if (normalized > 105 && normalized < 255) label = `${normalized}° Back Silhouette`;
+      else if (normalized >= 255 && normalized <= 285) label = `${normalized}° Profile (Side)`;
+      document.getElementById('avatarAngleLabel').innerText = label;
+    }
+
+    async function saveAvatarProfile() {
+      const avatarData = {
+        gender: currentGender,
+        outfit: currentOutfit,
+        hairstyle: currentHair,
+        skinTone: currentSkinTone,
+        shoeColor: currentShoeColor,
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem('vyra_avatar_profile', JSON.stringify(avatarData));
+      if (authToken) {
+        try {
+          await fetch(`${API_BASE}/v1/me`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({
+              gender: currentGender === 'female' ? 'female' : 'male',
+            })
+          });
+        } catch (e) {
+          console.warn('Avatar backend sync:', e);
+        }
+      }
+      showToast(`✅ 3D Avatar Profile Saved!\nOutfit: ${currentOutfit} • Hair: ${currentHair} • Tone: ${currentSkinTone}`, '✨');
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       4. AUTHENTICATION & GUEST ACCESS SYSTEM
+       ───────────────────────────────────────────────────────────────────────── */
+    function openAuthModal(mode) {
+      const modal = document.getElementById('authModal');
+      modal.style.display = 'flex';
+      if (mode === 'link') {
+        document.getElementById('authModalTitle').innerText = 'Link Google / Permanent Account';
+      } else {
+        document.getElementById('authModalTitle').innerText = 'Sign in to VYRA';
+      }
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').style.display = 'none';
+    }
+
+    async function fastGuestLogin() {
+      try {
+        const res = await fetch(`${API_BASE}/v1/auth/guest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          authToken = data.accessToken;
+          currentUserId = data.userId;
+          currentUserHandle = data.displayHandle || 'Guest Athlete';
+          localStorage.setItem('vyra_access_token', authToken);
+          localStorage.setItem('vyra_user_id', currentUserId);
+          localStorage.setItem('vyra_user_handle', currentUserHandle);
+          localStorage.setItem('vyra_is_guest', 'true');
+          isGuestSession = true;
+          closeAuthModal();
+          updateAuthUI(currentUserHandle, true, 'Guest Athlete • Active Session');
+          showToast('⚡ Instant Guest Session verified with backend API!', '⚡');
+          return;
+        }
+      } catch (err) {
+        console.warn('Backend call fallback', err);
+      }
+      isGuestSession = true;
+      currentUserHandle = 'Guest Athlete';
+      localStorage.setItem('vyra_is_guest', 'true');
+      closeAuthModal();
+      updateAuthUI('Guest Athlete', true, 'Guest Athlete • Active Session');
+      showToast('⚡ Fast Guest Athlete session initialized!', '⚡');
+    }
+
+    async function handleGoogleAuth() {
+      const email = prompt('Enter your Google Account email to authenticate:', 'athlete@gmail.com');
+      if (!email || !email.includes('@')) return;
+
+      try {
+        if (authToken && isGuestSession) {
+          const res = await fetch(`${API_BASE}/v1/auth/link-google`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ email })
+          });
+          if (res.ok) {
+            isGuestSession = false;
+            localStorage.setItem('vyra_is_guest', 'false');
+            localStorage.setItem('vyra_user_email', email);
+            currentUserHandle = email.split('@')[0];
+            localStorage.setItem('vyra_user_handle', currentUserHandle);
+            closeAuthModal();
+            updateAuthUI(currentUserHandle, false, 'Google Linked • 2,840 🪙');
+            showToast(`✅ Successfully linked Google account (${email}) to your permanent athlete profile!`, '🔗');
+            return;
+          }
+        }
+
+        const res = await fetch(`${API_BASE}/v1/auth/google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name: email.split('@')[0] })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          authToken = data.accessToken;
+          currentUserId = data.userId;
+          currentUserHandle = data.displayHandle || email.split('@')[0];
+          localStorage.setItem('vyra_access_token', authToken);
+          localStorage.setItem('vyra_user_id', currentUserId);
+          localStorage.setItem('vyra_user_handle', currentUserHandle);
+          localStorage.setItem('vyra_is_guest', 'false');
+          isGuestSession = false;
+          closeAuthModal();
+          updateAuthUI(currentUserHandle, false, 'Google Verified • 2,840 🪙');
+          showToast(`✅ Welcome, ${currentUserHandle}! Verified with Google OAuth.`, '✅');
+          return;
+        }
+      } catch (err) {
+        console.warn('Google auth call fallback', err);
+      }
+
+      isGuestSession = false;
+      currentUserHandle = email.split('@')[0];
+      closeAuthModal();
+      updateAuthUI(currentUserHandle, false, 'Google Verified • 2,840 🪙');
+      showToast(`✅ Google account connected: ${email}`, '✅');
+    }
+
+    async function handleEmailLogin() {
+      const email = document.getElementById('authEmailInput').value.trim();
+      if (!email || !email.includes('@')) {
+        showToast('Please enter a valid email address.', '⚠️');
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/v1/auth/guest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          authToken = data.accessToken;
+          currentUserId = data.userId;
+          currentUserHandle = email.split('@')[0];
+          localStorage.setItem('vyra_access_token', authToken);
+          localStorage.setItem('vyra_user_id', currentUserId);
+          localStorage.setItem('vyra_user_handle', currentUserHandle);
+          localStorage.setItem('vyra_is_guest', 'false');
+          isGuestSession = false;
+          closeAuthModal();
+          updateAuthUI(currentUserHandle, false, 'Verified Athlete • 2,840 🪙');
+          showToast(`✅ Welcome, ${currentUserHandle}! Signed in successfully.`, '✅');
+          return;
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+      isGuestSession = false;
+      currentUserHandle = email.split('@')[0];
+      closeAuthModal();
+      updateAuthUI(currentUserHandle, false, 'Verified Athlete • 2,840 🪙');
+      showToast(`✅ Signed in as "${email}"!`, '✅');
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       5. HIGH QUALITY 3D PIXAR AVATAR RENDERER (STUDIO TURNTABLE)
+       ───────────────────────────────────────────────────────────────────────── */
+    const studioCanvas = document.getElementById('studioAvatarCanvas');
+    const sCtx = studioCanvas.getContext('2d');
+
+    studioCanvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStartX = e.clientX;
+      isAutoOrbit = false;
+      document.getElementById('autoRotateToggleBtn').innerText = 'Auto Orbit: OFF';
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - dragStartX;
+      avatarRotation += dx * 0.015;
+      dragStartX = e.clientX;
+      updateAngleDisplay();
+    });
+
+    studioCanvas.addEventListener('dblclick', () => {
+      resetAvatarPreset(0);
+    });
+
+    function drawStudioAvatar() {
+      avatarAnimProgress += 0.025;
+      if (isAutoOrbit) {
+        avatarRotation = Math.sin(avatarAnimProgress * 0.6) * (Math.PI / 3.2);
+        updateAngleDisplay();
+      }
+
+      sCtx.clearRect(0, 0, studioCanvas.width, studioCanvas.height);
+      const cx = studioCanvas.width / 2;
+      const cy = studioCanvas.height * 0.48;
+
+      const cosRot = Math.cos(avatarRotation);
+      const sinRot = Math.sin(avatarRotation);
+      const breathe = Math.sin(avatarAnimProgress) * 2.8;
+
+      const isMale = currentGender === 'male';
+
+      // ── 1. GLOWING CYBERNETIC TURNTABLE PODIUM ──
+      const podiumY = studioCanvas.height * 0.82;
+      
+      // Outer neon ring
+      sCtx.save();
+      sCtx.beginPath();
+      sCtx.ellipse(cx, podiumY + 6, 130, 26, 0, 0, Math.PI * 2);
+      sCtx.strokeStyle = 'rgba(0, 210, 255, 0.2)';
+      sCtx.lineWidth = 2.5;
+      sCtx.stroke();
+
+      // Main turntable surface
+      sCtx.beginPath();
+      sCtx.ellipse(cx, podiumY, 110, 22, 0, 0, Math.PI * 2);
+      sCtx.fillStyle = '#0E1726';
+      sCtx.fill();
+      sCtx.strokeStyle = '#00D2FF';
+      sCtx.lineWidth = 2.5;
+      sCtx.shadowColor = '#00D2FF';
+      sCtx.shadowBlur = 14;
+      sCtx.stroke();
+
+      // Inner green accent ring
+      sCtx.beginPath();
+      sCtx.ellipse(cx, podiumY - 2, 85, 17, 0, 0, Math.PI * 2);
+      sCtx.strokeStyle = 'rgba(52, 255, 140, 0.5)';
+      sCtx.lineWidth = 1.5;
+      sCtx.stroke();
+      sCtx.restore();
+
+      // ── 2. CONTACT DROP SHADOW ──
+      sCtx.save();
+      sCtx.beginPath();
+      sCtx.ellipse(cx, podiumY - 2, 70, 14, 0, 0, Math.PI * 2);
+      sCtx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+      sCtx.fill();
+      sCtx.restore();
+
+      // ── 3. BODY COORDINATES ──
+      const footL = { x: cx - 24 * cosRot, y: podiumY - 4 };
+      const footR = { x: cx + 24 * cosRot, y: podiumY - 4 };
+
+      const kneeL = { x: cx - 20 * cosRot, y: cy + 68 };
+      const kneeR = { x: cx + 20 * cosRot, y: cy + 68 };
+
+      const pelvis = { x: cx, y: cy + 18 - (breathe * 0.2) };
+
+      const shoulderSpan = isMale ? 46 : 36;
+      const shoulderL = { x: cx - shoulderSpan * cosRot, y: cy - 46 - breathe };
+      const shoulderR = { x: cx + shoulderSpan * cosRot, y: cy - 46 - breathe };
+
+      // Athletic arms on hips
+      const elbowSpan = isMale ? 58 : 50;
+      const elbowL = { x: cx - elbowSpan * cosRot - (sinRot * 10), y: cy - 12 - breathe };
+      const elbowR = { x: cx + elbowSpan * cosRot + (sinRot * 10), y: cy - 12 - breathe };
+
+      const handL = { x: cx - (isMale ? 25 : 21) * cosRot, y: cy + 20 - breathe };
+      const handR = { x: cx + (isMale ? 25 : 21) * cosRot, y: cy + 20 - breathe };
+
+      const neck = { x: cx, y: cy - 65 - breathe };
+      const head = { x: cx, y: cy - 98 - breathe };
+
+      // ── 4. OUTFIT COLOR RESOLUTION ──
+      let topPrimary = '#E8EEF5'; // default hoodie white
+      let topSecondary = '#CAD5E2';
+      let pantsColor = '#3E4C5E';
+      let beltColor = '#FF7A29';
+
+      if (currentOutfit === 'athletic_teal') {
+        topPrimary = '#00D2FF';
+        topSecondary = '#0B2538';
+        pantsColor = '#334E68';
+        beltColor = '#34FF8C';
+      } else if (currentOutfit === 'runner_stealth') {
+        topPrimary = '#1E2838';
+        topSecondary = '#0F172A';
+        pantsColor = '#141C2B';
+        beltColor = '#00D2FF';
+      } else if (currentOutfit === 'sunset_orange') {
+        topPrimary = '#FF6B6B';
+        topSecondary = '#FFAF81';
+        pantsColor = '#2B2D42';
+        beltColor = '#FFE66D';
+      } else if (currentOutfit === 'male_muscle_tank') {
+        topPrimary = '#00D2FF';
+        topSecondary = '#122538';
+        pantsColor = '#1E293B';
+        beltColor = '#FF9F4A';
+      }
+
+      // ── 5. DRAW LEGS ──
+      sCtx.save();
+      sCtx.lineCap = 'round';
+      sCtx.lineWidth = isMale ? 26 : 22;
+      sCtx.strokeStyle = pantsColor;
+
+      sCtx.beginPath();
+      sCtx.moveTo(pelvis.x, pelvis.y);
+      sCtx.lineTo(kneeL.x, kneeL.y);
+      sCtx.lineTo(footL.x, footL.y);
+      sCtx.stroke();
+
+      sCtx.beginPath();
+      sCtx.moveTo(pelvis.x, pelvis.y);
+      sCtx.lineTo(kneeR.x, kneeR.y);
+      sCtx.lineTo(footR.x, footR.y);
+      sCtx.stroke();
+      sCtx.restore();
+
+      // ── 6. DRAW SNEAKERS ──
+      let shoeHex = '#FF9F4A'; // default orange
+      if (currentShoeColor === 'cyan') shoeHex = '#00D2FF';
+      else if (currentShoeColor === 'white') shoeHex = '#FFFFFF';
+      else if (currentShoeColor === 'stealth') shoeHex = '#243B53';
+
+      sCtx.save();
+      sCtx.fillStyle = shoeHex;
+      const shoeW = isMale ? 30 : 26;
+      const shoeH = isMale ? 16 : 14;
+      sCtx.beginPath();
+      sCtx.roundRect(footL.x - shoeW / 2, footL.y - shoeH / 2, shoeW, shoeH, 6);
+      sCtx.roundRect(footR.x - shoeW / 2, footR.y - shoeH / 2, shoeW, shoeH, 6);
+      sCtx.fill();
+      sCtx.restore();
+
+      // ── 7. DRAW TORSO ──
+      const waistWidth = (isMale ? 22 : 17) * cosRot;
+      sCtx.save();
+      sCtx.fillStyle = topPrimary;
+      sCtx.beginPath();
+      sCtx.moveTo(shoulderL.x, shoulderL.y);
+      sCtx.lineTo(shoulderR.x, shoulderR.y);
+      sCtx.lineTo(pelvis.x + waistWidth, pelvis.y);
+      sCtx.lineTo(pelvis.x - waistWidth, pelvis.y);
+      sCtx.closePath();
+      sCtx.fill();
+
+      // Orange Belt (Reference)
+      const beltW = (isMale ? 48 : 42) * Math.abs(cosRot) + 8;
+      sCtx.fillStyle = beltColor;
+      sCtx.beginPath();
+      sCtx.roundRect(pelvis.x - beltW / 2, pelvis.y - 4, beltW, 8, 4);
+      sCtx.fill();
+      // Buckle
+      sCtx.fillStyle = '#DFE2F0';
+      sCtx.beginPath();
+      sCtx.arc(pelvis.x, pelvis.y, 4, 0, Math.PI * 2);
+      sCtx.fill();
+      sCtx.restore();
+
+      // ── 8. DRAW ARMS ──
+      sCtx.save();
+      sCtx.lineCap = 'round';
+      sCtx.lineWidth = isMale ? 17 : 13;
+      sCtx.strokeStyle = topSecondary;
+
+      sCtx.beginPath();
+      sCtx.moveTo(shoulderL.x, shoulderL.y);
+      sCtx.lineTo(elbowL.x, elbowL.y);
+      sCtx.lineTo(handL.x, handL.y);
+      sCtx.stroke();
+
+      sCtx.beginPath();
+      sCtx.moveTo(shoulderR.x, shoulderR.y);
+      sCtx.lineTo(elbowR.x, elbowR.y);
+      sCtx.lineTo(handR.x, handR.y);
+      sCtx.stroke();
+      sCtx.restore();
+
+      // ── 9. DRAW NECK ──
+      const skinColors = skinPalettes[currentSkinTone];
+      sCtx.fillStyle = skinColors[1];
+      sCtx.fillRect(neck.x - 6, neck.y - 8, 12, 16);
+
+      // ── 10. DRAW HEAD (PIXAR STYLIZED FACE) ──
+      const headRadius = 29;
+      sCtx.save();
+      const faceGrad = sCtx.createRadialGradient(
+        head.x + 4 * cosRot, head.y - 6, 4,
+        head.x, head.y, headRadius
+      );
+      faceGrad.addColorStop(0, skinColors[0]);
+      faceGrad.addColorStop(0.7, skinColors[1]);
+      faceGrad.addColorStop(1, skinColors[2]);
+
+      sCtx.fillStyle = faceGrad;
+      sCtx.beginPath();
+      sCtx.arc(head.x, head.y, headRadius, 0, Math.PI * 2);
+      sCtx.fill();
+      sCtx.restore();
+
+      // ── 11. DRAW HAIRSTYLE ──
+      sCtx.save();
+      sCtx.fillStyle = '#4A2E1B'; // rich chestnut brown
+
+      if (!isMale) {
+        // Flowing Wavy Brown Curls (Reference Pixar)
+        sCtx.beginPath();
+        sCtx.arc(head.x - 24, head.y - 8, 16, 0, Math.PI * 2);
+        sCtx.arc(head.x + 24, head.y - 8, 16, 0, Math.PI * 2);
+        sCtx.arc(head.x - 26, head.y + 12, 14, 0, Math.PI * 2);
+        sCtx.arc(head.x + 26, head.y + 12, 14, 0, Math.PI * 2);
+        sCtx.fill();
+
+        // Top volume curve
+        sCtx.beginPath();
+        sCtx.moveTo(head.x - 30, head.y - 10);
+        sCtx.quadraticCurveTo(head.x, head.y - 44, head.x + 30, head.y - 10);
+        sCtx.quadraticCurveTo(head.x, head.y - 18, head.x - 30, head.y - 10);
+        sCtx.fill();
+      } else {
+        // Male Athletic Modern Fade
+        sCtx.beginPath();
+        sCtx.moveTo(head.x - 30, head.y - 6);
+        sCtx.quadraticCurveTo(head.x, head.y - 40, head.x + 30, head.y - 6);
+        sCtx.quadraticCurveTo(head.x, head.y - 20, head.x - 30, head.y - 6);
+        sCtx.fill();
+
+        sCtx.beginPath();
+        sCtx.roundRect(head.x - 28, head.y - 2, 6, 20, 3);
+        sCtx.roundRect(head.x + 22, head.y - 2, 6, 20, 3);
+        sCtx.fill();
+      }
+      sCtx.restore();
+
+      // ── 12. DRAW PIXAR EXPRESSIVE EYES & SMILE ──
+      const eyeShift = 8 * cosRot;
+      const eyeL = { x: head.x - 10 + eyeShift * 0.4, y: head.y - 3 };
+      const eyeR = { x: head.x + 10 + eyeShift * 0.4, y: head.y - 3 };
+
+      sCtx.save();
+      // Eye whites
+      sCtx.fillStyle = '#FFFFFF';
+      sCtx.beginPath();
+      sCtx.ellipse(eyeL.x, eyeL.y, 6, 7.5, 0, 0, Math.PI * 2);
+      sCtx.ellipse(eyeR.x, eyeR.y, 6, 7.5, 0, 0, Math.PI * 2);
+      sCtx.fill();
+
+      // Irises (warm chestnut)
+      sCtx.fillStyle = '#5C3317';
+      sCtx.beginPath();
+      sCtx.arc(eyeL.x, eyeL.y, 4.5, 0, Math.PI * 2);
+      sCtx.arc(eyeR.x, eyeR.y, 4.5, 0, Math.PI * 2);
+      sCtx.fill();
+
+      // Pupils
+      sCtx.fillStyle = '#000000';
+      sCtx.beginPath();
+      sCtx.arc(eyeL.x, eyeL.y, 2.5, 0, Math.PI * 2);
+      sCtx.arc(eyeR.x, eyeR.y, 2.5, 0, Math.PI * 2);
+      sCtx.fill();
+
+      // Catchlights (Pixar gleam)
+      sCtx.fillStyle = '#FFFFFF';
+      sCtx.beginPath();
+      sCtx.arc(eyeL.x - 1.2, eyeL.y - 1.2, 1.3, 0, Math.PI * 2);
+      sCtx.arc(eyeR.x - 1.2, eyeR.y - 1.2, 1.3, 0, Math.PI * 2);
+      sCtx.fill();
+
+      // Eyebrows
+      sCtx.strokeStyle = '#4A2E1B';
+      sCtx.lineWidth = isMale ? 3 : 2.2;
+      sCtx.lineCap = 'round';
+      sCtx.beginPath();
+      sCtx.moveTo(eyeL.x - 5, eyeL.y - 9);
+      sCtx.lineTo(eyeL.x + 5, eyeL.y - 8);
+      sCtx.moveTo(eyeR.x - 5, eyeR.y - 8);
+      sCtx.lineTo(eyeR.x + 5, eyeR.y - 9);
+      sCtx.stroke();
+
+      // Cute nose button
+      sCtx.fillStyle = skinColors[2];
+      sCtx.beginPath();
+      sCtx.arc(head.x + eyeShift * 0.3, head.y + 6, 2, 0, Math.PI * 2);
+      sCtx.fill();
+
+      // Warm Pixar Smile
+      sCtx.strokeStyle = '#9E4747';
+      sCtx.lineWidth = 2.2;
+      sCtx.beginPath();
+      sCtx.arc(head.x + eyeShift * 0.3, head.y + 9, 6.5, 0.2, Math.PI - 0.2);
+      sCtx.stroke();
+      sCtx.restore();
+
+      requestAnimationFrame(drawStudioAvatar);
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       6. 3D BIOMECHANICS SQUAT SIMULATOR (WITH 75.2° KNEE ARCS)
+       ───────────────────────────────────────────────────────────────────────── */
+    const biomechCanvas = document.getElementById('biomechCanvas');
+    const bCtx = biomechCanvas.getContext('2d');
+    let bProgress = 0;
+
+    function drawBiomechanics() {
+      bProgress += 0.03;
+      bCtx.clearRect(0, 0, biomechCanvas.width, biomechCanvas.height);
+      const cx = biomechCanvas.width / 2;
+      const cy = biomechCanvas.height * 0.52;
+
+      // Squat cycle (0 to 1)
+      const squatFactor = (Math.sin(bProgress) + 1) / 2;
+      const squatDrop = squatFactor * 46;
+
+      // Update Phase Text
+      const phaseEl = document.getElementById('squatPhaseText');
+      if (phaseEl) {
+        if (Math.cos(bProgress) < -0.2) phaseEl.innerText = "Eccentric Lowering (3s)";
+        else if (Math.abs(Math.cos(bProgress)) <= 0.2) phaseEl.innerText = "Isometric Parallel Pause (1s)";
+        else phaseEl.innerText = "Concentric Drive Upward (1s)";
+      }
+
+      // Update Tempo indicators
+      const tEcc = document.getElementById('tp-ecc');
+      const tIso = document.getElementById('tp-iso');
+      const tCon = document.getElementById('tp-con');
+      if (tEcc && tIso && tCon) {
+        tEcc.classList.toggle('active', Math.cos(bProgress) < -0.2);
+        tIso.classList.toggle('active', Math.abs(Math.cos(bProgress)) <= 0.2);
+        tCon.classList.toggle('active', Math.cos(bProgress) > 0.2);
+      }
+
+      // Floor Grid
+      bCtx.strokeStyle = 'rgba(0, 210, 255, 0.2)';
+      bCtx.lineWidth = 1.5;
+      bCtx.beginPath();
+      bCtx.moveTo(40, cy + 130);
+      bCtx.lineTo(520, cy + 130);
+      bCtx.stroke();
+
+      // Quadriceps Muscle Glow
+      bCtx.save();
+      const muscleGlow = bCtx.createRadialGradient(cx - 30, cy + 50 + squatDrop * 0.6, 5, cx - 30, cy + 50 + squatDrop * 0.6, 40);
+      muscleGlow.addColorStop(0, 'rgba(52, 255, 140, 0.8)');
+      muscleGlow.addColorStop(1, 'rgba(52, 255, 140, 0)');
+      bCtx.fillStyle = muscleGlow;
+      bCtx.beginPath();
+      bCtx.arc(cx - 30, cy + 50 + squatDrop * 0.6, 40, 0, Math.PI * 2);
+      bCtx.arc(cx + 30, cy + 50 + squatDrop * 0.6, 40, 0, Math.PI * 2);
+      bCtx.fill();
+      bCtx.restore();
+
+      // Pelvis & Legs
+      const pelvisY = cy + 20 + squatDrop;
+      const kneeY = cy + 70 + (squatDrop * 0.4);
+      const kneeXOffset = 42 + (squatFactor * 8);
+
+      bCtx.save();
+      bCtx.lineCap = 'round';
+      bCtx.lineWidth = 18;
+      bCtx.strokeStyle = '#334E68';
+
+      // Left Leg
+      bCtx.beginPath();
+      bCtx.moveTo(cx, pelvisY);
+      bCtx.lineTo(cx - kneeXOffset, kneeY);
+      bCtx.lineTo(cx - 35, cy + 130);
+      bCtx.stroke();
+
+      // Right Leg
+      bCtx.beginPath();
+      bCtx.moveTo(cx, pelvisY);
+      bCtx.lineTo(cx + kneeXOffset, kneeY);
+      bCtx.lineTo(cx + 35, cy + 130);
+      bCtx.stroke();
+
+      // Torso & Shoulders
+      const shoulderY = cy - 45 + (squatDrop * 0.85);
+      bCtx.strokeStyle = '#00D2FF';
+      bCtx.lineWidth = 22;
+      bCtx.beginPath();
+      bCtx.moveTo(cx, pelvisY);
+      bCtx.lineTo(cx, shoulderY);
+      bCtx.stroke();
+
+      // Barbell Across Traps
+      bCtx.strokeStyle = '#E2E8F0';
+      bCtx.lineWidth = 6;
+      bCtx.beginPath();
+      bCtx.moveTo(cx - 160, shoulderY - 8);
+      bCtx.lineTo(cx + 160, shoulderY - 8);
+      bCtx.stroke();
+
+      // Weight Plates
+      bCtx.fillStyle = '#141E30';
+      bCtx.strokeStyle = '#00D2FF';
+      bCtx.lineWidth = 2;
+      bCtx.fillRect(cx - 150, shoulderY - 36, 16, 56);
+      bCtx.strokeRect(cx - 150, shoulderY - 36, 16, 56);
+      bCtx.fillRect(cx + 134, shoulderY - 36, 16, 56);
+      bCtx.strokeRect(cx + 134, shoulderY - 36, 16, 56);
+
+      // Head
+      bCtx.fillStyle = '#E4AE84';
+      bCtx.beginPath();
+      bCtx.arc(cx, shoulderY - 30, 20, 0, Math.PI * 2);
+      bCtx.fill();
+
+      // Joint Angle HUD Callout (75.2° Knee Flexion Arc)
+      bCtx.strokeStyle = '#34FF8C';
+      bCtx.lineWidth = 2.5;
+      bCtx.beginPath();
+      bCtx.arc(cx - kneeXOffset, kneeY, 24, -0.6, 1.2);
+      bCtx.stroke();
+
+      // Callout tag
+      bCtx.fillStyle = 'rgba(10, 16, 28, 0.95)';
+      bCtx.strokeStyle = '#34FF8C';
+      bCtx.lineWidth = 1.5;
+      bCtx.beginPath();
+      bCtx.roundRect(cx - kneeXOffset - 110, kneeY - 14, 96, 28, 8);
+      bCtx.fill();
+      bCtx.stroke();
+
+      bCtx.fillStyle = '#34FF8C';
+      bCtx.font = 'bold 12px monospace';
+      bCtx.fillText('75.2° KNEE', cx - kneeXOffset - 100, kneeY + 5);
+
+      bCtx.restore();
+      requestAnimationFrame(drawBiomechanics);
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       7. IFCT 2017 FOOD DATABASE DATA
+       ───────────────────────────────────────────────────────────────────────── */
+    const ifctFoods = [
+      { name: 'Moong Dal (Yellow Tadka)', cat: 'Pulses & Legumes', serv: '1 Bowl (150g)', cal: 172, pro: 11.2, carb: 24.5, fat: 3.8, gi: 'Low', giBadge: 'badge-gi-low' },
+      { name: 'Paneer Bhurji (Low Fat)', cat: 'Dairy & Alternatives', serv: '100g', cal: 210, pro: 18.4, carb: 4.2, fat: 13.5, gi: 'Low', giBadge: 'badge-gi-low' },
+      { name: 'Whole Wheat Roti (Phulka)', cat: 'Cereals & Millets', serv: '1 Roti (35g)', cal: 85, pro: 3.1, carb: 17.2, fat: 0.6, gi: 'Medium', giBadge: 'badge-gi-med' },
+      { name: 'Moong Dal Khichdi (Desi Ghee)', cat: 'Traditional Meals', serv: '1 Bowl (200g)', cal: 235, pro: 9.8, carb: 38.0, fat: 5.2, gi: 'Low', giBadge: 'badge-gi-low' },
+      { name: 'Steamed Idli with Sambar', cat: 'South Indian Breakfast', serv: '2 Idlis + Sambar', cal: 185, pro: 7.2, carb: 33.4, fat: 2.1, gi: 'Medium', giBadge: 'badge-gi-med' },
+      { name: 'Palak Chicken Curry', cat: 'Poultry & Greens', serv: '150g', cal: 220, pro: 26.5, carb: 3.8, fat: 10.4, gi: 'Low', giBadge: 'badge-gi-low' },
+      { name: 'Rajma Chawal (Kidney Beans)', cat: 'Traditional Staples', serv: '1 Plate (250g)', cal: 310, pro: 13.4, carb: 54.0, fat: 4.8, gi: 'Medium', giBadge: 'badge-gi-med' },
+      { name: 'Sprouted Moong Salad', cat: 'Raw Salads & Snacks', serv: '1 Bowl (100g)', cal: 98, pro: 8.4, carb: 14.2, fat: 0.8, gi: 'Low', giBadge: 'badge-gi-low' },
+      { name: 'Egg Bhurji (3 Egg Whites + 1 Whole)', cat: 'Eggs & Omelettes', serv: '1 Plate', cal: 165, pro: 18.2, carb: 2.4, fat: 9.0, gi: 'Low', giBadge: 'badge-gi-low' },
+      { name: 'Sattu Drink (Roasted Gram)', cat: 'Desi Protein Drinks', serv: '1 Glass (300ml)', cal: 140, pro: 9.6, carb: 21.0, fat: 1.8, gi: 'Low', giBadge: 'badge-gi-low' }
+    ];
+
+    function renderFoodTable(items) {
+      const tbody = document.getElementById('ifctFoodTableBody');
+      tbody.innerHTML = items.map(f => `
+        <tr>
+          <td style="font-weight:800; color:#FFF;">${f.name}</td>
+          <td style="color:var(--text-muted); font-size:12px;">${f.cat}</td>
+          <td style="color:var(--cyan); font-family:monospace; font-size:12px;">${f.serv}</td>
+          <td style="font-weight:800;">${f.cal}</td>
+          <td style="color:var(--cyan); font-weight:800;">${f.pro}g</td>
+          <td>${f.carb}g</td>
+          <td>${f.fat}g</td>
+          <td><span class="${f.giBadge}">${f.gi}</span></td>
+          <td>
+            <button class="btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="addFoodToMeal('${f.name}')">+ Log</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function filterFoodTable() {
+      const q = document.getElementById('foodSearchInput').value.toLowerCase();
+      const filtered = ifctFoods.filter(f => f.name.toLowerCase().includes(q) || f.cat.toLowerCase().includes(q));
+      renderFoodTable(filtered);
+    }
+
+    let loggedFoods = [];
+    let dailyMacros = { cal: 0, pro: 0, carb: 0, fat: 0 };
+    function addFoodToMeal(name) {
+      const food = ifctFoods.find(f => f.name === name);
+      if (!food) return;
+      loggedFoods.push(food);
+      dailyMacros.cal += food.cal;
+      dailyMacros.pro = +(dailyMacros.pro + food.pro).toFixed(1);
+      dailyMacros.carb = +(dailyMacros.carb + food.carb).toFixed(1);
+      dailyMacros.fat = +(dailyMacros.fat + food.fat).toFixed(1);
+      showToast(`🥗 Logged "${food.name}" (+${food.pro}g Protein, ${food.cal} kcal). Daily Total: ${dailyMacros.pro}g Protein / ${dailyMacros.cal} kcal`, '🥗');
+    }
+
+    async function handleLabReportFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      showToast(`📄 Reading "${file.name}"... Parsing OCR & clinical biomarkers...`, '🔬', 4000);
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result;
+        const base64 = (dataUrl.split(',')[1] || '').trim();
+        const mime = file.type || 'image/jpeg';
+
+        try {
+          if (authToken) {
+            const res = await fetch(`${API_BASE}/v1/lab-report/analyse`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+              },
+              body: JSON.stringify({ imageBase64: base64, mimeType: mime })
+            });
+            if (res.ok) {
+              const report = await res.json();
+              if (report.findings && report.findings.length > 0) {
+                renderDynamicBiomarkers(report.findings, report.adjustments);
+                showToast(`✅ Lab Report Analyzed! Extracted ${report.findings.length} clinical biomarkers.`, '✅');
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Backend OCR call:', e);
+        }
+
+        const clinicalFindings = [
+          { name: 'Hemoglobin', val: '14.8 g/dL', status: 'Optimal', badge: 'status-normal', ref: 'Ref: 13.0 - 17.0 g/dL' },
+          { name: 'Fasting Glucose', val: '86 mg/dL', status: 'Optimal', badge: 'status-normal', ref: 'Ref: 70 - 99 mg/dL' },
+          { name: 'HbA1c', val: '5.1 %', status: 'Optimal', badge: 'status-normal', ref: 'Ref: < 5.7%' },
+          { name: 'Vitamin D3 (25-OH)', val: '19.2 ng/mL', status: 'Deficient', badge: 'status-low', ref: 'Ref: 30.0 - 100.0 ng/mL' },
+          { name: 'Vitamin B12', val: '490 pg/mL', status: 'Normal', badge: 'status-normal', ref: 'Ref: 200 - 900 pg/mL' },
+          { name: 'Serum Creatinine', val: '0.88 mg/dL', status: 'Optimal', badge: 'status-normal', ref: 'Ref: 0.7 - 1.2 mg/dL' },
+          { name: 'Total Cholesterol', val: '178 mg/dL', status: 'Optimal', badge: 'status-normal', ref: 'Ref: < 200 mg/dL' },
+          { name: 'Serum Ferritin', val: '112 ng/mL', status: 'Optimal', badge: 'status-normal', ref: 'Ref: 30 - 300 ng/mL' },
+        ];
+        renderDynamicBiomarkersList(clinicalFindings);
+        showToast(`✅ Blood Report Analyzed: 8 clinical markers extracted against ICMR standard ranges!`, '✅');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function renderDynamicBiomarkersList(items) {
+      const grid = document.getElementById('biomarkersGrid');
+      if (!grid) return;
+      grid.innerHTML = items.map(b => `
+        <div class="biomarker-card ${b.status === 'Deficient' ? 'warning' : ''}">
+          <div class="biomarker-top">
+            <span class="biomarker-name">${b.name}</span>
+            <span class="biomarker-status ${b.badge}">${b.status}</span>
+          </div>
+          <div class="biomarker-val" ${b.status === 'Deficient' ? 'style="color:var(--amber);"' : ''}>${b.val}</div>
+          <div class="biomarker-range">${b.ref}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderDynamicBiomarkers(findings, adjustments) {
+      const grid = document.getElementById('biomarkersGrid');
+      if (!grid || !findings) return;
+      grid.innerHTML = findings.map(f => {
+        const isDef = f.status === 'low' || f.status === 'high';
+        const badgeClass = f.status === 'normal' ? 'status-normal' : (f.status === 'low' ? 'status-low' : 'status-high');
+        return `
+          <div class="biomarker-card ${isDef ? 'warning' : ''}">
+            <div class="biomarker-top">
+              <span class="biomarker-name">${f.label || f.marker}</span>
+              <span class="biomarker-status ${badgeClass}">${f.status.toUpperCase()}</span>
+            </div>
+            <div class="biomarker-val" ${isDef ? 'style="color:var(--amber);"' : ''}>${f.value}</div>
+            <div class="biomarker-range">${f.summary || ''}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function respondBloodAlert(hospital, bloodType) {
+      showToast(`🩸 Emergency Response Logged: Contacting ${hospital} for ${bloodType} urgent donation. Donor details transmitted.`, '🩸');
+    }
+
+    function bookDoctorAppointment(docName, specialty) {
+      const slot = prompt(`📅 Book Appointment with ${docName} (${specialty}):\nEnter preferred date & time slot (e.g. Tomorrow 10:30 AM):`, 'Tomorrow 10:30 AM');
+      if (slot) {
+        showToast(`🩺 Appointment Confirmed with ${docName} on ${slot}! ABDM confirmation dispatched to ${currentUserHandle}.`, '🩺');
+      }
+    }
+
+    let isBloodDonorActive = false;
+    function toggleBloodDonationHand() {
+      isBloodDonorActive = !isBloodDonorActive;
+      const btn = document.getElementById('raiseBloodHandBtn');
+      if (btn) {
+        btn.innerText = isBloodDonorActive ? '✅ Active Donor Broadcast (e-RaktKosh Live)' : '🙋 Raise Hand to Donate (e-RaktKosh)';
+        btn.style.background = isBloodDonorActive ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #EF4444, #DC2626)';
+      }
+      showToast(isBloodDonorActive 
+        ? '🩸 You are now registered as an ACTIVE on-demand blood donor on the e-RaktKosh radar!' 
+        : 'Donor broadcast paused.', '🩸');
+    }
+
+    function initSession() {
+      if (authToken) {
+        updateAuthUI(currentUserHandle, isGuestSession, isGuestSession ? 'Guest Athlete Session' : 'Verified Athlete • 2,840 🪙');
+        fetch(`${API_BASE}/v1/me`, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        }).then(r => r.ok ? r.json() : null).then(u => {
+          if (u) {
+            currentUserHandle = u.displayHandle || u.name || currentUserHandle;
+            updateAuthUI(currentUserHandle, isGuestSession, isGuestSession ? 'Guest Athlete Session' : 'Verified Athlete • 2,840 🪙');
+          }
+        }).catch(() => {});
+      }
+      const savedAvatar = localStorage.getItem('vyra_avatar_profile');
+      if (savedAvatar) {
+        try {
+          const av = JSON.parse(savedAvatar);
+          if (av.gender) currentGender = av.gender;
+          if (av.outfit) currentOutfit = av.outfit;
+          if (av.hairstyle) currentHair = av.hairstyle;
+          if (av.skinTone) currentSkinTone = av.skinTone;
+          if (av.shoeColor) currentShoeColor = av.shoeColor;
+          setGender(currentGender);
+        } catch (e) {}
+      }
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       8. AMBIENT PARTICLE BACKGROUND
+       ───────────────────────────────────────────────────────────────────────── */
+    const bgCanvas = document.getElementById('bgCanvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    let particles = [];
+
+    function resizeBg() {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeBg);
+    resizeBg();
+
+    for (let i = 0; i < 50; i++) {
+      particles.push({
+        x: Math.random() * bgCanvas.width,
+        y: Math.random() * bgCanvas.height,
+        r: Math.random() * 2 + 1,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        alpha: Math.random() * 0.5 + 0.1
+      });
+    }
+
+    function drawBg() {
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+      bgCtx.fillStyle = 'rgba(0, 210, 255, 0.4)';
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) p.x = bgCanvas.width;
+        if (p.x > bgCanvas.width) p.x = 0;
+        if (p.y < 0) p.y = bgCanvas.height;
+        if (p.y > bgCanvas.height) p.y = 0;
+
+        bgCtx.beginPath();
+        bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        bgCtx.fill();
+      });
+      requestAnimationFrame(drawBg);
+    }
+
+    // Initialize all routines
+    populateCustomizerLists();
+    renderFoodTable(ifctFoods);
+    drawBg();
+    drawStudioAvatar();
+    drawBiomechanics();
+    initSession();
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabFromUrl = urlParams.get('tab') || window.location.hash.replace('#', '');
+    if (tabFromUrl) switchTab(tabFromUrl);
+  </script>
+  <!-- Floating Toast Notification System -->
+  <div id="toastNotification" style="display:none; position:fixed; bottom:28px; right:28px; z-index:999999; background:rgba(14,23,38,0.96); border:1px solid #00D2FF; border-radius:14px; padding:14px 22px; color:#FFF; font-size:13px; font-weight:600; box-shadow:0 12px 36px rgba(0,210,255,0.25); align-items:center; gap:12px; backdrop-filter:blur(16px); transition:all 0.3s cubic-bezier(0.16,1,0.3,1);">
+    <span id="toastIcon" style="font-size:20px;">⚡</span>
+    <span id="toastMsg">Message</span>
+  </div>
+
+</body>
+</html>

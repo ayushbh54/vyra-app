@@ -3,11 +3,17 @@ import 'package:provider/provider.dart';
 
 import '../api/client.dart';
 import '../models/models.dart';
+import '../screens/avatar_studio.dart';
 import '../screens/beacon.dart';
+import '../screens/blood_donation.dart';
 import '../screens/emergency_contacts.dart';
+import '../screens/friends_leaderboard.dart';
+import '../screens/health_report_ai.dart';
 import '../screens/health_sync.dart';
 import '../screens/leaderboard.dart';
 import '../screens/messages_inbox.dart';
+import '../screens/nearby_doctors.dart';
+import '../screens/pose_tracker.dart';
 import '../screens/profile.dart';
 import '../screens/settings.dart';
 import '../screens/water_reminder.dart';
@@ -18,7 +24,7 @@ import 'screen_scaffold.dart';
 /// VYRA Slide-out Profile Navigation Drawer
 ///
 /// Designed cleanly matching the reference layout:
-/// - Organization banner (VYRA ATHLETE ECOSYSTEM · SIH ATHLETE OS)
+/// - Organization banner (VYRA ATHLETE ECOSYSTEM · VYRA ATHLETE OS)
 /// - Athlete Hero Card with Avatar ("AB"), Name, ID/Handle, and "Switch user" action
 /// - Top Rank & Tier Badge Card ("🏆 Rank #4 • Diamond Tier • 2,450 Pts")
 /// - Clean category tiles with colored badges (Profile, Leaderboard, Security, Notifications,
@@ -339,7 +345,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                                   ),
                                   const SizedBox(width: 5),
                                   Text(
-                                    'ATHLETE ECOSYSTEM · SIH',
+                                    'ATHLETE ECOSYSTEM · VYRA OS',
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
@@ -614,6 +620,73 @@ class _VyraDrawerState extends State<VyraDrawer> {
                           );
                         },
                       ),
+
+                      // ── NATIONAL HEALTH & ATHLETIC INNOVATIONS ──
+                      _DrawerMenuItem(
+                        icon: Icons.face_retouching_natural_rounded,
+                        iconBgColor: const Color(0xFF00D2FF), // Cyan
+                        title: '3D Coach Avatar & Digital Twin Studio',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AvatarStudioScreen()),
+                          );
+                        },
+                      ),
+                      _DrawerMenuItem(
+                        icon: Icons.bloodtype_rounded,
+                        iconBgColor: const Color(0xFFDC2626), // Red
+                        title: 'e-RaktKosh Blood Donation (API Setu)',
+                        onTap: () {
+                          Navigator.pop(context);
+                          pushScreen(context, 'e-RaktKosh Blood Lifeline', const BloodDonationScreen());
+                        },
+                      ),
+                      _DrawerMenuItem(
+                        icon: Icons.camera_enhance_rounded,
+                        iconBgColor: const Color(0xFF00D2FF), // Cyan
+                        title: 'AI Camera Pose & Rep Tracker',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const PoseTrackerScreen()),
+                          );
+                        },
+                      ),
+                      _DrawerMenuItem(
+                        icon: Icons.document_scanner_rounded,
+                        iconBgColor: const Color(0xFF10B981), // Emerald
+                        title: 'AI Blood Report Lab Analysis',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const HealthReportAiScreen()),
+                          );
+                        },
+                      ),
+                      _DrawerMenuItem(
+                        icon: Icons.local_hospital_rounded,
+                        iconBgColor: const Color(0xFF0284C7), // Blue
+                        title: 'Nearby Rated Doctors (NHA)',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const NearbyDoctorsScreen()),
+                          );
+                        },
+                      ),
+                      _DrawerMenuItem(
+                        icon: Icons.group_add_rounded,
+                        iconBgColor: const Color(0xFF8B5CF6), // Purple
+                        title: 'Friends & Family Social Leaderboard',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const FriendsLeaderboardScreen()),
+                          );
+                        },
+                      ),
+
                       _DrawerMenuItem(
                         icon: Icons.security_rounded,
                         iconBgColor: const Color(0xFFEF4444), // Red
@@ -756,7 +829,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'VYRA AI Fitness · SIH National Edition · v2.4.0',
+                        'VYRA AI Fitness · Enterprise Edition · v2.4.0',
                         style: TextStyle(
                           fontSize: 10.5,
                           color: textSecondary,

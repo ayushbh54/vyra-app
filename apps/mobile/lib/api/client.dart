@@ -210,6 +210,22 @@ class VyraApi {
     return (j['onboardingStep'] as num?)?.toInt() ?? 0;
   }
 
+  /// Fast 1-Tap Guest Access: Immediately provisions a guest session with full token
+  Future<int> logInAsGuest() async {
+    final j = await _request('POST', '/v1/auth/guest');
+    await setToken('${j['accessToken']}');
+    return (j['onboardingStep'] as num?)?.toInt() ?? 0;
+  }
+
+  /// Links a Google Account to the active athlete or guest session
+  Future<bool> linkGoogleAccount({required String email, String? googleId}) async {
+    final j = await _request('POST', '/v1/auth/link-google', body: {
+      'email': email,
+      if (googleId != null && googleId.isNotEmpty) 'googleId': googleId,
+    });
+    return j['ok'] == true;
+  }
+
   /// Resets an account password with secure verification.
   Future<String> resetPassword({required String email, required String newPassword}) async {
     final j = await _request('POST', '/v1/auth/reset-password', body: {
@@ -838,5 +854,74 @@ class VyraApi {
   Future<List<dynamic>> listBlocked() async {
     final j = await _request('GET', '/v1/blocks');
     return (j['items'] as List?) ?? [];
+  }
+
+  // ---------------------------------------------------------------------------
+  // e-RaktKosh API Setu (Government of India)
+  // ---------------------------------------------------------------------------
+
+  Future<Map<String, dynamic>> searchNearbyBloodCenters({
+    double lat = 28.6667,
+    double lng = 77.4784,
+    String bloodGroup = 'All',
+    String component = 'Whole Blood',
+    int radiusKm = 10,
+  }) async {
+    return _request('POST', '/v1/eraktkosh/nearby', body: {
+      'lat': lat,
+      'lng': lng,
+      'bloodGroup': bloodGroup,
+      'component': component,
+      'radiusKm': radiusKm,
+    });
+  }
+
+  Future<List<dynamic>> getBloodComponents() async {
+    final j = await _request('GET', '/v1/eraktkosh/components');
+    return (j['components'] as List?) ?? [];
+  }
+
+  Future<List<dynamic>> getEraktkoshNotifications() async {
+    final j = await _request('GET', '/v1/eraktkosh/notifications');
+    return (j['notifications'] as List?) ?? [];
+  }
+
+  Future<List<dynamic>> getNearbyBloodCamps() async {
+    final j = await _request('GET', '/v1/eraktkosh/camps');
+    return (j['camps'] as List?) ?? [];
+  }
+
+  Future<Map<String, dynamic>> registerEraktkoshDonor({
+    required String fullName,
+    required String bloodGroup,
+    required String mobile,
+    required int age,
+    required String gender,
+    required String city,
+  }) async {
+    return _request('POST', '/v1/eraktkosh/donor/register', body: {
+      'fullName': fullName,
+      'bloodGroup': bloodGroup,
+      'mobile': mobile,
+      'age': age,
+      'gender': gender,
+      'city': city,
+    });
+  }
+
+  Future<Map<String, dynamic>> submitThalassemiaRequest({
+    required String patientName,
+    required String bloodGroup,
+    required int unitsRequired,
+    required String hospitalName,
+    String specialRequirement = 'Leukodepleted PRBC',
+  }) async {
+    return _request('POST', '/v1/eraktkosh/thalassemia/request', body: {
+      'patientName': patientName,
+      'bloodGroup': bloodGroup,
+      'unitsRequired': unitsRequired,
+      'hospitalName': hospitalName,
+      'specialRequirement': specialRequirement,
+    });
   }
 }

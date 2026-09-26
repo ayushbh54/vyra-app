@@ -4,19 +4,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/client.dart';
 import '../models/models.dart';
+import '../services/language_service.dart';
 import '../theme.dart';
 import '../theme_manager.dart';
 import '../widgets/common.dart';
+import '../widgets/daily_slogan_banner.dart';
 import '../widgets/notifications_sheet.dart';
 import '../widgets/screen_scaffold.dart';
 import 'barcode_scan.dart';
+import 'blood_donation.dart';
 import 'challenges_hub.dart';
 import 'exercise_detail.dart';
 import 'face_hair_yoga.dart';
 import 'food_scan.dart';
+import 'friends_leaderboard.dart';
+import 'health_report_ai.dart';
 import 'health_sync.dart';
 import 'library.dart';
 import 'messages_inbox.dart';
+import 'nearby_doctors.dart';
+import 'pose_tracker.dart';
 import 'record.dart';
 import 'water_reminder.dart';
 
@@ -86,6 +93,18 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
       setState(() {
         _data = data.copyWith(plan: mergedPlan);
         _error = null;
+      });
+
+      // Show motivational slogan banner
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final lang = LanguageService.instance.locale.languageCode;
+        DailySloganBanner.show(
+          context: context,
+          sloganContext: 'home',
+          streakDays: 7,
+          language: lang == 'hi' ? 'hi' : 'en',
+        );
       });
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -1152,6 +1171,40 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
     final textPrimary = isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A);
 
     final services = [
+      (
+        'Pose Tracker',
+        Icons.camera_enhance_rounded,
+        const Color(0xFFCFFAFE), // Cyan bg
+        const Color(0xFF0891B2), // Cyan icon
+        () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PoseTrackerScreen()),
+            ),
+      ),
+      (
+        'Blood Bank',
+        Icons.bloodtype_rounded,
+        const Color(0xFFFFE4E6), // Rose bg
+        const Color(0xFFDC2626), // Red icon
+        () => pushScreen(context, 'e-RaktKosh Blood Lifeline', const BloodDonationScreen()),
+      ),
+      (
+        'Lab Report AI',
+        Icons.biotech_rounded,
+        const Color(0xFFD1FAE5), // Mint bg
+        const Color(0xFF059669), // Emerald icon
+        () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const HealthReportAiScreen()),
+            ),
+      ),
+      (
+        'Top Doctors',
+        Icons.local_hospital_rounded,
+        const Color(0xFFFEF3C7), // Amber bg
+        const Color(0xFFD97706), // Amber icon
+        () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NearbyDoctorsScreen()),
+            ),
+      ),
       (
         'Record Activity',
         Icons.radio_button_checked_rounded,

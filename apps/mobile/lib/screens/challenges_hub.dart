@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 import 'challenges.dart';
+import 'friends_leaderboard.dart';
 import 'rewards.dart';
-import 'social.dart';
 
 /// CHALLENGES — the coin economy, the dual leaderboard, and the Perks
-/// Catalog to spend coins on. Clubs/Events/Friends live in the Social tab
-/// instead (see social_hub.dart) — this tab is specifically about
-/// competing, earning, and spending, not connecting.
+/// Catalog to spend coins on.
 class ChallengesHubScreen extends StatelessWidget {
   const ChallengesHubScreen({super.key});
 
@@ -27,7 +25,7 @@ class ChallengesHubScreen extends StatelessWidget {
               tabs: [
                 Tab(text: 'Challenges'),
                 Tab(text: 'Rewards'),
-                Tab(text: 'Leaderboard'),
+                Tab(text: 'Social Leaderboard'),
               ],
             ),
             Expanded(
@@ -35,7 +33,7 @@ class ChallengesHubScreen extends StatelessWidget {
                 children: [
                   ChallengesScreen(),
                   RewardsScreen(),
-                  SocialScreen(),
+                  FriendsLeaderboardScreen(),
                 ],
               ),
             ),

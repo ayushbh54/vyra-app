@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # ── Networking & Storage ───────────────────────────────────────────────────
   http: ^1.2.2
@@ -47,4 +49,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  # Fonts are loaded from Google Fonts at runtime — no asset bundling needed.
+  assets:
+    - assets/images/

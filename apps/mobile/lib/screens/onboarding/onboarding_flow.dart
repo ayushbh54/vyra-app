@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../api/client.dart';
+import '../../services/language_service.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
 
@@ -21,9 +22,11 @@ class OnboardingFlow extends StatefulWidget {
 class _OnboardingFlowState extends State<OnboardingFlow> {
   final _pageController = PageController();
   int _step = 0;
-  static const _totalSteps = 6;
+  // Step 0 = Language, Steps 1-6 = original steps
+  static const _totalSteps = 7;
 
-  // Collected state
+  // ── Collected state ──────────────────────────────────────────────────────
+  VyraLanguage? _selectedLanguage; // step 0
   DateTime? _dob;
   String? _gender;
   final _cityController = TextEditingController();
@@ -49,17 +52,22 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   bool get _canContinue {
     switch (_step) {
-      case 0: return _dob != null && _gender != null;
-      case 1: return _heightController.text.isNotEmpty && _weightController.text.isNotEmpty;
-      case 2: return _disabilityAnswer != null;
-      case 3: return _fitnessGoal != null;
-      case 4: return _dietPreference != null;
-      case 5: return _primarySport != null;
+      case 0: return _selectedLanguage != null;
+      case 1: return _dob != null && _gender != null;
+      case 2: return _heightController.text.isNotEmpty && _weightController.text.isNotEmpty;
+      case 3: return _disabilityAnswer != null;
+      case 4: return _fitnessGoal != null;
+      case 5: return _dietPreference != null;
+      case 6: return _primarySport != null;
       default: return true;
     }
   }
 
   Future<void> _next() async {
+    // Apply selected language to the app immediately when leaving step 0.
+    if (_step == 0 && _selectedLanguage != null) {
+      await LanguageService.instance.setLanguage(_selectedLanguage!);
+    }
     if (_step < _totalSteps - 1) {
       setState(() => _step++);
       _pageController.nextPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
@@ -128,6 +136,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
+                  _stepLanguage(),
                   _stepBasicInfo(),
                   _stepBodyInfo(),
                   _stepAccessibility(),
@@ -199,6 +208,146 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           const SizedBox(height: VSpace.xl),
           child,
         ],
+      ),
+    );
+  }
+
+  // ── Step 0 — Language Selection ───────────────────────────────────────────
+  Widget _stepLanguage() {
+    return _stepShell(
+      title: 'Choose your language',
+      subtitle: 'VYRA speaks your language — pick one to personalise every screen.',
+      child: Column(
+        children: [
+          // Search / quick-pick the 4 most common at top
+          Row(
+            children: [
+              for (final code in ['hi', 'en_IN', 'ta', 'te'])
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: _langQuickChip(code),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: VSpace.base),
+          const Divider(color: VColor.line),
+          const SizedBox(height: VSpace.sm),
+          // Full list
+          ...kVyraLanguages.map((lang) => _langTile(lang)),
+        ],
+      ),
+    );
+  }
+
+  Widget _langQuickChip(String prefsKey) {
+    final lang = kVyraLanguages.firstWhere(
+      (l) => l.prefsKey == prefsKey,
+      orElse: () => kVyraLanguages.first,
+    );
+    final selected = _selectedLanguage?.prefsKey == lang.prefsKey;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedLanguage = lang),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? VColor.accentGlow : VColor.surface,
+          borderRadius: BorderRadius.circular(VRadius.md),
+          border: Border.all(
+            color: selected ? VColor.accent : VColor.line,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(lang.flag, style: const TextStyle(fontSize: 20)),
+            const SizedBox(height: 4),
+            Text(
+              lang.languageCode == 'en'
+                  ? (lang.countryCode == 'IN' ? 'EN' : lang.countryCode ?? 'EN')
+                  : lang.languageCode.toUpperCase(),
+              style: TextStyle(
+                color: selected ? VColor.accent : VColor.textMid,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _langTile(VyraLanguage lang) {
+    final selected = _selectedLanguage?.prefsKey == lang.prefsKey;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: VSpace.sm),
+      child: InkWell(
+        onTap: () => setState(() => _selectedLanguage = lang),
+        borderRadius: BorderRadius.circular(VRadius.lg),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: VSpace.base, vertical: 14),
+          decoration: BoxDecoration(
+            color: selected ? VColor.accentGlow : VColor.surface,
+            borderRadius: BorderRadius.circular(VRadius.lg),
+            border: Border.all(
+              color: selected ? VColor.accent : VColor.line,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              // Flag
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: selected ? VColor.accent.withValues(alpha: 0.15) : VColor.surfaceRaised,
+                  borderRadius: BorderRadius.circular(VRadius.sm),
+                ),
+                child: Center(
+                  child: Text(lang.flag, style: const TextStyle(fontSize: 22)),
+                ),
+              ),
+              const SizedBox(width: VSpace.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      lang.nativeName,
+                      style: TextStyle(
+                        color: selected ? VColor.text : VColor.text,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      lang.displayName,
+                      style: const TextStyle(color: VColor.textLow, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              if (selected)
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: const BoxDecoration(
+                    color: VColor.accent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check, color: VColor.textOnAccent, size: 14),
+                )
+              else
+                const Icon(Icons.radio_button_unchecked, color: VColor.line, size: 22),
+            ],
+          ),
+        ),
       ),
     );
   }
