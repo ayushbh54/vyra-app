@@ -1373,6 +1373,282 @@
       box-shadow: 0 0 12px var(--cyan-glow);
     }
 
+  
+    /* ── COMPREHENSIVE RESPONSIVE DESIGN & MOBILE FIXES ── */
+    html, body {
+      width: 100% !important;
+      max-width: 100vw !important;
+      overflow-x: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .app-root {
+      width: 100% !important;
+      max-width: 100vw !important;
+      overflow-x: hidden !important;
+      box-sizing: border-box !important;
+    }
+
+    /* Top Global Header Responsive */
+    #globalHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 24px;
+      background: rgba(10, 16, 30, 0.88);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      flex-wrap: wrap;
+      gap: 12px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 840px) {
+      #globalHeader {
+        padding: 10px 14px;
+      }
+      .header-center-switch {
+        order: 3;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+      }
+      .switch-mode-btn {
+        flex: 1;
+        text-align: center;
+        justify-content: center;
+        padding: 8px 12px;
+      }
+    }
+
+    /* Sub Navigation Bar Horizontal Scroll */
+    #athleteSubNav {
+      display: flex;
+      gap: 8px;
+      padding: 10px 24px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      background: rgba(5, 8, 17, 0.7);
+      border-bottom: 1px solid var(--border-subtle);
+      width: 100%;
+      box-sizing: border-box;
+    }
+    #athleteSubNav::-webkit-scrollbar { display: none; }
+    .portal-nav-btn {
+      flex-shrink: 0;
+    }
+
+    /* View Content Container */
+    .view-content-area {
+      padding: 20px 24px;
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
+    @media (max-width: 768px) {
+      .view-content-area {
+        padding: 14px 12px;
+      }
+    }
+
+    /* Health Metrics Banner Grid */
+    .health-metrics-banner {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 992px) {
+      .health-metrics-banner {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 520px) {
+      .health-metrics-banner {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* 3D Avatar Studio Grid Responsive */
+    .avatar-studio-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    @media (max-width: 980px) {
+      .avatar-studio-grid {
+        grid-template-columns: 1fr;
+      }
+      .orbit-stage-viewport {
+        height: 440px !important;
+      }
+    }
+
+    /* Customizer Drawer Subtabs */
+    .customizer-subtabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 4px;
+      margin-bottom: 14px;
+      width: 100%;
+    }
+    .customizer-subtabs::-webkit-scrollbar { display: none; }
+    .subtab-btn {
+      flex-shrink: 0;
+    }
+
+    /* Interactive Customizer Cards Grid */
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    @media (max-width: 480px) {
+      .items-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* Customizer Card Component */
+    .customizer-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+    }
+    .customizer-card:hover {
+      background: rgba(0, 210, 255, 0.08);
+      border-color: var(--cyan);
+      transform: translateY(-2px);
+    }
+    .customizer-card.active {
+      background: rgba(0, 210, 255, 0.12);
+      border-color: var(--cyan);
+      box-shadow: 0 0 16px var(--cyan-glow);
+    }
+    .customizer-card-color-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+    .customizer-card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #FFF;
+      line-height: 1.3;
+    }
+    .customizer-card-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* Table Responsive Wrapper */
+    .table-responsive {
+      width: 100% !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      margin-bottom: 12px;
+      border-radius: 12px;
+    }
+    .styled-table {
+      width: 100% !important;
+      min-width: 580px !important;
+      border-collapse: collapse;
+    }
+
+    /* Admin Grid Responsive */
+    .admin-layout-grid {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    @media (max-width: 900px) {
+      .admin-layout-grid {
+        grid-template-columns: 1fr;
+      }
+      .admin-sidebar {
+        display: flex;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .admin-sidebar::-webkit-scrollbar { display: none; }
+      .admin-nav-item {
+        flex-shrink: 0;
+      }
+    }
+
+    /* 3D Canvas Stage Pose Bar */
+    .avatar-pose-bar {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+      background: rgba(10, 16, 30, 0.88);
+      backdrop-filter: blur(12px);
+      padding: 4px 8px;
+      border-radius: 20px;
+      border: 1px solid var(--border-subtle);
+      z-index: 20;
+      max-width: 92%;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .avatar-pose-bar::-webkit-scrollbar { display: none; }
+    .pose-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 6px 12px;
+      font-size: 11.5px;
+      font-weight: 700;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .pose-btn:hover {
+      color: #FFF;
+      background: rgba(255,255,255,0.06);
+    }
+    .pose-btn.active {
+      background: var(--cyan);
+      color: #000;
+      box-shadow: 0 0 12px var(--cyan-glow);
+    }
+
   </style>
 </head>
 <body>
@@ -1551,18 +1827,15 @@
 
           <div class="form-group">
             <label class="form-label">Superadmin Master ID</label>
-            <input type="email" id="adminIdInput" class="form-input" placeholder="admin@gmail.com" value="admin@gmail.com">
+            <input type="email" id="adminIdInput" class="form-input" placeholder="admin@gmail.com" value="">
           </div>
 
           <div class="form-group">
             <label class="form-label">Security Protocol Passkey</label>
-            <input type="password" id="adminKeyInput" class="form-input" placeholder="Admin123" value="Admin123">
+            <input type="password" id="adminKeyInput" class="form-input" placeholder="••••••••" value="">
           </div>
 
-          <div style="font-size:11.5px; color:var(--text-muted); background:rgba(0,0,0,0.4); border:1px solid var(--border-subtle); border-radius:10px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
-            <span>Master ID: <b style="color:var(--purple);">admin@gmail.com</b></span>
-            <span>Passkey: <b style="color:var(--cyan);">Admin123</b></span>
-          </div>
+
 
           <button class="btn-submit admin-btn" onclick="loginAdmin()">
             <span>🛡️ Authenticate Enterprise Operations Center</span>
@@ -1672,24 +1945,30 @@
                 </div>
 
                 <!-- Picture in Picture Real Face Badge -->
-                <div id="pipFaceBadge">
-                  <img id="pipFaceThumb" src="" alt="Face Selfie">
+                <div id="pipFaceBadge" style="display:none; position:absolute; top:54px; right:16px; background:rgba(10,16,30,0.85); backdrop-filter:blur(8px); border:1px solid var(--cyan); border-radius:12px; padding:6px 12px; align-items:center; gap:8px; z-index:20;">
+                  <img id="pipFaceThumb" src="" alt="Face Selfie" style="width:30px; height:30px; border-radius:50%; object-fit:cover; border:1px solid var(--cyan);">
                   <div class="pip-text">
-                    <span class="pip-title">DIGITAL TWIN</span>
-                    <span class="pip-sub">Face Mesh Synced</span>
+                    <span class="pip-title" style="font-size:10px; font-weight:800; color:var(--cyan); display:block;">DIGITAL TWIN</span>
+                    <span class="pip-sub" style="font-size:9px; color:var(--emerald); display:block;">Face Mesh Synced</span>
                   </div>
                 </div>
 
-                <!-- 3D Orbit Viewport -->
-                <div class="orbit-stage-viewport" id="orbitViewport">
-                  <div class="avatar-3d-orbit-card" id="avatarOrbitCard">
-                    <img id="avatarMainImg" class="avatar-image-render" src="assets/images/coach_avatar_studio.png" alt="3D Athletic Coach Avatar">
+                <!-- Real WebGL 3D Avatar Viewport -->
+                <div class="orbit-stage-viewport" id="orbitViewport" style="position:relative; width:100%; height:520px; overflow:hidden; border-radius:24px; background:radial-gradient(circle at center, rgba(0, 210, 255, 0.08) 0%, rgba(5, 8, 17, 0.96) 75%); border:1px solid var(--border-cyan);">
+                  <canvas id="avatar3DCanvas" style="width:100%; height:100%; display:block; cursor:grab;"></canvas>
+                  
+                  <!-- Floating Pose Selector Bar over 3D Canvas -->
+                  <div class="avatar-pose-bar">
+                    <button class="pose-btn active" onclick="setAvatarPose('idle', this)">🧘 Ready Stance</button>
+                    <button class="pose-btn" onclick="setAvatarPose('squat', this)">🏋️ 75° Squat</button>
+                    <button class="pose-btn" onclick="setAvatarPose('flex', this)">💪 Bicep Flex</button>
+                    <button class="pose-btn" onclick="setAvatarPose('sprint', this)">⚡ Sprint Stance</button>
                   </div>
-                  <div class="podium-disc"></div>
                 </div>
 
-                <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
-                  👆 Click & drag to rotate avatar 360° in real-time space
+                <div style="font-size:11.5px; color:var(--text-muted); margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>👆 Click & drag to rotate 3D avatar 360° in real-time</span>
+                  <span style="color:var(--cyan);">60 FPS WebGL Engine</span>
                 </div>
               </div>
 
@@ -1892,7 +2171,7 @@
 
               <!-- Food Table -->
               <div class="data-table-card">
-                <table class="styled-table">
+                <div class="table-responsive"><table class="styled-table">
                   <thead>
                     <tr>
                       <th>Indian Food Item (ICMR-NIN)</th>
@@ -1906,7 +2185,7 @@
                     </tr>
                   </thead>
                   <tbody id="ifctFoodTableBody"></tbody>
-                </table>
+                </table></div>
               </div>
             </div>
           </div>
@@ -1939,7 +2218,7 @@
               <!-- Real Government Blood Banks Directory -->
               <div class="data-table-card">
                 <div style="font-size:14px; font-weight:800; color:#FFF; margin-bottom:12px;">🏥 Verified Government Hospital Blood Banks (e-RaktKosh Portal)</div>
-                <table class="styled-table">
+                <div class="table-responsive"><table class="styled-table">
                   <thead>
                     <tr>
                       <th>Hospital Blood Bank</th>
@@ -1950,13 +2229,13 @@
                     </tr>
                   </thead>
                   <tbody id="govtBloodBanksBody"></tbody>
-                </table>
+                </table></div>
               </div>
 
               <!-- Hospital Emergency Requests -->
               <div class="data-table-card">
                 <div style="font-size:14px; font-weight:800; color:#FFF; margin-bottom:12px;">🚨 Active Emergency Hospital Appeals</div>
-                <table class="styled-table">
+                <div class="table-responsive"><table class="styled-table">
                   <thead>
                     <tr>
                       <th>Hospital</th>
@@ -1968,7 +2247,7 @@
                     </tr>
                   </thead>
                   <tbody id="bloodAppealsUserBody"></tbody>
-                </table>
+                </table></div>
               </div>
             </div>
           </div>
@@ -2093,7 +2372,7 @@
                     <div style="font-size:15px; font-weight:800; color:#FFF;">Critical e-RaktKosh Blood Donation Appeals</div>
                     <button class="btn-submit" style="padding:6px 14px; font-size:12px;" onclick="openNewAppealModal()">+ New Emergency Appeal</button>
                   </div>
-                  <table class="styled-table">
+                  <div class="table-responsive"><table class="styled-table">
                     <thead>
                       <tr>
                         <th>Hospital</th>
@@ -2107,7 +2386,7 @@
                       </tr>
                     </thead>
                     <tbody id="adminAppealsTableBody"></tbody>
-                  </table>
+                  </table></div>
                 </div>
               </div>
 
@@ -2150,7 +2429,7 @@
                       <button class="btn-table-action" onclick="openAddKinematicsModal()">+ Add Exercise</button>
                     </div>
                   </div>
-                  <table class="styled-table">
+                  <div class="table-responsive"><table class="styled-table">
                     <thead>
                       <tr>
                         <th>Exercise Name</th>
@@ -2163,7 +2442,7 @@
                       </tr>
                     </thead>
                     <tbody id="adminKinematicsTableBody"></tbody>
-                  </table>
+                  </table></div>
                 </div>
               </div>
 
@@ -2184,7 +2463,7 @@
                       <button class="btn-submit" style="padding:8px 16px; font-size:12px;" onclick="openNewAppealModal()">+ Post Emergency Appeal</button>
                     </div>
                   </div>
-                  <table class="styled-table">
+                  <div class="table-responsive"><table class="styled-table">
                     <thead>
                       <tr>
                         <th>Hospital</th>
@@ -2198,7 +2477,7 @@
                       </tr>
                     </thead>
                     <tbody id="adminFullAppealsBody"></tbody>
-                  </table>
+                  </table></div>
                 </div>
               </div>
 
@@ -2215,7 +2494,7 @@
                       <button class="btn-table-action" onclick="openAddAthleteModal()">+ Register Athlete</button>
                     </div>
                   </div>
-                  <table class="styled-table">
+                  <div class="table-responsive"><table class="styled-table">
                     <thead>
                       <tr>
                         <th>Athlete</th>
@@ -2228,7 +2507,7 @@
                       </tr>
                     </thead>
                     <tbody id="adminAthletesTableBody"></tbody>
-                  </table>
+                  </table></div>
                 </div>
               </div>
 
@@ -2313,7 +2592,7 @@
 
                   <!-- Live Audit Logs Stream -->
                   <div style="font-size:14px; font-weight:800; color:#FFF; margin-bottom:10px;">📋 Live System Audit Trail</div>
-                  <table class="styled-table">
+                  <div class="table-responsive"><table class="styled-table">
                     <thead>
                       <tr>
                         <th>Timestamp</th>
@@ -2323,7 +2602,7 @@
                       </tr>
                     </thead>
                     <tbody id="adminAuditTableBody"></tbody>
-                  </table>
+                  </table></div>
                 </div>
               </div>
 
@@ -3334,155 +3613,568 @@
       }
     }
 
-    // ── 5. 3D AVATAR STUDIO TURNTABLE ───────────────────────────────────────────
-    function populateCustomizer() {
-      var colorOptions = [
-        { name: 'Neon Cyan', hex: '#00d2ff' },
-        { name: 'Emerald', hex: '#34ff8c' },
-        { name: 'Electric Gold', hex: '#ffd32a' },
-        { name: 'Crimson Red', hex: '#ff4757' },
-        { name: 'Royal Purple', hex: '#a55eea' }
+    
+    // ── 5. THREE.JS 3D AVATAR STUDIO ENGINE ─────────────────────────────────────
+    var avatar3DScene = null;
+    var avatar3DCamera = null;
+    var avatar3DRenderer = null;
+    var avatar3DCharacter = null;
+    var avatarPodiumRings = [];
+    var avatarOrbitY = 0;
+    var isAvatarAutoOrbit = true;
+    var isAvatarDragging = false;
+    var avatarDragStartX = 0;
+    var currentAvatarPose = 'idle';
+
+    // Character customization state
+    var avatarCustomState = {
+      gender: 'male',
+      suitColor: 0x00d2ff,
+      suitName: 'Apex Cyber-Weave',
+      skinColor: 0xd4a373,
+      skinName: 'Wheatish Indian',
+      hairStyle: 'crew_fade',
+      hairColor: 0x1b1b1b,
+      shoeColor: 0x00d2ff,
+      shoeName: 'Hyper-Sprint Runners'
+    };
+
+    // Meshes references for live shader updates
+    var charParts = {};
+
+    function initAvatarStudio3D() {
+      var canvas = document.getElementById('avatar3DCanvas');
+      if (!canvas || typeof THREE === 'undefined') return;
+
+      var container = canvas.parentElement;
+      var w = container.clientWidth || 440;
+      var h = container.clientHeight || 520;
+
+      avatar3DRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+      avatar3DRenderer.setSize(w, h);
+      avatar3DRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+      avatar3DScene = new THREE.Scene();
+      avatar3DCamera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
+      avatar3DCamera.position.set(0, 1.3, 3.8);
+      avatar3DCamera.lookAt(0, 0.9, 0);
+
+      // Studio Lighting
+      var ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+      avatar3DScene.add(ambientLight);
+
+      var dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+      dirLight.position.set(2.5, 5, 3.5);
+      avatar3DScene.add(dirLight);
+
+      var rimLight = new THREE.PointLight(0x00d2ff, 2.5, 6);
+      rimLight.position.set(-2, 2.5, -2);
+      avatar3DScene.add(rimLight);
+
+      var underPodiumLight = new THREE.PointLight(0x00d2ff, 3, 4);
+      underPodiumLight.position.set(0, 0.1, 0);
+      avatar3DScene.add(underPodiumLight);
+
+      // Build 3D Stage & Character
+      buildPodium3D();
+      buildCharacter3D();
+
+      // Mouse & Touch Drag Controls
+      canvas.addEventListener('mousedown', function(e) {
+        isAvatarDragging = true;
+        avatarDragStartX = e.clientX;
+        isAvatarAutoOrbit = false;
+        updateAutoOrbitButtonUI();
+      });
+
+      window.addEventListener('mouseup', function() { isAvatarDragging = false; });
+
+      window.addEventListener('mousemove', function(e) {
+        if (!isAvatarDragging || !avatar3DCharacter) return;
+        var delta = e.clientX - avatarDragStartX;
+        avatarDragStartX = e.clientX;
+        avatarOrbitY += delta * 0.012;
+        avatar3DCharacter.rotation.y = avatarOrbitY;
+        updateOrbitAngleHUD();
+      });
+
+      // Touch Events for Mobile & Tablet
+      canvas.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 1) {
+          isAvatarDragging = true;
+          avatarDragStartX = e.touches[0].clientX;
+          isAvatarAutoOrbit = false;
+          updateAutoOrbitButtonUI();
+        }
+      }, { passive: true });
+
+      window.addEventListener('touchend', function() { isAvatarDragging = false; });
+
+      window.addEventListener('touchmove', function(e) {
+        if (!isAvatarDragging || !avatar3DCharacter || e.touches.length === 0) return;
+        var delta = e.touches[0].clientX - avatarDragStartX;
+        avatarDragStartX = e.touches[0].clientX;
+        avatarOrbitY += delta * 0.015;
+        avatar3DCharacter.rotation.y = avatarOrbitY;
+        updateOrbitAngleHUD();
+      }, { passive: true });
+
+      // Resize Listener
+      window.addEventListener('resize', function() {
+        if (!canvas || !avatar3DCamera || !avatar3DRenderer) return;
+        var rw = canvas.parentElement.clientWidth || 400;
+        var rh = canvas.parentElement.clientHeight || 520;
+        avatar3DCamera.aspect = rw / rh;
+        avatar3DCamera.updateProjectionMatrix();
+        avatar3DRenderer.setSize(rw, rh);
+      });
+
+      // Animation Loop
+      var animClock = new THREE.Clock();
+      function animateAvatar() {
+        requestAnimationFrame(animateAvatar);
+        var elapsed = animClock.getElapsedTime();
+
+        // Rotate podium neon energy rings
+        avatarPodiumRings.forEach(function(ring, idx) {
+          ring.rotation.z += (idx % 2 === 0 ? 0.015 : -0.012);
+        });
+
+        // Auto Orbit character
+        if (isAvatarAutoOrbit && avatar3DCharacter) {
+          avatarOrbitY += 0.008;
+          avatar3DCharacter.rotation.y = avatarOrbitY;
+          updateOrbitAngleHUD();
+        }
+
+        // Idle breathing motion
+        if (avatar3DCharacter && currentAvatarPose === 'idle') {
+          var breath = Math.sin(elapsed * 2.5) * 0.02;
+          if (charParts.chest) charParts.chest.scale.set(1 + breath, 1 + breath * 0.5, 1 + breath);
+          if (charParts.shoulders) charParts.shoulders.position.y = 1.35 + breath * 0.3;
+        }
+
+        avatar3DRenderer.render(avatar3DScene, avatar3DCamera);
+      }
+      animateAvatar();
+    }
+
+    function buildPodium3D() {
+      // Metallic Circular Podium Base
+      var baseGeo = new THREE.CylinderGeometry(1.2, 1.35, 0.12, 32);
+      var baseMat = new THREE.MeshStandardMaterial({ color: 0x090e1a, metalness: 0.85, roughness: 0.25 });
+      var baseMesh = new THREE.Mesh(baseGeo, baseMat);
+      baseMesh.position.y = 0.06;
+      avatar3DScene.add(baseMesh);
+
+      // Glowing Neon Energy Concentric Rings
+      var ringColors = [0x00d2ff, 0x34ff8c];
+      ringColors.forEach(function(col, i) {
+        var ringGeo = new THREE.RingGeometry(0.85 + i * 0.25, 0.88 + i * 0.25, 32);
+        var ringMat = new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide });
+        var ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.rotation.x = -Math.PI / 2;
+        ringMesh.position.y = 0.125 + i * 0.005;
+        avatar3DScene.add(ringMesh);
+        avatarPodiumRings.push(ringMesh);
+      });
+    }
+
+    function buildCharacter3D() {
+      if (avatar3DCharacter) avatar3DScene.remove(avatar3DCharacter);
+      avatar3DCharacter = new THREE.Group();
+      avatar3DCharacter.position.y = 0.12;
+      avatar3DScene.add(avatar3DCharacter);
+
+      var isFemale = avatarCustomState.gender === 'female';
+
+      // Proportions
+      var shoulderWidth = isFemale ? 0.38 : 0.48;
+      var chestRadius = isFemale ? 0.24 : 0.30;
+      var waistRadius = isFemale ? 0.18 : 0.22;
+      var hipRadius = isFemale ? 0.26 : 0.25;
+
+      // Materials
+      charParts.suitMat = new THREE.MeshStandardMaterial({
+        color: avatarCustomState.suitColor,
+        metalness: 0.75,
+        roughness: 0.25
+      });
+
+      charParts.skinMat = new THREE.MeshStandardMaterial({
+        color: avatarCustomState.skinColor,
+        metalness: 0.1,
+        roughness: 0.8
+      });
+
+      charParts.jointMat = new THREE.MeshBasicMaterial({ color: 0x00d2ff });
+      charParts.hairMat = new THREE.MeshStandardMaterial({ color: avatarCustomState.hairColor, roughness: 0.9 });
+      charParts.shoeMat = new THREE.MeshStandardMaterial({ color: 0x111624, metalness: 0.8, roughness: 0.3 });
+      charParts.soleMat = new THREE.MeshBasicMaterial({ color: avatarCustomState.shoeColor });
+
+      // 1. Pelvis / Hips
+      var hips = new THREE.Mesh(new THREE.CylinderGeometry(waistRadius, hipRadius, 0.2, 16), charParts.suitMat);
+      hips.position.y = 0.88;
+      avatar3DCharacter.add(hips);
+      charParts.hips = hips;
+
+      // 2. Torso (Abdomen)
+      var abs = new THREE.Mesh(new THREE.CylinderGeometry(chestRadius, waistRadius, 0.25, 16), charParts.suitMat);
+      abs.position.y = 1.08;
+      avatar3DCharacter.add(abs);
+      charParts.abs = abs;
+
+      // 3. Chest (Upper Torso)
+      var chest = new THREE.Mesh(new THREE.CylinderGeometry(shoulderWidth * 0.65, chestRadius, 0.3, 16), charParts.suitMat);
+      chest.position.y = 1.32;
+      avatar3DCharacter.add(chest);
+      charParts.chest = chest;
+
+      // Core Reactor Badge
+      var reactor = new THREE.Mesh(new THREE.CircleGeometry(0.06, 16), new THREE.MeshBasicMaterial({ color: avatarCustomState.suitColor }));
+      reactor.position.set(0, 1.34, shoulderWidth * 0.42);
+      avatar3DCharacter.add(reactor);
+      charParts.reactor = reactor;
+
+      // 4. Neck & Head
+      var neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.12, 16), charParts.skinMat);
+      neck.position.y = 1.5;
+      avatar3DCharacter.add(neck);
+
+      var head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 20), charParts.skinMat);
+      head.position.y = 1.66;
+      avatar3DCharacter.add(head);
+      charParts.head = head;
+
+      // Cyber Visor
+      var visor = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.1), new THREE.MeshBasicMaterial({ color: 0x00d2ff }));
+      visor.position.set(0, 1.66, 0.12);
+      avatar3DCharacter.add(visor);
+
+      // Hair Mesh
+      buildHairMesh(head);
+
+      // 5. Arms & Shoulders
+      charParts.shoulders = new THREE.Group();
+      avatar3DCharacter.add(charParts.shoulders);
+
+      [-1, 1].forEach(function(side) {
+        var shoulderX = side * (shoulderWidth * 0.62);
+        
+        // Pauldron
+        var p = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 12), charParts.suitMat);
+        p.position.set(shoulderX, 1.4, 0);
+        avatar3DCharacter.add(p);
+
+        // Upper Arm
+        var arm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.28, 12), charParts.suitMat);
+        arm.position.set(shoulderX, 1.22, 0);
+        avatar3DCharacter.add(arm);
+
+        // Elbow Joint Marker
+        var elbow = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 12), charParts.jointMat);
+        elbow.position.set(shoulderX, 1.06, 0);
+        avatar3DCharacter.add(elbow);
+
+        // Forearm
+        var fore = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.26, 12), charParts.skinMat);
+        fore.position.set(shoulderX, 0.91, 0);
+        avatar3DCharacter.add(fore);
+
+        // Hand
+        var hand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.09, 0.04), charParts.suitMat);
+        hand.position.set(shoulderX, 0.75, 0);
+        avatar3DCharacter.add(hand);
+      });
+
+      // 6. Legs (Thighs, Knees, Calves, Shoes)
+      charParts.legs = [];
+      [-1, 1].forEach(function(side) {
+        var legX = side * 0.13;
+
+        // Thigh
+        var thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.08, 0.38, 14), charParts.suitMat);
+        thigh.position.set(legX, 0.64, 0);
+        avatar3DCharacter.add(thigh);
+
+        // Knee Joint Marker
+        var knee = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 12), charParts.jointMat);
+        knee.position.set(legX, 0.44, 0);
+        avatar3DCharacter.add(knee);
+
+        // Calf
+        var calf = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.065, 0.36, 14), charParts.skinMat);
+        calf.position.set(legX, 0.24, 0);
+        avatar3DCharacter.add(calf);
+
+        // Athletic Shoe
+        var shoe = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.22), charParts.shoeMat);
+        shoe.position.set(legX, 0.05, 0.04);
+        avatar3DCharacter.add(shoe);
+
+        // Glowing Sole
+        var sole = new THREE.Mesh(new THREE.BoxGeometry(0.125, 0.02, 0.23), charParts.soleMat);
+        sole.position.set(legX, 0.01, 0.04);
+        avatar3DCharacter.add(sole);
+      });
+
+      applyAvatarPose(currentAvatarPose);
+    }
+
+    function buildHairMesh(headMesh) {
+      if (charParts.hairMesh) avatar3DCharacter.remove(charParts.hairMesh);
+
+      var hairGroup = new THREE.Group();
+      hairGroup.position.set(0, 1.66, 0);
+
+      var style = avatarCustomState.hairStyle;
+      if (style === 'crew_fade') {
+        var crew = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 16), charParts.hairMat);
+        crew.position.y = 0.03;
+        crew.scale.set(1.02, 1.05, 1.02);
+        hairGroup.add(crew);
+      } else if (style === 'buzz_cut') {
+        var buzz = new THREE.Mesh(new THREE.SphereGeometry(0.165, 16, 16), charParts.hairMat);
+        buzz.position.y = 0.02;
+        hairGroup.add(buzz);
+      } else if (style === 'top_knot') {
+        var knotBase = new THREE.Mesh(new THREE.SphereGeometry(0.165, 16, 16), charParts.hairMat);
+        hairGroup.add(knotBase);
+        var knot = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), charParts.hairMat);
+        knot.position.set(0, 0.19, -0.04);
+        hairGroup.add(knot);
+      } else if (style === 'ponytail') {
+        var ponyBase = new THREE.Mesh(new THREE.SphereGeometry(0.165, 16, 16), charParts.hairMat);
+        hairGroup.add(ponyBase);
+        var tail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.015, 0.28, 8), charParts.hairMat);
+        tail.position.set(0, 0.04, -0.22);
+        tail.rotation.x = -Math.PI / 4;
+        hairGroup.add(tail);
+      }
+
+      avatar3DCharacter.add(hairGroup);
+      charParts.hairMesh = hairGroup;
+    }
+
+    function applyAvatarPose(pose) {
+      currentAvatarPose = pose;
+      if (!avatar3DCharacter) return;
+
+      if (pose === 'squat') {
+        avatar3DCharacter.position.y = -0.15;
+        if (charParts.chest) charParts.chest.rotation.x = 0.25;
+        showToast('Pose: Biomechanical 75° Squat Flexion', '🏋️');
+      } else if (pose === 'flex') {
+        avatar3DCharacter.position.y = 0.12;
+        if (charParts.chest) charParts.chest.rotation.x = -0.05;
+        showToast('Pose: Champion Double Bicep Flex', '💪');
+      } else if (pose === 'sprint') {
+        avatar3DCharacter.position.y = 0.05;
+        if (charParts.chest) charParts.chest.rotation.x = 0.2;
+        showToast('Pose: Kinetic Sprint Acceleration', '⚡');
+      } else { // idle
+        avatar3DCharacter.position.y = 0.12;
+        if (charParts.chest) charParts.chest.rotation.x = 0;
+      }
+    }
+
+    function setAvatarPose(pose, btn) {
+      document.querySelectorAll('.pose-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      applyAvatarPose(pose);
+    }
+
+    function toggleAutoOrbit() {
+      isAvatarAutoOrbit = !isAvatarAutoOrbit;
+      updateAutoOrbitButtonUI();
+    }
+
+    function updateAutoOrbitButtonUI() {
+      var btn = document.getElementById('autoOrbitStatusText');
+      if (btn) btn.innerText = isAvatarAutoOrbit ? '⚡ Auto Orbit: ON' : '⏸️ Auto Orbit: OFF';
+    }
+
+    function updateOrbitAngleHUD() {
+      var deg = Math.round(((avatarOrbitY * 180 / Math.PI) % 360 + 360) % 360);
+      var text = deg + '° VIEW';
+      if (deg >= 335 || deg <= 25) text = '0° FRONT VIEW';
+      else if (deg >= 35 && deg <= 65) text = '45° THREE-QUARTER';
+      else if (deg >= 75 && deg <= 115) text = '90° PROFILE VIEW';
+      else if (deg >= 160 && deg <= 200) text = '180° REAR VIEW';
+
+      var hud = document.getElementById('orbitAngleHUD');
+      if (hud) hud.innerText = text;
+    }
+
+    // ── LIVE CUSTOMIZER CARDS POPULATION & SELECTION ───────────────────────────
+    function populateCustomizerLists() {
+      // 1. Outfits
+      var outfits = [
+        { id: 'apex_cyan', name: 'Apex Cyber-Weave', color: 0x00d2ff, hex: '#00D2FF', tier: 'Legendary', glow: 'Cyan Glow' },
+        { id: 'vanguard_green', name: 'Vanguard Nanotech', color: 0x34ff8c, hex: '#34FF8C', tier: 'Epic', glow: 'Emerald Glow' },
+        { id: 'titan_gold', name: 'Titan Exo-Rig', color: 0xffd32a, hex: '#FFD32A', tier: 'Mythic', glow: 'Gold Energy' },
+        { id: 'inferno_red', name: 'Inferno Velocity', color: 0xff4757, hex: '#FF4757', tier: 'Speed', glow: 'Crimson Surge' },
+        { id: 'void_purple', name: 'Void Phantom', color: 0xa55eea, hex: '#A55EEA', tier: 'Stealth', glow: 'Purple Matrix' }
       ];
 
-      var colorContainer = document.getElementById('colorSwatches');
-      if (colorContainer) {
-        colorContainer.innerHTML = colorOptions.map(function(c, i) {
-          return '<button class="color-swatch-btn ' + (i === 0 ? 'selected' : '') + '" style="background:' + c.hex + ';" onclick="selectSuitColor(&quot;' + c.hex + '&quot;, this)" title="' + c.name + '"></button>';
+      var outfitGrid = document.getElementById('subtab-outfits');
+      if (outfitGrid) {
+        outfitGrid.innerHTML = outfits.map(function(item) {
+          var isCur = avatarCustomState.suitColor === item.color;
+          return '<div class="customizer-card ' + (isCur ? 'active' : '') + '" onclick="selectAvatarOutfit(' + item.color + ', &quot;' + item.name + '&quot;, this)">' +
+            '<div class="customizer-card-color-dot" style="background:' + item.hex + '; box-shadow:0 0 12px ' + item.hex + ';"></div>' +
+            '<div class="customizer-card-title">' + item.name + '</div>' +
+            '<div class="customizer-card-sub" style="color:' + item.hex + ';">' + item.tier + ' • ' + item.glow + '</div>' +
+          '</div>';
         }).join('');
       }
 
-      var turntableCanvas = document.getElementById('turntableCanvas');
-      if (turntableCanvas) {
-        renderTurntableWireframe();
+      // 2. Hairstyles
+      var hairstyles = [
+        { id: 'crew_fade', name: 'Crew Fade', desc: 'Athletic Aerodynamic' },
+        { id: 'buzz_cut', name: 'Tactical Buzz', desc: 'Zero Air-Drag' },
+        { id: 'top_knot', name: 'Samurai Knot', desc: 'Focus Warrior' },
+        { id: 'ponytail', name: 'Dynamic Tail', desc: 'Streamlined Fit' }
+      ];
 
-        turntableCanvas.addEventListener('mousedown', function(e) {
-          isDragging = true;
-          dragStartX = e.clientX;
-          isAutoOrbiting = false;
-        });
-
-        window.addEventListener('mouseup', function() { isDragging = false; });
-
-        window.addEventListener('mousemove', function(e) {
-          if (!isDragging) return;
-          var delta = e.clientX - dragStartX;
-          dragStartX = e.clientX;
-          orbitDeg = (orbitDeg + delta * 0.5) % 360;
-          document.getElementById('turntableSlider').value = Math.round(orbitDeg);
-          document.getElementById('turntableAngleVal').innerText = Math.round(orbitDeg) + '°';
-          renderTurntableWireframe();
-        });
+      var hairGrid = document.getElementById('subtab-hair');
+      if (hairGrid) {
+        hairGrid.innerHTML = hairstyles.map(function(item) {
+          var isCur = avatarCustomState.hairStyle === item.id;
+          return '<div class="customizer-card ' + (isCur ? 'active' : '') + '" onclick="selectAvatarHair(&quot;' + item.id + '&quot;, &quot;' + item.name + '&quot;, this)">' +
+            '<div style="font-size:24px;">✂️</div>' +
+            '<div class="customizer-card-title">' + item.name + '</div>' +
+            '<div class="customizer-card-sub">' + item.desc + '</div>' +
+          '</div>';
+        }).join('');
       }
 
-      setInterval(function() {
-        if (isAutoOrbiting) {
-          orbitDeg = (orbitDeg + 0.6) % 360;
-          var slider = document.getElementById('turntableSlider');
-          if (slider) slider.value = Math.round(orbitDeg);
-          var angEl = document.getElementById('turntableAngleVal');
-          if (angEl) angEl.innerText = Math.round(orbitDeg) + '°';
-          renderTurntableWireframe();
+      // 3. Skin Tones
+      var skinTones = [
+        { id: 'wheatish', name: 'Wheatish Indian', hex: '#d4a373', color: 0xd4a373 },
+        { id: 'fair', name: 'Fair Ivory', hex: '#fcd5b5', color: 0xfcd5b5 },
+        { id: 'bronze', name: 'Warm Bronze', hex: '#b07d56', color: 0xb07d56 },
+        { id: 'caramel', name: 'Dusky Caramel', hex: '#8d5524', color: 0x8d5524 },
+        { id: 'ebony', name: 'Deep Umber', hex: '#4a3020', color: 0x4a3020 }
+      ];
+
+      var skinGrid = document.getElementById('subtab-skin');
+      if (skinGrid) {
+        skinGrid.innerHTML = skinTones.map(function(item) {
+          var isCur = avatarCustomState.skinColor === item.color;
+          return '<div class="customizer-card ' + (isCur ? 'active' : '') + '" onclick="selectAvatarSkin(' + item.color + ', &quot;' + item.name + '&quot;, this)">' +
+            '<div class="customizer-card-color-dot" style="background:' + item.hex + ';"></div>' +
+            '<div class="customizer-card-title">' + item.name + '</div>' +
+            '<div class="customizer-card-sub">Clinical Tone</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      // 4. Athletic Shoes
+      var shoes = [
+        { id: 'speed_runners', name: 'Hyper-Sprint', color: 0x00d2ff, hex: '#00D2FF', desc: 'Cushioned Energy' },
+        { id: 'power_lifters', name: 'Nano-Lift Soles', color: 0x34ff8c, hex: '#34FF8C', desc: 'Flat Kinematic Grip' },
+        { id: 'matrix_tops', name: 'Matrix High-Tops', color: 0xffd32a, hex: '#FFD32A', desc: 'Ankle Stability' },
+        { id: 'stealth_blacks', name: 'Stealth Onyx', color: 0x54667e, hex: '#54667E', desc: 'Low-Profile Turf' }
+      ];
+
+      var shoeGrid = document.getElementById('subtab-shoes');
+      if (shoeGrid) {
+        shoeGrid.innerHTML = shoes.map(function(item) {
+          var isCur = avatarCustomState.shoeColor === item.color;
+          return '<div class="customizer-card ' + (isCur ? 'active' : '') + '" onclick="selectAvatarShoes(' + item.color + ', &quot;' + item.name + '&quot;, this)">' +
+            '<div style="font-size:24px;">👟</div>' +
+            '<div class="customizer-card-title">' + item.name + '</div>' +
+            '<div class="customizer-card-sub" style="color:' + item.hex + ';">' + item.desc + '</div>' +
+          '</div>';
+        }).join('');
+      }
+    }
+
+    function switchCustomizerSubtab(subtabId, btn) {
+      document.querySelectorAll('.customizer-subtabs .subtab-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+
+      ['outfits', 'hair', 'skin', 'shoes', 'face'].forEach(function(s) {
+        var el = document.getElementById('subtab-' + s);
+        if (el) el.style.display = (s === subtabId) ? (s === 'face' ? 'flex' : 'grid') : 'none';
+      });
+    }
+
+    function setGender(gender) {
+      avatarCustomState.gender = gender;
+      document.getElementById('btnGenFemale').classList.toggle('active', gender === 'female');
+      document.getElementById('btnGenMale').classList.toggle('active', gender === 'male');
+      buildCharacter3D();
+      showToast('Switched to ' + gender.toUpperCase() + ' 3D Athletic Model', '👤');
+    }
+
+    function selectAvatarOutfit(color, name, cardEl) {
+      avatarCustomState.suitColor = color;
+      avatarCustomState.suitName = name;
+      if (charParts.suitMat) charParts.suitMat.color.setHex(color);
+      if (charParts.reactor) charParts.reactor.material.color.setHex(color);
+
+      document.querySelectorAll('#subtab-outfits .customizer-card').forEach(function(c) { c.classList.remove('active'); });
+      if (cardEl) cardEl.classList.add('active');
+      showToast('Equipped ' + name, '🛡️');
+    }
+
+    function selectAvatarHair(style, name, cardEl) {
+      avatarCustomState.hairStyle = style;
+      if (charParts.head) buildHairMesh(charParts.head);
+
+      document.querySelectorAll('#subtab-hair .customizer-card').forEach(function(c) { c.classList.remove('active'); });
+      if (cardEl) cardEl.classList.add('active');
+      showToast('Applied ' + name + ' Hairstyle', '✂️');
+    }
+
+    function selectAvatarSkin(color, name, cardEl) {
+      avatarCustomState.skinColor = color;
+      avatarCustomState.skinName = name;
+      if (charParts.skinMat) charParts.skinMat.color.setHex(color);
+
+      document.querySelectorAll('#subtab-skin .customizer-card').forEach(function(c) { c.classList.remove('active'); });
+      if (cardEl) cardEl.classList.add('active');
+      showToast('Applied ' + name + ' Skin Tone', '✨');
+    }
+
+    function selectAvatarShoes(color, name, cardEl) {
+      avatarCustomState.shoeColor = color;
+      avatarCustomState.shoeName = name;
+      if (charParts.soleMat) charParts.soleMat.color.setHex(color);
+
+      document.querySelectorAll('#subtab-shoes .customizer-card').forEach(function(c) { c.classList.remove('active'); });
+      if (cardEl) cardEl.classList.add('active');
+      showToast('Laced ' + name + ' Footwear', '👟');
+    }
+
+    function handleFacePhotoUpload(event) {
+      var file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var base64 = e.target.result;
+        localStorage.setItem('vyra_face_photo', base64);
+
+        var previewBox = document.getElementById('faceUploadPreviewBox');
+        var previewImg = document.getElementById('facePreviewImg');
+        if (previewBox && previewImg) {
+          previewImg.src = base64;
+          previewBox.style.display = 'flex';
         }
-      }, 30);
-    }
 
-    var selectedSuitColor = '#00d2ff';
-    function selectSuitColor(hex, btn) {
-      selectedSuitColor = hex;
-      document.querySelectorAll('.color-swatch-btn').forEach(function(b) { b.classList.remove('selected'); });
-      if (btn) btn.classList.add('selected');
-      renderTurntableWireframe();
-      showToast('Equipped ' + hex + ' Nano-Weave Armor', '🛡️');
-    }
+        var pipBadge = document.getElementById('pipFaceBadge');
+        var pipThumb = document.getElementById('pipFaceThumb');
+        if (pipBadge && pipThumb) {
+          pipThumb.src = base64;
+          pipBadge.style.display = 'flex';
+        }
 
-    function toggleAutoRotate(btn) {
-      isAutoOrbiting = !isAutoOrbiting;
-      btn.innerText = isAutoOrbiting ? 'Auto-Orbit: ON' : 'Auto-Orbit: OFF';
-      btn.classList.toggle('active', isAutoOrbiting);
-    }
-
-    function setTurntableAngle(val) {
-      orbitDeg = Number(val);
-      document.getElementById('turntableAngleVal').innerText = val + '°';
-      renderTurntableWireframe();
-    }
-
-    function renderTurntableWireframe() {
-      var canvas = document.getElementById('turntableCanvas');
-      if (!canvas) return;
-      var ctx = canvas.getContext('2d');
-      var w = canvas.width = canvas.parentElement.clientWidth;
-      var h = canvas.height = canvas.parentElement.clientHeight || 560;
-
-      ctx.clearRect(0, 0, w, h);
-
-      // Floor grid
-      ctx.save();
-      ctx.translate(w / 2, h * 0.85);
-      ctx.strokeStyle = 'rgba(0, 210, 255, 0.2)';
-      ctx.lineWidth = 1;
-      for (var r = 20; r < 200; r += 35) {
-        ctx.beginPath();
-        ctx.ellipse(0, 0, r, r * 0.35, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      // 3D Avatar Stylized Silhouette
-      var rad = orbitDeg * Math.PI / 180;
-      var xCenter = w / 2;
-      var yBase = h * 0.82;
-
-      ctx.save();
-      ctx.shadowColor = selectedSuitColor;
-      ctx.shadowBlur = 24;
-      ctx.strokeStyle = selectedSuitColor;
-      ctx.fillStyle = 'rgba(10, 16, 30, 0.8)';
-      ctx.lineWidth = 2.5;
-
-      var headY = yBase - 360;
-      ctx.beginPath();
-      ctx.arc(xCenter, headY, 26, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Torso
-      ctx.beginPath();
-      ctx.moveTo(xCenter - 45 * Math.cos(rad), headY + 40);
-      ctx.lineTo(xCenter + 45 * Math.cos(rad), headY + 40);
-      ctx.lineTo(xCenter + 28 * Math.cos(rad), headY + 180);
-      ctx.lineTo(xCenter - 28 * Math.cos(rad), headY + 180);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Arms
-      ctx.beginPath();
-      ctx.moveTo(xCenter - 45 * Math.cos(rad), headY + 40);
-      ctx.lineTo(xCenter - 65 * Math.cos(rad) - 20, headY + 140);
-      ctx.lineTo(xCenter - 75 * Math.cos(rad) - 25, headY + 230);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(xCenter + 45 * Math.cos(rad), headY + 40);
-      ctx.lineTo(xCenter + 65 * Math.cos(rad) + 20, headY + 140);
-      ctx.lineTo(xCenter + 75 * Math.cos(rad) + 25, headY + 230);
-      ctx.stroke();
-
-      // Legs
-      ctx.beginPath();
-      ctx.moveTo(xCenter - 22 * Math.cos(rad), headY + 180);
-      ctx.lineTo(xCenter - 28 * Math.cos(rad) - 8, headY + 280);
-      ctx.lineTo(xCenter - 32 * Math.cos(rad) - 10, yBase);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(xCenter + 22 * Math.cos(rad), headY + 180);
-      ctx.lineTo(xCenter + 28 * Math.cos(rad) + 8, headY + 280);
-      ctx.lineTo(xCenter + 32 * Math.cos(rad) + 10, yBase);
-      ctx.stroke();
-
-      ctx.restore();
+        showToast('Selfie synced to 3D Digital Twin badge!', '📷');
+      };
+      reader.readAsDataURL(file);
     }
 
     // ── 6. 18 EXERCISE KINEMATICS HUD ───────────────────────────────────────────
@@ -4097,6 +4789,18 @@
         a.status = 'FULFILLED';
         renderAdminDashboard();
         renderBloodRadar();
+
+      // Restore saved digital-twin selfie
+      var savedFace = localStorage.getItem('vyra_face_photo');
+      if (savedFace) {
+        var pipBadge = document.getElementById('pipFaceBadge');
+        var pipThumb = document.getElementById('pipFaceThumb');
+        if (pipBadge && pipThumb) {
+          pipThumb.src = savedFace;
+          pipBadge.style.display = 'flex';
+        }
+      }
+
         logAuditEvent('Appeal Fulfilled', 'Emergency units fulfilled for ' + a.hospital);
         showToast('Emergency Appeal fulfilled for ' + a.hospital, '✅');
       }
@@ -4106,6 +4810,18 @@
       bloodAppeals = bloodAppeals.filter(function(a) { return a.id !== id; });
       renderAdminDashboard();
       renderBloodRadar();
+
+      // Restore saved digital-twin selfie
+      var savedFace = localStorage.getItem('vyra_face_photo');
+      if (savedFace) {
+        var pipBadge = document.getElementById('pipFaceBadge');
+        var pipThumb = document.getElementById('pipFaceThumb');
+        if (pipBadge && pipThumb) {
+          pipThumb.src = savedFace;
+          pipBadge.style.display = 'flex';
+        }
+      }
+
       logAuditEvent('Appeal Deleted', 'Archived appeal id ' + id);
       showToast('Appeal deleted successfully.', '🗑️');
     }
@@ -4132,6 +4848,18 @@
       closeModal('modalNewAppeal');
       renderAdminDashboard();
       renderBloodRadar();
+
+      // Restore saved digital-twin selfie
+      var savedFace = localStorage.getItem('vyra_face_photo');
+      if (savedFace) {
+        var pipBadge = document.getElementById('pipFaceBadge');
+        var pipThumb = document.getElementById('pipFaceThumb');
+        if (pipBadge && pipThumb) {
+          pipThumb.src = savedFace;
+          pipBadge.style.display = 'flex';
+        }
+      }
+
       logAuditEvent('Emergency Appeal Broadcast', grp + ' blood requested at ' + hosp);
       showToast('🚨 New Emergency Appeal broadcast across network!', '🚨');
     }
@@ -4427,12 +5155,25 @@
     // ── 13. INITIALIZATION ON DOM LOAD ──────────────────────────────────────────
     window.addEventListener('DOMContentLoaded', function() {
       initThreeBackground();
-      populateCustomizer();
+      initAvatarStudio3D();
+      populateCustomizerLists();
       renderExerciseSelectors();
       selectExercise('bodyweight-squat');
       renderFoodTable(ifctFoods);
       renderBiomarkers();
       renderBloodRadar();
+
+      // Restore saved digital-twin selfie
+      var savedFace = localStorage.getItem('vyra_face_photo');
+      if (savedFace) {
+        var pipBadge = document.getElementById('pipFaceBadge');
+        var pipThumb = document.getElementById('pipFaceThumb');
+        if (pipBadge && pipThumb) {
+          pipThumb.src = savedFace;
+          pipBadge.style.display = 'flex';
+        }
+      }
+
 
       // Check maintenance mode state
       if (localStorage.getItem('vyra_maintenance_mode') === 'true') {
