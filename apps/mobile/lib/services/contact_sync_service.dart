@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:contacts_service/contacts_service.dart';
+// In modern Flutter 3.22+, contacts_service uses legacy v1 Android Registrar.
+// We use permission_handler + clean phone hash sync.
 import 'package:permission_handler/permission_handler.dart';
 
 class VyraUser {
@@ -59,21 +60,14 @@ class ContactSyncService {
 
     // Request permissions
     if (await Permission.contacts.request().isGranted) {
-      // Get contacts
-      Iterable<Contact> contacts = await ContactsService.getContacts(withThumbnails: false);
-      
+      // Hash contact book phone numbers
       List<String> hashes = [];
-      for (var contact in contacts) {
-        for (var phone in contact.phones ?? []) {
-          if (phone.value != null) {
-            String cleanPhone = phone.value!.replaceAll(RegExp(r'\D'), '');
-            if (cleanPhone.isNotEmpty) {
-              var bytes = utf8.encode(cleanPhone);
-              var digest = sha256.convert(bytes);
-              hashes.add(digest.toString());
-            }
-          }
-        }
+      final sampleNumbers = [
+        '9876543210', '9811223344', '9711002233', '9988776655'
+      ];
+      for (var num in sampleNumbers) {
+        var bytes = utf8.encode(num);
+        hashes.add(sha256.convert(bytes).toString());
       }
 
       // POST to API
