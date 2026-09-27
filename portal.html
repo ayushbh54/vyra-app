@@ -1715,52 +1715,99 @@
        MOBILE APP PARITY & TOUCH RESPONSIVE STYLESHEET (SMARTPHONES & TABLETS)
        ═══════════════════════════════════════════════════════════════════════════ */
     @media (max-width: 768px) {
-      /* Global Viewport & Padding */
+      /* ── 0. GLOBAL APP & ROOT VIEWPORT SAFETY ── */
+      html, body {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        position: relative !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+      .app-root {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+      }
       .view-content-area {
-        padding: 12px 10px !important;
+        padding: 10px 8px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
       }
 
-      /* Top Global Header */
+      /* ── 1. GLOBAL HEADER & BRANDING ── */
       #globalHeader {
         padding: 8px 10px !important;
         gap: 8px !important;
+        flex-wrap: wrap !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 50 !important;
+        background: rgba(6, 10, 20, 0.95) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border-bottom: 1px solid rgba(0, 210, 255, 0.2) !important;
       }
       .header-brand {
         gap: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
       }
       .header-logo {
         width: 32px !important;
         height: 32px !important;
         font-size: 16px !important;
+        border-radius: 10px !important;
       }
       .header-titles h1 {
         font-size: 17px !important;
       }
+      .mode-indicator-pill {
+        font-size: 9px !important;
+        padding: 2px 6px !important;
+      }
       .github-header-badge {
-        padding: 4px 10px !important;
-        font-size: 11px !important;
-        gap: 5px !important;
+        padding: 4px 8px !important;
+        font-size: 10.5px !important;
+        gap: 4px !important;
+        max-width: 155px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+      }
+      .github-header-badge span:first-of-type {
+        display: inline !important;
       }
       .header-center-switch {
-        order: 3;
-        width: 100%;
-        display: flex;
-        gap: 4px;
-        margin-top: 2px;
+        order: 2 !important;
+        width: 100% !important;
+        display: flex !important;
+        gap: 4px !important;
+        margin-top: 2px !important;
       }
       .switch-mode-btn {
-        flex: 1;
-        text-align: center;
-        justify-content: center;
+        flex: 1 !important;
+        text-align: center !important;
+        justify-content: center !important;
         padding: 7px 8px !important;
         font-size: 11.5px !important;
+        border-radius: 12px !important;
       }
       .header-right {
+        order: 3 !important;
+        width: 100% !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
         gap: 6px !important;
       }
       #btnPersonaSwitch {
-        padding: 5px 9px !important;
+        padding: 6px 10px !important;
         font-size: 11px !important;
+        flex-shrink: 0 !important;
+        border-radius: 20px !important;
       }
       .user-profile-badge {
         padding: 3px 8px !important;
@@ -1773,46 +1820,97 @@
         display: none !important;
       }
       .btn-logout {
-        padding: 5px 8px !important;
+        padding: 6px 10px !important;
         font-size: 11px !important;
+        border-radius: 14px !important;
       }
 
-      /* Sub-Navigation Bar Horizontal Touch Scroll */
+      /* ── 2. STICKY TOUCH-SWIPE SUB-NAVIGATION TAB BAR (#athleteSubNav) ── */
       #athleteSubNav {
-        padding: 6px 10px !important;
-        gap: 4px !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        padding: 8px 8px !important;
+        gap: 6px !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 45 !important;
+        background: rgba(7, 12, 24, 0.96) !important;
+        backdrop-filter: blur(14px) !important;
+        -webkit-backdrop-filter: blur(14px) !important;
+        border-bottom: 1px solid rgba(0, 210, 255, 0.22) !important;
+        margin-bottom: 8px !important;
+      }
+      #athleteSubNav::-webkit-scrollbar {
+        display: none !important;
       }
       .portal-nav-btn {
-        padding: 8px 11px !important;
-        font-size: 12px !important;
-        gap: 5px !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        padding: 8px 12px !important;
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
+        border-radius: 20px !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: var(--text-muted) !important;
+      }
+      .portal-nav-btn.active {
+        background: var(--cyan) !important;
+        color: #000 !important;
+        font-weight: 800 !important;
+        border-color: var(--cyan) !important;
+        box-shadow: 0 0 14px var(--cyan-glow) !important;
       }
 
-      /* Health Metrics Banner */
+      /* ── 3. HEALTH METRICS & METABOLISM BANNER ── */
       .health-metrics-banner {
         grid-template-columns: repeat(2, 1fr) !important;
-        padding: 12px 14px !important;
-        gap: 10px !important;
-        border-radius: 16px !important;
+        padding: 10px 12px !important;
+        gap: 8px !important;
+        border-radius: 14px !important;
+        margin-bottom: 10px !important;
+      }
+      .health-metric-box {
+        padding: 8px 10px !important;
+      }
+      .health-metric-lbl {
+        font-size: 10px !important;
       }
       .health-metric-val {
-        font-size: 17px !important;
+        font-size: 16px !important;
+      }
+      .health-metric-sub {
+        font-size: 9.5px !important;
       }
 
-      /* Tab 1: 3D Avatar Studio */
+      /* ── 4. TAB 1: 3D AVATAR STUDIO & CUSTOMIZER (#tab-studio) ── */
       .avatar-studio-grid {
         grid-template-columns: 1fr !important;
-        gap: 14px !important;
+        gap: 12px !important;
       }
       .avatar-stage-card {
-        min-height: 380px !important;
-        padding: 14px 10px !important;
-        border-radius: 18px !important;
+        min-height: auto !important;
+        padding: 10px !important;
+        border-radius: 16px !important;
       }
       .orbit-stage-viewport {
-        height: 370px !important;
-        min-height: 370px !important;
-        border-radius: 18px !important;
+        height: 290px !important;
+        min-height: 290px !important;
+        border-radius: 16px !important;
+      }
+      .stage-top-hud {
+        top: 8px !important;
+        left: 8px !important;
+        right: 8px !important;
+        padding: 0 !important;
+        gap: 6px !important;
+      }
+      .stage-top-hud .hud-badge {
+        font-size: 10px !important;
+        padding: 4px 8px !important;
       }
       .avatar-pose-bar {
         max-width: 96% !important;
@@ -1823,32 +1921,81 @@
       .pose-btn {
         padding: 5px 8px !important;
         font-size: 10px !important;
+        border-radius: 12px !important;
+      }
+      .customizer-drawer {
+        padding: 12px !important;
+        border-radius: 16px !important;
+      }
+      .drawer-title-row {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+      }
+      .drawer-title {
+        font-size: 15px !important;
+      }
+      .gender-selector-pills {
+        display: flex !important;
+        gap: 4px !important;
+      }
+      .gender-btn {
+        padding: 4px 10px !important;
+        font-size: 11px !important;
+      }
+      .customizer-subtabs {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 4px !important;
+        padding-bottom: 4px !important;
+        margin-bottom: 10px !important;
+      }
+      .customizer-subtabs::-webkit-scrollbar {
+        display: none !important;
+      }
+      .subtab-btn {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        padding: 6px 11px !important;
+        font-size: 11.5px !important;
+        border-radius: 14px !important;
       }
       .items-grid {
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 8px !important;
+        max-height: 280px !important;
+        overflow-y: auto !important;
       }
       .customizer-card {
-        padding: 10px !important;
+        padding: 8px !important;
         border-radius: 12px !important;
       }
+      .customizer-thumb {
+        height: 55px !important;
+      }
+      .customizer-card-name {
+        font-size: 11px !important;
+      }
 
-      /* Tab 2: Biomechanics 3D HUD */
+      /* ── 5. TAB 2: 18-EXERCISE KINEMATICS HUD (#tab-biomech) ── */
       .biomech-card {
         grid-template-columns: 1fr !important;
-        padding: 12px !important;
-        border-radius: 18px !important;
-        gap: 14px !important;
+        padding: 10px !important;
+        border-radius: 16px !important;
+        gap: 12px !important;
       }
       .biomech-viewport {
-        height: 340px !important;
-        min-height: 340px !important;
+        height: 290px !important;
+        min-height: 290px !important;
         border-radius: 16px !important;
       }
       .hud-angle-badge {
-        padding: 6px 10px !important;
-        top: 10px !important;
-        left: 10px !important;
+        padding: 5px 9px !important;
+        top: 8px !important;
+        left: 8px !important;
+        border-radius: 10px !important;
       }
       .hud-angle-val {
         font-size: 20px !important;
@@ -1856,38 +2003,96 @@
       #biomechAngleLbl {
         font-size: 9px !important;
       }
-      /* Biomech Bottom Toolbar */
+      /* Biomech Bottom Camera Angle Presets */
       .biomech-viewport > div:nth-of-type(2) {
-        bottom: 8px !important;
-        left: 8px !important;
-        right: 8px !important;
-        padding: 6px 8px !important;
+        bottom: 6px !important;
+        left: 6px !important;
+        right: 6px !important;
+        padding: 5px 6px !important;
         gap: 4px !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
       }
       .biomech-viewport button.tag-pill {
         padding: 4px 7px !important;
         font-size: 10px !important;
       }
+      #biomechTitle {
+        font-size: 18px !important;
+      }
+      #biomechMuscles {
+        font-size: 11px !important;
+      }
+      #userPrescribedRoutineBox {
+        padding: 10px 12px !important;
+        border-radius: 12px !important;
+      }
       #prescribedExercisesList {
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 6px !important;
+      }
+      #biomechCategoryChips {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 6px !important;
+        padding-bottom: 4px !important;
+      }
+      #biomechCategoryChips::-webkit-scrollbar {
+        display: none !important;
+      }
+      #biomechCategoryChips .category-chip {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        font-size: 11px !important;
+        padding: 5px 9px !important;
+      }
+      #exerciseSelectorPills {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        max-height: none !important;
+        gap: 6px !important;
+        padding-bottom: 4px !important;
+      }
+      #exerciseSelectorPills::-webkit-scrollbar {
+        display: none !important;
+      }
+      #exerciseSelectorPills .category-chip {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        font-size: 11px !important;
+        padding: 5px 9px !important;
       }
       .cadence-timeline {
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 6px !important;
       }
+      .cadence-pill {
+        padding: 6px 8px !important;
+      }
+      .cadence-phase-name {
+        font-size: 9.5px !important;
+      }
+      .cadence-phase-time {
+        font-size: 10px !important;
+      }
 
-      /* Tab 3: Live Camera Pose Tracker */
+      /* ── 6. TAB 3: LIVE CAMERA AI POSE TRACKER (#tab-camera) ── */
       .camera-tracker-box {
-        height: 350px !important;
-        min-height: 350px !important;
+        height: 310px !important;
+        min-height: 310px !important;
         border-radius: 16px !important;
       }
       #camRepCount {
-        font-size: 26px !important;
+        font-size: 24px !important;
       }
       #camCurrentAngle {
-        font-size: 20px !important;
+        font-size: 18px !important;
       }
       #camFeedbackText {
         font-size: 11px !important;
@@ -1895,10 +2100,26 @@
       #btnToggleCam {
         width: 100% !important;
         justify-content: center !important;
-        padding: 11px 16px !important;
+        padding: 12px 16px !important;
+        min-height: 44px !important;
+        font-size: 13.5px !important;
       }
 
-      /* Tab 4: Nutrition & Clinical Diet */
+      /* ── 7. TAB 4: CLINICAL INDIAN DIET & NUTRITION (#tab-nutrition) ── */
+      #dietChartTitle {
+        font-size: 18px !important;
+      }
+      #dietChartSub {
+        font-size: 11px !important;
+      }
+      #btnZeroSugarLog {
+        width: 100% !important;
+        text-align: center !important;
+        justify-content: center !important;
+        padding: 10px 14px !important;
+        font-size: 12px !important;
+        min-height: 44px !important;
+      }
       .macro-kpi-grid, #macroKpiGrid {
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 8px !important;
@@ -1911,23 +2132,103 @@
         grid-template-columns: 1fr !important;
         gap: 10px !important;
       }
-      #btnZeroSugarLog {
+      #foodSearchInput {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        font-size: 14px !important;
+        min-height: 40px !important;
+      }
+
+      /* ── 8. TAB 5: AI BLOOD BIOMARKERS (#tab-lab) ── */
+      #biomarkersCardsGrid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+      }
+
+      /* ── 9. TAB 6: E-RAKTKOSH BLOOD NETWORK & SOS (#tab-blood) ── */
+      #btnRaiseHand {
         width: 100% !important;
         text-align: center !important;
         justify-content: center !important;
+        min-height: 44px !important;
+        font-size: 13.5px !important;
       }
 
-      /* Modals & Dialogs */
+      /* ── 10. TAB 7: PERFORMANCE ANALYTICS (#tab-analytics) ── */
+      .kpi-cards-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+      }
+
+      /* ── 11. ADMIN ENTERPRISE CONSOLE (#adminModeView) ── */
+      .admin-layout-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+      }
+      .admin-sidebar {
+        display: flex !important;
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 6px !important;
+        padding: 6px 8px !important;
+        border-radius: 14px !important;
+        background: rgba(14, 22, 38, 0.95) !important;
+        border: 1px solid var(--border-subtle) !important;
+        margin-bottom: 8px !important;
+      }
+      .admin-sidebar::-webkit-scrollbar {
+        display: none !important;
+      }
+      .admin-nav-item {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        padding: 7px 11px !important;
+        font-size: 11.5px !important;
+        border-radius: 10px !important;
+      }
+      #athletesSearchInput, #adminKinSearchInput {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        font-size: 14px !important;
+        min-height: 40px !important;
+      }
+
+      /* ── 12. TABLES & RESPONSIVE DATA VIEWS ── */
+      .table-responsive {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        margin-top: 8px !important;
+      }
+      .styled-table th, .styled-table td {
+        padding: 6px 8px !important;
+        font-size: 11.5px !important;
+      }
+
+      /* ── 13. MODALS & POPUPS (EXERCISE DETAIL, PERSONA SWITCH, ETC.) ── */
+      .modal-backdrop {
+        padding: 8px !important;
+        align-items: center !important;
+        overflow-y: auto !important;
+      }
       .modal-box {
-        width: calc(100% - 20px) !important;
-        max-width: calc(100% - 20px) !important;
-        margin: 10px auto !important;
-        padding: 18px 14px !important;
+        width: calc(100% - 16px) !important;
+        max-width: calc(100% - 16px) !important;
+        margin: 8px auto !important;
+        padding: 16px 12px !important;
         border-radius: 18px !important;
-        max-height: 88vh !important;
+        max-height: 90vh !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
         box-sizing: border-box !important;
+      }
+      .modal-title {
+        font-size: 17px !important;
       }
       .form-row-2 {
         grid-template-columns: 1fr !important;
@@ -1937,11 +2238,37 @@
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 6px !important;
       }
-
-      /* Analytics & KPIs */
-      .kpi-cards-grid {
+      #modalExerciseDetail .modal-box {
+        padding: 14px 12px !important;
+        border-radius: 18px !important;
+      }
+      #modalExerciseDetail .form-row-2 {
+        grid-template-columns: 1fr !important;
+      }
+      #modalExerciseDetail div[style*="grid-template-columns: repeat(4"] {
         grid-template-columns: repeat(2, 1fr) !important;
+        gap: 6px !important;
+      }
+      #modalExerciseDetail button {
+        min-height: 44px !important;
+        font-size: 13.5px !important;
+      }
+      #modalPersonaSwitch div[style*="grid-template-columns: repeat(3"] {
+        grid-template-columns: 1fr !important;
         gap: 10px !important;
+      }
+      #modalPersonaSwitch .modal-box {
+        padding: 16px 12px !important;
+      }
+
+      /* ── 14. TOUCH TARGET SIZING & FORMS ── */
+      .form-input {
+        font-size: 14px !important;
+        min-height: 40px !important;
+      }
+      .btn-submit, .btn-primary {
+        min-height: 44px !important;
+        font-size: 13.5px !important;
       }
     }
 
@@ -1958,8 +2285,15 @@
       .macro-kpi-grid, #macroKpiGrid {
         grid-template-columns: 1fr !important;
       }
+      .orbit-stage-viewport, .biomech-viewport {
+        height: 260px !important;
+        min-height: 260px !important;
+      }
+      .camera-tracker-box {
+        height: 280px !important;
+        min-height: 280px !important;
+      }
     }
-
   </style>
 </head>
 <body>
@@ -2748,7 +3082,7 @@
           <!-- TAB 6: BLOOD RADAR & DOCTORS -->
           <div id="tab-blood" class="portal-tab-view">
             <div style="display:flex; flex-direction:column; gap:18px;">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                 <div>
                   <h3 style="font-size:20px; font-weight:800; color:#FFF;">e-RaktKosh National Blood Network & Verified Providers</h3>
                   <p style="font-size:12px; color:var(--text-muted);">Official Ministry of Health & Family Welfare (MoHFW) Government Blood Bank Directory</p>
