@@ -1593,25 +1593,27 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
 
     // ── 6. GLUTE BRIDGE & HIP THRUST ──
     if (s.contains('bridge') || s.contains('glute') || s.contains('hip-thrust')) {
-      final lift = cycle * 44.0;
-      final pelvisY = -12.0 - lift;
+      final lift = cycle * 32.0; // Dynamic upward hip drive
+      final pelvisY = -10.0 - lift; // Lifts from -10 to -42
       final isHigh = cycle > 0.45;
+      const kneeY = -34.0; // Stationary stable pivot at bent knees
+      const kneeZ = 28.0;
 
       return _Exercise3DPose(
         head: const _Vector3D(0, -10, -56),
         neck: const _Vector3D(0, -10, -44),
-        chest: const _Vector3D(0, -14, -28),
-        pelvis: _Vector3D(0, pelvisY, 8),
+        chest: const _Vector3D(0, -12, -28),
+        pelvis: _Vector3D(0, pelvisY, 4),
         shoulderL: const _Vector3D(-24, -10, -32),
         shoulderR: const _Vector3D(24, -10, -32),
-        elbowL: const _Vector3D(-28, -8, -14),
-        elbowR: const _Vector3D(28, -8, -14),
-        handL: const _Vector3D(-24, -4, 4),
-        handR: const _Vector3D(24, -4, 4),
-        hipL: _Vector3D(-16, pelvisY, 8),
-        hipR: _Vector3D(16, pelvisY, 8),
-        kneeL: _Vector3D(-18, pelvisY - 6, 32),
-        kneeR: _Vector3D(18, pelvisY - 6, 32),
+        elbowL: const _Vector3D(-26, -4, -14),
+        elbowR: const _Vector3D(26, -4, -14),
+        handL: const _Vector3D(-24, -4, 10),
+        handR: const _Vector3D(24, -4, 10),
+        hipL: _Vector3D(-18, pelvisY, 4),
+        hipR: _Vector3D(18, pelvisY, 4),
+        kneeL: const _Vector3D(-18, kneeY, kneeZ),
+        kneeR: const _Vector3D(18, kneeY, kneeZ),
         footL: const _Vector3D(-18, -4, 34),
         footR: const _Vector3D(18, -4, 34),
         quadFlexed: isHigh,
@@ -1619,11 +1621,11 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
         coreFlexed: true,
         elevation: 0.0,
         holdsWeights: false,
-        hudJoint: _Vector3D(0, pelvisY, 8),
-        hudP1: const _Vector3D(0, -14, -28),
-        hudP2: _Vector3D(18, pelvisY - 6, 32),
-        hudAngleDeg: 180.0 - (cycle * 25.0),
-        hudLabel: isHigh ? 'PEAK GLUTE LOCKOUT' : 'HIP THRUST',
+        hudJoint: _Vector3D(0, pelvisY, 4),
+        hudP1: const _Vector3D(0, -12, -28),
+        hudP2: const _Vector3D(0, kneeY, kneeZ),
+        hudAngleDeg: 155.0 + (cycle * 25.0),
+        hudLabel: isHigh ? 'PEAK GLUTE LOCKOUT 180°' : 'HIP THRUST',
       );
     }
 
@@ -1921,6 +1923,17 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
       final xEnd = cx + math.tan(rad) * 180;
       canvas.drawLine(Offset(cx, groundY), Offset(xEnd.clamp(24.0, size.width - 24.0), groundY + 22), _radialRayPaint);
     }
+
+    // Workout Mat for ground/floor exercises (Glute Bridge, Plank, Yoga, Pushups)
+    final s = exerciseSlug.toLowerCase();
+    if (s.contains('bridge') || s.contains('glute') || s.contains('plank') || s.contains('push-up') || s.contains('yoga') || s.contains('cobra')) {
+      final matPaint = Paint()..color = const Color(0xFF0C243B)..style = PaintingStyle.fill;
+      final matBorder = Paint()..color = const Color(0xFF00D2FF).withValues(alpha: 0.35)..style = PaintingStyle.stroke..strokeWidth = 1.2;
+      final matRect = Rect.fromCenter(center: Offset(cx, groundY - 4), width: 140, height: 42);
+      final matRRect = RRect.fromRectAndRadius(matRect, const Radius.circular(8));
+      canvas.drawRRect(matRRect, matPaint);
+      canvas.drawRRect(matRRect, matBorder);
+    }
   }
 
   void _drawGroundContactShadow(Canvas canvas, Offset fl, Offset fr, double cx, double groundY, double elevation, double cycle) {
@@ -1943,7 +1956,11 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
     canvas.drawLine(Offset(wallX + 35, groundY - 140), Offset(wallX + 35, groundY), _wallLinePaint);
   }
 
-  void _drawVolumetricLimb(
+  // ───────────────────────────────────────────────────────────────────────────
+  // REALISTIC HUMAN ATHLETE ANATOMICAL RENDERING (True Volumetric Musculature)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  void _drawRealisticHumanLimb(
     Canvas canvas,
     Offset p1,
     Offset p2,
@@ -1951,6 +1968,8 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
     double r2, {
     required bool isFlexed,
     required double depth,
+    bool isThigh = false,
+    bool isArm = false,
   }) {
     final dx = p2.dx - p1.dx;
     final dy = p2.dy - p1.dy;
@@ -1960,119 +1979,163 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
     final nx = -dy / dist;
     final ny = dx / dist;
 
+    // Organic muscular contour with natural anatomical bulge (muscle belly)
+    final midX = (p1.dx + p2.dx) / 2;
+    final midY = (p1.dy + p2.dy) / 2;
+    final bulge = isFlexed ? 2.5 : 1.2;
+    final rMid = ((r1 + r2) / 2) + bulge;
+
     final path = Path()
       ..moveTo(p1.dx + nx * r1, p1.dy + ny * r1)
-      ..lineTo(p2.dx + nx * r2, p2.dy + ny * r2)
+      ..quadraticBezierTo(midX + nx * rMid, midY + ny * rMid, p2.dx + nx * r2, p2.dy + ny * r2)
       ..arcToPoint(Offset(p2.dx - nx * r2, p2.dy - ny * r2), radius: Radius.circular(r2))
-      ..lineTo(p1.dx - nx * r1, p1.dy - ny * r1)
+      ..quadraticBezierTo(midX - nx * rMid, midY - ny * rMid, p1.dx - nx * r1, p1.dy - ny * r1)
       ..arcToPoint(Offset(p1.dx + nx * r1, p1.dy + ny * r1), radius: Radius.circular(r1))
       ..close();
 
-    // Muscle Contraction Aura
+    // Subtle muscle contraction glow aura on flexed muscles
     if (isFlexed) {
       canvas.drawPath(path, _muscleGlowPaint);
     }
 
-    final gradient = LinearGradient(
+    // Natural Human Skin Gradient with athletic 3D lighting highlights
+    final skinColors = faceProfile.skinGradientColors;
+    final baseSkin = skinColors[1];
+    final highlightSkin = skinColors[0];
+    final shadowSkin = Color.lerp(baseSkin, const Color(0xFF5A3114), 0.38)!;
+
+    final skinGradient = LinearGradient(
       begin: Alignment(nx, ny),
       end: Alignment(-nx, -ny),
-      colors: const [
-        Color(0xFF161E2C),
-        Color(0xFF7F9CB8),
-        Color(0xFF222C3D),
-        Color(0xFF0F141F),
+      colors: [
+        highlightSkin,
+        baseSkin,
+        shadowSkin,
       ],
-      stops: const [0.0, 0.35, 0.70, 1.0],
+      stops: const [0.0, 0.45, 1.0],
     );
 
     final limbPaint = Paint()
-      ..shader = gradient.createShader(Rect.fromPoints(p1, p2))
+      ..shader = skinGradient.createShader(Rect.fromPoints(p1, p2))
       ..style = PaintingStyle.fill;
     canvas.drawPath(path, limbPaint);
 
-    // Glowing Conduit
-    _conduitPaint
-      ..color = isFlexed ? const Color(0xFF34FF8C) : const Color(0x7000D2FF)
-      ..strokeWidth = isFlexed ? 2.8 : 1.8;
-    canvas.drawLine(p1, p2, _conduitPaint);
+    // If Thigh: Upper 60% wears athletic compression performance shorts
+    if (isThigh) {
+      final shortsEnd = Offset(p1.dx + (p2.dx - p1.dx) * 0.62, p1.dy + (p2.dy - p1.dy) * 0.62);
+      final shortsPath = Path()
+        ..moveTo(p1.dx + nx * (r1 + 0.6), p1.dy + ny * (r1 + 0.6))
+        ..lineTo(shortsEnd.dx + nx * (rMid * 0.95), shortsEnd.dy + ny * (rMid * 0.95))
+        ..lineTo(shortsEnd.dx - nx * (rMid * 0.95), shortsEnd.dy - nx * (rMid * 0.95))
+        ..lineTo(p1.dx - nx * (r1 + 0.6), p1.dy - ny * (r1 + 0.6))
+        ..close();
 
-    _draw3DServoJoint(canvas, p1, r1 * 0.95, isFlexed);
-    _draw3DServoJoint(canvas, p2, r2 * 0.95, isFlexed);
-  }
+      final shortsPaint = Paint()..color = const Color(0xFF1E293B)..style = PaintingStyle.fill;
+      canvas.drawPath(shortsPath, shortsPaint);
 
-  void _draw3DServoJoint(Canvas canvas, Offset center, double radius, bool isFlexed) {
-    canvas.drawCircle(center, radius, _servoHousingPaint);
-    canvas.drawCircle(center, radius, _servoRimPaint);
-    _servoLedPaint.color = isFlexed ? const Color(0xFF34FF8C) : const Color(0xFF00D2FF);
-    canvas.drawCircle(center, radius * 0.42, _servoLedPaint);
+      // Cyber-cyan athletic shorts seam piping
+      final trimPaint = Paint()
+        ..color = const Color(0xFF00D2FF).withValues(alpha: 0.7)
+        ..strokeWidth = 1.4
+        ..style = PaintingStyle.stroke;
+      canvas.drawLine(
+        Offset(shortsEnd.dx - nx * (rMid * 0.95), shortsEnd.dy - nx * (rMid * 0.95)),
+        Offset(shortsEnd.dx + nx * (rMid * 0.95), shortsEnd.dy + ny * (rMid * 0.95)),
+        trimPaint,
+      );
+    }
+
+    // Natural Anatomical Joint Shading (Patella / Elbow - smooth skin, NO robot servos)
+    final jointShade = Paint()
+      ..color = shadowSkin.withValues(alpha: 0.35)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    canvas.drawCircle(p2, r2 * 0.75, jointShade);
   }
 
   void _drawLeftArm(Canvas canvas, Offset s, Offset e, Offset h, bool flexed, double depth, bool holdsWeights, double orbitAngle, double cycle) {
-    _drawVolumetricLimb(canvas, s, e, 6.5, 5.0, isFlexed: flexed, depth: depth);
-    _drawVolumetricLimb(canvas, e, h, 5.0, 4.0, isFlexed: flexed, depth: depth);
+    // Upper Arm: Broad athletic deltoid to elbow (volumetric human muscle)
+    _drawRealisticHumanLimb(canvas, s, e, 12.0, 9.0, isFlexed: flexed, depth: depth, isArm: true);
+    // Forearm: Tapered athletic forearm to wrist
+    _drawRealisticHumanLimb(canvas, e, h, 9.0, 6.8, isFlexed: flexed, depth: depth, isArm: true);
     _drawHandAndWeight(canvas, h, holdsWeights, orbitAngle, cycle);
   }
 
   void _drawRightArm(Canvas canvas, Offset s, Offset e, Offset h, bool flexed, double depth, bool holdsWeights, double orbitAngle, double cycle) {
-    _drawVolumetricLimb(canvas, s, e, 6.5, 5.0, isFlexed: flexed, depth: depth);
-    _drawVolumetricLimb(canvas, e, h, 5.0, 4.0, isFlexed: flexed, depth: depth);
+    _drawRealisticHumanLimb(canvas, s, e, 12.0, 9.0, isFlexed: flexed, depth: depth, isArm: true);
+    _drawRealisticHumanLimb(canvas, e, h, 9.0, 6.8, isFlexed: flexed, depth: depth, isArm: true);
     _drawHandAndWeight(canvas, h, holdsWeights, orbitAngle, cycle);
   }
 
   void _drawLeftLeg(Canvas canvas, Offset hip, Offset knee, Offset foot, bool flexed, double depth) {
-    _drawVolumetricLimb(canvas, hip, knee, 9.0, 6.8, isFlexed: flexed, depth: depth);
-    _drawVolumetricLimb(canvas, knee, foot, 6.8, 5.2, isFlexed: flexed, depth: depth);
-    _drawAthleticBoot(canvas, foot, flexed);
+    // Thigh: Muscular quadriceps with compression shorts (volumetric human muscle)
+    _drawRealisticHumanLimb(canvas, hip, knee, 17.0, 12.5, isFlexed: flexed, depth: depth, isThigh: true);
+    // Calf: Athletic gastrocnemius calf curve
+    _drawRealisticHumanLimb(canvas, knee, foot, 12.5, 8.5, isFlexed: flexed, depth: depth);
+    _drawAthleticRunningSneaker(canvas, foot, flexed);
   }
 
   void _drawRightLeg(Canvas canvas, Offset hip, Offset knee, Offset foot, bool flexed, double depth) {
-    _drawVolumetricLimb(canvas, hip, knee, 9.0, 6.8, isFlexed: flexed, depth: depth);
-    _drawVolumetricLimb(canvas, knee, foot, 6.8, 5.2, isFlexed: flexed, depth: depth);
-    _drawAthleticBoot(canvas, foot, flexed);
+    _drawRealisticHumanLimb(canvas, hip, knee, 17.0, 12.5, isFlexed: flexed, depth: depth, isThigh: true);
+    _drawRealisticHumanLimb(canvas, knee, foot, 12.5, 8.5, isFlexed: flexed, depth: depth);
+    _drawAthleticRunningSneaker(canvas, foot, flexed);
   }
 
-  void _drawAthleticBoot(Canvas canvas, Offset foot, bool flexed) {
-    final bootPath = Path()
-      ..moveTo(foot.dx - 6, foot.dy - 3)
-      ..lineTo(foot.dx + 12, foot.dy - 3)
-      ..lineTo(foot.dx + 14, foot.dy + 3)
-      ..lineTo(foot.dx - 8, foot.dy + 3)
+  /// Modern High-Performance Athletic Running Sneaker (White Midsole, Grip Outsole)
+  void _drawAthleticRunningSneaker(Canvas canvas, Offset foot, bool flexed) {
+    // Upper Shoe body
+    final upperPath = Path()
+      ..moveTo(foot.dx - 8, foot.dy - 5)
+      ..lineTo(foot.dx + 16, foot.dy - 3)
+      ..lineTo(foot.dx + 18, foot.dy + 2)
+      ..lineTo(foot.dx - 10, foot.dy + 2)
       ..close();
+    canvas.drawPath(upperPath, Paint()..color = const Color(0xFF0F172A)..style = PaintingStyle.fill);
 
-    canvas.drawPath(bootPath, Paint()..color = const Color(0xFF1B2332)..style = PaintingStyle.fill);
+    // Sculpted White Foam Midsole
+    final solePath = Path()
+      ..moveTo(foot.dx - 10, foot.dy + 2)
+      ..lineTo(foot.dx + 18, foot.dy + 2)
+      ..lineTo(foot.dx + 19, foot.dy + 6)
+      ..lineTo(foot.dx - 11, foot.dy + 6)
+      ..close();
+    canvas.drawPath(solePath, Paint()..color = Colors.white..style = PaintingStyle.fill);
 
+    // Cyan High-Traction Outsole Tread
     final treadPaint = Paint()
       ..color = flexed ? const Color(0xFF34FF8C) : const Color(0xFF00D2FF)
-      ..strokeWidth = 1.8
+      ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(foot.dx - 8, foot.dy + 3), Offset(foot.dx + 14, foot.dy + 3), treadPaint);
+    canvas.drawLine(Offset(foot.dx - 11, foot.dy + 6), Offset(foot.dx + 19, foot.dy + 6), treadPaint);
   }
 
   void _drawHandAndWeight(Canvas canvas, Offset hand, bool holdsWeights, double orbitAngle, double cycle) {
-    canvas.drawCircle(hand, 4.5, Paint()..color = const Color(0xFF243044));
-    canvas.drawCircle(hand, 4.5, Paint()..color = const Color(0xFF8BA7C4)..style = PaintingStyle.stroke..strokeWidth = 1.2);
+    final skinColors = faceProfile.skinGradientColors;
+    canvas.drawCircle(hand, 6.0, Paint()..color = skinColors[1]);
+    canvas.drawCircle(hand, 6.0, Paint()..color = skinColors[0].withValues(alpha: 0.6)..style = PaintingStyle.stroke..strokeWidth = 1.0);
 
     if (holdsWeights) {
-      canvas.drawLine(Offset(hand.dx - 12, hand.dy), Offset(hand.dx + 12, hand.dy), _barbellBarPaint);
+      canvas.drawLine(Offset(hand.dx - 14, hand.dy), Offset(hand.dx + 14, hand.dy), _barbellBarPaint);
       canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hand.dx - 11, hand.dy), width: 5, height: 16), const Radius.circular(2)),
+        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hand.dx - 13, hand.dy), width: 6, height: 18), const Radius.circular(2)),
         _weightPlatePaint,
       );
       canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hand.dx - 11, hand.dy), width: 5, height: 16), const Radius.circular(2)),
+        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hand.dx - 13, hand.dy), width: 6, height: 18), const Radius.circular(2)),
         _weightPlateRim,
       );
       canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hand.dx + 11, hand.dy), width: 5, height: 16), const Radius.circular(2)),
+        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hand.dx + 13, hand.dy), width: 6, height: 18), const Radius.circular(2)),
         _weightPlatePaint,
       );
       canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hand.dx + 11, hand.dy), width: 5, height: 16), const Radius.circular(2)),
+        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hand.dx + 13, hand.dy), width: 6, height: 18), const Radius.circular(2)),
         _weightPlateRim,
       );
     }
   }
 
+  /// Draw Realistic Human Muscular Torso & Athletic Gym Compression Top
   void _drawTorsoAndHead(
     Canvas canvas,
     Offset head,
@@ -2086,83 +2149,90 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
     double orbitAngle,
     bool coreFlexed,
   ) {
+    // Athletic Muscular Torso Path (Broad shoulders, tapered waist, muscular contours)
+    final midLeftX = (sL.dx + hipL.dx) / 2 + (math.sin(orbitAngle) * 2.0);
+    final midLeftY = (sL.dy + hipL.dy) / 2;
+    final midRightX = (sR.dx + hipR.dx) / 2 + (math.sin(orbitAngle) * 2.0);
+    final midRightY = (sR.dy + hipR.dy) / 2;
+
     final torsoPath = Path()
       ..moveTo(sL.dx, sL.dy)
       ..lineTo(sR.dx, sR.dy)
-      ..lineTo(hipR.dx, hipR.dy)
+      ..quadraticBezierTo(midRightX, midRightY, hipR.dx, hipR.dy)
       ..lineTo(hipL.dx, hipL.dy)
+      ..quadraticBezierTo(midLeftX, midLeftY, sL.dx, sL.dy)
       ..close();
 
-    final torsoGradient = LinearGradient(
+    // Compression Athletic Top Gradient (Obsidian to Navy Graphite)
+    final compressionGradient = LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: const [
-        Color(0xFF1C2638),
-        Color(0xFF4A6882),
-        Color(0xFF18202E),
-        Color(0xFF0D121B),
+        Color(0xFF0F172A),
+        Color(0xFF1E293B),
+        Color(0xFF0F172A),
       ],
-      stops: const [0.0, 0.30, 0.75, 1.0],
     );
 
     canvas.drawPath(
       torsoPath,
       Paint()
-        ..shader = torsoGradient.createShader(Rect.fromPoints(sL, hipR))
+        ..shader = compressionGradient.createShader(Rect.fromPoints(sL, hipR))
         ..style = PaintingStyle.fill,
     );
-    canvas.drawPath(torsoPath, _torsoOutlinePaint);
 
-    // Arc Reactor Core at Sternum
-    final corePos = Offset(chest.dx, chest.dy + 8);
-    canvas.drawCircle(corePos, 12, _arcReactorGlowPaint);
-    canvas.drawCircle(corePos, 7.5, _arcReactorRingPaint);
-    canvas.drawCircle(corePos, 4.0, _arcReactorCorePaint);
+    // Athletic Piping Seams on Gym Top
+    final seamPaint = Paint()
+      ..color = const Color(0xFF00D2FF).withValues(alpha: 0.45)
+      ..strokeWidth = 1.4
+      ..style = PaintingStyle.stroke;
+    canvas.drawPath(torsoPath, seamPaint);
 
-    // 6-Pack Abs Plates
+    // Defined Muscular Pectorals & Clavicles
+    final chestLinePaint = Paint()
+      ..color = const Color(0xFF334155)
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(sL.dx + 4, chest.dy), Offset(chest.dx - 2, chest.dy + 4), chestLinePaint);
+    canvas.drawLine(Offset(sR.dx - 4, chest.dy), Offset(chest.dx + 2, chest.dy + 4), chestLinePaint);
+
+    // Athletic Abdominal Core Shading (Subtle 6-Pack Definition)
     final absPaint = Paint()
-      ..color = coreFlexed ? const Color(0xFF34FF8C).withValues(alpha: 0.45) : const Color(0x3000D2FF)
+      ..color = coreFlexed ? const Color(0xFF34FF8C).withValues(alpha: 0.5) : const Color(0xFF00D2FF).withValues(alpha: 0.25)
       ..strokeWidth = 1.2
       ..style = PaintingStyle.stroke;
 
-    final spineY1 = chest.dy + 20;
-    final spineY2 = pelvis.dy - 6;
+    final spineY1 = chest.dy + 14;
+    final spineY2 = pelvis.dy - 4;
     final midX = (chest.dx + pelvis.dx) / 2;
 
     canvas.drawLine(Offset(midX, spineY1), Offset(midX, spineY2), absPaint);
-    for (double f = 0.25; f <= 0.85; f += 0.30) {
+    for (double f = 0.28; f <= 0.82; f += 0.28) {
       final y = spineY1 + (spineY2 - spineY1) * f;
-      final halfW = 10.0 * (1.0 - (f * 0.25));
+      final halfW = 11.0 * (1.0 - (f * 0.2));
       canvas.drawLine(Offset(midX - halfW, y), Offset(midX + halfW, y), absPaint);
     }
 
-    if (orbitAngle.abs() > 0.45) {
-      final spinePaint = Paint()
-        ..color = const Color(0xFF8BA7C4).withValues(alpha: 0.4)
-        ..strokeWidth = 2.0;
-      final spineShift = math.sin(orbitAngle) * -8;
-      canvas.drawLine(Offset(chest.dx + spineShift, chest.dy), Offset(pelvis.dx + spineShift, pelvis.dy), spinePaint);
-    }
-
+    // Natural Human Neck (Skin Tone, connecting to jawline)
+    final skinColors = faceProfile.skinGradientColors;
     final neckPaint = Paint()
-      ..color = const Color(0xFF222C3E)
+      ..color = skinColors[1]
       ..style = PaintingStyle.fill;
-    canvas.drawRect(Rect.fromCenter(center: neck, width: 8, height: 12), neckPaint);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: neck, width: 12, height: 14), const Radius.circular(4)), neckPaint);
 
-    // ── Head & User Likeness Facial Customization ──
-    _drawPersonalizedCyberHead(canvas, head, neck, orbitAngle);
+    // ── Head & Realistic Human Likeness ──
+    _drawPersonalizedHumanHead(canvas, head, neck, orbitAngle);
   }
 
-  /// Draw Head with User Likeness (Skin tone, Haircut, Beard & Visor matching user's photo)
-  void _drawPersonalizedCyberHead(Canvas canvas, Offset head, Offset neck, double orbitAngle) {
-    const headRadius = 14.5;
-    final visorColor = faceProfile.visorColor;
+  /// Draw Realistic Human Athlete Head (Indian Complexion, Styled Haircut, Expressive Eyes & Smile)
+  void _drawPersonalizedHumanHead(Canvas canvas, Offset head, Offset neck, double orbitAngle) {
+    const headRadius = 15.5;
 
-    // 1. Natural Human Skin Gradient (from faceProfile)
+    // 1. Natural Human Skin Gradient
     final skinColors = faceProfile.skinGradientColors;
     final skinGradient = RadialGradient(
-      center: const Alignment(-0.3, -0.3),
-      radius: 0.9,
+      center: const Alignment(-0.25, -0.25),
+      radius: 0.95,
       colors: skinColors,
     );
 
@@ -2174,123 +2244,83 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
         ..style = PaintingStyle.fill,
     );
 
-    canvas.drawCircle(
-      head,
-      headRadius,
+    // 2. User Haircut Silhouette
+    final hairPaint = Paint()..color = faceProfile.hairColor..style = PaintingStyle.fill;
+    final hairPath = Path()
+      ..moveTo(head.dx - headRadius - 1, head.dy - 2)
+      ..quadraticBezierTo(head.dx, head.dy - headRadius - 6, head.dx + headRadius + 1, head.dy - 2)
+      ..quadraticBezierTo(head.dx, head.dy - headRadius + 3, head.dx - headRadius - 1, head.dy - 2)
+      ..close();
+    canvas.drawPath(hairPath, hairPaint);
+
+    // Hair volume on top
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(head.dx, head.dy - headRadius + 1), width: headRadius * 2.1, height: 9),
+      hairPaint,
+    );
+
+    // 3. Expressive Human Eyes & Smile
+    final eyeShiftX = math.sin(orbitAngle) * 5.0;
+    final eyeL = Offset(head.dx - 5.0 + (eyeShiftX * 0.4), head.dy - 1.0);
+    final eyeR = Offset(head.dx + 5.0 + (eyeShiftX * 0.4), head.dy - 1.0);
+
+    // Eyebrows
+    final browPaint = Paint()
+      ..color = faceProfile.hairColor
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(eyeL.dx - 4, eyeL.dy - 5), Offset(eyeL.dx + 3, eyeL.dy - 4), browPaint);
+    canvas.drawLine(Offset(eyeR.dx - 3, eyeR.dy - 4), Offset(eyeR.dx + 4, eyeR.dy - 5), browPaint);
+
+    // Eye whites & pupils
+    canvas.drawOval(Rect.fromCenter(center: eyeL, width: 6.0, height: 7.5), Paint()..color = Colors.white);
+    canvas.drawOval(Rect.fromCenter(center: eyeR, width: 6.0, height: 7.5), Paint()..color = Colors.white);
+
+    canvas.drawCircle(eyeL, 2.6, Paint()..color = const Color(0xFF4A2511)); // Brown iris
+    canvas.drawCircle(eyeR, 2.6, Paint()..color = const Color(0xFF4A2511));
+    canvas.drawCircle(Offset(eyeL.dx - 0.8, eyeL.dy - 0.8), 0.9, Paint()..color = Colors.white); // Reflection
+    canvas.drawCircle(Offset(eyeR.dx - 0.8, eyeR.dy - 0.8), 0.9, Paint()..color = Colors.white);
+
+    // Nose bridge hint
+    final nosePaint = Paint()
+      ..color = skinColors[2].withValues(alpha: 0.5)
+      ..strokeWidth = 1.3
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(head.dx + (eyeShiftX * 0.3), head.dy + 1), Offset(head.dx + (eyeShiftX * 0.3), head.dy + 4.5), nosePaint);
+
+    // Athletic confident smile
+    final smile = Path()
+      ..moveTo(head.dx - 4.5 + (eyeShiftX * 0.3), head.dy + 7.5)
+      ..quadraticBezierTo(head.dx + (eyeShiftX * 0.3), head.dy + 10.5, head.dx + 4.5 + (eyeShiftX * 0.3), head.dy + 7.5);
+    canvas.drawPath(
+      smile,
       Paint()
-        ..color = skinColors[1].withValues(alpha: 0.7)
-        ..strokeWidth = 1.0
+        ..color = const Color(0xFF9E4747)
+        ..strokeWidth = 1.4
+        ..strokeCap = StrokeCap.round
         ..style = PaintingStyle.stroke,
     );
 
-    // 2. User Haircut Silhouette (Wavy Pixar curls / Fade / Crop / Topknot)
-    final hairPaint = Paint()..color = faceProfile.hairColor..style = PaintingStyle.fill;
-    if (faceProfile.hairStyle == 'pixar_wavy') {
-      // Flowing stylized waves like reference character
-      canvas.drawCircle(Offset(head.dx - headRadius - 2, head.dy - 3), 7.5, hairPaint);
-      canvas.drawCircle(Offset(head.dx + headRadius + 2, head.dy - 3), 7.5, hairPaint);
-      canvas.drawCircle(Offset(head.dx - headRadius - 1, head.dy + 8), 6.5, hairPaint);
-      canvas.drawCircle(Offset(head.dx + headRadius + 1, head.dy + 8), 6.5, hairPaint);
-
-      final topHair = Path()
-        ..moveTo(head.dx - headRadius - 2, head.dy - 2)
-        ..quadraticBezierTo(head.dx, head.dy - headRadius - 10, head.dx + headRadius + 2, head.dy - 2)
-        ..quadraticBezierTo(head.dx, head.dy - headRadius + 2, head.dx - headRadius - 2, head.dy - 2)
-        ..close();
-      canvas.drawPath(topHair, hairPaint);
-    } else if (faceProfile.hairStyle != 'bald_helmet') {
-      final hairPath = Path()
-        ..moveTo(head.dx - headRadius + 1, head.dy)
-        ..quadraticBezierTo(head.dx - headRadius, head.dy - headRadius - 2, head.dx, head.dy - headRadius - 2.5)
-        ..quadraticBezierTo(head.dx + headRadius, head.dy - headRadius - 2, head.dx + headRadius - 1, head.dy)
-        ..quadraticBezierTo(head.dx, head.dy - headRadius + 4, head.dx - headRadius + 1, head.dy)
-        ..close();
-      canvas.drawPath(hairPath, hairPaint);
-
-      if (faceProfile.hairStyle == 'curls_bun') {
-        canvas.drawCircle(Offset(head.dx, head.dy - headRadius - 4), 4.5, hairPaint);
-      }
-    }
-
-    // 3. Expressive Pixar Eyes & Smile (when user likeness is active)
-    final eyeShiftX = math.sin(orbitAngle) * 5.0;
-    if (faceProfile.useUserLikeness) {
-      final eyeL = Offset(head.dx - 4.5 + (eyeShiftX * 0.4), head.dy - 1.5);
-      final eyeR = Offset(head.dx + 4.5 + (eyeShiftX * 0.4), head.dy - 1.5);
-
-      // Eye whites & pupils
-      canvas.drawOval(Rect.fromCenter(center: eyeL, width: 5.5, height: 7), Paint()..color = Colors.white);
-      canvas.drawOval(Rect.fromCenter(center: eyeR, width: 5.5, height: 7), Paint()..color = Colors.white);
-
-      canvas.drawCircle(eyeL, 2.4, Paint()..color = const Color(0xFF5C3317));
-      canvas.drawCircle(eyeR, 2.4, Paint()..color = const Color(0xFF5C3317));
-      canvas.drawCircle(Offset(eyeL.dx - 0.7, eyeL.dy - 0.7), 0.8, Paint()..color = Colors.white);
-      canvas.drawCircle(Offset(eyeR.dx - 0.7, eyeR.dy - 0.7), 0.8, Paint()..color = Colors.white);
-
-      // Friendly smile
-      final smile = Path()
-        ..moveTo(head.dx - 3.5 + (eyeShiftX * 0.3), head.dy + 6.5)
-        ..quadraticBezierTo(head.dx + (eyeShiftX * 0.3), head.dy + 9.5, head.dx + 4.5 + (eyeShiftX * 0.3), head.dy + 7);
+    // Facial hair if male
+    if (faceProfile.avatarGender == 'male' && faceProfile.facialHair != 'clean') {
+      final stubble = Path()
+        ..moveTo(head.dx - 9 + (eyeShiftX * 0.3), head.dy + 8)
+        ..quadraticBezierTo(head.dx + (eyeShiftX * 0.3), head.dy + 14, head.dx + 9 + (eyeShiftX * 0.3), head.dy + 8);
       canvas.drawPath(
-        smile,
+        stubble,
         Paint()
-          ..color = const Color(0xFF9E4747)
-          ..strokeWidth = 1.2
+          ..color = faceProfile.hairColor.withValues(alpha: 0.45)
+          ..strokeWidth = 1.5
           ..strokeCap = StrokeCap.round
           ..style = PaintingStyle.stroke,
       );
-
-      // Male facial hair / stubble if configured
-      if (faceProfile.avatarGender == 'male' && faceProfile.facialHair != 'clean') {
-        final stubble = Path()
-          ..moveTo(head.dx - 8 + (eyeShiftX * 0.3), head.dy + 7)
-          ..quadraticBezierTo(head.dx + (eyeShiftX * 0.3), head.dy + 13, head.dx + 8 + (eyeShiftX * 0.3), head.dy + 7);
-        canvas.drawPath(
-          stubble,
-          Paint()
-            ..color = faceProfile.hairColor.withValues(alpha: 0.45)
-            ..strokeWidth = 1.4
-            ..strokeCap = StrokeCap.round
-            ..style = PaintingStyle.stroke,
-        );
-      }
-    } else {
-      // 4. 3D Perspective Curved Visor (Shifts with Orbit Angle)
-      final visorShiftX = math.sin(orbitAngle) * 7.5;
-      final visorCenter = Offset(head.dx + visorShiftX, head.dy - 1.5);
-      final visorWidth = math.max(16.0 - (orbitAngle.abs() * 5.0), 9.0);
-      final visorColor = faceProfile.visorColor;
-
-      final visorBg = RRect.fromRectAndRadius(
-        Rect.fromCenter(center: visorCenter, width: visorWidth, height: 6.5),
-        const Radius.circular(3),
-      );
-      canvas.drawRRect(visorBg, Paint()..color = const Color(0xFF0A0F16));
-
-      final scanlinePaint = Paint()
-        ..color = visorColor
-        ..strokeWidth = 2.0
-        ..strokeCap = StrokeCap.round;
-      canvas.drawLine(
-        Offset(visorCenter.dx - (visorWidth * 0.42), visorCenter.dy),
-        Offset(visorCenter.dx + (visorWidth * 0.42), visorCenter.dy),
-        scanlinePaint,
-      );
-
-      canvas.drawCircle(
-        visorCenter,
-        5.0,
-        Paint()
-          ..color = visorColor.withValues(alpha: 0.45)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
-      );
     }
 
-    // Ear Pods / Anchors
+    // Ear pods / earphones
     final earL = Offset(head.dx - headRadius + 1, head.dy);
     final earR = Offset(head.dx + headRadius - 1, head.dy);
-    canvas.drawCircle(earL, 2.5, Paint()..color = visorColor);
-    canvas.drawCircle(earR, 2.5, Paint()..color = visorColor);
+    canvas.drawCircle(earL, 2.5, Paint()..color = const Color(0xFF00D2FF));
+    canvas.drawCircle(earR, 2.5, Paint()..color = const Color(0xFF00D2FF));
   }
 
   void _drawKineticAngleHUD(Canvas canvas, Offset joint, Offset p1, Offset p2, double angleDeg, String label) {

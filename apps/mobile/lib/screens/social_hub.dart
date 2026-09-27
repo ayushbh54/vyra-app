@@ -52,23 +52,6 @@ class SocialHubScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  IconButton(
-                    tooltip: 'AI Fitness Coach',
-                    icon: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: VColor.surfaceRaised,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: VColor.line),
-                      ),
-                      child: const Icon(Icons.smart_toy_rounded, color: VColor.accentGreen, size: 18),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const AiChatScreen()),
-                      );
-                    },
-                  ),
                 ],
               ),
             ),

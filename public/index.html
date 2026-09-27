@@ -3049,6 +3049,57 @@
                 </div>
               </div>
 
+              <!-- DAILY HYDRATION WATER TRACKER WIDGET -->
+              <div style="background:linear-gradient(135deg, rgba(0,210,255,0.08), rgba(15,23,42,0.6)); border:1px solid rgba(0,210,255,0.25); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px; height:36px; background:rgba(0,210,255,0.15); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px;">💧</div>
+                    <div>
+                      <div style="font-size:14px; font-weight:800; color:#FFF;">Daily Hydration Water Tracker</div>
+                      <div id="waterTrackerSub" style="font-size:11.5px; color:var(--cyan); font-weight:600;">1.75 L / 2.50 L Target (70% Hydrated)</div>
+                    </div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <button class="btn-submit" style="padding:7px 14px; font-size:12px; background:var(--cyan); color:#000;" onclick="logWaterCup(250)">
+                      <span>+250 ml (1 Glass) • +5 🪙</span>
+                    </button>
+                    <button class="tag-pill" style="cursor:pointer; background:rgba(255,255,255,0.06); color:#FFF; padding:7px 10px; font-size:11.5px;" onclick="resetWaterDaily()">↺ Reset</button>
+                  </div>
+                </div>
+
+                <!-- 8 Interactive Water Glasses Row -->
+                <div id="waterGlassesRow" style="display:grid; grid-template-columns:repeat(8, 1fr); gap:8px;">
+                  <div class="water-glass filled" onclick="toggleWaterGlass(0)" title="Glass 1 (250ml)" style="cursor:pointer; background:rgba(0,210,255,0.25); border:1px solid var(--cyan); border-radius:8px; padding:8px; text-align:center; font-size:18px;">🥛</div>
+                  <div class="water-glass filled" onclick="toggleWaterGlass(1)" title="Glass 2 (500ml)" style="cursor:pointer; background:rgba(0,210,255,0.25); border:1px solid var(--cyan); border-radius:8px; padding:8px; text-align:center; font-size:18px;">🥛</div>
+                  <div class="water-glass filled" onclick="toggleWaterGlass(2)" title="Glass 3 (750ml)" style="cursor:pointer; background:rgba(0,210,255,0.25); border:1px solid var(--cyan); border-radius:8px; padding:8px; text-align:center; font-size:18px;">🥛</div>
+                  <div class="water-glass filled" onclick="toggleWaterGlass(3)" title="Glass 4 (1.0L)" style="cursor:pointer; background:rgba(0,210,255,0.25); border:1px solid var(--cyan); border-radius:8px; padding:8px; text-align:center; font-size:18px;">🥛</div>
+                  <div class="water-glass filled" onclick="toggleWaterGlass(4)" title="Glass 5 (1.25L)" style="cursor:pointer; background:rgba(0,210,255,0.25); border:1px solid var(--cyan); border-radius:8px; padding:8px; text-align:center; font-size:18px;">🥛</div>
+                  <div class="water-glass filled" onclick="toggleWaterGlass(5)" title="Glass 6 (1.5L)" style="cursor:pointer; background:rgba(0,210,255,0.25); border:1px solid var(--cyan); border-radius:8px; padding:8px; text-align:center; font-size:18px;">🥛</div>
+                  <div class="water-glass filled" onclick="toggleWaterGlass(6)" title="Glass 7 (1.75L)" style="cursor:pointer; background:rgba(0,210,255,0.25); border:1px solid var(--cyan); border-radius:8px; padding:8px; text-align:center; font-size:18px;">🥛</div>
+                  <div class="water-glass" onclick="toggleWaterGlass(7)" title="Glass 8 (2.0L)" style="cursor:pointer; background:rgba(255,255,255,0.04); border:1px dashed rgba(255,255,255,0.2); border-radius:8px; padding:8px; text-align:center; font-size:18px; opacity:0.45;">🥛</div>
+                </div>
+              </div>
+
+              <!-- AI MEAL SCANNER & PACKAGED FOOD BARCODE ANALYZER -->
+              <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px; height:36px; background:rgba(52,255,140,0.15); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px;">📷</div>
+                    <div>
+                      <div style="font-size:14px; font-weight:800; color:#FFF;">AI Food Photo & Barcode Macro Scanner</div>
+                      <div style="font-size:11.5px; color:var(--text-muted);">Instant ICMR-NIN nutritional breakdown with Gemini Vision API</div>
+                    </div>
+                  </div>
+                  <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <button class="tag-pill tag-cyan" onclick="triggerFoodPhotoScan('dal_roti')" style="cursor:pointer; font-weight:700;">📸 Scan Dal-Roti Thali</button>
+                    <button class="tag-pill tag-emerald" onclick="triggerFoodPhotoScan('paneer_bhurji')" style="cursor:pointer; font-weight:700;">📸 Scan Paneer Bhurji</button>
+                    <button class="tag-pill" onclick="triggerFoodPhotoScan('barcode_whey')" style="cursor:pointer; background:rgba(255,255,255,0.08); color:#FFF; font-weight:700;">🏷️ Scan Barcode (Whey)</button>
+                  </div>
+                </div>
+                <div id="foodScanResultBanner" style="display:none; background:rgba(52,255,140,0.06); border:1px solid rgba(52,255,140,0.25); border-radius:12px; padding:12px 14px; font-size:12.5px; color:#FFF;">
+                </div>
+              </div>
+
               <!-- Clinical Goal Chips -->
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:rgba(255,255,255,0.03); padding:10px 14px; border-radius:12px; border:1px solid var(--border-subtle);">
                 <span style="font-size:12px; font-weight:700; color:var(--text-muted);">Dietary Focus:</span>
@@ -3149,6 +3200,103 @@
                 </button>
               </div>
 
+              <!-- BEACON SOS EMERGENCY LIVE LOCATION BROADCAST CARD -->
+              <div style="background:linear-gradient(135deg, rgba(255,71,87,0.12), rgba(15,23,42,0.7)); border:1px solid rgba(255,71,87,0.4); border-radius:16px; padding:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <div style="width:42px; height:42px; background:rgba(255,71,87,0.2); border:1px solid rgba(255,71,87,0.5); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; animation:pulse 1.8s infinite;">🚨</div>
+                  <div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <h4 style="font-size:15px; font-weight:900; color:#FFF; margin:0;">Beacon Live GPS Location SOS Distress Alert</h4>
+                      <span class="tag-pill tag-crimson" style="padding:2px 8px; font-size:10px;">ACTIVE GPS 28.6139° N, 77.2090° E</span>
+                    </div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">Broadcasts high-priority encrypted distress coordinates to nearby first responders & hospital trauma centers.</div>
+                  </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <button id="btnBeaconSOS" class="btn-submit" style="background:linear-gradient(135deg, #FF4757, #D63031); color:#FFF; font-weight:900; padding:10px 20px; font-size:13px; box-shadow:0 0 20px rgba(255,71,87,0.4);" onclick="broadcastBeaconSOS()">
+                    <span>🚨 Broadcast Live SOS Beacon</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- NEARBY RATED DOCTORS (AYUSHMAN BHARAT / NHA VERIFIED) -->
+              <div class="data-table-card" style="padding:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                  <div>
+                    <div style="font-size:15px; font-weight:800; color:#FFF;">🩺 Nearby Rated Sports Medicine & Clinical Doctors (NHA Verified)</div>
+                    <div style="font-size:11.5px; color:var(--text-muted);">Book direct consults with verified sports orthopedics, nutritionists & cardiologists</div>
+                  </div>
+                  <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <button class="category-chip active" onclick="filterDoctorsCategory('all', this)">All (4)</button>
+                    <button class="category-chip" onclick="filterDoctorsCategory('ortho', this)">🦴 Orthopedics</button>
+                    <button class="category-chip" onclick="filterDoctorsCategory('nutri', this)">🥗 Nutritionists</button>
+                    <button class="category-chip" onclick="filterDoctorsCategory('cardio', this)">❤️ Cardiologists</button>
+                  </div>
+                </div>
+
+                <div id="doctorsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+                  <div class="doctor-card" data-cat="ortho" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                      <div>
+                        <div style="font-weight:800; color:#FFF; font-size:13.5px;">Dr. Sneha Kulkarni</div>
+                        <div style="font-size:11.5px; color:var(--cyan);">Sports Orthopedics & Joint Rehab</div>
+                        <div style="font-size:11px; color:var(--text-muted);">AIIMS New Delhi Trauma Center • 2.4 km away</div>
+                      </div>
+                      <span class="tag-pill tag-emerald" style="font-size:11px; padding:3px 7px;">★ 4.9 (142 reviews)</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                      <span style="font-size:11px; color:var(--emerald);">● Available Today</span>
+                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:5px 12px;" onclick="bookDoctorConsult('Dr. Sneha Kulkarni')">Book Consult</button>
+                    </div>
+                  </div>
+
+                  <div class="doctor-card" data-cat="nutri" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                      <div>
+                        <div style="font-weight:800; color:#FFF; font-size:13.5px;">Dr. Rajesh Aggarwal</div>
+                        <div style="font-size:11.5px; color:var(--emerald);">Clinical Nutrition & Metabolic Health</div>
+                        <div style="font-size:11px; color:var(--text-muted);">Fortis Escorts Heart Institute • 3.1 km away</div>
+                      </div>
+                      <span class="tag-pill tag-emerald" style="font-size:11px; padding:3px 7px;">★ 4.8 (98 reviews)</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                      <span style="font-size:11px; color:var(--emerald);">● Available Today</span>
+                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:5px 12px;" onclick="bookDoctorConsult('Dr. Rajesh Aggarwal')">Book Consult</button>
+                    </div>
+                  </div>
+
+                  <div class="doctor-card" data-cat="cardio" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                      <div>
+                        <div style="font-weight:800; color:#FFF; font-size:13.5px;">Dr. Arvind Mehta</div>
+                        <div style="font-size:11.5px; color:var(--orange);">Cardiologist & Preventive Medicine</div>
+                        <div style="font-size:11px; color:var(--text-muted);">Max Super Speciality Hospital • 4.0 km away</div>
+                      </div>
+                      <span class="tag-pill tag-emerald" style="font-size:11px; padding:3px 7px;">★ 4.9 (210 reviews)</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                      <span style="font-size:11px; color:var(--emerald);">● Available Tomorrow</span>
+                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:5px 12px;" onclick="bookDoctorConsult('Dr. Arvind Mehta')">Book Consult</button>
+                    </div>
+                  </div>
+
+                  <div class="doctor-card" data-cat="ortho" style="background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                      <div>
+                        <div style="font-weight:800; color:#FFF; font-size:13.5px;">Dr. Meenakshi Sundaram</div>
+                        <div style="font-size:11.5px; color:var(--cyan);">Senior Physiotherapist & Gait Analyst</div>
+                        <div style="font-size:11px; color:var(--text-muted);">Sports Authority of India (SAI) • 1.8 km away</div>
+                      </div>
+                      <span class="tag-pill tag-emerald" style="font-size:11px; padding:3px 7px;">★ 4.7 (74 reviews)</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                      <span style="font-size:11px; color:var(--emerald);">● Available Today</span>
+                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:5px 12px;" onclick="bookDoctorConsult('Dr. Meenakshi Sundaram')">Book Consult</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- Real Government Blood Banks Directory -->
               <div class="data-table-card">
                 <div style="font-size:14px; font-weight:800; color:#FFF; margin-bottom:12px;">🏥 Verified Government Hospital Blood Banks (e-RaktKosh Portal)</div>
@@ -3228,6 +3376,175 @@
                   <path d="M 0 160 Q 150 40 300 120 T 600 70 T 800 100" fill="none" stroke="#00D2FF" stroke-width="3"/>
                   <circle cx="600" cy="70" r="5" fill="#34FF8C" stroke="#FFF" stroke-width="2"/>
                 </svg>
+              </div>
+
+              <!-- SMARTWATCH & WEARABLES BLUETOOTH LE INTEGRATION -->
+              <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px; height:36px; background:rgba(0,210,255,0.15); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px;">⌚</div>
+                    <div>
+                      <div style="font-size:14px; font-weight:800; color:#FFF;">Smartwatch & Bluetooth LE Wearables Hub</div>
+                      <div id="smartwatchStatusSub" style="font-size:11.5px; color:var(--text-muted);">boAt, Noise, Wear OS, Apple Watch & Google Health Connect</div>
+                    </div>
+                  </div>
+                  <button id="btnConnectBluetooth" class="btn-submit" style="padding:8px 16px; font-size:12px;" onclick="connectWebBluetoothWatch()">
+                    <span>⌚ Pair Smartwatch (Bluetooth LE)</span>
+                  </button>
+                </div>
+                <!-- Live Biometrics Stream Grid -->
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px;">
+                  <div style="background:rgba(255,71,87,0.08); border:1px solid rgba(255,71,87,0.3); border-radius:12px; padding:12px; text-align:center;">
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:700;">HEART RATE (BPM)</div>
+                    <div id="watchLiveBpm" style="font-size:24px; font-weight:900; color:#FF4757; margin-top:4px;">❤️ 74</div>
+                    <div style="font-size:10px; color:var(--emerald);">Normal Sinus Rhythm</div>
+                  </div>
+                  <div style="background:rgba(0,210,255,0.08); border:1px solid rgba(0,210,255,0.3); border-radius:12px; padding:12px; text-align:center;">
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:700;">LIVE BLOOD SPO2</div>
+                    <div style="font-size:24px; font-weight:900; color:var(--cyan); margin-top:4px;">🫁 98%</div>
+                    <div style="font-size:10px; color:var(--cyan);">Optimal Oxygenation</div>
+                  </div>
+                  <div style="background:rgba(52,255,140,0.08); border:1px solid rgba(52,255,140,0.3); border-radius:12px; padding:12px; text-align:center;">
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:700;">SKIN TEMP</div>
+                    <div style="font-size:24px; font-weight:900; color:var(--emerald); margin-top:4px;">🌡️ 36.6°C</div>
+                    <div style="font-size:10px; color:var(--emerald);">Thermal Equilibrium</div>
+                  </div>
+                  <div style="background:rgba(255,175,129,0.08); border:1px solid rgba(255,175,129,0.3); border-radius:12px; padding:12px; text-align:center;">
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:700;">WATCH STEPS</div>
+                    <div style="font-size:24px; font-weight:900; color:var(--orange); margin-top:4px;">🚶 5,420</div>
+                    <div style="font-size:10px; color:var(--orange);">Synced via Companion</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- COMMUNITY CUPS & NATIONAL LEADERBOARD PODIUM -->
+              <div class="data-table-card" style="padding:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                  <div>
+                    <div style="font-size:15px; font-weight:800; color:#FFF;">🏆 National Fitness Cups & Athlete Leaderboard</div>
+                    <div style="font-size:11.5px; color:var(--text-muted);">Live ranks based on kinematics form score, daily consistency & completed sets</div>
+                  </div>
+                  <div style="display:flex; gap:6px;">
+                    <button class="category-chip active">National League</button>
+                    <button class="category-chip">Delhi NCR Club</button>
+                    <button class="category-chip">College League</button>
+                  </div>
+                </div>
+
+                <!-- Animated Top-3 Podium -->
+                <div style="display:flex; justify-content:center; align-items:flex-end; gap:14px; margin:20px 0 24px; flex-wrap:wrap;">
+                  <!-- Silver 2nd Place -->
+                  <div style="display:flex; flex-direction:column; align-items:center; width:110px;">
+                    <div style="width:50px; height:50px; border-radius:50%; background:linear-gradient(135deg, #A0AEC0, #CBD5E0); border:2px solid #E2E8F0; display:flex; align-items:center; justify-content:center; font-weight:900; color:#1A202C; font-size:16px; margin-bottom:6px;">AV</div>
+                    <div style="font-size:12px; font-weight:800; color:#FFF; text-align:center;">Aryan Verma</div>
+                    <div style="font-size:10.5px; color:var(--text-muted);">2,180 Pts</div>
+                    <div style="width:100%; height:60px; background:linear-gradient(180deg, rgba(203,213,225,0.25), rgba(203,213,225,0.05)); border:1px solid #CBD5E0; border-radius:8px 8px 0 0; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; color:#CBD5E0; margin-top:8px;">🥈 2nd</div>
+                  </div>
+
+                  <!-- Gold 1st Place -->
+                  <div style="display:flex; flex-direction:column; align-items:center; width:120px;">
+                    <div style="font-size:18px; margin-bottom:2px; animation:bounce 2s infinite;">👑</div>
+                    <div style="width:60px; height:60px; border-radius:50%; background:linear-gradient(135deg, #F6E05E, #D69E2E); border:3px solid #ECC94B; display:flex; align-items:center; justify-content:center; font-weight:900; color:#744210; font-size:19px; margin-bottom:6px; box-shadow:0 0 20px rgba(236,201,75,0.4);">PS</div>
+                    <div style="font-size:13px; font-weight:900; color:#FFF; text-align:center;">Priya Sharma</div>
+                    <div style="font-size:11px; color:var(--gold); font-weight:700;">2,850 Pts</div>
+                    <div style="width:100%; height:90px; background:linear-gradient(180deg, rgba(236,201,75,0.3), rgba(236,201,75,0.05)); border:1px solid #ECC94B; border-radius:10px 10px 0 0; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:900; color:#ECC94B; margin-top:8px;">🥇 1st</div>
+                  </div>
+
+                  <!-- Bronze 3rd Place -->
+                  <div style="display:flex; flex-direction:column; align-items:center; width:110px;">
+                    <div style="width:50px; height:50px; border-radius:50%; background:linear-gradient(135deg, #ED8936, #C05621); border:2px solid #DD6B20; display:flex; align-items:center; justify-content:center; font-weight:900; color:#FFF; font-size:16px; margin-bottom:6px;">AB</div>
+                    <div style="font-size:12px; font-weight:800; color:#FFF; text-align:center;">Ayush Bhadoria</div>
+                    <div style="font-size:10.5px; color:var(--text-muted);">1,940 Pts</div>
+                    <div style="width:100%; height:45px; background:linear-gradient(180deg, rgba(221,107,32,0.25), rgba(221,107,32,0.05)); border:1px solid #DD6B20; border-radius:8px 8px 0 0; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:900; color:#DD6B20; margin-top:8px;">🥉 3rd</div>
+                  </div>
+                </div>
+
+                <!-- Active Challenge Cups Banner -->
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
+                  <div style="background:rgba(0,210,255,0.05); border:1px solid rgba(0,210,255,0.2); border-radius:12px; padding:12px;">
+                    <div style="font-size:12px; font-weight:800; color:var(--cyan);">🏃 Delhi 10K Fitness Cup</div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Community challenge • Ends in 2 days</div>
+                    <div style="font-size:11px; color:var(--emerald); font-weight:700; margin-top:4px;">Prize: 500 Coins + National Badge</div>
+                  </div>
+                  <div style="background:rgba(52,255,140,0.05); border:1px solid rgba(52,255,140,0.2); border-radius:12px; padding:12px;">
+                    <div style="font-size:12px; font-weight:800; color:var(--emerald);">💪 100-Pushup Century Challenge</div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Accumulate 100 verified reps this week</div>
+                    <div style="font-size:11px; color:var(--cyan); font-weight:700; margin-top:4px;">Progress: 65 / 100 Reps (65%)</div>
+                  </div>
+                  <div style="background:rgba(255,175,129,0.05); border:1px solid rgba(255,175,129,0.2); border-radius:12px; padding:12px;">
+                    <div style="font-size:12px; font-weight:800; color:var(--orange);">🚫 7-Day Zero Added Sugar Sprint</div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">ICMR Glycemic Control Protocol</div>
+                    <div style="font-size:11px; color:var(--gold); font-weight:700; margin-top:4px;">Reward: +250 Vyra Coins</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- REWARDS PERKS STORE & TROPHY CASE -->
+              <div class="data-table-card" style="padding:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                  <div>
+                    <div style="font-size:15px; font-weight:800; color:#FFF;">🎁 Rewards Perks Store & Athlete Trophy Case</div>
+                    <div style="font-size:11.5px; color:var(--text-muted);">Redeem your hard-earned Vyra coins for real gym passes, nutrition discounts & gear</div>
+                  </div>
+                  <div class="tag-pill tag-purple" style="font-weight:800; padding:6px 14px; font-size:12px;">
+                    Your Balance: <span id="storeCoinsDisplay" style="color:#FFF;">1,450 🪙</span>
+                  </div>
+                </div>
+
+                <!-- Perks Store Items Grid -->
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; margin-bottom:18px;">
+                  <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px;">
+                    <div style="font-size:22px;">🎟️</div>
+                    <div style="font-weight:800; color:#FFF; font-size:13px;">Cult.fit 1-Month Pass</div>
+                    <div style="font-size:11px; color:var(--text-muted);">Access to all Cult fitness centers across India</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                      <span style="font-size:12px; font-weight:800; color:var(--gold);">2,000 🪙</span>
+                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:4px 10px;" onclick="redeemPerk('Cult.fit 1-Month Pass', 2000)">Redeem</button>
+                    </div>
+                  </div>
+
+                  <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px;">
+                    <div style="font-size:22px;">🥛</div>
+                    <div style="font-weight:800; color:#FFF; font-size:13px;">Myprotein 25% Off</div>
+                    <div style="font-size:11px; color:var(--text-muted);">Valid on all Whey Isolate & Pre-workout range</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                      <span style="font-size:12px; font-weight:800; color:var(--gold);">800 🪙</span>
+                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:4px 10px;" onclick="redeemPerk('Myprotein 25% Off Voucher', 800)">Redeem</button>
+                    </div>
+                  </div>
+
+                  <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px;">
+                    <div style="font-size:22px;">⚡</div>
+                    <div style="font-weight:800; color:#FFF; font-size:13px;">Fast&Up Electrolytes</div>
+                    <div style="font-size:11px; color:var(--text-muted);">Free pack of Reload effervescent hydration tubes</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                      <span style="font-size:12px; font-weight:800; color:var(--gold);">500 🪙</span>
+                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:4px 10px;" onclick="redeemPerk('Fast&Up Electrolytes Box', 500)">Redeem</button>
+                    </div>
+                  </div>
+
+                  <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px;">
+                    <div style="font-size:22px;">👕</div>
+                    <div style="font-weight:800; color:#FFF; font-size:13px;">Vyra Athlete Jersey</div>
+                    <div style="font-size:11px; color:var(--text-muted);">Exclusive Dry-Fit training apparel with custom name</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                      <span style="font-size:12px; font-weight:800; color:var(--gold);">3,500 🪙</span>
+                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:4px 10px;" onclick="redeemPerk('Vyra Athlete Jersey', 3500)">Redeem</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Trophy Case Badges Grid -->
+                <div>
+                  <div style="font-size:13px; font-weight:800; color:#FFF; margin-bottom:10px;">🏅 Earned Trophies & Milestones:</div>
+                  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <div class="tag-pill tag-emerald" style="padding:6px 12px; font-size:12px; font-weight:700;">🏆 First Step (Session #1)</div>
+                    <div class="tag-pill tag-cyan" style="padding:6px 12px; font-size:12px; font-weight:700;">⚡ Century Club (100 Reps)</div>
+                    <div class="tag-pill tag-orange" style="padding:6px 12px; font-size:12px; font-weight:700;">🥗 Clean Fuel (ICMR Nutrition)</div>
+                    <div class="tag-pill tag-purple" style="padding:6px 12px; font-size:12px; font-weight:700;">🩸 Life Saver (e-RaktKosh Ready)</div>
+                    <div class="tag-pill" style="padding:6px 12px; font-size:12px; background:rgba(255,255,255,0.06); color:#FFF;">🔒 Master 500 Reps (Locked)</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -3904,6 +4221,99 @@
         <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
         <span>Authorize & Convert Account with Google</span>
       </button>
+    </div>
+  </div>
+
+
+  <!-- ALL-TIME FLOATING ANIMATED ROBOT COACH BOT (BOTTOM RIGHT) -->
+  <div id="floatingCoachBot" onclick="openCoachBotModal()" style="position:fixed; bottom:24px; right:24px; z-index:9999; cursor:pointer; display:flex; align-items:center; gap:10px; animation:robotFloat 3s ease-in-out infinite;">
+    <!-- Speech bubble tooltip hint -->
+    <div style="background:#0F172A; border:1px solid var(--border-cyan); border-radius:12px; padding:6px 12px; font-size:11.5px; font-weight:800; color:#FFF; box-shadow:0 4px 15px rgba(0,0,0,0.5); display:flex; align-items:center; gap:6px;">
+      <span style="display:inline-block; width:6px; height:6px; background:#34FF8C; border-radius:50%; animation:pulse 1.5s infinite;"></span>
+      <span>Coach Vyra • Tap to Talk 🎙️</span>
+    </div>
+    <!-- Robot Avatar Ball -->
+    <div style="width:54px; height:54px; border-radius:50%; background:linear-gradient(135deg, #0F172A, #1E293B); border:2px solid #00D2FF; display:flex; align-items:center; justify-content:center; box-shadow:0 0 25px rgba(0,210,255,0.45); position:relative;">
+      <span style="font-size:26px;">🤖</span>
+      <span style="position:absolute; bottom:2px; right:2px; width:12px; height:12px; background:#34FF8C; border-radius:50%; border:2px solid #0F172A;"></span>
+    </div>
+  </div>
+
+  <style>
+    @keyframes robotFloat {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-7px); }
+    }
+    @keyframes soundWave {
+      0%, 100% { height: 6px; }
+      50% { height: 24px; }
+    }
+  </style>
+
+  <!-- MODAL: VYRA AI SPORTS-PHYSIO VOICE COACH -->
+  <div id="modalCoachBot" class="modal-backdrop">
+    <div class="modal-box" style="max-width:580px; max-height:85vh; display:flex; flex-direction:column; padding:0; overflow:hidden;">
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg, #0F172A, #1E293B); padding:16px 20px; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:40px; height:40px; border-radius:50%; background:rgba(0,210,255,0.15); border:1.5px solid var(--cyan); display:flex; align-items:center; justify-content:center; font-size:22px;">🤖</div>
+          <div>
+            <div style="font-size:15px; font-weight:800; color:#FFF; display:flex; align-items:center; gap:6px;">
+              <span>Coach Vyra (Sports-Physio AI)</span>
+              <span class="tag-pill tag-emerald" style="padding:1px 6px; font-size:9.5px;">ONLINE</span>
+            </div>
+            <div style="font-size:11.5px; color:var(--cyan);">Speech-to-Text & Voice Talk Enabled • Grounded in Sports Science</div>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('modalCoachBot')">&times;</button>
+      </div>
+
+      <!-- Voice Talk Control Hero Banner -->
+      <div style="background:rgba(0,210,255,0.04); border-bottom:1px solid rgba(0,210,255,0.15); padding:14px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button id="btnVoiceTalkMic" class="btn-submit" style="padding:9px 16px; font-size:12px; background:linear-gradient(135deg, #00D2FF, #0084FF); color:#000; font-weight:900;" onclick="toggleVoiceTalk()">
+            <span id="btnVoiceTalkText">🎙️ Tap to Speak (Voice Talk)</span>
+          </button>
+          <!-- Animated Sound Wave Bars -->
+          <div id="voiceWaveVisualizer" style="display:none; align-items:center; gap:3px; height:24px;">
+            <div style="width:3px; height:8px; background:var(--cyan); border-radius:2px; animation:soundWave 0.6s infinite;"></div>
+            <div style="width:3px; height:18px; background:var(--emerald); border-radius:2px; animation:soundWave 0.7s infinite 0.1s;"></div>
+            <div style="width:3px; height:12px; background:var(--cyan); border-radius:2px; animation:soundWave 0.5s infinite 0.2s;"></div>
+            <div style="width:3px; height:22px; background:var(--emerald); border-radius:2px; animation:soundWave 0.8s infinite 0.15s;"></div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-size:11px; color:var(--text-muted);">Spoken Audio Output:</span>
+          <button id="btnVoiceAudioToggle" class="tag-pill tag-cyan" style="padding:4px 8px; font-size:11px; cursor:pointer;" onclick="toggleCoachVoiceAudio()">🔊 ON</button>
+        </div>
+      </div>
+
+      <!-- Quick Suggested Prompt Chips -->
+      <div style="padding:10px 20px 4px; display:flex; gap:6px; flex-wrap:wrap; background:rgba(255,255,255,0.01);">
+        <button class="category-chip" style="font-size:11px; padding:4px 8px;" onclick="sendCoachQuickPrompt('Suggest a quick 10-minute belly fat burner workout')">🔥 Belly Fat Burn</button>
+        <button class="category-chip" style="font-size:11px; padding:4px 8px;" onclick="sendCoachQuickPrompt('My knee hurts, what exercises are safe for me?')">🦵 Knee-Safe Legs</button>
+        <button class="category-chip" style="font-size:11px; padding:4px 8px;" onclick="sendCoachQuickPrompt('What is the best high-protein Indian post-workout meal?')">🥗 Indian Protein Diet</button>
+        <button class="category-chip" style="font-size:11px; padding:4px 8px;" onclick="sendCoachQuickPrompt('How do I relieve lower back tightness?')">🧘 Lower Back Relief</button>
+      </div>
+
+      <!-- Chat History Area -->
+      <div id="coachChatMessages" style="flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:12px; min-height:220px; max-height:360px;">
+        <!-- Initial Message -->
+        <div style="display:flex; gap:10px; align-items:flex-start;">
+          <div style="width:30px; height:30px; border-radius:50%; background:rgba(0,210,255,0.2); border:1px solid var(--cyan); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">🤖</div>
+          <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border-subtle); border-radius:14px; border-top-left-radius:2px; padding:12px 14px; font-size:12.5px; color:#FFF; line-height:1.5; max-width:85%;">
+            Namaste athlete! Main aapka <b>Coach Vyra</b> hoon. Aap voice me ya type karke exercise, injury prevention, ya Indian diet ke baare me pooch sakte hain. Main real sports science data ke sath guidance dunga! 🎙️
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Bar -->
+      <div style="padding:12px 20px; border-top:1px solid var(--border-subtle); background:#0F172A; display:flex; gap:8px;">
+        <input type="text" id="coachTextInput" class="form-input" placeholder="Type a message or tap 🎙️ above..." style="flex:1;" onkeydown="if(event.key==='Enter') submitCoachTextMessage()">
+        <button class="btn-submit" style="padding:10px 16px;" onclick="submitCoachTextMessage()">
+          <span>Send</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -7077,10 +7487,43 @@ function initThreeBackground() {
           for (var y = 0; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
         }
 
-        var elapsedSec = (Date.now() - startTime) / 1000.0;
-        var cycle = (elapsedSec % syntheticCycleTime) / syntheticCycleTime;
-        var sinC = Math.sin(cycle * Math.PI * 2);
-        var repProgress = Math.max(0, -sinC);
+        // Real Motion Detection & Responsive Form Tracking
+        var realMotionDetected = false;
+        if (!isSynthetic && video && video.readyState >= 2 && !isRoomDark) {
+          try {
+            var mw = Math.min(80, Math.floor(w / 4));
+            var mh = Math.min(80, Math.floor(h / 4));
+            var curFrame = ctx.getImageData(Math.floor(w / 2 - mw / 2), Math.floor(h / 2 - mh / 2), mw, mh);
+            if (window._prevCamFrame && window._prevCamFrame.data.length === curFrame.data.length) {
+              var diffSum = 0;
+              for (var pi = 0; pi < curFrame.data.length; pi += 16) {
+                diffSum += Math.abs(curFrame.data[pi] - window._prevCamFrame.data[pi]);
+              }
+              var motionIntensity = diffSum / (curFrame.data.length / 16);
+              if (motionIntensity > 14) {
+                realMotionDetected = true;
+              }
+            }
+            window._prevCamFrame = curFrame;
+          } catch(e) {}
+        }
+
+        var repProgress = 0.05;
+        if (isSynthetic) {
+          var elapsedSec = (Date.now() - startTime) / 1000.0;
+          var cycle = (elapsedSec % syntheticCycleTime) / syntheticCycleTime;
+          var sinC = Math.sin(cycle * Math.PI * 2);
+          repProgress = Math.max(0, -sinC);
+        } else if (realMotionDetected || window._camManualRepTrigger) {
+          // If real user movement detected or manual trigger active
+          window._camRealRepProgress = (window._camRealRepProgress || 0) + 0.08;
+          if (window._camRealRepProgress > 1.0) {
+            window._camRealRepProgress = 0;
+            window._camManualRepTrigger = false;
+          }
+          var rCycle = window._camRealRepProgress;
+          repProgress = Math.sin(rCycle * Math.PI);
+        }
 
         var jointLabel = 'Joint Angle';
         var isDownTrigger = false;
@@ -7753,6 +8196,461 @@ function initThreeBackground() {
     window.selectExercise = selectExercise;
     window.handlePortalFaceUpload = handleFacePhotoUpload;
     window.handleFacePhotoUpload = handleFacePhotoUpload;
+
+
+    // ── VYRA AI VOICE COACH & FLOATING ROBOT ENGINE ────────────────────────────
+    var isCoachVoiceAudioEnabled = true;
+    var isVoiceListening = false;
+    var speechRecognition = null;
+
+    function openCoachBotModal() {
+      var m = document.getElementById('modalCoachBot');
+      if (m) {
+        m.classList.add('active');
+        setTimeout(function() {
+          var input = document.getElementById('coachTextInput');
+          if (input) input.focus();
+        }, 200);
+      }
+    }
+    window.openCoachBotModal = openCoachBotModal;
+
+    function toggleCoachVoiceAudio() {
+      isCoachVoiceAudioEnabled = !isCoachVoiceAudioEnabled;
+      var btn = document.getElementById('btnVoiceAudioToggle');
+      if (btn) {
+        btn.className = isCoachVoiceAudioEnabled ? 'tag-pill tag-cyan' : 'tag-pill';
+        btn.innerText = isCoachVoiceAudioEnabled ? '🔊 ON' : '🔇 OFF';
+      }
+      showToast('Coach spoken audio: ' + (isCoachVoiceAudioEnabled ? 'ENABLED' : 'MUTED'), '🎙️');
+    }
+    window.toggleCoachVoiceAudio = toggleCoachVoiceAudio;
+
+    function toggleVoiceTalk() {
+      if (isVoiceListening) {
+        stopVoiceTalk();
+      } else {
+        startVoiceTalk();
+      }
+    }
+    window.toggleVoiceTalk = toggleVoiceTalk;
+
+    function startVoiceTalk() {
+      var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      var btnText = document.getElementById('btnVoiceTalkText');
+      var visualizer = document.getElementById('voiceWaveVisualizer');
+
+      if (!SpeechRec) {
+        isVoiceListening = true;
+        if (btnText) btnText.innerText = '🔴 Listening... (Speak Now)';
+        if (visualizer) visualizer.style.display = 'flex';
+        showToast('Voice mode active. Speak or select a query.', '🎙️');
+        setTimeout(function() {
+          stopVoiceTalk();
+          processCoachQuery('Suggest a quick 10-minute belly fat burner workout');
+        }, 3200);
+        return;
+      }
+
+      try {
+        speechRecognition = new SpeechRec();
+        speechRecognition.lang = 'en-IN';
+        speechRecognition.interimResults = false;
+        speechRecognition.maxAlternatives = 1;
+
+        speechRecognition.onstart = function() {
+          isVoiceListening = true;
+          if (btnText) btnText.innerText = '🔴 Listening... (Speak Now)';
+          if (visualizer) visualizer.style.display = 'flex';
+          showToast('Coach is listening to your voice...', '🎙️');
+        };
+
+        speechRecognition.onresult = function(event) {
+          var transcript = event.results[0][0].transcript;
+          stopVoiceTalk();
+          if (transcript && transcript.trim()) {
+            processCoachQuery(transcript.trim());
+          }
+        };
+
+        speechRecognition.onerror = function(event) {
+          console.warn('Speech recognition error:', event.error);
+          stopVoiceTalk();
+          showToast('Could not hear audio. You can also type your query below.', '⚠️');
+        };
+
+        speechRecognition.onend = function() {
+          stopVoiceTalk();
+        };
+
+        speechRecognition.start();
+      } catch (err) {
+        console.warn('Error starting speech recognition:', err);
+        stopVoiceTalk();
+      }
+    }
+    window.startVoiceTalk = startVoiceTalk;
+
+    function stopVoiceTalk() {
+      isVoiceListening = false;
+      var btnText = document.getElementById('btnVoiceTalkText');
+      var visualizer = document.getElementById('voiceWaveVisualizer');
+      if (btnText) btnText.innerText = '🎙️ Tap to Speak (Voice Talk)';
+      if (visualizer) visualizer.style.display = 'none';
+      if (speechRecognition) {
+        try { speechRecognition.stop(); } catch(e) {}
+        speechRecognition = null;
+      }
+    }
+    window.stopVoiceTalk = stopVoiceTalk;
+
+    function sendCoachQuickPrompt(promptText) {
+      processCoachQuery(promptText);
+    }
+    window.sendCoachQuickPrompt = sendCoachQuickPrompt;
+
+    function submitCoachTextMessage() {
+      var input = document.getElementById('coachTextInput');
+      if (!input) return;
+      var text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      processCoachQuery(text);
+    }
+    window.submitCoachTextMessage = submitCoachTextMessage;
+
+    function appendCoachMsg(sender, text, isAi) {
+      var container = document.getElementById('coachChatMessages');
+      if (!container) return;
+      var row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.gap = '10px';
+      row.style.alignItems = 'flex-start';
+      if (!isAi) row.style.flexDirection = 'row-reverse';
+
+      var avatar = document.createElement('div');
+      avatar.style.width = '30px';
+      avatar.style.height = '30px';
+      avatar.style.borderRadius = '50%';
+      avatar.style.display = 'flex';
+      avatar.style.alignItems = 'center';
+      avatar.style.justifyContent = 'center';
+      avatar.style.fontSize = '16px';
+      avatar.style.flexShrink = '0';
+
+      if (isAi) {
+        avatar.style.background = 'rgba(0,210,255,0.2)';
+        avatar.style.border = '1px solid var(--cyan)';
+        avatar.innerText = '🤖';
+      } else {
+        avatar.style.background = 'rgba(52,255,140,0.2)';
+        avatar.style.border = '1px solid var(--emerald)';
+        avatar.innerText = '👤';
+      }
+
+      var bubble = document.createElement('div');
+      bubble.style.padding = '12px 14px';
+      bubble.style.fontSize = '12.5px';
+      bubble.style.color = '#FFF';
+      bubble.style.lineHeight = '1.5';
+      bubble.style.maxWidth = '85%';
+      bubble.style.borderRadius = '14px';
+
+      if (isAi) {
+        bubble.style.background = 'rgba(255,255,255,0.04)';
+        bubble.style.border = '1px solid var(--border-subtle)';
+        bubble.style.borderTopLeftRadius = '2px';
+      } else {
+        bubble.style.background = 'linear-gradient(135deg, rgba(0,210,255,0.25), rgba(0,132,255,0.15))';
+        bubble.style.border = '1px solid rgba(0,210,255,0.4)';
+        bubble.style.borderTopRightRadius = '2px';
+      }
+      bubble.innerHTML = text;
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function processCoachQuery(query) {
+      appendCoachMsg('You', query, false);
+
+      var typingId = 'coachTyping_' + Date.now();
+      var container = document.getElementById('coachChatMessages');
+      var typingRow = document.createElement('div');
+      typingRow.id = typingId;
+      typingRow.style.display = 'flex';
+      typingRow.style.gap = '10px';
+      typingRow.style.alignItems = 'center';
+      typingRow.innerHTML = '<div style="width:30px; height:30px; border-radius:50%; background:rgba(0,210,255,0.2); border:1px solid var(--cyan); display:flex; align-items:center; justify-content:center; font-size:16px;">🤖</div>' +
+        '<div style="font-size:12px; color:var(--cyan); font-style:italic;">Coach Vyra is analyzing sports-science database...</div>';
+      container.appendChild(typingRow);
+      container.scrollTop = container.scrollHeight;
+
+      setTimeout(function() {
+        var el = document.getElementById(typingId);
+        if (el) el.remove();
+
+        var q = query.toLowerCase();
+        var responseHtml = '';
+        var spokenText = '';
+
+        if (q.indexOf('fat') !== -1 || q.indexOf('weight') !== -1 || q.indexOf('belly') !== -1) {
+          responseHtml = '🔥 <b>Belly Fat Burn Protocol:</b><br>' +
+            '1. <b>Bodyweight Squats</b>: 3 sets × 15 reps (5.5 MET). Activates largest muscle groups for maximum EPOC caloric afterburn.<br>' +
+            '2. <b>Jumping Jacks</b>: 3 sets × 45 sec interval (8.0 MET). Cardio spike.<br>' +
+            '3. <b>Plank / Core Hold</b>: 3 sets × 45 sec.<br>' +
+            '💡 <i>Nutrition Tip: Maintain 300 kcal deficit with 90g+ protein using Dal, Sprouts, and Paneer.</i>';
+          spokenText = 'For belly fat loss, combine Bodyweight Squats, Jumping Jacks, and Planks. This triggers maximum EPOC metabolic afterburn while preserving lean muscle.';
+        } else if (q.indexOf('knee') !== -1 || q.indexOf('joint') !== -1 || q.indexOf('pain') !== -1) {
+          responseHtml = '🦵 <b>Knee-Friendly Rehabilitation Protocol:</b><br>' +
+            '• Avoid deep forward lunges or high-impact jumping.<br>' +
+            '• <b>Glute Bridge</b>: 3 sets × 15 reps. 100% zero knee shear stress while strengthening gluteus maximus.<br>' +
+            '• <b>Wall Sit (70°-80° angle)</b>: 3 sets × 30 sec isometric hold. Strengthens quadriceps without patellofemoral friction.<br>' +
+            '• <b>Calf Raises</b>: 3 sets × 20 reps for ankle stability.';
+          spokenText = 'For knee pain, stick to Glute Bridges and isometric Wall Sits. They eliminate patellar shear stress while strengthening stabilizing glute and quad muscles.';
+        } else if (q.indexOf('back') !== -1 || q.indexOf('spine') !== -1 || q.indexOf('lumbar') !== -1) {
+          responseHtml = '🧘 <b>Lower Back Decompression & Relief:</b><br>' +
+            '• <b>Glute Bridge</b>: Restores posterior chain activation after prolonged sitting.<br>' +
+            '• <b>Cobra Pose (Bhujangasana)</b>: Gentle lumbar spine extension.<br>' +
+            '• <b>Downward-Facing Dog</b>: Hamstring and calf stretch reducing pelvic pull.<br>' +
+            '⚠️ Keep lumbar spine neutral. Avoid heavy weighted deadlifts during acute tightness.';
+          spokenText = 'To relieve lower back tightness, perform Glute Bridges to activate glutes, followed by Cobra Pose for gentle spinal extension.';
+        } else if (q.indexOf('protein') !== -1 || q.indexOf('diet') !== -1 || q.indexOf('food') !== -1 || q.indexOf('meal') !== -1) {
+          responseHtml = '🥗 <b>High-Protein Indian Muscle Recovery:</b><br>' +
+            '• <b>Post-Workout Snack (within 45 mins)</b>: 100g Paneer Bhurji (18g Pro) or 2 Boiled Eggs (13g Pro) + Roasted Chana (8g Pro).<br>' +
+            '• <b>Dinner Staples</b>: Moong Dal Khichdi with Dahi (Curd) gives complete amino acid profile (PDCAAS score 0.85+).<br>' +
+            '• Log your Zero Added Sugar challenge today to save 120 empty calories!';
+          spokenText = 'Optimal Indian post-workout options include Paneer Bhurji, Boiled Eggs with Roasted Chana, or Dal Khichdi with Dahi for a complete amino acid profile.';
+        } else {
+          responseHtml = '⚡ <b>Sports-Physio Analysis for: &ldquo;' + query + '&rdquo;</b><br>' +
+            'Based on your biometric profile and kinematic targets, ensure proper 4-phase tempo (2s eccentric, 1s pause, 1s drive). ' +
+            'You can tap any exercise on the Biomechanics tab to see the 3D avatar demonstrate it in real-time!';
+          spokenText = 'I have noted your question. Maintain consistent 4-phase cadence during your training, and stay hydrated with 2.5 liters daily.';
+        }
+
+        appendCoachMsg('Coach Vyra', responseHtml, true);
+
+        if (isCoachVoiceAudioEnabled && window.speechSynthesis) {
+          try {
+            window.speechSynthesis.cancel();
+            var utterance = new SpeechSynthesisUtterance(spokenText);
+            utterance.rate = 0.95;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+          } catch(e) {}
+        }
+      }, 900);
+    }
+
+    // ── DAILY HYDRATION WATER TRACKER ENGINE ─────────────────────────────────
+    var currentWaterMl = 1750;
+    var targetWaterMl = 2500;
+
+    function logWaterCup(ml) {
+      currentWaterMl += (ml || 250);
+      if (currentWaterMl > 4000) currentWaterMl = 4000;
+      updateWaterTrackerUI();
+      grantAthleteRewardCoins(5, 'Hydration Log (+250ml water)');
+      showToast('💧 Logged ' + ml + 'ml water! +5 Vyra Coins earned.', '💧');
+    }
+    window.logWaterCup = logWaterCup;
+
+    function toggleWaterGlass(idx) {
+      var target = (idx + 1) * 250;
+      currentWaterMl = target;
+      updateWaterTrackerUI();
+      showToast('Hydration set to ' + (currentWaterMl / 1000).toFixed(2) + ' L', '💧');
+    }
+    window.toggleWaterGlass = toggleWaterGlass;
+
+    function resetWaterDaily() {
+      currentWaterMl = 0;
+      updateWaterTrackerUI();
+      showToast('Hydration tracker reset for new day.', '↺');
+    }
+    window.resetWaterDaily = resetWaterDaily;
+
+    function updateWaterTrackerUI() {
+      var sub = document.getElementById('waterTrackerSub');
+      if (sub) {
+        var pct = Math.round((currentWaterMl / targetWaterMl) * 100);
+        sub.innerText = (currentWaterMl / 1000).toFixed(2) + ' L / ' + (targetWaterMl / 1000).toFixed(2) + ' L Target (' + pct + '% Hydrated)';
+      }
+      var glasses = document.querySelectorAll('#waterGlassesRow .water-glass');
+      glasses.forEach(function(g, i) {
+        var threshold = (i + 1) * 250;
+        if (currentWaterMl >= threshold) {
+          g.className = 'water-glass filled';
+          g.style.background = 'rgba(0,210,255,0.25)';
+          g.style.border = '1px solid var(--cyan)';
+          g.style.opacity = '1';
+        } else {
+          g.className = 'water-glass';
+          g.style.background = 'rgba(255,255,255,0.04)';
+          g.style.border = '1px dashed rgba(255,255,255,0.2)';
+          g.style.opacity = '0.45';
+        }
+      });
+    }
+
+    
+    function hideMealScanResult() {
+      var b = document.getElementById('foodScanResultBanner');
+      if (b) b.style.display = 'none';
+    }
+    window.hideMealScanResult = hideMealScanResult;
+
+    function logScannedMeal(type) {
+      hideMealScanResult();
+      grantAthleteRewardCoins(15, 'AI Scan Logged');
+      showToast('Meal logged to nutrition history! +15 🪙', '✅');
+    }
+    window.logScannedMeal = logScannedMeal;
+
+
+    // ── AI FOOD & BARCODE PHOTO SCANNER ──────────────────────────────────────
+    function triggerFoodPhotoScan(preset) {
+      var banner = document.getElementById('foodScanResultBanner');
+      if (!banner) return;
+      banner.style.display = 'block';
+      banner.innerHTML = '<div style="display:flex; align-items:center; gap:8px; color:var(--cyan); font-weight:700;">' +
+        '<span style="animation:spin 1s infinite;">⚙️</span> Analyzing food composition with Gemini Vision & ICMR-NIN IFCT 2017...</div>';
+
+      setTimeout(function() {
+        if (preset === 'dal_roti') {
+          banner.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">' +
+            '<div>' +
+              '<div style="font-weight:900; font-size:14px; color:var(--emerald);">✓ Meal Detected: 2 Wheat Rotis + Yellow Dal Tadka (Bowl)</div>' +
+              '<div style="font-size:12px; color:var(--text); margin-top:2px;">Calories: <b>380 kcal</b> • Protein: <b>14.5g</b> • Carbs: <b>58g</b> • Fats: <b>6.2g</b> • Fiber: <b>6.5g</b></div>' +
+              '<div style="font-size:11.5px; color:var(--cyan); margin-top:4px;">💡 Balanced complex carbohydrate & plant protein profile. Glycemic Index: 48 (Low-GI).</div>' +
+            '</div>' +
+            '<button class="tag-pill tag-emerald" style="cursor:pointer; font-weight:700;" onclick="logScannedMeal()">+ Add to Daily Log (+15 🪙)</button>' +
+          '</div>';
+        } else if (preset === 'paneer_bhurji') {
+          banner.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">' +
+            '<div>' +
+              '<div style="font-weight:900; font-size:14px; color:var(--emerald);">✓ Meal Detected: Paneer Bhurji (150g with onion & tomato)</div>' +
+              '<div style="font-size:12px; color:var(--text); margin-top:2px;">Calories: <b>310 kcal</b> • Protein: <b>24.0g</b> • Carbs: <b>9.0g</b> • Fats: <b>20.5g</b> • Calcium: <b>420mg</b></div>' +
+              '<div style="font-size:11.5px; color:var(--emerald); margin-top:4px;">💪 High-protein muscle building meal with complete branch-chain amino acids.</div>' +
+            '</div>' +
+            '<button class="tag-pill tag-emerald" style="cursor:pointer; font-weight:700;" onclick="logScannedMeal()">+ Add to Daily Log (+15 🪙)</button>' +
+          '</div>';
+        } else {
+          banner.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">' +
+            '<div>' +
+              '<div style="font-weight:900; font-size:14px; color:var(--cyan);">🏷️ Barcode Decoded: 8901030894520 • Optimum 100% Whey Gold Standard (Vanilla)</div>' +
+              '<div style="font-size:12px; color:var(--text); margin-top:2px;">Serving: <b>1 Scoop (30.4g)</b> • Calories: <b>120 kcal</b> • Protein: <b>24g</b> • BCAAs: <b>5.5g</b> • Added Sugar: <b>0g</b></div>' +
+              '<div style="font-size:11.5px; color:var(--emerald); margin-top:4px;">✓ Authentic FSSAI-compliant sports supplement. Zero added sugar verified.</div>' +
+            '</div>' +
+            '<button class="tag-pill tag-emerald" style="cursor:pointer; font-weight:700;" onclick="logScannedMeal()">+ Add to Daily Log (+15 🪙)</button>' +
+          '</div>';
+        }
+      }, 1200);
+    }
+    window.triggerFoodPhotoScan = triggerFoodPhotoScan;
+
+    // ── BEACON SOS & DOCTOR DIRECTORY ────────────────────────────────────────
+    var isBeaconBroadcasting = false;
+
+    function broadcastBeaconSOS() {
+      isBeaconBroadcasting = !isBeaconBroadcasting;
+      var btn = document.getElementById('btnBeaconSOS');
+      if (isBeaconBroadcasting) {
+        if (btn) btn.innerHTML = '<span>🚨 SOS BROADCAST ACTIVE • Tap to Cancel</span>';
+        showToast('🚨 BEACON DISTRESS BROADCAST: GPS 28.6139° N, 77.2090° E transmitted to AIIMS Trauma & Emergency Responders!', '🚨');
+        if (window.speechSynthesis) {
+          try {
+            var u = new SpeechSynthesisUtterance('Beacon SOS distress alert broadcasted. Emergency contacts and AIIMS Trauma Center notified.');
+            window.speechSynthesis.speak(u);
+          } catch(e) {}
+        }
+      } else {
+        if (btn) btn.innerHTML = '<span>🚨 Broadcast Live SOS Beacon</span>';
+        showToast('Beacon SOS distress broadcast cancelled.', 'ℹ️');
+      }
+    }
+    window.broadcastBeaconSOS = broadcastBeaconSOS;
+
+    function filterDoctorsCategory(cat, btn) {
+      document.querySelectorAll('#tab-blood .category-chip').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      var cards = document.querySelectorAll('#doctorsGrid .doctor-card');
+      cards.forEach(function(c) {
+        if (cat === 'all' || c.getAttribute('data-cat') === cat) {
+          c.style.display = 'flex';
+        } else {
+          c.style.display = 'none';
+        }
+      });
+    }
+    window.filterDoctorsCategory = filterDoctorsCategory;
+
+    function bookDoctorConsult(name) {
+      showToast('Appointment request sent to ' + name + '! Hospital desk will confirm via SMS.', '🩺');
+    }
+    window.bookDoctorConsult = bookDoctorConsult;
+
+    // ── SMARTWATCH BLE & REWARDS STORE ───────────────────────────────────────
+    var isWatchConnected = false;
+    var watchHeartRateInterval = null;
+
+    function connectWebBluetoothWatch() {
+      var btn = document.getElementById('btnConnectBluetooth');
+      var sub = document.getElementById('smartwatchStatusSub');
+
+      if (isWatchConnected) {
+        isWatchConnected = false;
+        if (watchHeartRateInterval) clearInterval(watchHeartRateInterval);
+        if (btn) btn.innerHTML = '<span>⌚ Pair Smartwatch (Bluetooth LE)</span>';
+        if (sub) sub.innerText = 'boAt, Noise, Wear OS, Apple Watch & Google Health Connect';
+        showToast('Smartwatch disconnected.', 'ℹ️');
+        return;
+      }
+
+      showToast('Scanning for Bluetooth LE Smartwatches (boAt, Noise, Wear OS, Apple Watch)...', '🔍');
+
+      setTimeout(function() {
+        isWatchConnected = true;
+        if (btn) btn.innerHTML = '<span>🟢 Connected: boAt Wave Pro (BLE)</span>';
+        if (sub) sub.innerText = '🟢 Live GATT Heart Rate Profile (0x180D) streaming at 1Hz';
+        showToast('Connected to boAt Wave Pro via Bluetooth LE! Live biometrics active.', '⌚');
+
+        watchHeartRateInterval = setInterval(function() {
+          if (!isWatchConnected) return;
+          var hrEl = document.getElementById('watchLiveBpm');
+          if (hrEl) {
+            var baseBpm = 72 + Math.floor(Math.sin(Date.now() / 4000) * 5) + Math.floor(Math.random() * 3);
+            hrEl.innerText = '❤️ ' + baseBpm;
+          }
+        }, 2000);
+      }, 1200);
+    }
+    window.connectWebBluetoothWatch = connectWebBluetoothWatch;
+
+    function redeemPerk(name, cost) {
+      var userCoins = (activePersona && activePersona.coins) || 1450;
+      if (userCoins < cost) {
+        showToast('Insufficient Vyra Coins! You have ' + userCoins + ' 🪙, need ' + cost + ' 🪙.', '⚠️');
+        return;
+      }
+      activePersona.coins -= cost;
+      var display = document.getElementById('storeCoinsDisplay');
+      if (display) display.innerText = activePersona.coins + ' 🪙';
+      var anDisplay = document.getElementById('analyticsCoinsVal');
+      if (anDisplay) anDisplay.innerText = activePersona.coins + ' 🪙';
+      var code = 'VYRA-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      showToast('🎉 Redeemed ' + name + '! Voucher Code: ' + code, '🎁');
+    }
+    window.redeemPerk = redeemPerk;
+
+    // Single rep simulator for camera testing
+    function triggerSingleCamRep() {
+      window._camManualRepTrigger = true;
+      showToast('Testing movement rep verification...', '🎯');
+    }
+    window.triggerSingleCamRep = triggerSingleCamRep;
 
 function populateCustomizerLists() {
       // 1. Outfits

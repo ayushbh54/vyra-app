@@ -4,6 +4,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'api/client.dart';
+import 'dart:math' as math;
+import 'screens/ai_chat.dart';
 import 'screens/auth.dart';
 import 'screens/challenges_hub.dart';
 import 'screens/food.dart';
@@ -411,6 +413,135 @@ class _HomeShellState extends State<HomeShell> {
               icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
+      floatingActionButton: const _FloatingAnimatedCoachBot(),
+    );
+  }
+}
+
+
+/// ALL-TIME FLOATING ANIMATED ROBOT COACH (Voice Talk & AI Assistant)
+class _FloatingAnimatedCoachBot extends StatefulWidget {
+  const _FloatingAnimatedCoachBot();
+
+  @override
+  State<_FloatingAnimatedCoachBot> createState() => _FloatingAnimatedCoachBotState();
+}
+
+class _FloatingAnimatedCoachBotState extends State<_FloatingAnimatedCoachBot> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) {
+        final floatOffset = math.sin(_ctrl.value * 2 * math.pi) * 3.5;
+        final pulseAlpha = 0.35 + (math.sin(_ctrl.value * 2 * math.pi) * 0.18);
+
+        return Transform.translate(
+          offset: Offset(0, floatOffset),
+          child: GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AiChatScreen()),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8.5),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: const Color(0xFF00D2FF).withValues(alpha: 0.75),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF00D2FF).withValues(alpha: pulseAlpha),
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF34FF8C).withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFF34FF8C),
+                        width: 1.4,
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.smart_toy_rounded,
+                        color: Color(0xFF34FF8C),
+                        size: 19,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'COACH VYRA',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Text('🎙️', style: TextStyle(fontSize: 10)),
+                        ],
+                      ),
+                      Text(
+                        'Tap for Voice Talk',
+                        style: TextStyle(
+                          color: Color(0xFF00D2FF),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
