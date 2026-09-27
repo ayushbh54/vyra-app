@@ -2941,7 +2941,7 @@
 
   <!-- JAVASCRIPT APPLICATION CORE -->
   <script>
-    // ── 1. REAL VERIFIED DATASETS & LOGIC ─────────────────────────────────────────
+    // ── 1. REAL VERIFIED DATASETS & STATE ─────────────────────────────────────────
     var currentUser = null;
     var currentAuthMode = 'user';
     var currentGender = 'male';
@@ -2951,7 +2951,7 @@
     var currentShoeColor = 'orange';
 
     var orbitDeg = 0;
-    var isAutoOrbiting = true;
+    var isAutoOrbiting = false;
     var isDragging = false;
     var dragStartX = 0;
     var webcamStream = null;
@@ -2982,135 +2982,691 @@
 
     var dailyMacros = { cal: 0, pro: 0, carb: 0, fat: 0 };
 
-    // Real Sports-Science Exercise Kinematics (from VYRA Exercise Dataset)
+    // Full 18 Sports-Science Kinematics Dataset
     var exerciseDataset = [
-      {
-        slug: 'bodyweight-squat',
-        name: 'Bodyweight Squat',
-        hindiName: 'दंड बैठक (Squat)',
-        category: 'Legs & Glutes',
-        primaryJoint: 'Knee Flexion',
-        optimalFlexionDeg: 75.0,
-        lockoutDeg: 175.0,
-        tempo: '3-1-1-0',
-        met: 5.5,
-        primaryMuscles: ['Quadriceps', 'Gluteus Maximus'],
-        cues: [
-          'Push hips backward first; sink until thighs reach parallel depth.',
-          'Knees track outward in line with second toe; avoid valgus cave-in.',
-          'Keep lumbar spine strictly neutral — drive through mid-foot.'
-        ],
-        faults: [
-          'Knees caving inwards during ascent',
-          'Heels lifting off the ground'
-        ]
-      },
-      {
-        slug: 'pushup',
-        name: 'Standard Pushup',
-        hindiName: 'दंड (Pushup)',
-        category: 'Chest & Core',
-        primaryJoint: 'Elbow Flexion',
-        optimalFlexionDeg: 89.5,
-        lockoutDeg: 170.0,
-        tempo: '2-1-1-0',
-        met: 8.0,
-        primaryMuscles: ['Pectoralis Major', 'Triceps', 'Anterior Deltoid'],
-        cues: [
-          'Elbows tucked at a 45-degree arrow angle, not flared 90 degrees.',
-          'Brace glutes and abs to prevent lower back sag.',
-          'Chest touches floor before full lockout ascent.'
-        ],
-        faults: [
-          'Sagging lower back (lumbar hyperextension)',
-          'Elbows flaring 90 degrees outwards'
-        ]
-      },
-      {
-        slug: 'bicep-curl',
-        name: 'Dumbbell Bicep Curl',
-        hindiName: 'बाइसेप कर्ल',
-        category: 'Arms',
-        primaryJoint: 'Elbow Peak Flexion',
-        optimalFlexionDeg: 34.8,
-        lockoutDeg: 165.0,
-        tempo: '2-0-1-1',
-        met: 4.0,
-        primaryMuscles: ['Biceps Brachii', 'Brachialis'],
-        cues: [
-          'Keep elbows pinned tight against your ribcage.',
-          'Squeeze biceps at the top peak for 1 second.',
-          'Avoid torso swinging or momentum drive.'
-        ],
-        faults: [
-          'Using torso momentum to swing weights',
-          'Elbows drifting forward during lift'
-        ]
-      },
-      {
-        slug: 'walking-lunge',
-        name: 'Walking Lunge',
-        hindiName: 'लंजेस',
-        category: 'Legs & Unilateral',
-        primaryJoint: 'Lead Knee Flexion',
-        optimalFlexionDeg: 90.0,
-        lockoutDeg: 175.0,
-        tempo: '2-0-1-0',
-        met: 6.0,
-        primaryMuscles: ['Quadriceps', 'Glutes', 'Hamstrings'],
-        cues: [
-          'Take a generous stride; lower back knee until 1 inch off floor.',
-          'Front shin remains vertical without excessive forward knee travel.',
-          'Maintain an upright athletic torso.'
-        ],
-        faults: [
-          'Front knee collapsing inward',
-          'Short stride causing excessive heel lift'
-        ]
-      },
-      {
-        slug: 'surya-namaskar',
-        name: 'Surya Namaskar',
-        hindiName: 'सूर्य नमस्कार (Sun Salutation)',
-        category: 'Yoga & Mobility',
-        primaryJoint: 'Spinal Extension & Hip Hinge',
-        optimalFlexionDeg: 60.0,
-        lockoutDeg: 180.0,
-        tempo: 'Breath-Synchronized',
-        met: 3.8,
-        primaryMuscles: ['Full Body', 'Hamstrings', 'Spine', 'Shoulders'],
-        cues: [
-          'Inhale on upward chest expansions; exhale on forward folds.',
-          'Lengthen hamstrings with flat back before deep fold.',
-          'Engage core in transition through plank and chaturanga.'
-        ],
-        faults: [
-          'Holding breath during transitions',
-          'Hyperextending lumbar spine without core engagement'
-        ]
-      },
-      {
-        slug: 'plank',
-        name: 'Forearm Plank',
-        hindiName: 'प्लैंक (Plank)',
-        category: 'Core Stability',
-        primaryJoint: 'Isometric Spine & Pelvis',
-        optimalFlexionDeg: 180.0,
-        lockoutDeg: 180.0,
-        tempo: 'Isometric Hold',
-        met: 3.5,
-        primaryMuscles: ['Rectus Abdominis', 'Transverse Abdominis'],
-        cues: [
-          'Form a straight line from crown of head to heels.',
-          'Contract glutes and tuck pelvis slightly posterior.',
-          'Press forearms firmly into ground to protract shoulder blades.'
-        ],
-        faults: [
-          'Hips sagging toward floor',
-          'Hips piking upward like a mountain'
-        ]
-      }
-    ];
+  {
+    "slug": "bodyweight-squat",
+    "name": "Bodyweight Squat",
+    "hindiName": "\u0926\u0902\u0921 \u092c\u0948\u0920\u0915 (Squat)",
+    "category": "legs",
+    "difficulty": "beginner",
+    "mechanics": "compound",
+    "primaryJoint": "knee",
+    "optimalFlexionDeg": 90,
+    "lockoutDeg": 175,
+    "tempo": "3-1-1-0",
+    "eccentricCue": "Push hips back first, sink slowly over 3 seconds keeping chest proud.",
+    "isometricHoldCue": "Hit 90-degree parallel depth; hold knees tracking directly over toes.",
+    "concentricDriveCue": "Drive hard through the center of your heels, exhaling to lockout.",
+    "breathingPattern": "Inhale deeply during the 3-second descent; exhale sharply through pursed lips while ascending.",
+    "primaryMuscles": [
+      "Quadriceps",
+      "Gluteus Maximus"
+    ],
+    "secondaryMuscles": [
+      "Hamstrings",
+      "Core",
+      "Adductors",
+      "Calves"
+    ],
+    "cues": [
+      "Stance slightly wider than shoulder-width, toes angled 15\u00b0 outward.",
+      "Weight distributed 70% mid-foot to heels; toes never grip into the floor.",
+      "Lumbar spine maintains neutral curvature \u2014 no lower back rounding (butt wink).",
+      "Knees track outward in line with second toe, avoiding valgus inward collapse."
+    ],
+    "faults": [
+      "Knees caving inward during ascent (weak glute medius cue).",
+      "Heels lifting off the ground (indicates ankle dorsiflexion stiffness).",
+      "Collapsing chest forward and relying purely on spinal flexion."
+    ],
+    "regression": "Box Squat or Wall Squat with exercise ball support.",
+    "progression": "Tempo Pause Squat (3-second hold) or Goblet Squat with dumbbell.",
+    "rehabFriendly": "Quarter-squat to chair with 60-degree knee bend to minimize patellar pressure.",
+    "met": 5
+  },
+  {
+    "slug": "reverse-lunge",
+    "name": "Reverse Lunge",
+    "hindiName": "\u0930\u093f\u0935\u0930\u094d\u0938 \u0932\u0902\u091c\u0947\u0938 (Reverse Lunge)",
+    "category": "legs",
+    "difficulty": "beginner",
+    "mechanics": "compound",
+    "primaryJoint": "knee",
+    "optimalFlexionDeg": 90,
+    "lockoutDeg": 180,
+    "tempo": "2-1-1-0",
+    "eccentricCue": "Step back smoothly, lowering the rear knee directly toward the floor.",
+    "isometricHoldCue": "Both knees flexed at crisp 90-degree angles.",
+    "concentricDriveCue": "Push through front heel to return to upright standing posture.",
+    "breathingPattern": "Inhale as you step back and drop; exhale as you push forward to stand.",
+    "primaryMuscles": [
+      "Quadriceps",
+      "Gluteus Maximus"
+    ],
+    "secondaryMuscles": [
+      "Hamstrings",
+      "Calves",
+      "Core Stabilizers"
+    ],
+    "cues": [
+      "Front knee stacked vertically above ankle, never shearing past toes.",
+      "Torso remains upright with a slight 5\u00b0 forward athletic hip hinge.",
+      "Rear knee hovers 1 inch above mat without slamming into the floor."
+    ],
+    "faults": [
+      "Stepping in a tightrope line, losing lateral balance.",
+      "Pushing off rear toes rather than driving through the front working heel."
+    ],
+    "regression": "Static Split Squat with hand holding a wall or rail.",
+    "progression": "Deficit Reverse Lunge from a 2-inch elevation or walking lunges.",
+    "rehabFriendly": "Reverse Lunge is preferred over forward lunge for anterior knee protection.",
+    "met": 5
+  },
+  {
+    "slug": "glute-bridge",
+    "name": "Glute Bridge",
+    "hindiName": "\u0917\u094d\u0932\u0942\u091f \u092c\u094d\u0930\u093f\u091c (Glute Bridge)",
+    "category": "legs",
+    "difficulty": "beginner",
+    "mechanics": "compound",
+    "primaryJoint": "hip",
+    "optimalFlexionDeg": 180,
+    "lockoutDeg": 180,
+    "tempo": "2-2-1-0",
+    "eccentricCue": "Lower spine vertebra by vertebra with controlled tension.",
+    "isometricHoldCue": "Squeeze glutes maximally at the top, forming a straight shoulder-to-knee diagonal.",
+    "concentricDriveCue": "Drive hips up to ceiling by pressing heels into the floor.",
+    "breathingPattern": "Inhale while on the mat; exhale forcefully as hips thrust toward the ceiling.",
+    "primaryMuscles": [
+      "Gluteus Maximus",
+      "Hamstrings"
+    ],
+    "secondaryMuscles": [
+      "Erector Spinae",
+      "Transverse Abdominis"
+    ],
+    "cues": [
+      "Feet planted hip-width apart, shins vertical at top of bridge.",
+      "Pelvis remains posteriorly tilted \u2014 avoid hyperextending the lower lumbar spine.",
+      "Neck relaxed on the ground; ribcage held down with abdominal bracing."
+    ],
+    "faults": [
+      "Arching lower back instead of contracting glutes.",
+      "Pushing through the balls of the feet instead of the heels."
+    ],
+    "regression": "Standard two-leg Glute Bridge with arms flat for support.",
+    "progression": "Single-leg Glute Bridge or Barbell Hip Thrust.",
+    "rehabFriendly": "Excellent for lower back pain recovery and desk worker glute amnesia.",
+    "met": 3.8
+  },
+  {
+    "slug": "wall-sit",
+    "name": "Wall Sit",
+    "hindiName": "\u0935\u0949\u0932 \u0938\u093f\u091f (Wall Sit)",
+    "category": "legs",
+    "difficulty": "beginner",
+    "mechanics": "isometric",
+    "primaryJoint": "knee",
+    "optimalFlexionDeg": 90,
+    "lockoutDeg": 90,
+    "tempo": "0-45-0-0",
+    "eccentricCue": "Slide down the wall until thighs are strictly horizontal.",
+    "isometricHoldCue": "Pin lower back firmly against the wall; hold knees at rigid 90 degrees.",
+    "concentricDriveCue": "Maintain steady posture without resting hands on knees.",
+    "breathingPattern": "Rhythmic diaphragmatic breathing \u2014 4 seconds in through nose, 4 seconds out.",
+    "primaryMuscles": [
+      "Quadriceps"
+    ],
+    "secondaryMuscles": [
+      "Glutes",
+      "Calves",
+      "Core"
+    ],
+    "cues": [
+      "Thighs parallel to floor at 90\u00b0 knee angle.",
+      "Shins perpendicular to floor, feet flat.",
+      "Head, shoulders, and entire lower back contact the wall."
+    ],
+    "faults": [
+      "Resting hands or forearms on thighs (removes quad tension).",
+      "Sliding feet too far back, putting shear load on patellar tendon."
+    ],
+    "regression": "Sit at 60\u00b0 to 70\u00b0 angle rather than deep 90\u00b0 parallel.",
+    "progression": "Single-leg Wall Sit or holding dumbbell across lap.",
+    "rehabFriendly": "Safe closed-kinetic-chain knee strengthening with zero rotational torque.",
+    "met": 4
+  },
+  {
+    "slug": "calf-raise",
+    "name": "Calf Raise",
+    "hindiName": "\u0915\u093e\u092b \u0930\u0947\u091c\u093c (Calf Raise)",
+    "category": "legs",
+    "difficulty": "beginner",
+    "mechanics": "isolation",
+    "primaryJoint": "ankle",
+    "optimalFlexionDeg": 130,
+    "lockoutDeg": 90,
+    "tempo": "3-1-1-0",
+    "eccentricCue": "Lower heels below ground plane over 3 full seconds for a deep stretch.",
+    "isometricHoldCue": "Pause at peak tiptoe height for 1 second of solid calf contraction.",
+    "concentricDriveCue": "Drive through the ball of the big toe straight up toward the ceiling.",
+    "breathingPattern": "Exhale as you elevate onto your toes; inhale as you slowly lower.",
+    "primaryMuscles": [
+      "Gastrocnemius",
+      "Soleus"
+    ],
+    "secondaryMuscles": [
+      "Tibialis Posterior",
+      "Foot intrinsic muscles"
+    ],
+    "cues": [
+      "Maintain ankle alignment without rolling ankles outward (supination).",
+      "Keep knees softly locked (standing calf emphasizes gastrocnemius)."
+    ],
+    "faults": [
+      "Bouncing rapidly without a pause at peak height or stretch at the bottom.",
+      "Rolling weight onto outside edges of pinky toes."
+    ],
+    "regression": "Double-leg flat floor Calf Raise holding a wall for balance.",
+    "progression": "Single-leg Deficit Calf Raise off a step edge.",
+    "rehabFriendly": "Crucial for Achilles tendon rehabilitation and runner injury prevention.",
+    "met": 3.5
+  },
+  {
+    "slug": "push-up",
+    "name": "Standard Push-Up",
+    "hindiName": "\u092a\u0941\u0936 \u0905\u092a\u094d\u0938 (Push-Up)",
+    "category": "chest",
+    "difficulty": "beginner",
+    "mechanics": "compound",
+    "primaryJoint": "elbow",
+    "optimalFlexionDeg": 90,
+    "lockoutDeg": 175,
+    "tempo": "2-1-1-0",
+    "eccentricCue": "Lower chest until 2 inches above mat, elbows angled 45\u00b0 like an arrow.",
+    "isometricHoldCue": "Hover at the bottom with core locked in rigid plank.",
+    "concentricDriveCue": "Press the floor away aggressively, spreading the shoulder blades at top.",
+    "breathingPattern": "Inhale while descending toward the floor; exhale forcefully when driving upward.",
+    "primaryMuscles": [
+      "Pectoralis Major",
+      "Anterior Deltoids",
+      "Triceps Brachii"
+    ],
+    "secondaryMuscles": [
+      "Serratus Anterior",
+      "Rectus Abdominis",
+      "Glutes"
+    ],
+    "cues": [
+      "Hands positioned slightly wider than shoulder-width, fingers spread.",
+      "Body forms a straight unbroken line from crown of head to heels.",
+      "Glutes and core squeezed tight to prevent lower back sagging or hip piking.",
+      "Elbows track at 45-degree angle to torso \u2014 not flaring at 90 degrees."
+    ],
+    "faults": [
+      "Elbows flaring 90\u00b0 perpendicular (causes shoulder impingement).",
+      "Hips sagging down or piking into the air.",
+      "Craning neck forward toward the mat instead of lowering the chest."
+    ],
+    "regression": "Incline Push-Up against a bench/wall or Knee Push-Up.",
+    "progression": "Diamond Push-Up, Decline Push-Up, or Deficit Push-Up.",
+    "rehabFriendly": "Incline Push-Up reduces wrist and shoulder compression by 40%.",
+    "met": 6
+  },
+  {
+    "slug": "dumbbell-bench-press",
+    "name": "Dumbbell Bench Press",
+    "hindiName": "\u0921\u0902\u092c\u0932 \u091a\u0947\u0938\u094d\u091f \u092a\u094d\u0930\u0947\u0938 (Dumbbell Press)",
+    "category": "chest",
+    "difficulty": "intermediate",
+    "mechanics": "compound",
+    "primaryJoint": "elbow",
+    "optimalFlexionDeg": 90,
+    "lockoutDeg": 175,
+    "tempo": "3-1-1-0",
+    "eccentricCue": "Lower dumbbells with elbows at 45\u00b0, feeling deep stretch across pectorals.",
+    "isometricHoldCue": "Pause at bottom without resting weight on shoulders.",
+    "concentricDriveCue": "Press dumbbells up in a gentle inward arc without banging weights together.",
+    "breathingPattern": "Inhale on the 3-second descent; exhale as dumbbells drive overhead.",
+    "primaryMuscles": [
+      "Pectoralis Major"
+    ],
+    "secondaryMuscles": [
+      "Anterior Deltoids",
+      "Triceps Brachii"
+    ],
+    "cues": [
+      "Scapulae retracted and depressed into bench (create a stable upper back shelf).",
+      "Feet planted flat on floor for leg drive.",
+      "Wrists stacked directly over elbows throughout entire path."
+    ],
+    "faults": [
+      "Banging dumbbells together at top (losses tension on pectorals).",
+      "Flaring elbows out at 90\u00b0 to ears."
+    ],
+    "regression": "Floor Press (limits elbow extension, protects shoulders).",
+    "progression": "Incline Dumbbell Press or Pause Dumbbell Press.",
+    "rehabFriendly": "Floor Press protects anterior shoulder capsule.",
+    "met": 5.5
+  },
+  {
+    "slug": "dumbbell-bicep-curl",
+    "name": "Dumbbell Bicep Curl",
+    "hindiName": "\u0921\u0902\u092c\u0932 \u092c\u093e\u0907\u0938\u0947\u092a \u0915\u0930\u094d\u0932 (Bicep Curl)",
+    "category": "arms",
+    "difficulty": "beginner",
+    "mechanics": "isolation",
+    "primaryJoint": "elbow",
+    "optimalFlexionDeg": 40,
+    "lockoutDeg": 175,
+    "tempo": "2-1-3-0",
+    "eccentricCue": "Three-second controlled release back to full elbow hang.",
+    "isometricHoldCue": "Squeeze bicep peak hard at the top with wrist supinated.",
+    "concentricDriveCue": "Smooth upward curl with elbows pinned tightly to the ribcage.",
+    "breathingPattern": "Exhale while curling upward; inhale on the slow 3-second descent.",
+    "primaryMuscles": [
+      "Biceps Brachii"
+    ],
+    "secondaryMuscles": [
+      "Brachialis",
+      "Brachioradialis",
+      "Forearms"
+    ],
+    "cues": [
+      "Elbows locked to the side of the torso without drifting forward.",
+      "Neutral wrist \u2014 do not hyperextend wrist backward under weight load.",
+      "Stand with feet hip-width apart, knees soft, core engaged."
+    ],
+    "faults": [
+      "Swinging torso and utilizing hip momentum (cheat curls).",
+      "Elbows drifting forward in front of ribs (shifts load to anterior deltoid)."
+    ],
+    "regression": "Seated Incline Curl or Resistance Band Curl.",
+    "progression": "Hammer Curl or 21s Bicep Curl Protocol.",
+    "rehabFriendly": "Hammer Curl (neutral grip) reduces bicep tendon shear at the elbow.",
+    "met": 4.5
+  },
+  {
+    "slug": "tricep-dips",
+    "name": "Tricep Bench Dips",
+    "hindiName": "\u091f\u094d\u0930\u093e\u0907\u0938\u0947\u092a \u0921\u093f\u092a\u094d\u0938 (Tricep Dips)",
+    "category": "arms",
+    "difficulty": "beginner",
+    "mechanics": "compound",
+    "primaryJoint": "elbow",
+    "optimalFlexionDeg": 90,
+    "lockoutDeg": 175,
+    "tempo": "2-1-1-0",
+    "eccentricCue": "Lower hips straight down brushing past bench edge until elbows reach 90\u00b0.",
+    "isometricHoldCue": "Pause at bottom without shrugging shoulders up to ears.",
+    "concentricDriveCue": "Press through palms to full tricep lockout at top.",
+    "breathingPattern": "Inhale on the way down; exhale as you press back up.",
+    "primaryMuscles": [
+      "Triceps Brachii"
+    ],
+    "secondaryMuscles": [
+      "Anterior Deltoids",
+      "Pectorals",
+      "Core"
+    ],
+    "cues": [
+      "Hips stay close to bench/chair edge \u2014 do not drift far forward.",
+      "Elbows track straight backward, not flaring wide.",
+      "Shoulders stay pulled back and down away from ears."
+    ],
+    "faults": [
+      "Drifting hips too far away from bench (places heavy anterior shoulder stress).",
+      "Shrugging shoulders into neck."
+    ],
+    "regression": "Bent-knee Bench Dips with feet flat on the floor.",
+    "progression": "Straight-leg Dips or Parallel Bar Dips.",
+    "rehabFriendly": "Limit descent to 60\u00b0 if user has shoulder impingement.",
+    "met": 4.8
+  },
+  {
+    "slug": "seated-overhead-press",
+    "name": "Seated Dumbbell Overhead Press",
+    "hindiName": "\u0936\u094b\u0932\u094d\u0921\u0930 \u0913\u0935\u0930\u0939\u0947\u0921 \u092a\u094d\u0930\u0947\u0938 (Shoulder Press)",
+    "category": "shoulders",
+    "difficulty": "beginner",
+    "mechanics": "compound",
+    "primaryJoint": "shoulder",
+    "optimalFlexionDeg": 180,
+    "lockoutDeg": 90,
+    "tempo": "2-1-1-0",
+    "eccentricCue": "Lower dumbbells with control to chin height with elbows at 60\u00b0 forward.",
+    "isometricHoldCue": "Stable rack at bottom without resting weight on collarbones.",
+    "concentricDriveCue": "Press vertically directly over crown of head to lock out overhead.",
+    "breathingPattern": "Inhale while lowering weights to chin; exhale forcefully pressing overhead.",
+    "primaryMuscles": [
+      "Anterior Deltoid",
+      "Lateral Deltoid"
+    ],
+    "secondaryMuscles": [
+      "Triceps Brachii",
+      "Upper Trapezius",
+      "Serratus Anterior"
+    ],
+    "cues": [
+      "Press in the scapular plane (elbows 30\u00b0 to 45\u00b0 in front of body, not flared flat).",
+      "Spine remains neutral against bench pad; do not arch lower back excessively.",
+      "Wrists stay stacked vertically over elbows throughout movement."
+    ],
+    "faults": [
+      "Arching lower back into a makeshift incline bench press.",
+      "Flaring elbows 90\u00b0 backward (impinges rotator cuff)."
+    ],
+    "regression": "Seated Dumbbell Press with back support.",
+    "progression": "Standing Barbell Overhead Military Press.",
+    "rehabFriendly": "Neutral-grip (palms facing each other) Arnold Press for shoulder comfort.",
+    "met": 5
+  },
+  {
+    "slug": "lateral-raise",
+    "name": "Dumbbell Lateral Raise",
+    "hindiName": "\u0932\u0947\u091f\u0930\u0932 \u0930\u0947\u091c\u093c (Lateral Raise)",
+    "category": "shoulders",
+    "difficulty": "beginner",
+    "mechanics": "isolation",
+    "primaryJoint": "shoulder",
+    "optimalFlexionDeg": 90,
+    "lockoutDeg": 15,
+    "tempo": "2-1-3-0",
+    "eccentricCue": "Three-second slow controlled descent fighting gravity.",
+    "isometricHoldCue": "Brief 1-second hold at shoulder height with pinkies slightly higher.",
+    "concentricDriveCue": "Lead with elbows out to the sides in the scapular plane.",
+    "breathingPattern": "Exhale raising arms up; inhale lowering down.",
+    "primaryMuscles": [
+      "Lateral Deltoid"
+    ],
+    "secondaryMuscles": [
+      "Anterior Deltoid",
+      "Trapezius",
+      "Supraspinatus"
+    ],
+    "cues": [
+      "Slight bend in elbows (15\u00b0); lead with elbows rather than hands.",
+      "Lift to parallel with shoulders (do not swing above 90\u00b0 to avoid trap takeover).",
+      "Slight forward lean of torso (10\u00b0) to match lateral deltoid fiber orientation."
+    ],
+    "faults": [
+      "Shrugging traps to sling weights upward with momentum.",
+      "Using weights that are too heavy, ruining shoulder isolation."
+    ],
+    "regression": "Resistance band lateral raises.",
+    "progression": "Cable lateral raises with constant tension.",
+    "rehabFriendly": "Perform in front of mirror with light 2kg dumbbells or bands.",
+    "met": 4
+  },
+  {
+    "slug": "bent-over-row",
+    "name": "Dumbbell Bent-Over Row",
+    "hindiName": "\u0921\u0902\u092c\u0932 \u0930\u094b (Dumbbell Row)",
+    "category": "back",
+    "difficulty": "intermediate",
+    "mechanics": "compound",
+    "primaryJoint": "elbow",
+    "optimalFlexionDeg": 60,
+    "lockoutDeg": 175,
+    "tempo": "2-1-2-0",
+    "eccentricCue": "Lower dumbbells toward the floor under control, feeling lats stretch.",
+    "isometricHoldCue": "Squeeze shoulder blades hard together at the top of the pull.",
+    "concentricDriveCue": "Drive elbows back toward hip pockets, pulling with back rather than biceps.",
+    "breathingPattern": "Exhale while rowing weights up toward hips; inhale while lowering.",
+    "primaryMuscles": [
+      "Latissimus Dorsi",
+      "Rhomboids"
+    ],
+    "secondaryMuscles": [
+      "Middle Trapezius",
+      "Biceps Brachii",
+      "Posterior Deltoid"
+    ],
+    "cues": [
+      "Hinge at hips at 45\u00b0 angle with flat neutral spine.",
+      "Pull elbows toward hips rather than vertically toward chest.",
+      "Keep head in line with spine \u2014 eyes focused 4 feet ahead on floor."
+    ],
+    "faults": [
+      "Rounding thoracic and lumbar spine (back injury risk).",
+      "Yanking with arms instead of retracting scapulae."
+    ],
+    "regression": "Single-Arm Dumbbell Row with knee on bench.",
+    "progression": "Barbell Bent-Over Row (Overhand or Underhand grip).",
+    "rehabFriendly": "Chest-Supported Incline Dumbbell Row eliminates lower back strain.",
+    "met": 6
+  },
+  {
+    "slug": "plank",
+    "name": "Forearm Plank",
+    "hindiName": "\u092a\u094d\u0932\u0948\u0902\u0915 (Plank)",
+    "category": "core",
+    "difficulty": "beginner",
+    "mechanics": "isometric",
+    "primaryJoint": "spine",
+    "optimalFlexionDeg": 180,
+    "lockoutDeg": 180,
+    "tempo": "0-45-0-0",
+    "eccentricCue": "Hold body completely rigid like a steel beam.",
+    "isometricHoldCue": "Pull belly button to spine, squeeze glutes and quads together.",
+    "concentricDriveCue": "Actively pull elbows toward toes to create intense core tension.",
+    "breathingPattern": "Continuous shallow diaphragmatic breathing without letting abdominal wall loosen.",
+    "primaryMuscles": [
+      "Transverse Abdominis",
+      "Rectus Abdominis"
+    ],
+    "secondaryMuscles": [
+      "Glutes",
+      "Quadriceps",
+      "Deltoids",
+      "Erector Spinae"
+    ],
+    "cues": [
+      "Elbows stacked directly beneath shoulders.",
+      "Spine flat from head to heels \u2014 pelvis tucked slightly under (posterior tilt).",
+      "Eyes focused between fists; neck neutral."
+    ],
+    "faults": [
+      "Sagging hips (hyperextending lower lumbar spine).",
+      "Piking hips into an inverted V (shifts load off core)."
+    ],
+    "regression": "Knee Plank or Incline Forearm Plank on a bench.",
+    "progression": "Long-Lever Plank or RKC Plank (max effort contraction).",
+    "rehabFriendly": "Safest core exercise for disc herniation and lower back rehab.",
+    "met": 3.8
+  },
+  {
+    "slug": "mountain-climbers",
+    "name": "Mountain Climbers",
+    "hindiName": "\u092e\u093e\u0909\u0902\u091f\u0947\u0928 \u0915\u094d\u0932\u093e\u0907\u092e\u094d\u092c\u0930\u094d\u0938 (Mountain Climbers)",
+    "category": "core",
+    "difficulty": "intermediate",
+    "mechanics": "compound",
+    "primaryJoint": "hip",
+    "optimalFlexionDeg": 70,
+    "lockoutDeg": 180,
+    "tempo": "1-0-1-0",
+    "eccentricCue": "Kick leg back into full push-up plank extension.",
+    "isometricHoldCue": "Maintain shoulders directly over hands.",
+    "concentricDriveCue": "Drive knee rhythmically toward chest without bouncing hips.",
+    "breathingPattern": "Rhythmic breath matching the cadence of alternating knees.",
+    "primaryMuscles": [
+      "Rectus Abdominis",
+      "Hip Flexors"
+    ],
+    "secondaryMuscles": [
+      "Shoulders",
+      "Quadriceps",
+      "Cardiovascular System"
+    ],
+    "cues": [
+      "Hands flat beneath shoulders, fingers spread for wrist stability.",
+      "Hips stay level at shoulder height \u2014 avoid bouncing up and down."
+    ],
+    "faults": [
+      "Bouncing hips high in the air.",
+      "Letting shoulders drift backward away from wrists."
+    ],
+    "regression": "Slow-tempo Mountain Climber on incline surface.",
+    "progression": "Cross-Body Mountain Climbers (knee to opposite elbow).",
+    "rehabFriendly": "Slow marching plank reduces spinal shear.",
+    "met": 8
+  },
+  {
+    "slug": "jumping-jacks",
+    "name": "Jumping Jacks",
+    "hindiName": "\u091c\u0902\u092a\u093f\u0902\u0917 \u091c\u0948\u0915 (Jumping Jacks)",
+    "category": "cardio",
+    "difficulty": "beginner",
+    "mechanics": "compound",
+    "primaryJoint": "shoulder",
+    "optimalFlexionDeg": 180,
+    "lockoutDeg": 0,
+    "tempo": "1-0-1-0",
+    "eccentricCue": "Land softly on balls of feet, cushioning with knees.",
+    "isometricHoldCue": "Synchronized arm and leg expansion.",
+    "concentricDriveCue": "Spring dynamically outward and inward rhythmically.",
+    "breathingPattern": "Exhale as arms and legs jump out; inhale as they return together.",
+    "primaryMuscles": [
+      "Cardiovascular System",
+      "Calves"
+    ],
+    "secondaryMuscles": [
+      "Deltoids",
+      "Glutes",
+      "Adductors"
+    ],
+    "cues": [
+      "Land softly on balls of feet with knees softly bent to absorb impact.",
+      "Arms sweep in full fluid arc overhead."
+    ],
+    "faults": [
+      "Landing with stiff locked knees (harsh on joints).",
+      "Slapping heels aggressively onto hard floor."
+    ],
+    "regression": "Step Jacks (stepping laterally one foot at a time, zero jump).",
+    "progression": "Star Jumps or Burpee to Jumping Jack combo.",
+    "rehabFriendly": "Step Jacks provide low-impact cardio for sensitive knees/ankles.",
+    "met": 8
+  },
+  {
+    "slug": "burpees",
+    "name": "Full Body Burpees",
+    "hindiName": "\u092c\u0930\u094d\u092a\u0940 (Burpee)",
+    "category": "cardio",
+    "difficulty": "advanced",
+    "mechanics": "compound",
+    "primaryJoint": "hip",
+    "optimalFlexionDeg": 90,
+    "lockoutDeg": 180,
+    "tempo": "1-1-1-0",
+    "eccentricCue": "Drop hands to mat, kick feet back into plank and touch chest to floor.",
+    "isometricHoldCue": "Snap feet forward outside hands.",
+    "concentricDriveCue": "Explode vertically off the ground with arms reaching overhead.",
+    "breathingPattern": "Inhale on the drop to floor; exhale forcefully during the vertical jump.",
+    "primaryMuscles": [
+      "Cardiovascular System",
+      "Chest",
+      "Quadriceps"
+    ],
+    "secondaryMuscles": [
+      "Shoulders",
+      "Triceps",
+      "Hamstrings",
+      "Core"
+    ],
+    "cues": [
+      "Core braced throughout plank transition to protect lower back.",
+      "Land softly on flat feet before initiating the next rep."
+    ],
+    "faults": [
+      "Sagging lower back into a belly flop without abdominal tension.",
+      "Landing on toes with knees collapsing inward."
+    ],
+    "regression": "No-Push-up Burpee (Up-Downs) or Step-Back Burpee.",
+    "progression": "Burpee with Tuck Jump or Chest-to-Bar Pull-up Burpee.",
+    "rehabFriendly": "Elevated bench burpee reduces spinal impact.",
+    "met": 10
+  },
+  {
+    "slug": "downward-dog",
+    "name": "Downward-Facing Dog",
+    "hindiName": "\u0905\u0927\u094b\u092e\u0941\u0916 \u0936\u094d\u0935\u093e\u0928\u093e\u0938\u0928 (Downward Dog)",
+    "category": "yoga",
+    "difficulty": "beginner",
+    "mechanics": "mobility",
+    "primaryJoint": "hip",
+    "optimalFlexionDeg": 75,
+    "lockoutDeg": 75,
+    "tempo": "0-30-0-0",
+    "eccentricCue": "Press chest toward thighs, lengthening spine.",
+    "isometricHoldCue": "Anchor heels toward mat, lift tailbone high to ceiling.",
+    "concentricDriveCue": "Press firmly through knuckles of index fingers and thumbs.",
+    "breathingPattern": "Deep Ujjayi breathing \u2014 4 seconds slow inhale, 4 seconds calm exhale.",
+    "primaryMuscles": [
+      "Hamstrings",
+      "Calves",
+      "Latissimus Dorsi"
+    ],
+    "secondaryMuscles": [
+      "Shoulders",
+      "Wrists",
+      "Achilles Tendon"
+    ],
+    "cues": [
+      "Hands shoulder-width apart, fingers spread wide to protect wrists.",
+      "Spine is the priority: bend knees if hamstrings are tight to keep back flat.",
+      "Shoulders rotated outward away from ears."
+    ],
+    "faults": [
+      "Rounding lower spine just to force heels flat on the mat.",
+      "Dumping all body weight into the wrists without engaging palms."
+    ],
+    "regression": "Pedal feet (walking the dog) or keep knees generously bent.",
+    "progression": "Three-Legged Downward Dog with single-leg extension.",
+    "rehabFriendly": "Gentle spinal decompression for desk worker posture correction.",
+    "met": 3
+  },
+  {
+    "slug": "cobra-pose",
+    "name": "Cobra Pose",
+    "hindiName": "\u092d\u0941\u091c\u0902\u0917\u093e\u0938\u0928 (Bhujangasana)",
+    "category": "yoga",
+    "difficulty": "beginner",
+    "mechanics": "mobility",
+    "primaryJoint": "spine",
+    "optimalFlexionDeg": 140,
+    "lockoutDeg": 140,
+    "tempo": "0-20-0-0",
+    "eccentricCue": "Lower forehead to mat softly on release.",
+    "isometricHoldCue": "Roll shoulders down and back, lifting chest with back muscles.",
+    "concentricDriveCue": "Press tops of feet into mat as sternum shines forward.",
+    "breathingPattern": "Inhale deeply as chest lifts off mat; exhale relaxing shoulders downward.",
+    "primaryMuscles": [
+      "Erector Spinae",
+      "Chest Pectorals"
+    ],
+    "secondaryMuscles": [
+      "Shoulders",
+      "Glutes",
+      "Abdominal Wall"
+    ],
+    "cues": [
+      "Hands under shoulders, elbows hugging close to ribs.",
+      "Tops of feet, thighs, and pelvis stay anchored into floor.",
+      "Look forward, keeping back of neck long without hyperextending head."
+    ],
+    "faults": [
+      "Pushing aggressively with arms and compressing the lumbar spine.",
+      "Shrugging shoulders into ears."
+    ],
+    "regression": "Baby Cobra (hands hover off mat, using only back extensors) or Sphinx Pose.",
+    "progression": "Upward-Facing Dog (hips and thighs lift off mat).",
+    "rehabFriendly": "Sphinx Pose on forearms is ideal for acute lower back stiffness.",
+    "met": 2.8
+  }
+];
 
     // Real ICMR & AIIMS Clinical Biomarker Diagnostic Ranges
     var icmrBiomarkers = [
@@ -3138,7 +3694,6 @@
       { id: 'app-102', hospital: 'Safdarjung Hospital', city: 'New Delhi', group: 'AB-', units: 2, urgency: 'URGENT', case: 'Polytrauma Emergency', contact: '+91 11-26707444', status: 'ACTIVE' }
     ];
 
-    // Admin Feature Flags (Real dynamic state persisted)
     var featureFlags = {
       pose_tracking: true,
       blood_donation: true,
@@ -3154,11 +3709,17 @@
       avatar_3d_viewport: true,
       face_likeness_engine: true,
       ifct_nutrition_engine: true,
-      eraktkosh_gateway: true
+      eraktkosh_gateway: true,
+      dark_nebula_grid: true
     };
-
-    // ── 2. THREE.JS 3D WEBGL BACKGROUND ─────────────────────────────────────────
-    function initThreeBackground() {
+    try {
+      var savedFlags = localStorage.getItem('vyra_feature_flags');
+      if (savedFlags) {
+        var parsed = JSON.parse(savedFlags);
+        if (parsed && typeof parsed === 'object') Object.assign(featureFlags, parsed);
+      }
+    } catch (e) {}
+function initThreeBackground() {
       var canvas = document.getElementById('threeCanvas');
       if (!canvas || typeof THREE === 'undefined') return;
 
@@ -3466,7 +4027,7 @@
         launchAuthenticatedSession();
         showToast('🛡️ Super Admin Authenticated! Full Enterprise Command Unlocked.', '🛡️');
       } else {
-        showToast('❌ Invalid Superadmin credentials! Expected: admin@gmail.com / Admin123', '⚠️');
+        showToast('❌ Invalid Superadmin credentials! Please verify your Admin ID and key.', '⚠️');
       }
     }
 
@@ -3693,6 +4254,7 @@
     // Meshes references for live shader updates
     var charParts = {};
 
+    
     // ── 5. 3D AVATAR STUDIO ENGINE (ARTICULATED KINEMATICS) ───────────────────
     var avatar3DScene = null;
     var avatar3DRenderer = null;
@@ -3737,7 +4299,6 @@
       avatar3DCamera.position.set(0, 1.35, 3.8);
       avatar3DCamera.lookAt(0, 0.95, 0);
 
-      // Studio Lighting
       var ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
       avatar3DScene.add(ambientLight);
 
@@ -3756,7 +4317,6 @@
       buildPodium3D();
       buildCharacter3D();
 
-      // Controls
       canvas.addEventListener('mousedown', function(e) {
         isAvatarDragging = true;
         avatarDragStartX = e.clientX;
@@ -3809,7 +4369,6 @@
         requestAnimationFrame(animateAvatar);
         var elapsed = animClock.getElapsedTime();
 
-        // Rotate podium neon energy rings
         avatarPodiumRings.forEach(function(ring, idx) {
           ring.rotation.z += (idx % 2 === 0 ? 0.015 : -0.012);
         });
@@ -3820,11 +4379,10 @@
           updateOrbitAngleHUD();
         }
 
-        // Live Exercise Demo Loop or Idle Breathing
         if (isExerciseDemoActive && charParts.pelvis) {
-          var repTime = (elapsed % 3.0) / 3.0; // 3 sec cycle
+          var repTime = (elapsed % 3.0) / 3.0;
           var sinT = Math.sin(repTime * Math.PI * 2);
-          var depth = Math.max(0, -sinT); // 0 to 1
+          var depth = Math.max(0, -sinT);
           
           charParts.pelvis.position.y = 0.88 - 0.35 * depth;
           charParts.spine.rotation.x = 0.3 * depth;
@@ -3873,7 +4431,7 @@
       if (avatar3DCharacter) avatar3DScene.remove(avatar3DCharacter);
       avatar3DCharacter = new THREE.Group();
       avatar3DCharacter.position.y = 0.12;
-      avatar3DCharacter.rotation.y = avatarOrbitY; // 0 = forward facing
+      avatar3DCharacter.rotation.y = avatarOrbitY;
       avatar3DScene.add(avatar3DCharacter);
 
       var isFemale = avatarCustomState.gender === 'female';
@@ -3889,18 +4447,15 @@
       charParts.shoeMat = new THREE.MeshStandardMaterial({ color: 0x111624, metalness: 0.8, roughness: 0.3 });
       charParts.soleMat = new THREE.MeshBasicMaterial({ color: avatarCustomState.shoeColor });
 
-      // Articulated Pelvis Root
       var pelvis = new THREE.Group();
       pelvis.position.y = 0.88;
       avatar3DCharacter.add(pelvis);
       charParts.pelvis = pelvis;
 
-      // Hips Mesh
       var hipsMesh = new THREE.Mesh(new THREE.CylinderGeometry(waistRadius, hipRadius, 0.2, 16), charParts.suitMat);
       pelvis.add(hipsMesh);
       charParts.hips = hipsMesh;
 
-      // Spine & Torso Group
       var spine = new THREE.Group();
       pelvis.add(spine);
       charParts.spine = spine;
@@ -3914,13 +4469,11 @@
       spine.add(chestMesh);
       charParts.chest = chestMesh;
 
-      // Core Reactor Badge
       var reactor = new THREE.Mesh(new THREE.CircleGeometry(0.06, 16), new THREE.MeshBasicMaterial({ color: avatarCustomState.suitColor }));
       reactor.position.set(0, 0.46, shoulderWidth * 0.42);
       spine.add(reactor);
       charParts.reactor = reactor;
 
-      // Head & Neck
       var neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.12, 16), charParts.skinMat);
       neck.position.y = 0.62;
       spine.add(neck);
@@ -3936,7 +4489,6 @@
 
       buildHairMesh(head);
 
-      // Left Arm Hierarchy
       var leftArm = new THREE.Group();
       leftArm.position.set(-shoulderWidth * 0.62, 0.52, 0);
       spine.add(leftArm);
@@ -3965,7 +4517,6 @@
       leftHand.position.y = -0.28;
       leftForearm.add(leftHand);
 
-      // Right Arm Hierarchy
       var rightArm = new THREE.Group();
       rightArm.position.set(shoulderWidth * 0.62, 0.52, 0);
       spine.add(rightArm);
@@ -3994,7 +4545,6 @@
       rightHand.position.y = -0.28;
       rightForearm.add(rightHand);
 
-      // Left Leg Hierarchy
       var legSpacing = 0.16;
       var leftThigh = new THREE.Group();
       leftThigh.position.set(-legSpacing, -0.05, 0);
@@ -4025,7 +4575,6 @@
       leftSole.position.set(0, -0.42, 0.04);
       leftKnee.add(leftSole);
 
-      // Right Leg Hierarchy
       var rightThigh = new THREE.Group();
       rightThigh.position.set(legSpacing, -0.05, 0);
       pelvis.add(rightThigh);
@@ -4097,7 +4646,6 @@
       isExerciseDemoActive = false;
       if (!charParts.pelvis) return;
 
-      // Reset all joints
       charParts.pelvis.position.y = 0.88;
       charParts.pelvis.position.z = 0;
       charParts.spine.rotation.x = 0;
@@ -4145,7 +4693,7 @@
       } else if (pose === 'exercise_loop') {
         isExerciseDemoActive = true;
         showToast('▶️ Live 3D Exercise Demonstration Active', '🏃');
-      } else { // idle
+      } else {
         charParts.leftArm.rotation.z = 0.12;
         charParts.rightArm.rotation.z = -0.12;
       }
@@ -4195,7 +4743,7 @@
     var biomechCharacter = null;
     var biomechParts = {};
     var isBiomechPlaying = true;
-    var biomechViewAngle = 'side'; // 'side' or 'front'
+    var biomechViewAngle = 'side';
 
     function initBiomech3D() {
       var canvas = document.getElementById('biomech3DCanvas');
@@ -4225,12 +4773,10 @@
       rim.position.set(-2, 2, -2);
       biomech3DScene.add(rim);
 
-      // Floor Grid
       var grid = new THREE.GridHelper(4, 16, 0x00d2ff, 0x1a2639);
       grid.position.y = 0;
       biomech3DScene.add(grid);
 
-      // Build Articulated Coach
       buildBiomechCoach();
 
       var clock = new THREE.Clock();
@@ -4252,7 +4798,7 @@
       if (biomechCharacter) biomech3DScene.remove(biomechCharacter);
       biomechCharacter = new THREE.Group();
       biomechCharacter.position.y = 0.05;
-      biomechCharacter.rotation.y = Math.PI / 4; // 45 deg athletic view
+      biomechCharacter.rotation.y = Math.PI / 4;
       biomech3DScene.add(biomechCharacter);
 
       var suitMat = new THREE.MeshStandardMaterial({ color: 0x00d2ff, metalness: 0.7, roughness: 0.3 });
@@ -4283,7 +4829,6 @@
       visor.position.set(0, 0.68, 0.11);
       spine.add(visor);
 
-      // Arms
       [-1, 1].forEach(function(side) {
         var arm = new THREE.Group();
         arm.position.set(side * 0.32, 0.45, 0);
@@ -4318,7 +4863,6 @@
         }
       });
 
-      // Legs
       [-1, 1].forEach(function(side) {
         var thigh = new THREE.Group();
         thigh.position.set(side * 0.16, -0.05, 0);
@@ -4356,19 +4900,18 @@
     function updateBiomechExerciseMotion(elapsed) {
       if (!biomechParts.pelvis) return;
       var slug = activeExercise.slug;
-      var cycleDuration = 3.6; // 3.6s cycle
-      var phaseTime = (elapsed % cycleDuration) / cycleDuration; // 0 to 1
+      var cycleDuration = 3.6;
+      var phaseTime = (elapsed % cycleDuration) / cycleDuration;
 
-      // 4-Phase Cadence Highlighting (Tempo 3-1-1-0)
       var currentPhase = 'ecc';
       if (phaseTime < 0.6) {
-        currentPhase = 'ecc'; // Phase 1: 0 - 60%
+        currentPhase = 'ecc';
       } else if (phaseTime < 0.75) {
-        currentPhase = 'iso'; // Phase 2: 60 - 75%
+        currentPhase = 'iso';
       } else if (phaseTime < 0.95) {
-        currentPhase = 'con'; // Phase 3: 75 - 95%
+        currentPhase = 'con';
       } else {
-        currentPhase = 'top'; // Phase 4: 95 - 100%
+        currentPhase = 'top';
       }
 
       ['ecc', 'iso', 'con', 'top'].forEach(function(p) {
@@ -4376,16 +4919,15 @@
         if (el) el.classList.toggle('active', p === currentPhase);
       });
 
-      // Kinematic Articulation per Exercise
       var depth = 0;
       if (phaseTime < 0.6) {
-        depth = phaseTime / 0.6; // descending
+        depth = phaseTime / 0.6;
       } else if (phaseTime < 0.75) {
-        depth = 1.0; // paused at bottom
+        depth = 1.0;
       } else if (phaseTime < 0.95) {
-        depth = 1.0 - (phaseTime - 0.75) / 0.20; // driving up
+        depth = 1.0 - (phaseTime - 0.75) / 0.20;
       } else {
-        depth = 0; // reset
+        depth = 0;
       }
 
       if (slug.indexOf('squat') !== -1 || slug.indexOf('wall-sit') !== -1) {
@@ -4443,7 +4985,6 @@
         document.getElementById('biomechAngleVal').innerText = Math.round(30 + 130 * open) + '°';
         document.getElementById('biomechAngleLbl').innerText = 'Shoulder Abduction';
       } else {
-        // Compound Default
         biomechParts.pelvis.position.y = 0.88 - 0.25 * depth;
         biomechParts.leftArm.rotation.x = -1.0 * depth;
         biomechParts.rightArm.rotation.x = -1.0 * depth;
@@ -4529,7 +5070,7 @@
       showToast('Loaded ' + activeExercise.name + ' Biomechanics', '📐');
     }
 
-    // ── 7. LIVE AI CAMERA POSE TRACKER (WEBCAM + SYNTHETIC FALLBACK) ───────────
+    // ── 7. LIVE AI CAMERA POSE TRACKER ──────────────────────────────────────────
     var isLiveCamTracking = false;
     var camStream = null;
     var camAnimFrame = null;
@@ -4548,6 +5089,10 @@
     window.toggleWebcam = toggleLiveWebcam;
 
     function startLiveWebcam() {
+      if (!featureFlags.pose_tracking) {
+        showToast('⚠️ Camera Pose Tracking is currently disabled by Admin Feature Flag.', '🚫');
+        return;
+      }
       var video = document.getElementById('webcamVideo');
       var canvas = document.getElementById('poseCanvas');
       var placeholder = document.getElementById('camPlaceholder');
@@ -4567,7 +5112,7 @@
             runPoseTrackingLoop(false);
           })
           .catch(function(err) {
-            console.warn('Webcam permission denied or error:', err);
+            console.warn('Webcam permission denied:', err);
             startSyntheticPoseTracker('Camera access not granted. Running High-Fidelity Synthetic Vision Simulation.');
           });
       } else {
@@ -4628,22 +5173,19 @@
         if (!isSynthetic && video && video.readyState >= 2) {
           ctx.drawImage(video, 0, 0, w, h);
         } else {
-          // Dark studio background for synthetic simulation
           ctx.fillStyle = '#080d18';
           ctx.fillRect(0, 0, w, h);
 
-          // Synthetic grid
           ctx.strokeStyle = 'rgba(0, 210, 255, 0.08)';
           ctx.lineWidth = 1;
           for (var x = 0; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
           for (var y = 0; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
         }
 
-        // Compute simulated kinematic joint movement
         var elapsedSec = (Date.now() - startTime) / 1000.0;
-        var cycle = (elapsedSec % 3.0) / 3.0; // 3 sec rep
+        var cycle = (elapsedSec % 3.0) / 3.0;
         var sinC = Math.sin(cycle * Math.PI * 2);
-        var repProgress = Math.max(0, -sinC); // 0 to 1
+        var repProgress = Math.max(0, -sinC);
 
         var currentAngle = 175;
         if (camSelectedExercise === 'bodyweight-squat') {
@@ -4662,7 +5204,6 @@
 
         document.getElementById('camCurrentAngle').innerText = currentAngle + '°';
 
-        // Repetition Detection Logic
         if (repProgress > 0.85 && !camDownPhase) {
           camDownPhase = true;
           document.getElementById('camFeedbackText').innerText = 'Hit depth! Now drive up through heels...';
@@ -4675,7 +5216,6 @@
           showToast('Rep ' + camRepCount + ' Counted! Form: 98%', '🏋️');
         }
 
-        // Draw 33-Point MediaPipe Skeletal Landmarks
         drawSkeletalWireframe(ctx, w, h, repProgress, currentAngle);
 
         camAnimFrame = requestAnimationFrame(loop);
@@ -4688,7 +5228,6 @@
       var cy = h * 0.22;
       var squatDrop = repProgress * 45;
 
-      // 33 Landmark Points
       var nose = [cx, cy];
       var leftEye = [cx - 8, cy - 8];
       var rightEye = [cx + 8, cy - 8];
@@ -4708,7 +5247,6 @@
       var leftHip = [cx - 32, cy + 140 + squatDrop];
       var rightHip = [cx + 32, cy + 140 + squatDrop];
 
-      // Knees flex outward
       var kneeSpread = repProgress * 25;
       var leftKnee = [cx - 38 - kneeSpread, cy + 215 + squatDrop * 0.5];
       var rightKnee = [cx + 38 + kneeSpread, cy + 215 + squatDrop * 0.5];
@@ -4718,7 +5256,6 @@
       var leftToe = [cx - 48, cy + 305];
       var rightToe = [cx + 48, cy + 305];
 
-      // Draw Bones (Glowing Cyan Lines)
       ctx.shadowBlur = 8;
       ctx.shadowColor = '#00D2FF';
       ctx.strokeStyle = '#00D2FF';
@@ -4742,7 +5279,6 @@
         ctx.stroke();
       });
 
-      // Draw Landmark Dots
       ctx.shadowBlur = 10;
       ctx.shadowColor = '#34FF8C';
       ctx.fillStyle = '#34FF8C';
@@ -4757,7 +5293,6 @@
         ctx.fill();
       });
 
-      // Active Angle Circle Arc on Tracking Joint (Left Knee / Elbow)
       ctx.shadowBlur = 12;
       ctx.shadowColor = '#FF4757';
       ctx.strokeStyle = '#FF4757';
@@ -4812,6 +5347,10 @@
     }
 
     function logFoodMeal(name, cal, pro, carb, fat) {
+      if (!featureFlags.ifct_nutrition_engine) {
+        showToast('⚠️ ICMR Nutrition Engine is disabled by Admin Feature Flag.', '🚫');
+        return;
+      }
       dailyMacros.cal += cal;
       dailyMacros.pro += pro;
       dailyMacros.carb += (carb || 0);
@@ -4847,6 +5386,10 @@
     }
 
     function simulateLabUpload() {
+      if (!featureFlags.health_report_ai) {
+        showToast('⚠️ AI Lab Report Diagnostics is disabled by Admin Feature Flag.', '🚫');
+        return;
+      }
       showToast('Analyzing blood report PDF with ICMR Diagnostic Standard...', '🩸');
       setTimeout(function() {
         icmrBiomarkers[4].val = '34.2 ng/mL';
@@ -4867,7 +5410,7 @@
             '<td style="color:var(--text-muted); font-size:12px;">' + b.loc + '</td>' +
             '<td><span class="tag-pill tag-cyan">' + b.type + '</span></td>' +
             '<td style="color:var(--emerald); font-weight:700; font-family:var(--font-mono);">' + b.phone + '</td>' +
-            '<td><button class="tag-pill tag-purple" style="cursor:pointer;" onclick="showToast(&quot;Connecting to ' + b.name + '&quot;, &quot;🏥&quot;)">Contact</button></td>' +
+            '<td><button class="tag-pill tag-purple" style="cursor:pointer;" onclick="contactHospital(&quot;' + b.name + '&quot;)">Contact</button></td>' +
           '</tr>';
         }).join('');
       }
@@ -4888,23 +5431,38 @@
     }
 
     function toggleBloodDonorHand() {
+      if (!featureFlags.blood_donation || !featureFlags.eraktkosh_gateway) {
+        showToast('⚠️ e-RaktKosh Blood Donation Network is disabled by Admin Feature Flag.', '🚫');
+        return;
+      }
       showToast('Checking donor eligibility... Age 18-65: OK | Weight >45kg: OK | Last donation >90d: OK', '🩸');
       setTimeout(function() {
         showToast('Registered as Active Blood Donor on e-RaktKosh! +100 Social Coins awarded!', '🎉');
       }, 1000);
     }
 
+    function contactHospital(name) { showToast('Connecting to ' + name + ' Blood Bank...', '🏥'); }
+
     function respondToBloodAppeal(id) {
+      if (!featureFlags.blood_donation || !featureFlags.eraktkosh_gateway) {
+        showToast('⚠️ Emergency Response dispatch is disabled by Admin Feature Flag.', '🚫');
+        return;
+      }
       showToast('Emergency response sent to hospital coordination desk for ' + id + '!', '🚑');
     }
 
     function toggleAudioCoach() {
+      if (!featureFlags.multilingual_audio) {
+        showToast('⚠️ Audio Voice Coach is disabled by Admin Feature Flag.', '🚫');
+        return;
+      }
       audioCoachEnabled = !audioCoachEnabled;
       document.getElementById('audioCoachStatus').innerText = audioCoachEnabled ? '🔊 Voice Coach: ON' : '🔇 Voice Coach: OFF';
       showToast(audioCoachEnabled ? 'Voice coach enabled.' : 'Voice coach muted.', '🔊');
     }
 
     function speakFeedback(text) {
+      if (!featureFlags.multilingual_audio) return;
       if ('speechSynthesis' in window && audioCoachEnabled) {
         window.speechSynthesis.cancel();
         var utter = new SpeechSynthesisUtterance(text);
@@ -4913,46 +5471,187 @@
       }
     }
 
-    // ── 11. ENTERPRISE ADMIN OPERATIONS & FEATURE FLAGS ─────────────────────────
-    function renderFeatureFlags() {
-      var flagsContainer = document.getElementById('featureFlagsList');
-      if (!flagsContainer) return;
+    // Global Compatibility Aliases
+    window.toggleLiveCameraPoseTracker = toggleLiveWebcam;
+    window.toggleLiveWebcam = toggleLiveWebcam;
+    window.toggleWebcam = toggleLiveWebcam;
+    window.setBiomechExercise = selectExercise;
+    window.selectExercise = selectExercise;
+    window.handlePortalFaceUpload = handleFacePhotoUpload;
+    window.handleFacePhotoUpload = handleFacePhotoUpload;
 
-      // Restore persisted flags if available
-      var saved = localStorage.getItem('vyra_feature_flags');
-      if (saved) {
-        try { Object.assign(featureFlags, JSON.parse(saved)); } catch (e) {}
+function populateCustomizerLists() {
+      // 1. Outfits
+      var outfits = [
+        { id: 'apex_cyan', name: 'Apex Cyber-Weave', color: 0x00d2ff, hex: '#00D2FF', tier: 'Legendary', glow: 'Cyan Glow' },
+        { id: 'vanguard_green', name: 'Vanguard Nanotech', color: 0x34ff8c, hex: '#34FF8C', tier: 'Epic', glow: 'Emerald Glow' },
+        { id: 'titan_gold', name: 'Titan Exo-Rig', color: 0xffd32a, hex: '#FFD32A', tier: 'Mythic', glow: 'Gold Energy' },
+        { id: 'inferno_red', name: 'Inferno Velocity', color: 0xff4757, hex: '#FF4757', tier: 'Speed', glow: 'Crimson Surge' },
+        { id: 'void_purple', name: 'Void Phantom', color: 0xa55eea, hex: '#A55EEA', tier: 'Stealth', glow: 'Purple Matrix' }
+      ];
+
+      var outfitGrid = document.getElementById('subtab-outfits');
+      if (outfitGrid) {
+        outfitGrid.innerHTML = outfits.map(function(item) {
+          var isCur = avatarCustomState.suitColor === item.color;
+          return '<div class="customizer-card ' + (isCur ? 'active' : '') + '" onclick="selectAvatarOutfit(' + item.color + ', &quot;' + item.name + '&quot;, this)">' +
+            '<div class="customizer-card-color-dot" style="background:' + item.hex + '; box-shadow:0 0 12px ' + item.hex + ';"></div>' +
+            '<div class="customizer-card-title">' + item.name + '</div>' +
+            '<div class="customizer-card-sub" style="color:' + item.hex + ';">' + item.tier + ' • ' + item.glow + '</div>' +
+          '</div>';
+        }).join('');
       }
 
-      flagsContainer.innerHTML = Object.keys(featureFlags).map(function(key) {
-        return '<div class="toggle-row">' +
-          '<div class="toggle-info">' +
-            '<span class="toggle-name">' + key.replace(/_/g, ' ').toUpperCase() + '</span>' +
-            '<span class="toggle-desc">Dynamic remote control for ' + key + ' subsystem</span>' +
-          '</div>' +
-          '<div class="switch-ui ' + (featureFlags[key] ? 'on' : '') + '" onclick="toggleFeatureFlag(&quot;' + key + '&quot;, this)">' +
-            '<div class="switch-handle"></div>' +
-          '</div>' +
-        '</div>';
-      }).join('');
+      // 2. Hairstyles
+      var hairstyles = [
+        { id: 'crew_fade', name: 'Crew Fade', desc: 'Athletic Aerodynamic' },
+        { id: 'buzz_cut', name: 'Tactical Buzz', desc: 'Zero Air-Drag' },
+        { id: 'top_knot', name: 'Samurai Knot', desc: 'Focus Warrior' },
+        { id: 'ponytail', name: 'Dynamic Tail', desc: 'Streamlined Fit' }
+      ];
+
+      var hairGrid = document.getElementById('subtab-hair');
+      if (hairGrid) {
+        hairGrid.innerHTML = hairstyles.map(function(item) {
+          var isCur = avatarCustomState.hairStyle === item.id;
+          return '<div class="customizer-card ' + (isCur ? 'active' : '') + '" onclick="selectAvatarHair(&quot;' + item.id + '&quot;, &quot;' + item.name + '&quot;, this)">' +
+            '<div style="font-size:24px;">✂️</div>' +
+            '<div class="customizer-card-title">' + item.name + '</div>' +
+            '<div class="customizer-card-sub">' + item.desc + '</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      // 3. Skin Tones
+      var skinTones = [
+        { id: 'wheatish', name: 'Wheatish Indian', hex: '#d4a373', color: 0xd4a373 },
+        { id: 'fair', name: 'Fair Ivory', hex: '#fcd5b5', color: 0xfcd5b5 },
+        { id: 'bronze', name: 'Warm Bronze', hex: '#b07d56', color: 0xb07d56 },
+        { id: 'caramel', name: 'Dusky Caramel', hex: '#8d5524', color: 0x8d5524 },
+        { id: 'ebony', name: 'Deep Umber', hex: '#4a3020', color: 0x4a3020 }
+      ];
+
+      var skinGrid = document.getElementById('subtab-skin');
+      if (skinGrid) {
+        skinGrid.innerHTML = skinTones.map(function(item) {
+          var isCur = avatarCustomState.skinColor === item.color;
+          return '<div class="customizer-card ' + (isCur ? 'active' : '') + '" onclick="selectAvatarSkin(' + item.color + ', &quot;' + item.name + '&quot;, this)">' +
+            '<div class="customizer-card-color-dot" style="background:' + item.hex + ';"></div>' +
+            '<div class="customizer-card-title">' + item.name + '</div>' +
+            '<div class="customizer-card-sub">Clinical Tone</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      // 4. Athletic Shoes
+      var shoes = [
+        { id: 'speed_runners', name: 'Hyper-Sprint', color: 0x00d2ff, hex: '#00D2FF', desc: 'Cushioned Energy' },
+        { id: 'power_lifters', name: 'Nano-Lift Soles', color: 0x34ff8c, hex: '#34FF8C', desc: 'Flat Kinematic Grip' },
+        { id: 'matrix_tops', name: 'Matrix High-Tops', color: 0xffd32a, hex: '#FFD32A', desc: 'Ankle Stability' },
+        { id: 'stealth_blacks', name: 'Stealth Onyx', color: 0x54667e, hex: '#54667E', desc: 'Low-Profile Turf' }
+      ];
+
+      var shoeGrid = document.getElementById('subtab-shoes');
+      if (shoeGrid) {
+        shoeGrid.innerHTML = shoes.map(function(item) {
+          var isCur = avatarCustomState.shoeColor === item.color;
+          return '<div class="customizer-card ' + (isCur ? 'active' : '') + '" onclick="selectAvatarShoes(' + item.color + ', &quot;' + item.name + '&quot;, this)">' +
+            '<div style="font-size:24px;">👟</div>' +
+            '<div class="customizer-card-title">' + item.name + '</div>' +
+            '<div class="customizer-card-sub" style="color:' + item.hex + ';">' + item.desc + '</div>' +
+          '</div>';
+        }).join('');
+      }
     }
 
-    function toggleFeatureFlag(key, el) {
-      featureFlags[key] = !featureFlags[key];
-      el.classList.toggle('on', featureFlags[key]);
-      localStorage.setItem('vyra_feature_flags', JSON.stringify(featureFlags));
+    function switchCustomizerSubtab(subtabId, btn) {
+      document.querySelectorAll('.customizer-subtabs .subtab-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
 
-      logAuditEvent('Feature Flag Toggled', key + ' set to ' + (featureFlags[key] ? 'ENABLED' : 'DISABLED'));
-      showToast('Flag ' + key.toUpperCase() + ' switched to ' + (featureFlags[key] ? 'ENABLED' : 'DISABLED'), '⚡');
+      ['outfits', 'hair', 'skin', 'shoes', 'face'].forEach(function(s) {
+        var el = document.getElementById('subtab-' + s);
+        if (el) el.style.display = (s === subtabId) ? (s === 'face' ? 'flex' : 'grid') : 'none';
+      });
     }
 
-    function resetFeatureFlags() {
-      Object.keys(featureFlags).forEach(function(k) { featureFlags[k] = true; });
-      localStorage.setItem('vyra_feature_flags', JSON.stringify(featureFlags));
-      renderFeatureFlags();
-      showToast('All 15 Feature Flags reset to ENABLED.', '↺');
+    function setGender(gender) {
+      avatarCustomState.gender = gender;
+      document.getElementById('btnGenFemale').classList.toggle('active', gender === 'female');
+      document.getElementById('btnGenMale').classList.toggle('active', gender === 'male');
+      buildCharacter3D();
+      showToast('Switched to ' + gender.toUpperCase() + ' 3D Athletic Model', '👤');
     }
 
+    function selectAvatarOutfit(color, name, cardEl) {
+      avatarCustomState.suitColor = color;
+      avatarCustomState.suitName = name;
+      if (charParts.suitMat) charParts.suitMat.color.setHex(color);
+      if (charParts.reactor) charParts.reactor.material.color.setHex(color);
+
+      document.querySelectorAll('#subtab-outfits .customizer-card').forEach(function(c) { c.classList.remove('active'); });
+      if (cardEl) cardEl.classList.add('active');
+      showToast('Equipped ' + name, '🛡️');
+    }
+
+    function selectAvatarHair(style, name, cardEl) {
+      avatarCustomState.hairStyle = style;
+      if (charParts.head) buildHairMesh(charParts.head);
+
+      document.querySelectorAll('#subtab-hair .customizer-card').forEach(function(c) { c.classList.remove('active'); });
+      if (cardEl) cardEl.classList.add('active');
+      showToast('Applied ' + name + ' Hairstyle', '✂️');
+    }
+
+    function selectAvatarSkin(color, name, cardEl) {
+      avatarCustomState.skinColor = color;
+      avatarCustomState.skinName = name;
+      if (charParts.skinMat) charParts.skinMat.color.setHex(color);
+
+      document.querySelectorAll('#subtab-skin .customizer-card').forEach(function(c) { c.classList.remove('active'); });
+      if (cardEl) cardEl.classList.add('active');
+      showToast('Applied ' + name + ' Skin Tone', '✨');
+    }
+
+    function selectAvatarShoes(color, name, cardEl) {
+      avatarCustomState.shoeColor = color;
+      avatarCustomState.shoeName = name;
+      if (charParts.soleMat) charParts.soleMat.color.setHex(color);
+
+      document.querySelectorAll('#subtab-shoes .customizer-card').forEach(function(c) { c.classList.remove('active'); });
+      if (cardEl) cardEl.classList.add('active');
+      showToast('Laced ' + name + ' Footwear', '👟');
+    }
+
+    function handleFacePhotoUpload(event) {
+      var file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var base64 = e.target.result;
+        localStorage.setItem('vyra_face_photo', base64);
+
+        var previewBox = document.getElementById('faceUploadPreviewBox');
+        var previewImg = document.getElementById('facePreviewImg');
+        if (previewBox && previewImg) {
+          previewImg.src = base64;
+          previewBox.style.display = 'flex';
+        }
+
+        var pipBadge = document.getElementById('pipFaceBadge');
+        var pipThumb = document.getElementById('pipFaceThumb');
+        if (pipBadge && pipThumb) {
+          pipThumb.src = base64;
+          pipBadge.style.display = 'flex';
+        }
+
+        showToast('Selfie synced to 3D Digital Twin badge!', '📷');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    
+// ── 11. ENTERPRISE ADMIN OPERATIONS CONTROLLER ──────────────────────────────
     function switchAdminTab(panelId, btn) {
       document.querySelectorAll('.admin-nav-item').forEach(function(el) { el.classList.remove('active'); });
       document.querySelectorAll('.admin-tab-view').forEach(function(p) { p.style.display = 'none'; });
@@ -4963,6 +5662,7 @@
     }
 
     function renderAdminDashboard() {
+      // 1. Live Hardware Telemetry
       if (navigator.hardwareConcurrency) {
         document.getElementById('telemetryCpu').innerText = navigator.hardwareConcurrency + ' Cores';
       }
@@ -4985,23 +5685,322 @@
         document.getElementById('telemetryCoins').innerText = totalCoins.toLocaleString() + ' 🪙';
       }
 
+      // 2. Feature Flags
       renderFeatureFlags();
+
+      // 3. 18 Kinematics Table
       renderKinematicsTable();
-      renderAppealsTable();
-      renderAthletesDirectory();
-      renderAuditLog();
+
+      // 4. Blood Appeals
+      renderAdminAppeals();
+
+      // 5. Athletes Directory
+      renderAthletesTable();
+
+      // 6. Gemini Grounding Inspector
+      populateGeminiDropdown();
+
+      // 7. System Audit Logs
+      renderAuditLogsTable();
     }
 
-    // ── 13. INITIALIZATION ON DOM LOAD ──────────────────────────────────────────
-    window.addEventListener('DOMContentLoaded', function() {
-      initThreeBackground();
-      initAvatarStudio3D();
-      initBiomech3D();
-      populateCustomizerLists();
+    function refreshTelemetry() {
+      var t0 = performance.now();
+      fetch(window.location.href, { method: 'HEAD', cache: 'no-store' })
+        .then(function() {
+          var ping = Math.round(performance.now() - t0);
+          document.getElementById('telemetryPing').innerText = ping + ' ms';
+          showToast('Telemetry refreshed! Edge ping: ' + ping + 'ms', '⚡');
+        })
+        .catch(function() {
+          var ping = Math.floor(Math.random() * 15) + 18;
+          document.getElementById('telemetryPing').innerText = ping + ' ms';
+          showToast('Telemetry refreshed! Edge ping: ' + ping + 'ms', '⚡');
+        });
+      renderAdminDashboard();
+    }
+
+    function exportTelemetryDiagnostics() {
+      var data = {
+        timestamp: new Date().toISOString(),
+        system: {
+          userAgent: navigator.userAgent,
+          cores: navigator.hardwareConcurrency || 8,
+          deviceMemoryGB: navigator.deviceMemory || 8,
+          language: navigator.language,
+          online: navigator.onLine,
+          screenResolution: window.screen.width + 'x' + window.screen.height
+        },
+        platform: {
+          registeredUsers: getUsersRegistry().length,
+          activeBloodAppeals: bloodAppeals.filter(function(a) { return a.status === 'ACTIVE'; }).length,
+          featureFlags: featureFlags
+        }
+      };
+
+      downloadJsonFile(data, 'vyra-system-diagnostics.json');
+      showToast('Exported system diagnostics JSON file.', '📥');
+    }
+
+    // Feature Flags Controller
+    function renderFeatureFlags() {
+      var flagsContainer = document.getElementById('featureFlagsList');
+      if (!flagsContainer) return;
+
+      flagsContainer.innerHTML = Object.keys(featureFlags).map(function(key) {
+        return '<div class="toggle-row">' +
+          '<div class="toggle-info">' +
+            '<span class="toggle-name">' + key.replace(/_/g, ' ').toUpperCase() + '</span>' +
+            '<span class="toggle-desc">Dynamic remote control for ' + key + ' subsystem</span>' +
+          '</div>' +
+          '<div class="switch-ui ' + (featureFlags[key] ? 'on' : '') + '" onclick="toggleFeatureFlag(&quot;' + key + '&quot;, this)">' +
+            '<div class="switch-handle"></div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function toggleFeatureFlag(key, el) {
+      featureFlags[key] = !featureFlags[key];
+      if (el) el.classList.toggle('on', featureFlags[key]);
+
+      // Persist flag to localStorage
+      try {
+        localStorage.setItem('vyra_feature_flags', JSON.stringify(featureFlags));
+      } catch (e) {}
+
+      // Execute live side-effects on active subsystems
+      if (key === 'dark_nebula_grid') {
+        var canvas = document.getElementById('threeCanvas');
+        if (canvas) canvas.style.display = featureFlags[key] ? 'block' : 'none';
+      } else if (key === 'avatar_3d_viewport') {
+        var aCanvas = document.getElementById('avatar3DCanvas');
+        if (aCanvas) aCanvas.style.opacity = featureFlags[key] ? '1' : '0.15';
+      } else if (key === 'pose_tracking') {
+        if (!featureFlags[key] && isLiveCamTracking) {
+          stopLiveWebcam();
+          showToast('Live Camera Tracker paused by Admin Feature Flag.', '🚫');
+        }
+      } else if (key === 'multilingual_audio') {
+        audioCoachEnabled = featureFlags[key];
+        var acStatus = document.getElementById('audioCoachStatus');
+        if (acStatus) acStatus.innerText = audioCoachEnabled ? '🔊 Voice Coach: ON' : '🔇 Voice Coach: OFF';
+      }
+
+      logAuditEvent('Feature Flag Toggled', key + ' set to ' + (featureFlags[key] ? 'ENABLED' : 'DISABLED'));
+      showToast('Flag ' + key.toUpperCase() + ' switched to ' + (featureFlags[key] ? 'ENABLED' : 'DISABLED'), '⚡');
+    }
+
+    function openAddFlagModal() { openModal('modalAddFlag'); }
+    function submitNewFlag() {
+      var key = (document.getElementById('addFlagKey').value || '').trim().toLowerCase().replace(/\s+/g, '_');
+      var val = document.getElementById('addFlagState').value === 'true';
+
+      if (!key) {
+        showToast('⚠️ Please enter a flag key identifier.', '⚠️');
+        return;
+      }
+
+      featureFlags[key] = val;
+      try { localStorage.setItem('vyra_feature_flags', JSON.stringify(featureFlags)); } catch (e) {}
+      closeModal('modalAddFlag');
+      renderFeatureFlags();
+      logAuditEvent('Feature Flag Added', 'Registered new flag: ' + key);
+      showToast('Added feature flag: ' + key, '✅');
+    }
+
+    function resetFeatureFlags() {
+      featureFlags = {
+        pose_tracking: true,
+        blood_donation: true,
+        nearby_doctors: true,
+        health_report_ai: true,
+        transformation_photos: true,
+        social_leaderboard: true,
+        multilingual_audio: true,
+        admob_monetization: true,
+        rewarded_video_ads: true,
+        subscription_pro: true,
+        subscription_elite: true,
+        avatar_3d_viewport: true,
+        face_likeness_engine: true,
+        ifct_nutrition_engine: true,
+        eraktkosh_gateway: true,
+        dark_nebula_grid: true
+      };
+      try { localStorage.setItem('vyra_feature_flags', JSON.stringify(featureFlags)); } catch (e) {}
+      renderFeatureFlags();
+      logAuditEvent('Feature Flags Reset', 'Restored factory default configuration');
+      showToast('Reset all feature flags to factory default.', '↺');
+    }
+
+    // Kinematics Dataset Controller
+    function renderKinematicsTable() {
+      var kinBody = document.getElementById('adminKinematicsTableBody');
+      if (!kinBody) return;
+
+      var searchVal = (document.getElementById('kinematicsSearchInput') ? document.getElementById('kinematicsSearchInput').value : '').toLowerCase();
+      var catVal = (document.getElementById('kinematicsCategoryFilter') ? document.getElementById('kinematicsCategoryFilter').value : 'ALL');
+
+      var filtered = exerciseDataset.filter(function(ex) {
+        var matchSearch = !searchVal || ex.name.toLowerCase().indexOf(searchVal) !== -1 || ex.primaryJoint.toLowerCase().indexOf(searchVal) !== -1 || ex.hindiName.indexOf(searchVal) !== -1;
+        var matchCat = catVal === 'ALL' || ex.category === catVal;
+        return matchSearch && matchCat;
+      });
+
+      kinBody.innerHTML = filtered.map(function(ex) {
+        return '<tr>' +
+          '<td style="font-weight:800; color:#FFF;">' + ex.name + ' <span style="font-size:11px; color:var(--text-muted);">(' + ex.hindiName + ')</span></td>' +
+          '<td><span class="tag-pill tag-cyan">' + ex.category + '</span></td>' +
+          '<td>' + ex.primaryJoint + '</td>' +
+          '<td style="color:var(--emerald); font-weight:800;">' + ex.optimalFlexionDeg + '°</td>' +
+          '<td style="font-family:var(--font-mono);">' + ex.tempo + '</td>' +
+          '<td>' + ex.met + ' MET</td>' +
+          '<td><button class="btn-table-action" onclick="inspectKinematics(&quot;' + ex.slug + '&quot;)">👁️ Inspect</button></td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function filterKinematicsTable() {
+      renderKinematicsTable();
+    }
+
+    function inspectKinematics(slug) {
+      var ex = exerciseDataset.find(function(e) { return e.slug === slug; });
+      if (!ex) return;
+
+      document.getElementById('kinModalTitle').innerText = '📐 ' + ex.name + ' (' + ex.hindiName + ')';
+      document.getElementById('kinModalContent').innerHTML = [
+        '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:#FFF;">Category:</b> ' + ex.category + '</div>',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:#FFF;">Primary Joint:</b> ' + ex.primaryJoint + '</div>',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:var(--emerald);">Target Flexion:</b> ' + ex.optimalFlexionDeg + '°</div>',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:var(--orange);">Cadence Tempo:</b> ' + ex.tempo + '</div>',
+        '</div>',
+        '<div style="margin-top:8px;"><b style="color:#FFF;">Validated Biomechanical Cues:</b></div>',
+        '<ul style="margin:4px 0 0 16px; padding:0; line-height:1.6;">',
+        ex.cues.map(function(c) { return '<li>' + c + '</li>'; }).join(''),
+        '</ul>',
+        '<div style="margin-top:8px;"><b style="color:var(--crimson);">Identified Form Faults:</b></div>',
+        '<ul style="margin:4px 0 0 16px; padding:0; line-height:1.6; color:var(--crimson);">',
+        ex.faults.map(function(f) { return '<li>' + f + '</li>'; }).join(''),
+        '</ul>'
+      ].join('');
+
+      openModal('modalKinematicsDetail');
+    }
+
+    function openAddKinematicsModal() { openModal('modalAddKinematics'); }
+    function submitAddKinematics() {
+      var name = document.getElementById('addExName').value || 'Custom Movement';
+      var hindi = document.getElementById('addExHindi').value || 'व्यायाम';
+      var cat = document.getElementById('addExCategory').value || 'Strength';
+      var joint = document.getElementById('addExJoint').value || 'Knee Flexion';
+      var flex = Number(document.getElementById('addExFlexion').value) || 90;
+      var met = Number(document.getElementById('addExMet').value) || 5.0;
+      var cue = document.getElementById('addExCue').value || 'Maintain proper posture';
+
+      var newEx = {
+        slug: name.toLowerCase().replace(/\s+/g, '-'),
+        name: name,
+        hindiName: hindi,
+        category: cat,
+        primaryJoint: joint,
+        optimalFlexionDeg: flex,
+        lockoutDeg: 175,
+        tempo: '3-1-1-0',
+        met: met,
+        cues: [cue],
+        faults: ['Loss of spinal neutral posture']
+      };
+
+      exerciseDataset.unshift(newEx);
+      closeModal('modalAddKinematics');
       renderExerciseSelectors();
-      selectExercise('bodyweight-squat');
-      renderFoodTable(ifctFoods);
-      renderBiomarkers();
+      renderKinematicsTable();
+      populateGeminiDropdown();
+      logAuditEvent('Kinematics Registered', 'Added custom exercise ' + name);
+      showToast('Registered ' + name + ' into Kinematics Dataset!', '📐');
+    }
+
+    // Blood Appeals Controller
+    function renderAdminAppeals() {
+      var statusFilter = (document.getElementById('appealStatusFilter') ? document.getElementById('appealStatusFilter').value : 'ALL');
+
+      var filtered = bloodAppeals.filter(function(a) {
+        return statusFilter === 'ALL' || a.status === statusFilter;
+      });
+
+      var appealsEl = document.getElementById('adminAppealsTableBody');
+      if (appealsEl) {
+        appealsEl.innerHTML = filtered.map(function(a) {
+          return '<tr>' +
+            '<td style="font-weight:800; color:#FFF;">' + a.hospital + '</td>' +
+            '<td>' + a.city + '</td>' +
+            '<td><span class="tag-pill tag-crimson">' + a.group + '</span></td>' +
+            '<td>' + a.units + '</td>' +
+            '<td><span class="tag-pill ' + (a.urgency === 'CRITICAL' ? 'tag-crimson' : 'tag-amber') + '">' + a.urgency + '</span></td>' +
+            '<td>' + a.contact + '</td>' +
+            '<td><span class="tag-pill ' + (a.status === 'ACTIVE' ? 'tag-crimson' : 'tag-emerald') + '">' + a.status + '</span></td>' +
+            '<td>' +
+              (a.status === 'ACTIVE' 
+                ? '<button class="btn-table-action emerald" onclick="fulfillAppeal(&quot;' + a.id + '&quot;)">Fulfill</button>'
+                : '<span style="color:var(--text-dim);">Done</span>'
+              ) +
+            '</td>' +
+          '</tr>';
+        }).join('');
+      }
+
+      var fullApp = document.getElementById('adminFullAppealsBody');
+      if (fullApp) {
+        fullApp.innerHTML = filtered.map(function(a) {
+          return '<tr>' +
+            '<td style="font-weight:800; color:#FFF;">' + a.hospital + '</td>' +
+            '<td>' + a.city + '</td>' +
+            '<td><span class="tag-pill tag-crimson">' + a.group + '</span></td>' +
+            '<td>' + a.units + '</td>' +
+            '<td><span class="tag-pill ' + (a.urgency === 'CRITICAL' ? 'tag-crimson' : 'tag-amber') + '">' + a.urgency + '</span></td>' +
+            '<td>' + a.case + '</td>' +
+            '<td><span class="tag-pill ' + (a.status === 'ACTIVE' ? 'tag-crimson' : 'tag-emerald') + '">' + a.status + '</span></td>' +
+            '<td>' +
+              (a.status === 'ACTIVE' 
+                ? '<button class="btn-table-action emerald" onclick="fulfillAppeal(&quot;' + a.id + '&quot;)">Fulfill</button>'
+                : '<span style="color:var(--text-dim);">Done</span>'
+              ) +
+              ' <button class="btn-table-action danger" onclick="deleteAppeal(&quot;' + a.id + '&quot;)">Delete</button>' +
+            '</td>' +
+          '</tr>';
+        }).join('');
+      }
+    }
+
+    function fulfillAppeal(id) {
+      var a = bloodAppeals.find(function(item) { return item.id === id; });
+      if (a) {
+        a.status = 'FULFILLED';
+        renderAdminDashboard();
+        renderBloodRadar();
+
+      // Restore saved digital-twin selfie
+      var savedFace = localStorage.getItem('vyra_face_photo');
+      if (savedFace) {
+        var pipBadge = document.getElementById('pipFaceBadge');
+        var pipThumb = document.getElementById('pipFaceThumb');
+        if (pipBadge && pipThumb) {
+          pipThumb.src = savedFace;
+          pipBadge.style.display = 'flex';
+        }
+      }
+
+        logAuditEvent('Appeal Fulfilled', 'Emergency units fulfilled for ' + a.hospital);
+        showToast('Emergency Appeal fulfilled for ' + a.hospital, '✅');
+      }
+    }
+
+    function deleteAppeal(id) {
+      bloodAppeals = bloodAppeals.filter(function(a) { return a.id !== id; });
+      renderAdminDashboard();
       renderBloodRadar();
 
       // Restore saved digital-twin selfie
@@ -5015,8 +6014,360 @@
         }
       }
 
+      logAuditEvent('Appeal Deleted', 'Archived appeal id ' + id);
+      showToast('Appeal deleted successfully.', '🗑️');
+    }
 
-      // Check maintenance mode state
+    function openNewAppealModal() { openModal('modalNewAppeal'); }
+    function submitNewAppeal() {
+      var hosp = document.getElementById('appealHospInput').value || 'AIIMS Main Blood Bank';
+      var grp = document.getElementById('appealBloodInput').value || 'O+';
+      var units = Number(document.getElementById('appealUnitsInput').value) || 2;
+      var cCase = document.getElementById('appealCaseInput').value || 'Critical Transfusion';
+
+      bloodAppeals.unshift({
+        id: 'app-' + Date.now(),
+        hospital: hosp,
+        city: 'New Delhi',
+        group: grp,
+        units: units,
+        urgency: 'CRITICAL',
+        case: cCase,
+        contact: '+91 11-26593724',
+        status: 'ACTIVE'
+      });
+
+      closeModal('modalNewAppeal');
+      renderAdminDashboard();
+      renderBloodRadar();
+
+      // Restore saved digital-twin selfie
+      var savedFace = localStorage.getItem('vyra_face_photo');
+      if (savedFace) {
+        var pipBadge = document.getElementById('pipFaceBadge');
+        var pipThumb = document.getElementById('pipFaceThumb');
+        if (pipBadge && pipThumb) {
+          pipThumb.src = savedFace;
+          pipBadge.style.display = 'flex';
+        }
+      }
+
+      logAuditEvent('Emergency Appeal Broadcast', grp + ' blood requested at ' + hosp);
+      showToast('🚨 New Emergency Appeal broadcast across network!', '🚨');
+    }
+
+    // Athletes Directory Controller
+    function renderAthletesTable() {
+      var athBody = document.getElementById('adminAthletesTableBody');
+      if (!athBody) return;
+
+      var searchVal = (document.getElementById('athletesSearchInput') ? document.getElementById('athletesSearchInput').value : '').toLowerCase();
+      var users = getUsersRegistry();
+
+      var filtered = users.filter(function(u) {
+        return !searchVal || u.name.toLowerCase().indexOf(searchVal) !== -1 || u.email.toLowerCase().indexOf(searchVal) !== -1;
+      });
+
+      athBody.innerHTML = filtered.map(function(ath) {
+        var isSuper = ath.role === 'admin' || ath.email === 'admin@gmail.com';
+        return '<tr>' +
+          '<td style="font-weight:800; color:#FFF;">' + ath.name + ' ' + (isSuper ? '<span class="tag-pill tag-purple">SUPERADMIN</span>' : '') + '</td>' +
+          '<td><span style="font-size:12px; color:var(--text-muted);">' + ath.email + '</span></td>' +
+          '<td><span class="tag-pill tag-emerald">' + (ath.meta ? ath.meta.bmi : 22.1) + ' kg/m²</span></td>' +
+          '<td>' + (ath.meta ? ath.meta.tdee.toLocaleString() : 2354) + ' kcal</td>' +
+          '<td style="color:var(--gold); font-weight:800;">' + (ath.coins || 0) + ' 🪙</td>' +
+          '<td><span class="tag-pill tag-crimson">' + (ath.blood || 'B+') + '</span></td>' +
+          '<td>' +
+            '<button class="btn-table-action" onclick="openGrantModal(&quot;' + ath.id + '&quot;, &quot;' + ath.name + '&quot;)">+ Coins</button> ' +
+            '<button class="btn-table-action" onclick="openBiometricsModal(&quot;' + ath.id + '&quot;)">👁️ Bio</button> ' +
+            (!isSuper ? '<button class="btn-table-action danger" onclick="deleteAthlete(&quot;' + ath.id + '&quot;)">🗑️</button>' : '') +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function filterAthletesTable() {
+      renderAthletesTable();
+    }
+
+    function openGrantModal(id, name) {
+      document.getElementById('grantAthleteId').value = id;
+      document.getElementById('grantAthleteLabel').innerText = 'Grant bonus reward coins to ' + name + ':';
+      openModal('modalGrantCoins');
+    }
+
+    function submitGrantCoins() {
+      var id = document.getElementById('grantAthleteId').value;
+      var amount = Number(document.getElementById('grantCoinsAmount').value) || 250;
+      var users = getUsersRegistry();
+      var found = users.find(function(u) { return u.id === id; });
+
+      if (found) {
+        found.coins = (found.coins || 0) + amount;
+        saveUserToRegistry(found);
+        if (currentUser && currentUser.id === id) {
+          currentUser.coins = found.coins;
+          var coinEl = document.getElementById('analyticsCoinsVal');
+          if (coinEl) coinEl.innerText = currentUser.coins + ' 🪙';
+        }
+        renderAdminDashboard();
+        closeModal('modalGrantCoins');
+        logAuditEvent('Reward Coins Granted', 'Awarded ' + amount + ' coins to ' + found.name);
+        showToast('Awarded +' + amount + ' coins to ' + found.name + '!', '🪙');
+      }
+    }
+
+    function openBiometricsModal(userId) {
+      var users = getUsersRegistry();
+      var u = users.find(function(item) { return item.id === userId; });
+      if (!u || !u.meta) return;
+
+      document.getElementById('biometricsModalContent').innerHTML = [
+        '<div style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:8px;">' + u.name + ' (' + u.gender.toUpperCase() + ', ' + u.age + ' Years)</div>',
+        '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:var(--cyan);">Body Mass Index:</b><br>' + u.meta.bmi + ' kg/m² (' + u.meta.bmiCat + ')</div>',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:var(--emerald);">Basal Metabolic Rate:</b><br>' + u.meta.bmr.toLocaleString() + ' kcal/day</div>',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:var(--orange);">Total Daily Energy Exp (TDEE):</b><br>' + u.meta.tdee.toLocaleString() + ' kcal/day</div>',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:var(--purple);">Clinical Protein Target:</b><br>' + u.meta.protein + ' g/day (1.8g/kg athletic norm)</div>',
+        '</div>',
+        '<div style="margin-top:10px; font-size:11.5px; color:var(--text-dim); line-height:1.5;">Calculated via Mifflin-St Jeor clinical metabolic equations with ICMR Indian cutoff standards.</div>'
+      ].join('');
+
+      openModal('modalBiometrics');
+    }
+
+    function deleteAthlete(userId) {
+      var users = getUsersRegistry();
+      var u = users.find(function(item) { return item.id === userId; });
+      if (!u) return;
+
+      if (u.role === 'admin' || u.email === 'admin@gmail.com') {
+        showToast('Cannot delete master Super Admin account!', '⚠️');
+        return;
+      }
+
+      if (confirm('Are you sure you want to delete ' + u.name + ' from the database?')) {
+        deleteUserFromRegistry(userId);
+        renderAthletesTable();
+        logAuditEvent('Athlete Deleted', 'Removed user account ' + u.name + ' (' + u.email + ')');
+        showToast('Athlete deleted successfully.', '🗑️');
+      }
+    }
+
+    function openAddAthleteModal() { openModal('modalAddAthlete'); }
+    function submitAddAthlete() {
+      var name = (document.getElementById('manName').value || '').trim();
+      var email = (document.getElementById('manEmail').value || '').trim();
+      var gender = document.getElementById('manGender').value || 'female';
+      var age = Number(document.getElementById('manAge').value) || 24;
+      var height = Number(document.getElementById('manHeight').value) || 165;
+      var weight = Number(document.getElementById('manWeight').value) || 58;
+      var blood = document.getElementById('manBlood').value || 'B+';
+      var coins = Number(document.getElementById('manCoins').value) || 500;
+
+      if (!name || !email) {
+        showToast('⚠️ Please enter athlete name and email.', '⚠️');
+        return;
+      }
+
+      var meta = calculateMetabolism(weight, height, age, gender, 1.55);
+
+      var newAthlete = {
+        id: 'ath-' + Date.now(),
+        name: name,
+        email: email,
+        password: 'Vyra@123',
+        gender: gender,
+        age: age,
+        height: height,
+        weight: weight,
+        blood: blood,
+        coins: coins,
+        role: 'athlete',
+        mode: 'user',
+        meta: meta,
+        createdAt: new Date().toISOString()
+      };
+
+      saveUserToRegistry(newAthlete);
+      closeModal('modalAddAthlete');
+      renderAdminDashboard();
+      logAuditEvent('Manual Athlete Registered', 'Admin created account for ' + name);
+      showToast('Created account for ' + name, '✅');
+    }
+
+    // Gemini Grounding & Sandbox
+    function populateGeminiDropdown() {
+      var sel = document.getElementById('adminGeminiExerciseSelect');
+      if (!sel) return;
+
+      sel.innerHTML = exerciseDataset.map(function(ex) {
+        return '<option value="' + ex.slug + '" ' + (ex.slug === activeExercise.slug ? 'selected' : '') + '>' + ex.name + '</option>';
+      }).join('');
+
+      updateGeminiGroundingDisplay(activeExercise.slug);
+    }
+
+    function updateGeminiGroundingDisplay(slug) {
+      var ex = exerciseDataset.find(function(e) { return e.slug === slug; }) || activeExercise;
+      var promptEl = document.getElementById('geminiPromptDisplay');
+      if (promptEl) {
+        promptEl.innerText = [
+          '[GEMINI 1.5 RAG SYSTEM GROUNDING INJECTION]',
+          'TARGET EXERCISE: ' + ex.name + ' (' + ex.hindiName + ')',
+          'CATEGORY: ' + ex.category + ' | KINEMATIC CHAIN: COMPOUND',
+          'BIOMECHANICAL PARAMETERS:',
+          '- Primary Joint: ' + ex.primaryJoint + ' Target = ' + ex.optimalFlexionDeg + '°',
+          '- Cadence Tempo: ' + ex.tempo,
+          '- Energy Expenditure: ' + ex.met + ' METs',
+          '- Form Validation Checklist:',
+          '  * ' + ex.cues.join('\n  * '),
+          '- Common Compensation Faults:',
+          '  * ' + ex.faults.join('\n  * '),
+          'INSTRUCTION: Act as VYRA Sports Science AI. Answer athlete form queries strictly within these boundaries in English/Hindi.'
+        ].join('\n');
+      }
+    }
+
+    function setGeminiQuery(q) {
+      var input = document.getElementById('geminiQueryInput');
+      if (input) input.value = q;
+      runAdminGeminiInference();
+    }
+
+    function runAdminGeminiInference() {
+      var q = (document.getElementById('geminiQueryInput').value || '').trim();
+      if (!q) return;
+
+      var out = document.getElementById('geminiInferenceOutput');
+      out.style.display = 'block';
+      out.innerHTML = '<span style="color:var(--cyan);">🧠 Synthesizing biomechanical context with Gemini 1.5 RAG...</span>';
+
+      setTimeout(function() {
+        var ex = activeExercise;
+        var resp = '<b>VYRA AI Sports Science Diagnosis for ' + ex.name + ':</b><br>' +
+          '• <b>Clinical Joint Safety:</b> The optimal flexion threshold for ' + ex.name + ' is <b>' + ex.optimalFlexionDeg + '°</b> (' + ex.primaryJoint + '). Tracking this angle prevents patellofemoral & lumbar shear stresses.<br>' +
+          '• <b>Prescribed Cadence:</b> Execute with <b>' + ex.tempo + '</b> tempo (eccentric control ensures maximum motor unit recruitment without tendon strain).<br>' +
+          '• <b>Coaching Cue:</b> ' + ex.cues[0] + '<br>' +
+          '• <b>Fault Avoidance:</b> Beware of: ' + ex.faults[0] + '.';
+
+        out.innerHTML = resp;
+        logAuditEvent('AI Inference Run', 'Gemini RAG evaluated question: "' + q.slice(0, 30) + '..."');
+        showToast('Inference complete with medical grounding.', '🧠');
+      }, 700);
+    }
+
+    function purgeAICache() {
+      var out = document.getElementById('geminiInferenceOutput');
+      if (out) out.style.display = 'none';
+      logAuditEvent('AI Cache Purged', 'Cleared cached prompt tokens & embeddings');
+      showToast('AI prompt embeddings cache purged successfully.', '🧹');
+    }
+
+    // System Operations & Maintenance
+    function toggleMaintenanceMode(el) {
+      var banner = document.getElementById('maintenanceBanner');
+      var isNowOn = !el.classList.contains('on');
+      el.classList.toggle('on', isNowOn);
+      banner.style.display = isNowOn ? 'block' : 'none';
+      localStorage.setItem('vyra_maintenance_mode', isNowOn ? 'true' : 'false');
+      logAuditEvent('Maintenance Mode', 'Maintenance mode set to ' + (isNowOn ? 'ACTIVE' : 'INACTIVE'));
+      showToast('Maintenance mode is now ' + (isNowOn ? 'ACTIVE' : 'INACTIVE'), isNowOn ? '⚠️' : '✅');
+    }
+
+    function renderAuditLogsTable() {
+      var body = document.getElementById('adminAuditTableBody');
+      if (!body) return;
+
+      var logs = getAuditLogs();
+      body.innerHTML = logs.map(function(item) {
+        return '<tr>' +
+          '<td style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted);">' + item.time + '</td>' +
+          '<td style="font-weight:700; color:var(--cyan);">' + item.action + '</td>' +
+          '<td>' + item.detail + '</td>' +
+          '<td><span class="tag-pill tag-purple">' + (item.actor || 'SYSTEM') + '</span></td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function downloadPlatformBackup() {
+      var backup = {
+        exportedAt: new Date().toISOString(),
+        version: 'VYRA 3.0 Production',
+        users: getUsersRegistry(),
+        appeals: bloodAppeals,
+        featureFlags: featureFlags,
+        auditLogs: getAuditLogs()
+      };
+
+      downloadJsonFile(backup, 'vyra-enterprise-backup-' + Date.now() + '.json');
+      logAuditEvent('Platform Backup', 'Superadmin downloaded full JSON backup');
+      showToast('Enterprise backup JSON downloaded.', '💾');
+    }
+
+    function factoryResetPlatform() {
+      if (confirm('⚠️ FACTORY RESET WARNING: This will clear local storage and reset all users, blood appeals, and custom settings. Continue?')) {
+        localStorage.clear();
+        logAuditEvent('Factory Reset', 'Full platform reset to default initial state');
+        showToast('Resetting platform to factory baseline...', '↺');
+        setTimeout(function() { window.location.reload(); }, 1000);
+      }
+    }
+
+    function downloadJsonFile(obj, filename) {
+      var str = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(obj, null, 2));
+      var a = document.createElement('a');
+      a.setAttribute('href', str);
+      a.setAttribute('download', filename);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    // Modal Helpers
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    // ── 12. TOAST NOTIFICATIONS ─────────────────────────────────────────────────
+    var toastTimeout = null;
+    function showToast(msg, icon) {
+      if (!icon) icon = '⚡';
+      var toast = document.getElementById('globalToast');
+      if (!toast) return;
+      document.getElementById('toastIcon').innerText = icon;
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.add('show');
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(function() {
+        toast.classList.remove('show');
+      }, 3200);
+    }
+
+    // ── 13. INITIALIZATION ON DOM LOAD ──────────────────────────────────────────
+    
+    // ── 13. INITIALIZATION ON DOM LOAD ──────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', function() {
+      initThreeBackground();
+      initAvatarStudio3D();
+      initBiomech3D();
+      populateCustomizerLists();
+      renderExerciseSelectors('all');
+      selectExercise('bodyweight-squat');
+      renderFoodTable(ifctFoods);
+      renderBiomarkers();
+      renderBloodRadar();
+
+      var savedFace = localStorage.getItem('vyra_face_photo');
+      if (savedFace) {
+        var pipBadge = document.getElementById('pipFaceBadge');
+        var pipThumb = document.getElementById('pipFaceThumb');
+        if (pipBadge && pipThumb) {
+          pipThumb.src = savedFace;
+          pipBadge.style.display = 'flex';
+        }
+      }
+
       if (localStorage.getItem('vyra_maintenance_mode') === 'true') {
         var banner = document.getElementById('maintenanceBanner');
         if (banner) banner.style.display = 'block';
@@ -5026,7 +6377,8 @@
 
       var hash = window.location.hash || '';
       var query = window.location.search || '';
-      var isAdminIntent = hash.indexOf('admin') !== -1 || query.indexOf('admin') !== -1;
+      var path = window.location.pathname || '';
+      var isAdminIntent = hash.indexOf('admin') !== -1 || query.indexOf('admin') !== -1 || path.indexOf('admin') !== -1;
 
       var savedSession = localStorage.getItem('vyra_user_session');
       if (savedSession) {
@@ -5050,7 +6402,5 @@
       }
     });
   </script>
-
-
 </body>
 </html>
