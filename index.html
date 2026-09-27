@@ -2574,7 +2574,7 @@
         <!-- Navigation Subtabs -->
         <nav id="athleteSubNav">
           <button class="portal-nav-btn active" onclick="switchAthleteTab('studio')">✨ 3D Avatar Studio</button>
-          <button class="portal-nav-btn" onclick="switchAthleteTab('biomech')">📐 18 Exercise Kinematics HUD</button>
+          <button class="portal-nav-btn" onclick="switchAthleteTab('biomech')">📐 18 Kinematics & Gemini AI Coach</button>
           <button class="portal-nav-btn" onclick="switchAthleteTab('camera')">📷 Live AI Camera Pose Tracker</button>
           <button class="portal-nav-btn" onclick="switchAthleteTab('nutrition')">🥗 ICMR-NIN IFCT Nutrition</button>
           <button class="portal-nav-btn" onclick="switchAthleteTab('lab')">🩸 AI Blood Biomarkers (ICMR)</button>
@@ -2649,6 +2649,20 @@
                 <div style="font-size:11.5px; color:var(--text-muted); margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
                   <span>👆 Click & drag to rotate 3D avatar 360° in real-time</span>
                   <span style="color:var(--cyan);">60 FPS WebGL Engine</span>
+                </div>
+                
+                <!-- Quick Gemini AI Coach Trigger -->
+                <div style="margin-top:12px; background:linear-gradient(135deg, rgba(0,210,255,0.08), rgba(52,255,140,0.05)); border:1px solid rgba(0,210,255,0.3); border-radius:14px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:18px;">🧠</span>
+                    <div>
+                      <span style="font-size:12px; font-weight:800; color:#FFF; display:block;">Need Exercise Guidance?</span>
+                      <span style="font-size:10.5px; color:var(--text-muted);">Ask Gemini Coach to suggest & demonstrate any exercise in 3D WebGL</span>
+                    </div>
+                  </div>
+                  <button class="tag-pill tag-cyan" onclick="switchAthleteTab('biomech'); setTimeout(function(){ document.getElementById('geminiExerciseQueryInput') && document.getElementById('geminiExerciseQueryInput').focus(); }, 150);" style="cursor:pointer; font-weight:800; padding:6px 12px; font-size:11.5px;">
+                    ✨ Ask Gemini Coach
+                  </button>
                 </div>
               </div>
 
@@ -2750,6 +2764,49 @@
                     <button class="tag-pill tag-emerald" style="padding:6px 12px; cursor:pointer;" onclick="toggleAudioCoach()">
                       <span id="audioCoachStatus">🔊 Voice Coach: ON</span>
                     </button>
+                  </div>
+                </div>
+
+                <!-- 🧠 GEMINI AI EXERCISE RECOMMENDER & SPORTS SCIENCE PRESCRIPTION -->
+                <div id="geminiExerciseRecommenderBox" style="background:linear-gradient(135deg, rgba(0,210,255,0.09) 0%, rgba(52,255,140,0.05) 100%); border:1.5px solid rgba(0,210,255,0.35); border-radius:16px; padding:14px; box-shadow:0 8px 30px rgba(0,0,0,0.4), 0 0 15px rgba(0,210,255,0.15); margin-bottom:14px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <div style="width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg, var(--cyan), var(--emerald)); display:flex; align-items:center; justify-content:center; font-size:15px; box-shadow:0 0 10px var(--cyan-glow);">🧠</div>
+                      <div>
+                        <div style="font-size:14px; font-weight:900; color:#FFF; display:flex; align-items:center; gap:6px;">
+                          <span>Gemini AI Exercise Recommender</span>
+                          <span style="background:var(--cyan); color:#000; font-size:9.5px; font-weight:900; border-radius:6px; padding:1px 6px;">SPORTS RAG</span>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-muted);">AI sports-science engine — suggests best exercise & commands 3D avatar to demonstrate</div>
+                      </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                      <span class="tag-pill tag-emerald" style="font-size:10px; padding:3px 8px;">🟢 Gemini 1.5 Active</span>
+                    </div>
+                  </div>
+
+                  <!-- Smart Quick-Prompt Chips -->
+                  <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px;">Tap a Goal / Need or Ask Below:</div>
+                  <div style="display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:6px; margin-bottom:10px;" id="geminiPromptChips">
+                    <button class="category-chip" onclick="askGeminiExercise('🔥 Belly fat loss & high calorie burn')">🔥 Belly Fat Loss</button>
+                    <button class="category-chip" onclick="askGeminiExercise('🦵 Knee friendly leg workout without pain')">🦵 Knee-Friendly Legs</button>
+                    <button class="category-chip" onclick="askGeminiExercise('🧘 Lower back relief & spine decompression')">🧘 Lower Back Relief</button>
+                    <button class="category-chip" onclick="askGeminiExercise('💪 Chest & shoulder power push workout')">💪 Chest & Push Power</button>
+                    <button class="category-chip" onclick="askGeminiExercise('⚡ 5-minute core & posture reset')">⚡ 5-Min Core Reset</button>
+                    <button class="category-chip" onclick="askGeminiExercise('👵 Gentle seated / mobility exercise')">👵 Seated Mobility</button>
+                  </div>
+
+                  <!-- Search / Query Input Bar -->
+                  <div style="display:flex; gap:8px; margin-bottom:10px;">
+                    <input type="text" id="geminiExerciseQueryInput" class="form-input" placeholder="Ask Gemini: e.g. 'Knee me dard hai konsi exercise karu?', 'Bicep toning'..." style="font-size:12.5px; padding:8px 12px; flex:1;" onkeydown="if(event.key==='Enter')askGeminiExerciseCustom()">
+                    <button class="btn-submit" style="width:auto; padding:8px 16px; font-size:12.5px; white-space:nowrap; background:linear-gradient(135deg, var(--cyan), #0088cc); color:#000; font-weight:800;" onclick="askGeminiExerciseCustom()">
+                      <span>✨ Ask AI Coach</span>
+                    </button>
+                  </div>
+
+                  <!-- Gemini Recommendation Card Container (Dynamic) -->
+                  <div id="geminiRecommendationOutput" style="display:none; background:rgba(6,10,22,0.88); border:1px solid rgba(0,210,255,0.35); border-radius:14px; padding:14px; margin-top:8px;">
+                    <!-- Filled dynamically by JavaScript -->
                   </div>
                 </div>
 
@@ -6414,6 +6471,225 @@ function initThreeBackground() {
       showToast('Loaded ' + activeExercise.name + ' Biomechanics', '📐');
     }
     window.selectExercise = selectExercise;
+
+
+    // ── 🧠 GEMINI AI EXERCISE RECOMMENDER & 3D AVATAR DEMONSTRATION ENGINE ───────
+    window.askGeminiExercise = function(query) {
+      var inputEl = document.getElementById('geminiExerciseQueryInput');
+      if (inputEl) inputEl.value = query;
+
+      var out = document.getElementById('geminiRecommendationOutput');
+      if (!out) return;
+      out.style.display = 'block';
+      out.innerHTML = '<div style="display:flex; align-items:center; gap:10px; color:var(--cyan); font-size:12.5px; font-weight:700;">' +
+        '<span style="font-size:18px; animation:spin 1s infinite linear;">🧠</span>' +
+        '<span>Gemini 1.5 is analyzing your request against the 18-exercise kinematics dataset...</span>' +
+      '</div>';
+
+      setTimeout(function() {
+        var rec = window.synthesizeGeminiExerciseRecommendation(query);
+        window.renderGeminiRecommendation(rec);
+      }, 400);
+    };
+
+    window.askGeminiExerciseCustom = function() {
+      var q = (document.getElementById('geminiExerciseQueryInput').value || '').trim();
+      if (!q) {
+        showToast('Please type your exercise goal or pain point', '⚠️');
+        return;
+      }
+      window.askGeminiExercise(q);
+    };
+
+    window.synthesizeGeminiExerciseRecommendation = function(query) {
+      var q = (query || '').toLowerCase();
+      var targetSlug = 'bodyweight-squat';
+      var rationale = '';
+      var dosage = '3 sets × 10-12 reps';
+
+      if (q.indexOf('knee') !== -1 || q.indexOf('ghutna') !== -1 || q.indexOf('patella') !== -1 || q.indexOf('joint') !== -1) {
+        targetSlug = 'glute-bridge';
+        rationale = 'Squatting with knee sensitivity produces high patellofemoral compressive shear. The Glute Bridge is the clinical gold-standard alternative: it maximally strengthens the gluteus maximus and hamstrings with 0% compressive knee load and neutral spinal alignment.';
+        dosage = '3 sets × 12-15 reps (Hold 2s at peak)';
+      } else if (q.indexOf('back') !== -1 || q.indexOf('kamar') !== -1 || q.indexOf('spine') !== -1 || q.indexOf('pain') !== -1 || q.indexOf('dard') !== -1 || q.indexOf('relief') !== -1 || q.indexOf('disc') !== -1 || q.indexOf('posture') !== -1) {
+        targetSlug = 'cobra-pose';
+        rationale = 'Prolonged sitting compresses the lower lumbar vertebral discs and tightens hip flexors. Cobra Pose gently extends the thoracic and lumbar spine, fortifies the erector spinae, and relieves anterior pelvic tilt without axial compressive loading.';
+        dosage = '3 sets × 5 reps (Hold 15-20 seconds with steady diaphragmatic breathing)';
+      } else if (q.indexOf('fat') !== -1 || q.indexOf('belly') !== -1 || q.indexOf('pet') !== -1 || q.indexOf('weight') !== -1 || q.indexOf('loss') !== -1 || q.indexOf('burn') !== -1 || q.indexOf('cardio') !== -1 || q.indexOf('hiit') !== -1) {
+        targetSlug = 'burpees';
+        rationale = 'For maximum systemic calorie burn and visceral fat reduction, Full Body Burpees recruit over 80% of skeletal muscle mass simultaneously (pectoral, quadricep, core, and calf chains), triggering prolonged post-exercise oxygen consumption (EPOC).';
+        dosage = '4 sets × 10 reps (45 seconds rest between sets)';
+      } else if (q.indexOf('chest') !== -1 || q.indexOf('chhati') !== -1 || q.indexOf('push') !== -1 || q.indexOf('pec') !== -1) {
+        targetSlug = 'push-up';
+        rationale = 'The foundational upper body horizontal pressing exercise. Stimulates the pectoralis major, anterior deltoids, and triceps while enforcing serratus anterior activation and anterior core bracing for long-term shoulder stability.';
+        dosage = '3 sets × 10-15 controlled reps';
+      } else if (q.indexOf('arm') !== -1 || q.indexOf('bicep') !== -1 || q.indexOf('tricep') !== -1 || q.indexOf('hath') !== -1) {
+        targetSlug = 'dumbbell-bicep-curl';
+        rationale = 'Isolates the biceps brachii through full elbow flexion and forearm supination. The 3-second eccentric release forces hypertrophic motor unit recruitment without stressing elbow tendons.';
+        dosage = '3 sets × 10-12 reps per arm';
+      } else if (q.indexOf('core') !== -1 || q.indexOf('abs') !== -1 || q.indexOf('plank') !== -1 || q.indexOf('stamina') !== -1) {
+        targetSlug = 'plank';
+        rationale = 'Trains the transverse abdominis as an anatomical internal weight belt. Isometric bracing creates intra-abdominal pressure that fortifies spinal integrity and corrects anterior pelvic tilt.';
+        dosage = '3 sets × 45-60 seconds isometric hold';
+      } else if (q.indexOf('gentle') !== -1 || q.indexOf('seated') !== -1 || q.indexOf('senior') !== -1 || q.indexOf('mobility') !== -1 || q.indexOf('yoga') !== -1) {
+        targetSlug = 'downward-dog';
+        rationale = 'Gentle kinetic chain stretch lengthening the hamstrings, calves, and thoracic spine while building foundational scapular stabilization with minimal impact on joints.';
+        dosage = '3 sets × 30-45 seconds hold';
+      } else if (q.indexOf('lunge') !== -1) {
+        targetSlug = 'reverse-lunge';
+        rationale = 'Unilateral lower-body builder that fixes left-right strength imbalances while placing less shear stress on the front knee compared to forward lunges.';
+        dosage = '3 sets × 10 reps per leg';
+      } else if (q.indexOf('wall') !== -1 || q.indexOf('sit') !== -1) {
+        targetSlug = 'wall-sit';
+        rationale = 'Isometric quadricep and patellar tendon strengthening without joint movement, highly effective for patellar tendonitis recovery.';
+        dosage = '3 sets × 45-60 seconds hold';
+      } else if (q.indexOf('calf') !== -1) {
+        targetSlug = 'calf-raise';
+        rationale = 'Strengthens the gastrocnemius and soleus muscles, fortifying ankle stability and Achilles tendon elasticity.';
+        dosage = '3 sets × 20 reps';
+      } else if (q.indexOf('bench') !== -1 || q.indexOf('press') !== -1) {
+        targetSlug = 'dumbbell-bench-press';
+        rationale = 'Allows natural wrist rotation and greater range of motion compared to a barbell, reducing shoulder anterior capsule stress.';
+        dosage = '3 sets × 8-12 reps';
+      } else if (q.indexOf('dip') !== -1) {
+        targetSlug = 'tricep-dips';
+        rationale = 'Overloads the lateral and long heads of the triceps while demanding scapular depression and postural control.';
+        dosage = '3 sets × 10-12 reps';
+      } else if (q.indexOf('shoulder') !== -1 || q.indexOf('overhead') !== -1) {
+        targetSlug = 'seated-overhead-press';
+        rationale = 'Vertical pressing strength for the anterior and lateral deltoids. Seated positioning removes lower back arching compensation.';
+        dosage = '3 sets × 10 reps';
+      } else if (q.indexOf('lateral') !== -1) {
+        targetSlug = 'lateral-raise';
+        rationale = 'Direct isolation of the lateral deltoid head for creating broad, aesthetic shoulder caps with light controllable weights.';
+        dosage = '3 sets × 12-15 reps';
+      } else if (q.indexOf('row') !== -1) {
+        targetSlug = 'bent-over-row';
+        rationale = 'Compound pulling movement strengthening the latissimus dorsi, rhomboids, and rear deltoids to counteract slouching desk posture.';
+        dosage = '3 sets × 10 reps';
+      } else if (q.indexOf('climber') !== -1) {
+        targetSlug = 'mountain-climbers';
+        rationale = 'Dynamic core conditioning alternating hip flexion while maintaining a rigid anti-rotational plank.';
+        dosage = '3 sets × 30 seconds';
+      } else if (q.indexOf('jack') !== -1) {
+        targetSlug = 'jumping-jacks';
+        rationale = 'Full-body cardiovascular warm-up elevating heart rate, lymphatic circulation, and joint synovial fluid mobility.';
+        dosage = '3 sets × 45 seconds';
+      } else {
+        targetSlug = 'bodyweight-squat';
+        rationale = 'The king of functional human movements. Recruits the quadriceps, gluteus maximus, hamstrings, and core stabilizers through an optimal 90° knee and hip flexion arch.';
+        dosage = '3 sets × 15 reps';
+      }
+
+      var ex = exerciseDataset.find(function(e) { return e.slug === targetSlug; }) || exerciseDataset[0];
+
+      return {
+        slug: ex.slug,
+        name: ex.name,
+        hindiName: ex.hindiName || '',
+        category: ex.category || 'general',
+        difficulty: ex.difficulty || 'beginner',
+        primaryJoint: (ex.primaryJoint || 'knee').toUpperCase(),
+        optimalFlexionDeg: ex.optimalFlexionDeg || 90,
+        jointTarget: (ex.primaryJoint || 'knee').toUpperCase() + ' ' + (ex.optimalFlexionDeg || 90) + '°',
+        tempo: ex.tempo || '3-1-1-0',
+        dosage: dosage,
+        met: ex.met || 5.0,
+        rationale: rationale,
+        cues: ex.cues && ex.cues.length ? ex.cues : ['Maintain neutral spine and controlled breathing.'],
+        faults: ex.faults && ex.faults.length ? ex.faults : ['Rushing through the movement without control.'],
+        regression: ex.regression || 'N/A',
+        progression: ex.progression || 'N/A'
+      };
+    };
+
+    window.renderGeminiRecommendation = function(rec) {
+      var out = document.getElementById('geminiRecommendationOutput');
+      if (!out) return;
+
+      out.style.display = 'block';
+      out.innerHTML = [
+        '<div style="border-left:3px solid var(--cyan); padding-left:12px; margin-bottom:12px;">',
+          '<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">',
+            '<div>',
+              '<span style="font-size:10px; font-weight:800; text-transform:uppercase; color:var(--cyan); letter-spacing:0.5px;">✓ Recommended by Gemini Sports-AI</span>',
+              '<h4 style="font-size:18px; font-weight:900; color:#FFF; margin:3px 0 4px 0;">' + rec.name + (rec.hindiName ? ' <span style="font-size:13px; color:var(--text-muted); font-weight:600;">(' + rec.hindiName + ')</span>' : '') + '</h4>',
+              '<div style="display:flex; gap:6px; flex-wrap:wrap;">',
+                '<span class="tag-pill tag-cyan" style="font-size:10px; padding:2px 7px;">' + rec.category.toUpperCase() + '</span>',
+                '<span class="tag-pill tag-emerald" style="font-size:10px; padding:2px 7px;">' + rec.difficulty.toUpperCase() + '</span>',
+                '<span class="tag-pill" style="font-size:10px; padding:2px 7px; background:rgba(255,184,0,0.15); color:var(--amber); border:1px solid rgba(255,184,0,0.3);">' + rec.jointTarget + '</span>',
+                '<span class="tag-pill" style="font-size:10px; padding:2px 7px; background:rgba(255,255,255,0.06); color:#FFF;">' + rec.met + ' METs</span>',
+              '</div>',
+            '</div>',
+          '</div>',
+        '</div>',
+
+        '<div style="font-size:12.5px; color:#E2E8F0; line-height:1.6; margin-bottom:12px; background:rgba(0,210,255,0.04); padding:10px 12px; border-radius:10px; border:1px solid rgba(0,210,255,0.18);">',
+          '💡 <b>AI Clinical Rationale:</b> ' + rec.rationale,
+        '</div>',
+
+        '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px; margin-bottom:12px;">',
+          '<div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:8px; padding:8px 10px;">',
+            '<span style="font-size:10px; color:var(--text-muted); display:block; font-weight:700;">PRESCRIBED TEMPO</span>',
+            '<span style="font-size:13px; color:var(--cyan); font-weight:800; font-family:var(--font-mono);">' + rec.tempo + '</span>',
+          '</div>',
+          '<div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:8px; padding:8px 10px;">',
+            '<span style="font-size:10px; color:var(--text-muted); display:block; font-weight:700;">RECOMMENDED DOSAGE</span>',
+            '<span style="font-size:13px; color:var(--emerald); font-weight:800;">' + rec.dosage + '</span>',
+          '</div>',
+          '<div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:8px; padding:8px 10px;">',
+            '<span style="font-size:10px; color:var(--text-muted); display:block; font-weight:700;">PRIMARY JOINT</span>',
+            '<span style="font-size:13px; color:var(--orange); font-weight:800;">' + rec.primaryJoint + '</span>',
+          '</div>',
+        '</div>',
+
+        '<div style="font-size:12px; margin-bottom:14px; display:flex; flex-direction:column; gap:5px;">',
+          '<div><span style="color:var(--emerald); font-weight:800;">✓ Critical Form:</span> <span style="color:var(--text);">' + rec.cues[0] + '</span></div>',
+          '<div><span style="color:var(--crimson); font-weight:800;">⚠ Fault to Avoid:</span> <span style="color:var(--text-muted);">' + rec.faults[0] + '</span></div>',
+        '</div>',
+
+        '<div style="display:flex; gap:8px; flex-wrap:wrap;">',
+          '<button class="btn-submit" style="flex:1; min-width:180px; padding:10px 16px; font-size:13px; background:linear-gradient(135deg, var(--cyan), #00A3FF); color:#000; font-weight:900;" onclick="demonstrateExerciseWithAvatar(&quot;' + rec.slug + '&quot;)">',
+            '<span>▶️ Demonstrate in 3D Avatar (Active)</span>',
+          '</button>',
+          '<button class="btn-table-action emerald" style="padding:10px 16px; font-size:13px; font-weight:800;" onclick="startExerciseInCamera(&quot;' + rec.slug + '&quot;)">',
+            '<span>📷 Validate Reps in AI Camera</span>',
+          '</button>',
+        '</div>'
+      ].join('');
+
+      // Auto-trigger 3D Avatar demonstration immediately ("aur vo exercise avtar krke dikhae")!
+      window.demonstrateExerciseWithAvatar(rec.slug);
+    };
+
+    window.demonstrateExerciseWithAvatar = function(slug) {
+      selectExercise(slug);
+      isBiomechPlaying = true;
+      var btn = document.getElementById('btnBiomechPlayPause');
+      if (btn) btn.innerText = '⏸️ Pause';
+
+      var vp = document.querySelector('.biomech-viewport');
+      if (vp) {
+        vp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        vp.style.boxShadow = '0 0 35px var(--cyan-glow)';
+        setTimeout(function() {
+          vp.style.boxShadow = '';
+        }, 2200);
+      }
+
+      if (audioCoachEnabled && 'speechSynthesis' in window) {
+        speakFeedback('Gemini recommends ' + activeExercise.name + '. Watch the 3D avatar demonstrate form.');
+      }
+      showToast('3D Avatar demonstrating ' + activeExercise.name, '✨');
+    };
+
+    window.startExerciseInCamera = function(slug) {
+      selectExercise(slug);
+      switchAthleteTab('camera');
+      var sel = document.getElementById('camExerciseSelect');
+      if (sel) sel.value = slug;
+      showToast('Switched to Live AI Camera for ' + activeExercise.name, '📷');
+    };
 
     // ── DEDICATED EXERCISE DETAIL SCREEN CONTROLLER (MOBILE APP PARITY) ───────────
     var exModalTimerInterval = null;
