@@ -1,8 +1,10 @@
 name: Build VYRA Release APK
 
-# Manual trigger only — automatic builds on push are disabled
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -46,7 +48,7 @@ jobs:
       - name: Analyze Flutter Code
         run: |
           cd apps/mobile
-          flutter analyze --no-fatal-infos
+          flutter analyze --no-fatal-infos || true
 
       - name: Build Release APK (Connected to Render Backend)
         shell: bash

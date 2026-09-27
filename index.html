@@ -2404,14 +2404,19 @@
 
               <!-- Right: Biomechanics Controls & Cadence -->
               <div style="display:flex; flex-direction:column; gap:14px;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
                   <div>
                     <h3 id="biomechTitle" style="font-size:22px; font-weight:900; color:#FFF;">Bodyweight Squat</h3>
                     <p id="biomechMuscles" style="font-size:12px; color:var(--cyan); font-weight:700;">Target: Quadriceps, Gluteus Maximus, Core</p>
                   </div>
-                  <button class="tag-pill tag-emerald" style="padding:6px 12px; cursor:pointer;" onclick="toggleAudioCoach()">
-                    <span id="audioCoachStatus">🔊 Voice Coach: ON</span>
-                  </button>
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <button class="tag-pill tag-cyan" style="padding:6px 12px; cursor:pointer; font-weight:700;" onclick="openExerciseDetailModal(activeExercise.slug)">
+                      📖 Open Full Exercise Page & Timer
+                    </button>
+                    <button class="tag-pill tag-emerald" style="padding:6px 12px; cursor:pointer;" onclick="toggleAudioCoach()">
+                      <span id="audioCoachStatus">🔊 Voice Coach: ON</span>
+                    </button>
+                  </div>
                 </div>
 
                 <!-- Today's Prescribed Routine for Current Athlete Persona -->
@@ -2517,10 +2522,36 @@
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                   <span style="font-size:12px; font-weight:700; color:var(--cyan); text-transform:uppercase;">Selected Exercise:</span>
                   <select id="camExerciseSelect" class="form-input" style="padding:6px 12px; font-size:13px; font-weight:700; width:auto; border-radius:10px;" onchange="changeCamExercise(this.value)">
-                    <option value="bodyweight-squat">🏋️ Bodyweight Squats (ROM: Knee Flexion < 90°)</option>
-                    <option value="push-up">💪 Standard Push-ups (ROM: Elbow Flexion < 90°)</option>
-                    <option value="dumbbell-bicep-curl">🦾 Dumbbell Bicep Curls (ROM: Elbow < 45°)</option>
-                    <option value="jumping-jacks">🏃 Jumping Jacks (ROM: Arms Overhead > 160°)</option>
+                    <optgroup label="🦵 Legs & Glutes">
+                      <option value="bodyweight-squat">🏋️ Bodyweight Squat (Knee Flexion < 90°)</option>
+                      <option value="reverse-lunge">🦵 Reverse Lunge (Front Knee < 90°)</option>
+                      <option value="glute-bridge">🍑 Glute Bridge (Hip Extension > 170°)</option>
+                      <option value="wall-sit">🧱 Wall Sit (90° Isometric Knee Hold)</option>
+                      <option value="calf-raise">🦶 Calf Raise (Ankle Plantarflexion > 130°)</option>
+                    </optgroup>
+                    <optgroup label="💪 Chest & Push">
+                      <option value="push-up">💪 Standard Push-up (Elbow Flexion < 90°)</option>
+                      <option value="dumbbell-bench-press">🏋️ Dumbbell Bench Press (Elbow Lockout > 165°)</option>
+                    </optgroup>
+                    <optgroup label="🦾 Arms & Shoulders">
+                      <option value="dumbbell-bicep-curl">🦾 Dumbbell Bicep Curl (Elbow Flexion < 45°)</option>
+                      <option value="tricep-dips">🪑 Tricep Bench Dips (Elbow Flexion < 90°)</option>
+                      <option value="seated-overhead-press">⬆️ Seated Overhead Press (Arms Overhead > 170°)</option>
+                      <option value="lateral-raise">🦅 Lateral Raise (Shoulder Abduction > 85°)</option>
+                    </optgroup>
+                    <optgroup label="🚣 Back & Core">
+                      <option value="bent-over-row">🚣 Bent-Over Row (Elbow Retraction > 100°)</option>
+                      <option value="plank">🧘 Forearm Plank (Spine Line 180° Hold)</option>
+                      <option value="mountain-climbers">⛰️ Mountain Climbers (Alternating Knee Drives)</option>
+                    </optgroup>
+                    <optgroup label="⚡ Cardio & Agility">
+                      <option value="jumping-jacks">🏃 Jumping Jacks (Arms Overhead & Straddle)</option>
+                      <option value="burpees">⚡ Full Body Burpees (Squat-Plank-Jump Cycle)</option>
+                    </optgroup>
+                    <optgroup label="🧘 Yoga & Mobility">
+                      <option value="downward-dog">🐕 Downward-Facing Dog (Inverted V Hold)</option>
+                      <option value="cobra-pose">🐍 Cobra Pose (Lumbar Hyperextension)</option>
+                    </optgroup>
                   </select>
                 </div>
                 <div style="display:flex; align-items:center; gap:12px;">
@@ -3198,6 +3229,97 @@
       <button class="btn-submit" onclick="closeModal('modalBiometrics')">
         <span>Close Biometrics</span>
       </button>
+    </div>
+  </div>
+
+
+  <!-- MODAL: DEDICATED EXERCISE DETAIL SCREEN (MOBILE APP PARITY) -->
+  <div id="modalExerciseDetail" class="modal-backdrop">
+    <div class="modal-box" style="max-width:680px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header-row">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <h3 class="modal-title" id="exModalTitle" style="font-size:22px; font-weight:900; color:#FFF;">Bodyweight Squat</h3>
+            <span id="exModalHindi" style="font-size:14px; color:var(--cyan); font-weight:700;">बैठक</span>
+          </div>
+          <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+            <span id="exModalCatPill" class="tag-pill tag-cyan">Legs & Glutes</span>
+            <span id="exModalDiffPill" class="tag-pill tag-emerald">Beginner</span>
+            <span id="exModalMechanicsPill" class="tag-pill">Compound</span>
+            <span id="exModalMetPill" class="tag-pill tag-purple">5.5 MET</span>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('modalExerciseDetail')">&times;</button>
+      </div>
+
+      <!-- Muscles Target -->
+      <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:12px; padding:10px 14px; font-size:12px;">
+        <span style="color:var(--text-muted); font-weight:700;">TARGET MUSCLES: </span>
+        <span id="exModalMuscles" style="color:#FFF; font-weight:600;">Quadriceps, Gluteus Maximus, Core</span>
+      </div>
+
+      <!-- Interactive Interval Timer & Audio Coach Row -->
+      <div style="background:linear-gradient(135deg, rgba(0,210,255,0.1), rgba(52,255,140,0.05)); border:1px solid var(--border-cyan); border-radius:16px; padding:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <div style="font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Interval / Set Timer</div>
+          <div id="exModalTimerDisplay" style="font-size:42px; font-weight:900; color:#FFF; font-family:var(--font-mono); line-height:1;">00:45</div>
+          <div id="exModalTimerStatus" style="font-size:11px; color:var(--emerald); font-weight:700;">Ready to train (45s Interval)</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button id="btnExTimerToggle" class="btn-submit" style="padding:10px 18px;" onclick="toggleExModalTimer()">
+            <span>▶️ Start Timer</span>
+          </button>
+          <button class="tag-pill" onclick="resetExModalTimer()" style="cursor:pointer; background:rgba(255,255,255,0.08); color:#FFF; padding:10px 14px;">
+            <span>↺ Reset</span>
+          </button>
+          <button class="tag-pill tag-cyan" onclick="speakCurrentExerciseCues()" style="cursor:pointer; padding:10px 14px;">
+            <span>🎙️ Audio Cue</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Breathing Pattern Banner -->
+      <div style="background:rgba(0,210,255,0.06); border:1px solid rgba(0,210,255,0.25); border-radius:12px; padding:10px 14px; font-size:12px; color:var(--cyan); display:flex; align-items:center; gap:8px;">
+        <span style="font-size:16px;">🌬️</span>
+        <span id="exModalBreathingText">Inhale on eccentric lowering • Exhale on concentric drive</span>
+      </div>
+
+      <!-- Movement Phases Grid (4 Cards) -->
+      <div>
+        <div style="font-size:12px; font-weight:800; color:#FFF; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Movement Phases & Kinematic Cues:</div>
+        <div id="exModalPhasesGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px;">
+        </div>
+      </div>
+
+      <!-- Critical Form Checklist & Common Faults -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" class="form-row-2">
+        <div style="background:rgba(52,255,140,0.05); border:1px solid rgba(52,255,140,0.25); border-radius:14px; padding:12px;">
+          <div style="font-size:12px; font-weight:800; color:var(--emerald); margin-bottom:6px;">✓ Critical Form Checklist:</div>
+          <ul id="exModalChecklist" style="font-size:11.5px; color:var(--text); line-height:1.5; padding-left:16px; margin:0;"></ul>
+        </div>
+        <div style="background:rgba(255,71,87,0.05); border:1px solid rgba(255,71,87,0.25); border-radius:14px; padding:12px;">
+          <div style="font-size:12px; font-weight:800; color:var(--crimson); margin-bottom:6px;">⚠️ Mistakes to Avoid:</div>
+          <ul id="exModalFaults" style="font-size:11.5px; color:var(--text-muted); line-height:1.5; padding-left:16px; margin:0;"></ul>
+        </div>
+      </div>
+
+      <!-- Progression & Regression -->
+      <div style="display:flex; justify-content:space-between; font-size:12px; background:rgba(255,255,255,0.02); padding:10px 14px; border-radius:10px; border:1px solid var(--border-subtle); flex-wrap:wrap; gap:8px;">
+        <div><span style="color:var(--cyan); font-weight:700;">🟢 Easier Modification: </span><span id="exModalRegression" style="color:var(--text-muted);">-</span></div>
+        <div><span style="color:var(--orange); font-weight:700;">🟡 Advanced Progression: </span><span id="exModalProgression" style="color:var(--text-muted);">-</span></div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display:flex; gap:10px; justify-content:space-between; align-items:center; margin-top:10px; flex-wrap:wrap;">
+        <button id="btnExStartCamera" class="btn-submit" style="flex:1; justify-content:center;" onclick="launchExerciseInCamera()">
+          <span>📹 Start in Live AI Camera Tracker</span>
+        </button>
+        <button class="btn-table-action emerald" style="padding:11px 18px; font-size:13px; font-weight:700;" onclick="logExerciseCompletion()">
+          <span>✅ Log Set (+25 🪙)</span>
+        </button>
+        <button class="btn-table-action" onclick="closeModal('modalExerciseDetail')">Close</button>
+      </div>
+
     </div>
   </div>
 
@@ -5505,65 +5627,418 @@ function initThreeBackground() {
     function updateBiomechExerciseMotion(t) {
       if (!biomechParts.pelvis) return;
       var slug = activeExercise.slug;
-      var speed = 2.4;
-      var progress = (Math.sin(t * speed) + 1) / 2;
 
       var angleValEl = document.getElementById('biomechAngleVal');
       var angleLblEl = document.getElementById('biomechAngleLbl');
 
-      if (slug.indexOf('squat') !== -1 || slug.indexOf('lunge') !== -1 || slug.indexOf('wall-sit') !== -1) {
+      // Reset base posture
+      var defaultPelvisY = 0.88;
+      biomechParts.pelvis.position.set(0, defaultPelvisY, 0);
+      biomechParts.pelvis.rotation.set(0, 0, 0);
+      biomechParts.spine.rotation.set(0, 0, 0);
+      [-1, 1].forEach(function(side) {
+        var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
+        leg.thigh.rotation.set(0, 0, 0);
+        leg.shin.rotation.set(0, 0, 0);
+        var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+        arm.upper.rotation.set(0, 0, side * 0.15);
+        arm.lower.rotation.set(0, 0, 0);
+      });
+
+      // ── 1. BODYWEIGHT SQUAT ──
+      if (slug === 'bodyweight-squat') {
+        var speed = 2.2;
+        var progress = (Math.sin(t * speed) + 1) / 2;
         var kneeAngle = Math.round(175 - 85 * progress);
         if (angleValEl) angleValEl.innerText = kneeAngle + '.0°';
         if (angleLblEl) angleLblEl.innerText = 'Knee Flexion';
 
-        biomechParts.pelvis.position.y = 0.88 - progress * 0.36;
-        biomechParts.spine.rotation.x = progress * 0.28;
+        biomechParts.pelvis.position.y = 0.88 - progress * 0.38;
+        biomechParts.spine.rotation.x = progress * 0.32;
 
         [-1, 1].forEach(function(side) {
           var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
           leg.thigh.rotation.x = -progress * 1.45;
-          leg.shin.rotation.x = progress * 1.5;
+          leg.shin.rotation.x = progress * 1.50;
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.x = -progress * 1.35;
+          arm.lower.rotation.x = -progress * 0.35;
         });
+      }
+      // ── 2. REVERSE LUNGE ──
+      else if (slug === 'reverse-lunge') {
+        var speed = 2.0;
+        var progress = (Math.sin(t * speed) + 1) / 2;
+        var kneeAngle = Math.round(175 - 85 * progress);
+        if (angleValEl) angleValEl.innerText = kneeAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Front Knee Angle';
+
+        biomechParts.pelvis.position.y = 0.88 - progress * 0.32;
+        biomechParts.spine.rotation.x = 0.06;
+
+        biomechParts.leftLeg.thigh.rotation.x = -progress * 1.40;
+        biomechParts.leftLeg.shin.rotation.x = progress * 1.45;
+        biomechParts.rightLeg.thigh.rotation.x = progress * 0.70;
+        biomechParts.rightLeg.shin.rotation.x = progress * 1.40;
 
         [-1, 1].forEach(function(side) {
           var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
-          arm.upper.rotation.x = -progress * 1.3;
-          arm.lower.rotation.x = -progress * 0.4;
+          arm.upper.rotation.x = -0.2 * progress;
+          arm.lower.rotation.x = -0.4;
         });
-      } else if (slug.indexOf('push-up') !== -1 || slug.indexOf('bench-press') !== -1) {
-        var elbowAngle = Math.round(170 - 80 * progress);
+      }
+      // ── 3. GLUTE BRIDGE ──
+      else if (slug === 'glute-bridge') {
+        var speed = 2.0;
+        var progress = (Math.sin(t * speed) + 1) / 2;
+        var hipAngle = Math.round(120 + 55 * progress);
+        if (angleValEl) angleValEl.innerText = hipAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Hip Extension';
+
+        biomechParts.pelvis.position.y = 0.22 + progress * 0.32;
+        biomechParts.pelvis.rotation.x = -1.57 + progress * 0.25;
+        biomechParts.spine.rotation.x = -progress * 0.25;
+
+        [-1, 1].forEach(function(side) {
+          var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
+          leg.thigh.rotation.x = -0.85 + progress * 0.50;
+          leg.shin.rotation.x = 1.55;
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.z = side * 0.35;
+        });
+      }
+      // ── 4. WALL SIT ──
+      else if (slug === 'wall-sit') {
+        var microHold = Math.sin(t * 1.5) * 1.5;
+        var kneeAngle = Math.round(90 + microHold);
+        if (angleValEl) angleValEl.innerText = kneeAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = '90° Knee Hold';
+
+        biomechParts.pelvis.position.y = 0.56;
+        biomechParts.spine.rotation.x = 0;
+
+        [-1, 1].forEach(function(side) {
+          var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
+          leg.thigh.rotation.x = -1.52;
+          leg.shin.rotation.x = 1.55;
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.x = -0.45;
+          arm.lower.rotation.x = -0.80;
+        });
+      }
+      // ── 5. CALF RAISE ──
+      else if (slug === 'calf-raise') {
+        var speed = 2.6;
+        var progress = (Math.sin(t * speed) + 1) / 2;
+        var ankleAngle = Math.round(90 + 45 * progress);
+        if (angleValEl) angleValEl.innerText = ankleAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Plantarflexion';
+
+        biomechParts.pelvis.position.y = 0.88 + progress * 0.12;
+        biomechParts.spine.rotation.x = 0;
+
+        [-1, 1].forEach(function(side) {
+          var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
+          leg.thigh.rotation.x = 0;
+          leg.shin.rotation.x = -progress * 0.12;
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.z = side * 0.35;
+          arm.lower.rotation.x = -0.50;
+        });
+      }
+      // ── 6. STANDARD PUSH-UP ──
+      else if (slug === 'push-up') {
+        var speed = 2.2;
+        var progress = (Math.sin(t * speed) + 1) / 2;
+        var elbowAngle = Math.round(170 - 85 * progress);
         if (angleValEl) angleValEl.innerText = elbowAngle + '.0°';
         if (angleLblEl) angleLblEl.innerText = 'Elbow Flexion';
 
-        biomechParts.pelvis.position.y = 0.42 + progress * 0.22;
-        biomechParts.spine.rotation.x = 1.35;
+        biomechParts.pelvis.position.y = 0.40 - progress * 0.18;
+        biomechParts.pelvis.rotation.x = 1.38;
+        biomechParts.spine.rotation.x = 0.02;
+
         [-1, 1].forEach(function(side) {
           var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
-          arm.upper.rotation.x = 1.2;
-          arm.lower.rotation.x = progress * 1.3;
+          arm.upper.rotation.x = 1.15;
+          arm.upper.rotation.z = side * (0.30 + progress * 0.45);
+          arm.lower.rotation.x = progress * 1.35;
         });
-      } else if (slug.indexOf('curl') !== -1) {
-        var curlAngle = Math.round(165 - 130 * progress);
+      }
+      // ── 7. DUMBBELL BENCH PRESS ──
+      else if (slug === 'dumbbell-bench-press') {
+        var speed = 2.2;
+        var progress = (Math.sin(t * speed) + 1) / 2;
+        var pressAngle = Math.round(85 + 85 * progress);
+        if (angleValEl) angleValEl.innerText = pressAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Elbow Lockout';
+
+        biomechParts.pelvis.position.y = 0.45;
+        biomechParts.pelvis.rotation.x = -1.57;
+        biomechParts.spine.rotation.x = 0;
+
+        [-1, 1].forEach(function(side) {
+          var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
+          leg.thigh.rotation.x = -0.90;
+          leg.shin.rotation.x = 1.40;
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.x = (1 - progress) * 1.25;
+          arm.upper.rotation.z = side * ((1 - progress) * 0.75 + 0.10);
+          arm.lower.rotation.x = (1 - progress) * 1.35;
+        });
+      }
+      // ── 8. DUMBBELL BICEP CURL ──
+      else if (slug === 'dumbbell-bicep-curl') {
+        var speed = 2.4;
+        var progress = (Math.sin(t * speed) + 1) / 2;
+        var curlAngle = Math.round(165 - 128 * progress);
         if (angleValEl) angleValEl.innerText = curlAngle + '.0°';
         if (angleLblEl) angleLblEl.innerText = 'Elbow Angle';
 
         biomechParts.pelvis.position.y = 0.88;
         biomechParts.spine.rotation.x = 0;
+
         [-1, 1].forEach(function(side) {
           var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
-          arm.upper.rotation.x = 0.1;
-          arm.lower.rotation.x = -progress * 2.2;
+          arm.upper.rotation.x = 0.05;
+          arm.upper.rotation.z = side * 0.15;
+          arm.lower.rotation.x = -progress * 2.25;
         });
-      } else {
-        // General movement
-        var genAngle = Math.round(40 + 130 * progress);
+      }
+      // ── 9. TRICEP BENCH DIPS ──
+      else if (slug === 'tricep-dips') {
+        var speed = 2.2;
+        var progress = (Math.sin(t * speed) + 1) / 2;
+        var dipAngle = Math.round(165 - 75 * progress);
+        if (angleValEl) angleValEl.innerText = dipAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Elbow Flexion';
+
+        biomechParts.pelvis.position.y = 0.72 - progress * 0.28;
+        biomechParts.spine.rotation.x = -0.05;
+
+        [-1, 1].forEach(function(side) {
+          var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
+          leg.thigh.rotation.x = -0.40;
+          leg.shin.rotation.x = 0.30;
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.x = -0.65;
+          arm.lower.rotation.x = progress * 1.45;
+        });
+      }
+      // ── 10. SEATED DUMBBELL OVERHEAD PRESS ──
+      else if (slug === 'seated-overhead-press') {
+        var speed = 2.2;
+        var progress = (Math.sin(t * speed) + 1) / 2;
+        var shoulderAngle = Math.round(85 + 90 * progress);
+        if (angleValEl) angleValEl.innerText = shoulderAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Shoulder Extension';
+
+        biomechParts.pelvis.position.y = 0.58;
+        biomechParts.spine.rotation.x = 0.04;
+
+        [-1, 1].forEach(function(side) {
+          var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
+          leg.thigh.rotation.x = -1.55;
+          leg.shin.rotation.x = 1.55;
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.x = -0.20 - progress * 2.70;
+          arm.upper.rotation.z = side * (0.80 - progress * 0.60);
+          arm.lower.rotation.x = (1 - progress) * 1.40;
+        });
+      }
+      // ── 11. DUMBBELL LATERAL RAISE ──
+      else if (slug === 'lateral-raise') {
+        var speed = 2.2;
+        var progress = (Math.sin(t * speed) + 1) / 2;
+        var raiseAngle = Math.round(15 + 75 * progress);
+        if (angleValEl) angleValEl.innerText = raiseAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Shoulder Abduction';
+
+        biomechParts.pelvis.position.y = 0.88;
+        biomechParts.spine.rotation.x = 0.08;
+
+        [-1, 1].forEach(function(side) {
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.z = side * (0.18 + progress * 1.40);
+          arm.upper.rotation.x = -0.15 * progress;
+          arm.lower.rotation.x = -0.25;
+        });
+      }
+      // ── 12. DUMBBELL BENT-OVER ROW ──
+      else if (slug === 'bent-over-row') {
+        var speed = 2.2;
+        var progress = (Math.sin(t * speed) + 1) / 2;
+        var rowAngle = Math.round(165 - 80 * progress);
+        if (angleValEl) angleValEl.innerText = rowAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Elbow Retraction';
+
+        biomechParts.pelvis.position.y = 0.78;
+        biomechParts.spine.rotation.x = 0.78;
+
+        [-1, 1].forEach(function(side) {
+          var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
+          leg.thigh.rotation.x = -0.35;
+          leg.shin.rotation.x = 0.35;
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.x = 0.75 - progress * 1.35;
+          arm.lower.rotation.x = progress * 1.30;
+        });
+      }
+      // ── 13. FOREARM PLANK ──
+      else if (slug === 'plank') {
+        var microHold = Math.sin(t * 1.2) * 1.0;
+        var plankAngle = Math.round(180 - microHold);
+        if (angleValEl) angleValEl.innerText = plankAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Spine Alignment';
+
+        biomechParts.pelvis.position.y = 0.32;
+        biomechParts.pelvis.rotation.x = 1.46;
+        biomechParts.spine.rotation.x = 0;
+
+        [-1, 1].forEach(function(side) {
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.x = 1.45;
+          arm.lower.rotation.x = 1.45;
+        });
+      }
+      // ── 14. MOUNTAIN CLIMBERS ──
+      else if (slug === 'mountain-climbers') {
+        var speed = 4.5;
+        var leftDrive = Math.max(0, Math.sin(t * speed));
+        var rightDrive = Math.max(0, -Math.sin(t * speed));
+        var maxDrive = Math.max(leftDrive, rightDrive);
+        var driveAngle = Math.round(170 - 110 * maxDrive);
+        if (angleValEl) angleValEl.innerText = driveAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Knee Drive ROM';
+
+        biomechParts.pelvis.position.y = 0.44;
+        biomechParts.pelvis.rotation.x = 1.28;
+
+        biomechParts.leftLeg.thigh.rotation.x = -leftDrive * 1.65;
+        biomechParts.leftLeg.shin.rotation.x = leftDrive * 1.65;
+        biomechParts.rightLeg.thigh.rotation.x = -rightDrive * 1.65;
+        biomechParts.rightLeg.shin.rotation.x = rightDrive * 1.65;
+
+        [-1, 1].forEach(function(side) {
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.x = 1.28;
+          arm.lower.rotation.x = 0.10;
+        });
+      }
+      // ── 15. JUMPING JACKS ──
+      else if (slug === 'jumping-jacks') {
+        var speed = 3.2;
+        var progress = (Math.sin(t * speed) + 1) / 2;
+        var jackAngle = Math.round(15 + 160 * progress);
+        if (angleValEl) angleValEl.innerText = jackAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Shoulder Abduction';
+
+        biomechParts.pelvis.position.y = 0.88 + Math.abs(Math.cos(t * speed)) * 0.08;
+        biomechParts.spine.rotation.x = 0;
+
+        [-1, 1].forEach(function(side) {
+          var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
+          leg.thigh.rotation.z = -side * (progress * 0.42);
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.z = side * (0.20 + progress * 2.65);
+          arm.lower.rotation.x = -progress * 0.30;
+        });
+      }
+      // ── 16. FULL BODY BURPEES ──
+      else if (slug === 'burpees') {
+        var speed = 1.8;
+        var cycle = ((t * speed) % (Math.PI * 2)) / (Math.PI * 2);
+        var burpeeAngle = 175;
+
+        if (cycle < 0.25) {
+          var p = cycle / 0.25;
+          burpeeAngle = Math.round(175 - 90 * p);
+          biomechParts.pelvis.position.y = 0.88 - p * 0.45;
+          biomechParts.spine.rotation.x = p * 0.60;
+          [-1, 1].forEach(function(side) {
+            var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
+            leg.thigh.rotation.x = -p * 1.50;
+            leg.shin.rotation.x = p * 1.50;
+            var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+            arm.upper.rotation.x = -p * 1.10;
+          });
+        } else if (cycle < 0.50) {
+          var p = (cycle - 0.25) / 0.25;
+          burpeeAngle = Math.round(170 - 70 * p);
+          biomechParts.pelvis.position.y = 0.40 - p * 0.15;
+          biomechParts.pelvis.rotation.x = 1.35;
+          [-1, 1].forEach(function(side) {
+            var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+            arm.upper.rotation.x = 1.20;
+            arm.lower.rotation.x = p * 1.30;
+          });
+        } else if (cycle < 0.75) {
+          var p = (cycle - 0.50) / 0.25;
+          burpeeAngle = Math.round(85 + 40 * p);
+          biomechParts.pelvis.position.y = 0.48;
+          biomechParts.spine.rotation.x = 0.50;
+          [-1, 1].forEach(function(side) {
+            var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
+            leg.thigh.rotation.x = -1.40;
+            leg.shin.rotation.x = 1.40;
+          });
+        } else {
+          var p = (cycle - 0.75) / 0.25;
+          burpeeAngle = Math.round(125 + 55 * p);
+          biomechParts.pelvis.position.y = 0.88 + Math.sin(p * Math.PI) * 0.22;
+          [-1, 1].forEach(function(side) {
+            var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+            arm.upper.rotation.z = side * (0.30 + p * 2.50);
+          });
+        }
+        if (angleValEl) angleValEl.innerText = burpeeAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Kinetic Chain';
+      }
+      // ── 17. DOWNWARD-FACING DOG ──
+      else if (slug === 'downward-dog') {
+        var microHold = Math.sin(t * 1.0) * 1.5;
+        var dogAngle = Math.round(82 + microHold);
+        if (angleValEl) angleValEl.innerText = dogAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Hip Inversion';
+
+        biomechParts.pelvis.position.set(0, 0.85, -0.20);
+        biomechParts.pelvis.rotation.x = 0.92;
+        biomechParts.spine.rotation.x = 0.05;
+
+        [-1, 1].forEach(function(side) {
+          var leg = side === -1 ? biomechParts.leftLeg : biomechParts.rightLeg;
+          leg.thigh.rotation.x = -0.75;
+          leg.shin.rotation.x = 0.75;
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.x = -2.40;
+        });
+      }
+      // ── 18. COBRA POSE ──
+      else if (slug === 'cobra-pose') {
+        var microHold = Math.sin(t * 1.2) * 4.0;
+        var cobraAngle = Math.round(140 + microHold);
+        if (angleValEl) angleValEl.innerText = cobraAngle + '.0°';
+        if (angleLblEl) angleLblEl.innerText = 'Lumbar Extension';
+
+        biomechParts.pelvis.position.y = 0.18;
+        biomechParts.pelvis.rotation.x = 1.57;
+        biomechParts.spine.rotation.x = -0.68;
+
+        [-1, 1].forEach(function(side) {
+          var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
+          arm.upper.rotation.x = 1.10;
+          arm.lower.rotation.x = 0.45;
+        });
+      }
+      // ── FALLBACK ──
+      else {
+        var genAngle = Math.round(40 + 130 * ((Math.sin(t * 2) + 1) / 2));
         if (angleValEl) angleValEl.innerText = genAngle + '.0°';
         if (angleLblEl) angleLblEl.innerText = 'Joint Angle';
-
-        biomechParts.pelvis.position.y = 0.88 + progress * 0.05;
+        biomechParts.pelvis.position.y = 0.88;
         [-1, 1].forEach(function(side) {
           var arm = side === -1 ? biomechParts.leftArm : biomechParts.rightArm;
-          arm.upper.rotation.z = side * (0.2 + progress * 2.2);
+          arm.upper.rotation.z = side * (0.2 + ((Math.sin(t * 2) + 1) / 2) * 2.2);
         });
       }
     }
@@ -5572,8 +6047,11 @@ function initThreeBackground() {
       var found = exerciseDataset.find(function(e) { return e.slug === slug; });
       if (found) activeExercise = found;
 
-      document.getElementById('biomechTitle').innerText = activeExercise.name + (activeExercise.hindiName ? ' | ' + activeExercise.hindiName : '');
-      document.getElementById('biomechMuscles').innerText = 'Primary: ' + activeExercise.primaryMuscles.join(', ') + ' | Secondary: ' + activeExercise.secondaryMuscles.join(', ');
+      var titleEl = document.getElementById('biomechTitle');
+      if (titleEl) titleEl.innerText = activeExercise.name + (activeExercise.hindiName ? ' | ' + activeExercise.hindiName : '');
+
+      var musclesEl = document.getElementById('biomechMuscles');
+      if (musclesEl) musclesEl.innerText = 'Primary: ' + activeExercise.primaryMuscles.join(', ') + ' | Secondary: ' + activeExercise.secondaryMuscles.join(', ');
 
       var cuesEl = document.getElementById('biomechCuesList');
       if (cuesEl) {
@@ -5591,11 +6069,215 @@ function initThreeBackground() {
       var progEl = document.getElementById('biomechProgressionText');
       if (progEl) progEl.innerText = activeExercise.progression || 'N/A';
 
+      var camSel = document.getElementById('camExerciseSelect');
+      if (camSel && camSel.value !== activeExercise.slug) {
+        camSel.value = activeExercise.slug;
+      }
+
       if (audioCoachEnabled && 'speechSynthesis' in window) {
         speakFeedback(activeExercise.name + '. ' + (activeExercise.cues[0] || ''));
       }
       showToast('Loaded ' + activeExercise.name + ' Biomechanics', '📐');
     }
+    window.selectExercise = selectExercise;
+
+    // ── DEDICATED EXERCISE DETAIL SCREEN CONTROLLER (MOBILE APP PARITY) ───────────
+    var exModalTimerInterval = null;
+    var exModalTimeRemaining = 45;
+    var isExModalTimerRunning = false;
+    var exModalCurrentExercise = null;
+
+    function openExerciseDetailModal(slug) {
+      var ex = exerciseDataset.find(function(e) { return e.slug === slug; });
+      if (!ex) ex = activeExercise;
+      exModalCurrentExercise = ex;
+
+      selectExercise(slug);
+
+      var titleEl = document.getElementById('exModalTitle');
+      if (titleEl) titleEl.innerText = ex.name;
+
+      var hindiEl = document.getElementById('exModalHindi');
+      if (hindiEl) hindiEl.innerText = ex.hindiName || '';
+
+      var catEl = document.getElementById('exModalCatPill');
+      if (catEl) catEl.innerText = (ex.category || '').toUpperCase();
+
+      var diffEl = document.getElementById('exModalDiffPill');
+      if (diffEl) {
+        diffEl.innerText = (ex.difficulty || 'Beginner').toUpperCase();
+        diffEl.className = 'tag-pill ' + (ex.difficulty === 'beginner' ? 'tag-emerald' : (ex.difficulty === 'intermediate' ? 'tag-cyan' : 'tag-purple'));
+      }
+
+      var mechEl = document.getElementById('exModalMechanicsPill');
+      if (mechEl) mechEl.innerText = (ex.mechanics || 'Compound').toUpperCase();
+
+      var metEl = document.getElementById('exModalMetPill');
+      if (metEl) metEl.innerText = (ex.met || 5.0) + ' MET (' + Math.round((ex.met || 5.0) * 8.5) + ' kcal/10m)';
+
+      var musclesEl = document.getElementById('exModalMuscles');
+      if (musclesEl) musclesEl.innerText = 'Primary: ' + (ex.primaryMuscles || []).join(', ') + ' | Secondary: ' + (ex.secondaryMuscles || []).join(', ');
+
+      var breathEl = document.getElementById('exModalBreathingText');
+      if (breathEl) breathEl.innerText = ex.breathingPattern || 'Inhale on eccentric descent • Exhale forcefully on concentric drive';
+
+      var phasesGrid = document.getElementById('exModalPhasesGrid');
+      if (phasesGrid) {
+        phasesGrid.innerHTML = [
+          { num: '1', title: 'Phase 1: Setup', desc: 'Joint alignment & brace. Tempo: ' + (ex.tempo || '2-1-2') },
+          { num: '2', title: 'Phase 2: Eccentric', desc: ex.eccentricCue || 'Controlled lengthening under load.' },
+          { num: '3', title: 'Phase 3: Isometric', desc: ex.isometricHoldCue || 'Apex pause without loss of tension.' },
+          { num: '4', title: 'Phase 4: Concentric', desc: ex.concentricDriveCue || 'Explosive drive back to lockout.' }
+        ].map(function(p) {
+          return '<div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:10px; padding:8px 10px;">' +
+            '<div style="font-size:10px; font-weight:800; color:var(--cyan);">' + p.title + '</div>' +
+            '<div style="font-size:11px; color:var(--text-muted); margin-top:3px; line-height:1.35;">' + p.desc + '</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      var checkEl = document.getElementById('exModalChecklist');
+      if (checkEl) {
+        checkEl.innerHTML = (ex.cues || []).map(function(c) { return '<li>' + c + '</li>'; }).join('');
+      }
+
+      var faultsEl = document.getElementById('exModalFaults');
+      if (faultsEl) {
+        faultsEl.innerHTML = (ex.faults || []).map(function(f) { return '<li>' + f + '</li>'; }).join('');
+      }
+
+      var regEl = document.getElementById('exModalRegression');
+      if (regEl) regEl.innerText = ex.regression || 'Use supported variation';
+
+      var progEl = document.getElementById('exModalProgression');
+      if (progEl) progEl.innerText = ex.progression || 'Add external tempo / load';
+
+      resetExModalTimer();
+      openModal('modalExerciseDetail');
+    }
+    window.openExerciseDetailModal = openExerciseDetailModal;
+
+    function toggleExModalTimer() {
+      if (isExModalTimerRunning) {
+        pauseExModalTimer();
+      } else {
+        startExModalTimer();
+      }
+    }
+    window.toggleExModalTimer = toggleExModalTimer;
+
+    function startExModalTimer() {
+      if (isExModalTimerRunning) return;
+      isExModalTimerRunning = true;
+      var btn = document.getElementById('btnExTimerToggle');
+      if (btn) btn.innerHTML = '<span>⏸️ Pause</span>';
+      var statusEl = document.getElementById('exModalTimerStatus');
+      if (statusEl) {
+        statusEl.innerText = '🔥 Interval Active — Focus on Cadence!';
+        statusEl.style.color = 'var(--cyan)';
+      }
+
+      exModalTimerInterval = setInterval(function() {
+        exModalTimeRemaining--;
+        if (exModalTimeRemaining <= 0) {
+          clearInterval(exModalTimerInterval);
+          isExModalTimerRunning = false;
+          exModalTimeRemaining = 0;
+          updateExModalTimerDisplay();
+          if (btn) btn.innerHTML = '<span>▶️ Start Timer</span>';
+          if (statusEl) {
+            statusEl.innerText = '🎉 Set Complete! Well done.';
+            statusEl.style.color = 'var(--emerald)';
+          }
+          if ('speechSynthesis' in window) {
+            speakFeedback('Set finished! Take 30 seconds rest.');
+          }
+          showToast('Interval Completed! +25 🪙', '🏆');
+          return;
+        }
+        updateExModalTimerDisplay();
+      }, 1000);
+    }
+
+    function pauseExModalTimer() {
+      if (!isExModalTimerRunning) return;
+      clearInterval(exModalTimerInterval);
+      isExModalTimerRunning = false;
+      var btn = document.getElementById('btnExTimerToggle');
+      if (btn) btn.innerHTML = '<span>▶️ Resume</span>';
+      var statusEl = document.getElementById('exModalTimerStatus');
+      if (statusEl) {
+        statusEl.innerText = '⏸️ Timer Paused';
+        statusEl.style.color = 'var(--orange)';
+      }
+    }
+
+    function resetExModalTimer() {
+      if (exModalTimerInterval) clearInterval(exModalTimerInterval);
+      isExModalTimerRunning = false;
+      exModalTimeRemaining = (exModalCurrentExercise && (exModalCurrentExercise.slug === 'wall-sit' || exModalCurrentExercise.slug === 'plank')) ? 60 : 45;
+      updateExModalTimerDisplay();
+      var btn = document.getElementById('btnExTimerToggle');
+      if (btn) btn.innerHTML = '<span>▶️ Start Timer</span>';
+      var statusEl = document.getElementById('exModalTimerStatus');
+      if (statusEl) {
+        statusEl.innerText = 'Ready to train (' + exModalTimeRemaining + 's Interval)';
+        statusEl.style.color = 'var(--emerald)';
+      }
+    }
+    window.resetExModalTimer = resetExModalTimer;
+
+    function updateExModalTimerDisplay() {
+      var disp = document.getElementById('exModalTimerDisplay');
+      if (!disp) return;
+      var mins = Math.floor(exModalTimeRemaining / 60);
+      var secs = exModalTimeRemaining % 60;
+      disp.innerText = (mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs;
+    }
+
+    function speakCurrentExerciseCues() {
+      if (!exModalCurrentExercise) return;
+      var text = exModalCurrentExercise.name + '. ' + (exModalCurrentExercise.cues ? exModalCurrentExercise.cues.slice(0, 2).join('. ') : '');
+      speakFeedback(text);
+      showToast('Speaking form cues: ' + exModalCurrentExercise.name, '🎙️');
+    }
+    window.speakCurrentExerciseCues = speakCurrentExerciseCues;
+
+    function launchExerciseInCamera() {
+      if (!exModalCurrentExercise) return;
+      var slug = exModalCurrentExercise.slug;
+      closeModal('modalExerciseDetail');
+
+      switchAthleteTab('training');
+
+      var camCard = document.getElementById('aiCameraCard');
+      if (camCard) {
+        camCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      var camSel = document.getElementById('camExerciseSelect');
+      if (camSel) {
+        camSel.value = slug;
+      }
+      changeCamExercise(slug);
+
+      if (!isLiveCamTracking) {
+        startLiveWebcam();
+      }
+      showToast('Loaded ' + exModalCurrentExercise.name + ' in AI Camera Tracker!', '📹');
+    }
+    window.launchExerciseInCamera = launchExerciseInCamera;
+
+    function logExerciseCompletion() {
+      if (!exModalCurrentExercise) return;
+      vyraCoins += 25;
+      updateWalletBadges();
+      showToast('Logged 1 Set of ' + exModalCurrentExercise.name + '! +25 VYRA Coins earned 🪙', '✅');
+      if ('speechSynthesis' in window) {
+        speakFeedback('Great work! 25 Vyra coins added to your wallet.');
+      }
+    }
+    window.logExerciseCompletion = logExerciseCompletion;
 
     // ── 7. LIVE AI CAMERA POSE TRACKER (AUTHENTIC MOTION DETECTION) ──────────────
     var isLiveCamTracking = false;
@@ -5604,9 +6286,7 @@ function initThreeBackground() {
     var camSelectedExercise = 'bodyweight-squat';
     var camRepCount = 0;
     var camDownPhase = false;
-    var camMode = 'live'; // 'live' or 'demo'
-    var lastMotionTimestamp = 0;
-    var prevFrameBuffer = null;
+    var camMode = 'live';
 
     function setCamMode(mode) {
       camMode = mode;
@@ -5615,14 +6295,14 @@ function initThreeBackground() {
       if (mode === 'live') {
         if (btnLive) { btnLive.style.background = 'var(--cyan)'; btnLive.style.color = '#000'; }
         if (btnDemo) { btnDemo.style.background = 'transparent'; btnDemo.style.color = '#FFF'; }
-        document.getElementById('camModeIndicatorBadge').innerText = '📹 WEBCAM ACTIVE';
-        document.getElementById('camModeIndicatorBadge').className = 'tag-pill tag-cyan';
+        var badge = document.getElementById('camModeIndicatorBadge');
+        if (badge) { badge.innerText = '📹 WEBCAM ACTIVE'; badge.className = 'tag-pill tag-cyan'; }
         showToast('Live Camera Vision Mode selected.', '📹');
       } else {
         if (btnDemo) { btnDemo.style.background = 'var(--purple)'; btnDemo.style.color = '#FFF'; }
         if (btnLive) { btnLive.style.background = 'transparent'; btnLive.style.color = '#FFF'; }
-        document.getElementById('camModeIndicatorBadge').innerText = '🎮 AI DEMO SIMULATION';
-        document.getElementById('camModeIndicatorBadge').className = 'tag-pill tag-purple';
+        var badge = document.getElementById('camModeIndicatorBadge');
+        if (badge) { badge.innerText = '🎮 AI DEMO SIMULATION'; badge.className = 'tag-pill tag-purple'; }
         showToast('AI Synthetic Kinematics Demo Mode selected.', '🎮');
       }
     }
@@ -5660,8 +6340,10 @@ function initThreeBackground() {
             video.style.display = 'block';
             if (placeholder) placeholder.style.display = 'none';
             isLiveCamTracking = true;
-            btn.innerHTML = '<span>🛑 Stop Camera Tracking</span>';
-            btn.classList.add('danger');
+            if (btn) {
+              btn.innerHTML = '<span>🛑 Stop Camera Tracking</span>';
+              btn.classList.add('danger');
+            }
             showToast('Webcam AI tracking active (30 FPS).', '📷');
             runPoseTrackingLoop(false);
           })
@@ -5681,8 +6363,10 @@ function initThreeBackground() {
       var btn = document.getElementById('btnToggleCam');
       if (placeholder) placeholder.style.display = 'none';
       isLiveCamTracking = true;
-      btn.innerHTML = '<span>🛑 Stop AI Simulation</span>';
-      btn.classList.add('danger');
+      if (btn) {
+        btn.innerHTML = '<span>🛑 Stop AI Simulation</span>';
+        btn.classList.add('danger');
+      }
       showToast(msg, '⚠️');
       runPoseTrackingLoop(true);
     }
@@ -5734,7 +6418,6 @@ function initThreeBackground() {
         if (!isSynthetic && video && video.readyState >= 2) {
           ctx.drawImage(video, 0, 0, w, h);
 
-          // ── Real Lighting & Luminance Detection ──
           try {
             var sampleW = Math.min(100, w);
             var sampleH = Math.min(100, h);
@@ -5757,7 +6440,6 @@ function initThreeBackground() {
               lightStatusEl.className = 'tag-pill tag-crimson';
               lightStatusEl.innerText = '⚠️ Dark Lighting (< 25 Lumens)';
             }
-            // Display prominent dark warning overlay
             ctx.fillStyle = 'rgba(239, 68, 68, 0.85)';
             ctx.fillRect(w * 0.1, 24, w * 0.8, 44);
             ctx.fillStyle = '#FFFFFF';
@@ -5768,7 +6450,7 @@ function initThreeBackground() {
 
             document.getElementById('camFeedbackText').innerText = 'Room dark — Rep counter paused to prevent false counts.';
             camAnimFrame = requestAnimationFrame(loop);
-            return; // STOP rep counting in the dark!
+            return;
           } else {
             if (lightStatusEl) {
               lightStatusEl.className = 'tag-pill tag-emerald';
@@ -5776,7 +6458,6 @@ function initThreeBackground() {
             }
           }
         } else {
-          // Synthetic background
           ctx.fillStyle = '#080d18';
           ctx.fillRect(0, 0, w, h);
 
@@ -5786,38 +6467,63 @@ function initThreeBackground() {
           for (var y = 0; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
         }
 
-        // Kinetic Cycle
         var elapsedSec = (Date.now() - startTime) / 1000.0;
         var cycle = (elapsedSec % syntheticCycleTime) / syntheticCycleTime;
         var sinC = Math.sin(cycle * Math.PI * 2);
         var repProgress = Math.max(0, -sinC);
 
-        if (camSelectedExercise === 'bodyweight-squat') {
+        var jointLabel = 'Joint Angle';
+        var isDownTrigger = false;
+        var isUpTrigger = false;
+
+        if (camSelectedExercise === 'bodyweight-squat' || camSelectedExercise === 'reverse-lunge' || camSelectedExercise === 'wall-sit' || camSelectedExercise === 'calf-raise') {
           currentAngle = Math.round(175 - 85 * repProgress);
-          document.getElementById('camCurrentAngleLbl').innerText = 'Knee Flexion';
+          jointLabel = 'Knee Flexion';
+          isDownTrigger = currentAngle <= 95;
+          isUpTrigger = currentAngle >= 165;
+        } else if (camSelectedExercise === 'push-up' || camSelectedExercise === 'dumbbell-bench-press' || camSelectedExercise === 'tricep-dips' || camSelectedExercise === 'bent-over-row') {
+          currentAngle = Math.round(170 - 85 * repProgress);
+          jointLabel = 'Elbow Flexion';
+          isDownTrigger = currentAngle <= 95;
+          isUpTrigger = currentAngle >= 160;
         } else if (camSelectedExercise === 'dumbbell-bicep-curl') {
-          currentAngle = Math.round(165 - 130 * repProgress);
-          document.getElementById('camCurrentAngleLbl').innerText = 'Elbow Flexion';
-        } else if (camSelectedExercise === 'push-up') {
-          currentAngle = Math.round(170 - 80 * repProgress);
-          document.getElementById('camCurrentAngleLbl').innerText = 'Elbow Lockout';
+          currentAngle = Math.round(165 - 128 * repProgress);
+          jointLabel = 'Elbow Angle';
+          isDownTrigger = currentAngle <= 50;
+          isUpTrigger = currentAngle >= 155;
+        } else if (camSelectedExercise === 'seated-overhead-press' || camSelectedExercise === 'lateral-raise' || camSelectedExercise === 'jumping-jacks') {
+          currentAngle = Math.round(20 + 155 * repProgress);
+          jointLabel = 'Shoulder ROM';
+          isDownTrigger = currentAngle >= 150;
+          isUpTrigger = currentAngle <= 35;
+        } else if (camSelectedExercise === 'glute-bridge' || camSelectedExercise === 'mountain-climbers' || camSelectedExercise === 'burpees') {
+          currentAngle = Math.round(170 - 100 * repProgress);
+          jointLabel = 'Hip Angle';
+          isDownTrigger = currentAngle <= 85;
+          isUpTrigger = currentAngle >= 160;
         } else {
-          currentAngle = Math.round(30 + 130 * repProgress);
-          document.getElementById('camCurrentAngleLbl').innerText = 'Shoulder Abduction';
+          currentAngle = Math.round(180 - 15 * repProgress);
+          jointLabel = 'Spine Alignment';
+          isDownTrigger = currentAngle <= 170;
+          isUpTrigger = currentAngle >= 178;
         }
 
-        document.getElementById('camCurrentAngle').innerText = currentAngle + '°';
+        var angleValEl = document.getElementById('camCurrentAngle');
+        if (angleValEl) angleValEl.innerText = currentAngle + '°';
+
+        var angleLblEl = document.getElementById('camCurrentAngleLbl');
+        if (angleLblEl) angleLblEl.innerText = jointLabel;
 
         // Rep Count Trigger
-        if (currentAngle <= 95 && !camDownPhase) {
+        if (isDownTrigger && !camDownPhase) {
           camDownPhase = true;
-          document.getElementById('camFeedbackText').innerText = 'Good depth! Now drive up explosively...';
-        } else if (currentAngle >= 165 && camDownPhase) {
+          document.getElementById('camFeedbackText').innerText = 'Good depth & ROM! Now drive through...';
+        } else if (isUpTrigger && camDownPhase) {
           camDownPhase = false;
           camRepCount++;
           document.getElementById('camRepCount').innerText = camRepCount;
-          document.getElementById('camFeedbackText').innerText = 'Rep ' + camRepCount + ' verified! Excellent form.';
-          if (audioCoachEnabled) speakFeedback('Rep ' + camRepCount + ' complete');
+          document.getElementById('camFeedbackText').innerText = 'Rep ' + camRepCount + ' verified! Clean form.';
+          if (audioCoachEnabled) speakFeedback('Rep ' + camRepCount);
           showToast('Rep ' + camRepCount + ' Counted!', '🎯');
         }
 
@@ -5887,7 +6593,6 @@ function initThreeBackground() {
         ctx.fill();
       });
 
-      // Joint Angle Arc Indicator
       ctx.strokeStyle = jointAngle <= 95 ? '#34FF8C' : '#FFD32A';
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -5905,24 +6610,44 @@ function initThreeBackground() {
       document.getElementById('camRepCount').innerText = '0';
       showToast('Rep counter reset to 0.', '↺');
     }
+    window.resetCamReps = resetCamReps;
 
     function changeCamExercise(slug) {
       camSelectedExercise = slug;
       selectExercise(slug);
       var goalMap = {
         'bodyweight-squat': '12 Reps',
-        'push-up': '10 Reps',
-        'dumbbell-bicep-curl': '15 Reps',
-        'jumping-jacks': '25 Reps'
+        'reverse-lunge': '10 Reps / Leg',
+        'glute-bridge': '15 Reps',
+        'wall-sit': '45s Isometric Hold',
+        'calf-raise': '20 Reps',
+        'push-up': '15 Reps',
+        'dumbbell-bench-press': '12 Reps',
+        'dumbbell-bicep-curl': '12 Reps',
+        'tricep-dips': '12 Reps',
+        'seated-overhead-press': '10 Reps',
+        'lateral-raise': '15 Reps',
+        'bent-over-row': '12 Reps',
+        'plank': '60s Core Hold',
+        'mountain-climbers': '30 Reps',
+        'jumping-jacks': '25 Reps',
+        'burpees': '10 Reps',
+        'downward-dog': '30s Asana Hold',
+        'cobra-pose': '30s Spine Extension'
       };
       if (document.getElementById('camTargetGoal')) {
         document.getElementById('camTargetGoal').innerText = goalMap[slug] || '12 Reps';
       }
-      showToast('Camera calibrated for ' + slug.replace('-', ' ').toUpperCase(), '🎯');
+      showToast('Camera calibrated for ' + slug.replace(/-/g, ' ').toUpperCase(), '🎯');
     }
+    window.changeCamExercise = changeCamExercise;
 
     function startRoutineCameraSession() {
-      switchGlobalTab('camera');
+      switchAthleteTab('training');
+      var camCard = document.getElementById('aiCameraCard');
+      if (camCard) {
+        camCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       var p = PRESET_PERSONAS[activePersonaId];
       if (p && p.routine && p.routine[0]) {
         changeCamExercise(p.routine[0].slug);
@@ -6275,7 +7000,7 @@ function initThreeBackground() {
       var routineList = document.getElementById('prescribedExercisesList');
       if (routineList) {
         routineList.innerHTML = p.routine.map(function(ex, i) {
-          return '<div class="kpi-card" style="padding:10px; cursor:pointer; background:rgba(255,255,255,0.04); border:1px solid rgba(0,210,255,0.2);" onclick="selectExercise(&quot;' + ex.slug + '&quot;)">' +
+          return '<div class="kpi-card" style="padding:10px; cursor:pointer; background:rgba(255,255,255,0.04); border:1px solid rgba(0,210,255,0.2);" onclick="openExerciseDetailModal(&quot;' + ex.slug + '&quot;)">' +
             '<div style="font-size:10.5px; font-weight:800; color:var(--cyan);">EXERCISE ' + (i + 1) + '</div>' +
             '<div style="font-size:13px; font-weight:800; color:#FFF; margin:3px 0;">' + ex.name + '</div>' +
             '<div style="font-size:11px; color:var(--emerald); font-weight:700;">' + ex.targetReps + '</div>' +
@@ -7328,7 +8053,7 @@ function populateCustomizerLists() {
 
       pillsContainer.innerHTML = filtered.map(function(e) {
         var isCur = e.slug === activeExercise.slug;
-        return '<button class="category-chip ' + (isCur ? 'active' : '') + '" style="font-size:11.5px; padding:5px 10px;" onclick="selectExercise(&quot;' + e.slug + '&quot;)">' +
+        return '<button class="category-chip ' + (isCur ? 'active' : '') + '" style="font-size:11.5px; padding:5px 10px;" onclick="openExerciseDetailModal(&quot;' + e.slug + '&quot;)">' +
           e.name + (e.hindiName ? ' (' + e.hindiName + ')' : '') +
         '</button>';
       }).join('');

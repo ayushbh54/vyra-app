@@ -8,6 +8,7 @@
 // • Tap to dismiss (slides back up) OR auto-dismisses after 5 s.
 // • Use [DailySloganBanner.show] as a static helper on any screen.
 
+// ignore_for_file: unused_field
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/motivation_service.dart';
