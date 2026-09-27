@@ -9,6 +9,6 @@
     "start": "cd services/api && npm start",
     "dev": "cd services/api && npm run dev",
     "test": "cd services/api && npm test",
-    "test:e2e": "node test_api_e2e.mjs"
+    "test:e2e": "npm test --prefix services/api"
   }
 }

@@ -391,7 +391,7 @@ class MotivationService {
 
     for (final slot in slots) {
       final slogan = _pickFromCategory(slot.category, language);
-      final details = NotificationDetails(
+      const details = NotificationDetails(
         android: AndroidNotificationDetails(
           'vyra_motivation',
           'VYRA Daily Motivation',
@@ -414,6 +414,8 @@ class MotivationService {
         _nextOccurrence(slot.hour, slot.minute),
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time, // repeat daily
       );
     }

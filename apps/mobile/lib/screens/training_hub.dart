@@ -17,7 +17,6 @@ import 'challenges_hub.dart';
 import 'exercise_detail.dart';
 import 'face_hair_yoga.dart';
 import 'food_scan.dart';
-import 'friends_leaderboard.dart';
 import 'health_report_ai.dart';
 import 'health_sync.dart';
 import 'library.dart';
