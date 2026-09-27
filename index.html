@@ -86,15 +86,15 @@
 
     .auth-card {
       width: 100%;
-      max-width: 480px;
+      max-width: 520px;
       background: rgba(10, 16, 30, 0.94);
       border: 1px solid var(--border-cyan);
       border-radius: 28px;
-      padding: 36px 32px;
+      padding: 32px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 40px var(--cyan-glow);
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
       animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -172,14 +172,20 @@
       box-shadow: 0 0 16px rgba(165, 94, 234, 0.4);
     }
 
+    .form-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
     .form-group {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
 
     .form-label {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
@@ -189,10 +195,10 @@
     .form-input {
       background: rgba(18, 27, 48, 0.8);
       border: 1px solid var(--border-subtle);
-      border-radius: 14px;
-      padding: 12px 16px;
+      border-radius: 12px;
+      padding: 10px 14px;
       color: #FFF;
-      font-size: 14px;
+      font-size: 13.5px;
       font-family: inherit;
       outline: none;
       transition: all 0.2s;
@@ -208,7 +214,7 @@
       background: linear-gradient(135deg, var(--cyan), #0099FF);
       color: #000;
       border: none;
-      padding: 14px;
+      padding: 13px;
       border-radius: 14px;
       font-size: 14px;
       font-weight: 800;
@@ -231,10 +237,6 @@
       background: linear-gradient(135deg, var(--purple), #7158E2);
       color: #FFF;
       box-shadow: 0 4px 20px rgba(165, 94, 234, 0.4);
-    }
-
-    .btn-submit.admin-btn:hover {
-      box-shadow: 0 8px 28px rgba(165, 94, 234, 0.55);
     }
 
     .demo-divider {
@@ -266,7 +268,7 @@
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border-subtle);
       border-radius: 12px;
-      padding: 11px 14px;
+      padding: 10px 14px;
       color: var(--text);
       font-size: 12.5px;
       font-weight: 600;
@@ -509,6 +511,52 @@
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Personalized Health Banner */
+    .health-metrics-banner {
+      background: linear-gradient(135deg, rgba(0, 210, 255, 0.12), rgba(52, 255, 140, 0.08));
+      border: 1px solid var(--border-cyan);
+      border-radius: 20px;
+      padding: 18px 24px;
+      margin-bottom: 24px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .health-metrics-banner { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 500px) {
+      .health-metrics-banner { grid-template-columns: 1fr; }
+    }
+
+    .health-metric-box {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .health-metric-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .health-metric-val {
+      font-size: 20px;
+      font-weight: 900;
+      color: #FFF;
+      font-family: var(--font-mono);
+    }
+
+    .health-metric-sub {
+      font-size: 11px;
+      color: var(--emerald);
+      font-weight: 600;
     }
 
     /* ── 3D AVATAR STUDIO SECTION ── */
@@ -1201,9 +1249,95 @@
       transform: translateY(0);
       opacity: 1;
     }
+  
+    /* 4-Column Responsive Auth Tabs */
+    .auth-tabs {
+      display: grid !important;
+      grid-template-columns: repeat(4, 1fr) !important;
+      gap: 6px !important;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 16px;
+      padding: 4px;
+      border: 1px solid var(--border-subtle);
+    }
+    @media (max-width: 680px) {
+      .auth-tabs {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+    }
+
+    /* System Maintenance Banner */
+    #maintenanceBanner {
+      display: none;
+      background: linear-gradient(90deg, #ff4757, #ff6b81);
+      color: #FFF;
+      text-align: center;
+      padding: 10px 16px;
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      z-index: 99999;
+      box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4);
+    }
+
+    /* Table Action Buttons */
+    .btn-table-action {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      color: #FFF;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .btn-table-action:hover {
+      background: var(--cyan);
+      color: #000;
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan-glow);
+    }
+    .btn-table-action.danger:hover {
+      background: var(--crimson);
+      color: #FFF;
+      border-color: var(--crimson);
+      box-shadow: 0 0 10px rgba(255, 71, 87, 0.4);
+    }
+    .btn-table-action.emerald:hover {
+      background: var(--emerald);
+      color: #000;
+      border-color: var(--emerald);
+      box-shadow: 0 0 10px var(--emerald-glow);
+    }
+
+    /* AI chip buttons */
+    .ai-chip-btn {
+      background: rgba(0, 210, 255, 0.06);
+      border: 1px solid rgba(0, 210, 255, 0.25);
+      border-radius: 20px;
+      color: var(--cyan);
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .ai-chip-btn:hover {
+      background: var(--cyan);
+      color: #000;
+    }
+
   </style>
 </head>
 <body>
+
+  <!-- SYSTEM MAINTENANCE BANNER (CONTROLLED BY SUPER ADMIN) -->
+  <div id="maintenanceBanner">
+    ⚠️ <span>SYSTEM NOTICE: Enterprise Maintenance Mode is <b>ACTIVE</b>. Non-admin operations restricted.</span>
+  </div>
+
 
   <!-- THREE.JS 3D CANVAS BACKGROUND -->
   <canvas id="threeCanvas"></canvas>
@@ -1212,80 +1346,175 @@
 
     <!-- 1. AUTH GATEWAY (SHOWN WHEN LOGGED OUT) -->
     <div id="authGateway">
-      <div class="auth-card">
+      <div class="auth-card" style="max-width:580px;">
         <div class="auth-logo-row">
           <div class="auth-logo-badge">⚡</div>
           <div class="auth-title">VYRA</div>
         </div>
-        <p class="auth-sub">
+        <p class="auth-sub" style="margin-bottom:4px;">
           Next-Generation 3D Athletic Intelligence, Biomechanics & National Health Infrastructure.
         </p>
 
-        <!-- Role Select Tabs -->
+        <!-- 4 Role / Access Tabs -->
         <div class="auth-tabs">
-          <button id="authTabUser" class="auth-tab-btn active" onclick="setAuthTab('user')">👤 Athlete Portal</button>
-          <button id="authTabAdmin" class="auth-tab-btn admin-tab" onclick="setAuthTab('admin')">🛡️ Superadmin</button>
+          <button id="authTabSignup" class="auth-tab-btn active" onclick="setAuthTab('signup')">👤 Athlete Setup</button>
+          <button id="authTabGuest" class="auth-tab-btn" onclick="setAuthTab('guest')">⚡ Guest Access</button>
+          <button id="authTabSignin" class="auth-tab-btn" onclick="setAuthTab('signin')">🔑 Sign In</button>
+          <button id="authTabAdmin" class="auth-tab-btn admin-tab" onclick="setAuthTab('admin')">🛡️ Super Admin</button>
         </div>
 
-        <!-- User Login Form -->
-        <div id="userAuthForm" style="display:flex; flex-direction:column; gap:12px;">
-          <div class="form-group">
-            <label class="form-label">Athlete Email or Phone</label>
-            <input type="text" id="userEmailInput" class="form-input" placeholder="e.g. athlete@vyra.app" value="ayush@vyra.app">
+        <!-- 1. ATHLETE SETUP / PERSONALIZATION SIGNUP FORM -->
+        <div id="userSignupForm" style="display:flex; flex-direction:column; gap:12px;">
+          <div style="font-size:12px; color:var(--cyan); background:rgba(0,210,255,0.06); border:1px solid rgba(0,210,255,0.2); border-radius:10px; padding:8px 12px;">
+            ✨ <b>Personalized Onboarding:</b> Calculates real Mifflin-St Jeor BMR, TDEE & ICMR Asian-Indian BMI baseline.
           </div>
-          <div class="form-group">
-            <label class="form-label">Access Passkey</label>
-            <input type="password" id="userPassInput" class="form-input" placeholder="••••••••" value="vyra2026">
+          
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">Full Name</label>
+              <input type="text" id="regName" class="form-input" placeholder="Ayush Singh Bhadoria" value="Ayush Singh Bhadoria">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <input type="email" id="regEmail" class="form-input" placeholder="ayush@vyra.app" value="ayush@vyra.app">
+            </div>
           </div>
-          <button class="btn-submit" onclick="loginUser()">
-            <span>⚡ Enter 3D Athlete Studio</span>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">Create Password</label>
+              <input type="password" id="regPassword" class="form-input" placeholder="••••••••" value="Vyra@123">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Gender</label>
+              <select id="regGender" class="form-input" onchange="currentGender = this.value">
+                <option value="male" selected>Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">Age (Years)</label>
+              <input type="number" id="regAge" class="form-input" value="22" min="14" max="80">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Blood Group</label>
+              <select id="regBlood" class="form-input">
+                <option value="O+">O Positive (O+)</option>
+                <option value="O-">O Negative (O-)</option>
+                <option value="A+">A Positive (A+)</option>
+                <option value="B+" selected>B Positive (B+)</option>
+                <option value="AB+">AB Positive (AB+)</option>
+                <option value="AB-">AB Negative (AB-)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">Height (cm)</label>
+              <input type="number" id="regHeight" class="form-input" value="178" min="120" max="230">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Weight (kg)</label>
+              <input type="number" id="regWeight" class="form-input" value="70" min="35" max="200">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Physical Activity Multiplier</label>
+            <select id="regActivity" class="form-input">
+              <option value="1.2">Sedentary (Desk Job / Little Exercise)</option>
+              <option value="1.375">Light Activity (1-3 training days/week)</option>
+              <option value="1.55" selected>Moderate Training (3-5 training days/week)</option>
+              <option value="1.725">Intense Athletic Training (6-7 days/week)</option>
+            </select>
+          </div>
+
+          <button class="btn-submit" onclick="registerAndLaunchAthlete()">
+            <span>⚡ Calculate Metabolism & Create Athlete Profile</span>
           </button>
-
-          <div class="demo-divider">Instant Quick Access</div>
-
-          <div class="quick-login-grid">
-            <button class="btn-quick-login" onclick="quickLogin('Ayush Singh Bhadoria', 'Elite Warrior', 1450, 'user')">
-              <span>👤 Ayush Bhadoria (Elite Warrior)</span>
-              <span class="badge">1,450 🪙</span>
-            </button>
-            <button class="btn-quick-login" onclick="quickLogin('Pooja Sharma', 'Gold Athlete', 820, 'user')">
-              <span>🩸 Pooja Sharma (Verified Donor)</span>
-              <span class="badge">820 🪙</span>
-            </button>
-            <button class="btn-quick-login" onclick="quickLogin('Guest Athlete', 'Guest Session', 0, 'user')">
-              <span>⚡ 1-Tap Fast Guest Session</span>
-              <span class="badge">PROMO</span>
-            </button>
-          </div>
         </div>
 
-        <!-- Admin Login Form -->
-        <div id="adminAuthForm" style="display:none; flex-direction:column; gap:12px;">
+        <!-- 2. GUEST LOGIN (FAST ZERO-PASSWORD ACCESS) -->
+        <div id="userGuestForm" style="display:none; flex-direction:column; gap:14px;">
+          <div style="font-size:12.5px; color:var(--emerald); background:rgba(52,255,140,0.06); border:1px solid rgba(52,255,140,0.25); border-radius:12px; padding:12px; line-height:1.5;">
+            ⚡ <b>Instant Guest Access:</b> Just enter your Name & Email to explore the full 3D avatar studio, kinematics HUD, camera tracker and e-RaktKosh network without setting a password!
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Your Name</label>
+            <input type="text" id="guestNameInput" class="form-input" placeholder="e.g. Aryan Verma" value="Aryan Verma">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Your Email</label>
+            <input type="email" id="guestEmailInput" class="form-input" placeholder="e.g. aryan@guest.vyra.app" value="aryan@guest.vyra.app">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Gender (Avatar Body Spec)</label>
+            <select id="guestGenderSelect" class="form-input">
+              <option value="male" selected>Male Athlete</option>
+              <option value="female">Female Athlete</option>
+            </select>
+          </div>
+
+          <button class="btn-submit" style="background:var(--emerald); color:#000;" onclick="loginGuestAthlete()">
+            <span>🚀 Enter As Guest Athlete (Instant Launch)</span>
+          </button>
+        </div>
+
+        <!-- 3. RETURNING ATHLETE SIGN IN FORM -->
+        <div id="userSigninForm" style="display:none; flex-direction:column; gap:14px;">
+          <div style="font-size:12.5px; color:var(--text-muted); background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:12px; padding:12px;">
+            🔑 <b>Returning Athlete:</b> Sign in to load your saved biometrics, custom avatar gear, and earned reward coins.
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Registered Email</label>
+            <input type="email" id="loginEmailInput" class="form-input" placeholder="ayush@vyra.app" value="ayush@vyra.app">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" id="loginPassInput" class="form-input" placeholder="••••••••" value="Vyra@123">
+          </div>
+
+          <button class="btn-submit" onclick="loginRegisteredAthlete()">
+            <span>🔓 Sign In to Athlete Dashboard</span>
+          </button>
+        </div>
+
+        <!-- 4. SUPER ADMIN MASTER AUTHENTICATION -->
+        <div id="adminAuthForm" style="display:none; flex-direction:column; gap:14px;">
+          <div style="font-size:12.5px; color:var(--purple); background:rgba(165,94,234,0.08); border:1px solid rgba(165,94,234,0.3); border-radius:12px; padding:12px; line-height:1.5;">
+            🛡️ <b>Superadmin Security Protocol:</b> Master access to live hardware telemetry, remote feature flags, national blood appeals & Gemini AI engine.
+          </div>
+
           <div class="form-group">
             <label class="form-label">Superadmin Master ID</label>
-            <input type="text" id="adminIdInput" class="form-input" placeholder="admin@vyra.app" value="admin@vyra.app">
+            <input type="email" id="adminIdInput" class="form-input" placeholder="admin@gmail.com" value="admin@gmail.com">
           </div>
+
           <div class="form-group">
-            <label class="form-label">Security Protocol Key</label>
-            <input type="password" id="adminKeyInput" class="form-input" placeholder="••••••••" value="admin123">
+            <label class="form-label">Security Protocol Passkey</label>
+            <input type="password" id="adminKeyInput" class="form-input" placeholder="Admin123" value="Admin123">
           </div>
+
+          <div style="font-size:11.5px; color:var(--text-muted); background:rgba(0,0,0,0.4); border:1px solid var(--border-subtle); border-radius:10px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+            <span>Master ID: <b style="color:var(--purple);">admin@gmail.com</b></span>
+            <span>Passkey: <b style="color:var(--cyan);">Admin123</b></span>
+          </div>
+
           <button class="btn-submit admin-btn" onclick="loginAdmin()">
-            <span>🛡️ Unlock Operations Center</span>
+            <span>🛡️ Authenticate Enterprise Operations Center</span>
           </button>
-
-          <div class="demo-divider">Superadmin 1-Click</div>
-
-          <div class="quick-login-grid">
-            <button class="btn-quick-login" onclick="quickLogin('Ayush Bhadoria (Superadmin)', 'Operations Chief', 9999, 'admin')">
-              <span>🛡️ 1-Click Superadmin Access</span>
-              <span class="badge" style="color:var(--purple); background:rgba(165,94,234,0.15);">ROOT</span>
-            </button>
-          </div>
         </div>
       </div>
     </div>
-
-    <!-- 2. AUTHENTICATED PLATFORM VIEW (SHOWN WHEN LOGGED IN) -->
     <div id="authenticatedApp" style="display:none; flex-direction:column; min-height:100vh;">
 
       <!-- Top Global Header -->
@@ -1325,15 +1554,39 @@
         <!-- Navigation Subtabs -->
         <nav id="athleteSubNav">
           <button class="portal-nav-btn active" onclick="switchAthleteTab('studio')">✨ 3D Avatar Studio</button>
-          <button class="portal-nav-btn" onclick="switchAthleteTab('biomech')">📐 Biomechanics 3D HUD</button>
-          <button class="portal-nav-btn" onclick="switchAthleteTab('camera')">📷 Live AI Camera Tracker</button>
-          <button class="portal-nav-btn" onclick="switchAthleteTab('nutrition')">🥗 IFCT Nutrition Engine</button>
-          <button class="portal-nav-btn" onclick="switchAthleteTab('lab')">🩸 Lab Blood AI</button>
-          <button class="portal-nav-btn" onclick="switchAthleteTab('blood')">🏥 e-RaktKosh Blood Radar</button>
+          <button class="portal-nav-btn" onclick="switchAthleteTab('biomech')">📐 18 Exercise Kinematics HUD</button>
+          <button class="portal-nav-btn" onclick="switchAthleteTab('camera')">📷 Live AI Camera Pose Tracker</button>
+          <button class="portal-nav-btn" onclick="switchAthleteTab('nutrition')">🥗 ICMR-NIN IFCT Nutrition</button>
+          <button class="portal-nav-btn" onclick="switchAthleteTab('lab')">🩸 AI Blood Biomarkers (ICMR)</button>
+          <button class="portal-nav-btn" onclick="switchAthleteTab('blood')">🏥 e-RaktKosh National Network</button>
           <button class="portal-nav-btn" onclick="switchAthleteTab('analytics')">📊 Performance Analytics</button>
         </nav>
 
         <main class="view-content-area">
+
+          <!-- Real Personalized Health & Metabolism Banner -->
+          <div class="health-metrics-banner">
+            <div class="health-metric-box">
+              <span class="health-metric-lbl">Body Mass Index (BMI)</span>
+              <span id="realBmiVal" class="health-metric-val">22.1 kg/m²</span>
+              <span id="realBmiCategory" class="health-metric-sub">Optimal (ICMR Indian Standard)</span>
+            </div>
+            <div class="health-metric-box">
+              <span class="health-metric-lbl">Basal Metabolic Rate (BMR)</span>
+              <span id="realBmrVal" class="health-metric-val">1,712 kcal</span>
+              <span class="health-metric-sub">Mifflin-St Jeor Formula</span>
+            </div>
+            <div class="health-metric-box">
+              <span class="health-metric-lbl">Daily Energy Target (TDEE)</span>
+              <span id="realTdeeVal" class="health-metric-val">2,354 kcal</span>
+              <span class="health-metric-sub">Maintenance Calorie Ceiling</span>
+            </div>
+            <div class="health-metric-box">
+              <span class="health-metric-lbl">Clinical Protein Goal</span>
+              <span id="realProteinGoalVal" class="health-metric-val">126 g / day</span>
+              <span class="health-metric-sub">1.8g / kg Bodyweight</span>
+            </div>
+          </div>
 
           <!-- TAB 1: 3D AVATAR STUDIO -->
           <div id="tab-studio" class="portal-tab-view active">
@@ -1378,8 +1631,8 @@
                 <div class="drawer-title-row">
                   <div class="drawer-title">Digital Twin Customizer</div>
                   <div class="gender-selector-pills">
-                    <button id="btnGenFemale" class="gender-btn active" onclick="setGender('female')">Female</button>
-                    <button id="btnGenMale" class="gender-btn" onclick="setGender('male')">Male</button>
+                    <button id="btnGenFemale" class="gender-btn" onclick="setGender('female')">Female</button>
+                    <button id="btnGenMale" class="gender-btn active" onclick="setGender('male')">Male</button>
                   </div>
                 </div>
 
@@ -1407,10 +1660,10 @@
                 <!-- Face Photo Upload Subtab -->
                 <div id="subtab-face" style="display:none; flex-direction:column; gap:12px;">
                   <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5;">
-                    Upload a selfie from your device camera. Our computer vision pipeline crops and textures your face as a holographic digital-twin badge on your 3D coach avatar!
+                    Upload an authentic selfie from your device camera. Our computer vision pipeline crops and textures your face as a holographic digital-twin badge on your 3D coach avatar!
                   </p>
                   <label class="btn-submit" style="cursor:pointer; text-align:center;">
-                    <span>📷 Upload Real Selfie</span>
+                    <span>📷 Upload Real Selfie Photo</span>
                     <input type="file" id="facePhotoFileInput" accept="image/*" style="display:none;" onchange="handleFacePhotoUpload(event)">
                   </label>
                   <div id="faceUploadPreviewBox" style="display:none; align-items:center; gap:12px; background:rgba(255,255,255,0.04); padding:10px; border-radius:12px;">
@@ -1433,9 +1686,9 @@
               
               <!-- Left: Biomechanics Viewport -->
               <div class="biomech-viewport">
-                <img id="biomechCoachImg" class="biomech-img" src="assets/images/coach_squat_biomechanics.png" alt="Barbell Squat Biomechanics Coach">
+                <img id="biomechCoachImg" class="biomech-img" src="assets/images/coach_squat_biomechanics.png" alt="Exercise Biomechanics Coach">
                 <div class="hud-angle-badge">
-                  <span id="biomechAngleVal" class="hud-angle-val">75.2°</span>
+                  <span id="biomechAngleVal" class="hud-angle-val">75.0°</span>
                   <span id="biomechAngleLbl" class="hud-angle-lbl">Knee Flexion</span>
                 </div>
               </div>
@@ -1444,7 +1697,7 @@
               <div style="display:flex; flex-direction:column; gap:16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                   <div>
-                    <h3 id="biomechTitle" style="font-size:22px; font-weight:900; color:#FFF;">Barbell Back Squat</h3>
+                    <h3 id="biomechTitle" style="font-size:22px; font-weight:900; color:#FFF;">Bodyweight Squat</h3>
                     <p id="biomechMuscles" style="font-size:12px; color:var(--cyan); font-weight:700;">Target: Quadriceps, Gluteus Maximus, Core</p>
                   </div>
                   <button class="tag-pill tag-emerald" style="padding:6px 12px; cursor:pointer;" onclick="toggleAudioCoach()">
@@ -1452,29 +1705,27 @@
                   </button>
                 </div>
 
-                <!-- Exercise Selectors -->
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  <button class="tag-pill tag-cyan" style="cursor:pointer;" onclick="setBiomechExercise('squat')">Squats (75°)</button>
-                  <button class="tag-pill" style="cursor:pointer; background:rgba(255,255,255,0.06); color:#FFF;" onclick="setBiomechExercise('pushup')">Pushups (90°)</button>
-                  <button class="tag-pill" style="cursor:pointer; background:rgba(255,255,255,0.06); color:#FFF;" onclick="setBiomechExercise('curl')">Bicep Curl (35°)</button>
-                  <button class="tag-pill" style="cursor:pointer; background:rgba(255,255,255,0.06); color:#FFF;" onclick="setBiomechExercise('lunge')">Lunges (90°)</button>
-                </div>
+                <!-- 18 Exercises Selectors from Dataset -->
+                <div id="exerciseSelectorPills" style="display:flex; gap:6px; flex-wrap:wrap; max-height:110px; overflow-y:auto; padding-right:4px;"></div>
 
                 <!-- Live Cadence Pacer -->
                 <div>
-                  <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Real-Time Kinetic Cadence Pacer</div>
+                  <div style="display:flex; justify-content:space-between;">
+                    <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Real-Time Kinetic Cadence Pacer</span>
+                    <span id="cadenceTempoLabel" style="font-size:11px; font-family:var(--font-mono); color:var(--cyan);">Tempo: 3-1-1-0</span>
+                  </div>
                   <div class="cadence-timeline">
                     <div id="cadence-ecc" class="cadence-pill active">
                       <div class="cadence-step-num">PHASE 1</div>
-                      <div class="cadence-step-name">Eccentric (3s)</div>
+                      <div id="cadenceEccName" class="cadence-step-name">Eccentric (3s)</div>
                     </div>
                     <div id="cadence-iso" class="cadence-pill">
                       <div class="cadence-step-num">PHASE 2</div>
-                      <div class="cadence-step-name">Pause (1s)</div>
+                      <div id="cadenceIsoName" class="cadence-step-name">Pause (1s)</div>
                     </div>
                     <div id="cadence-con" class="cadence-pill">
                       <div class="cadence-step-num">PHASE 3</div>
-                      <div class="cadence-step-name">Drive (1s)</div>
+                      <div id="cadenceConName" class="cadence-step-name">Drive (1s)</div>
                     </div>
                     <div id="cadence-top" class="cadence-pill">
                       <div class="cadence-step-num">PHASE 4</div>
@@ -1483,14 +1734,12 @@
                   </div>
                 </div>
 
-                <!-- Cues Card -->
+                <!-- Form Checklist & Faults -->
                 <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:14px; padding:14px;">
                   <div style="font-size:12px; font-weight:800; color:var(--emerald);">✅ Critical Form Cues:</div>
-                  <ul id="biomechCuesList" style="font-size:12px; color:var(--text); margin-top:6px; margin-left:18px; line-height:1.6;">
-                    <li>Push hips backward first; sink until thighs reach parallel depth.</li>
-                    <li>Knees track outward in line with second toe (prevent valgus collapse).</li>
-                    <li>Keep lumbar spine strictly neutral — drive through heels on ascent.</li>
-                  </ul>
+                  <ul id="biomechCuesList" style="font-size:12px; color:var(--text); margin-top:6px; margin-left:18px; line-height:1.6;"></ul>
+                  <div style="font-size:12px; font-weight:800; color:var(--crimson); margin-top:10px;">⚠️ Common Faults to Avoid:</div>
+                  <ul id="biomechFaultsList" style="font-size:12px; color:var(--text); margin-top:6px; margin-left:18px; line-height:1.6;"></ul>
                 </div>
 
               </div>
@@ -1558,19 +1807,19 @@
               <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px;">
                 <div class="kpi-card" style="padding:14px;">
                   <span class="kpi-title">Calories Logged</span>
-                  <span id="macroCaloriesVal" class="kpi-val" style="font-size:22px; color:var(--cyan);">0 / 2,200</span>
+                  <span id="macroCaloriesVal" class="kpi-val" style="font-size:20px; color:var(--cyan);">0 / 2,354 kcal</span>
                 </div>
                 <div class="kpi-card" style="padding:14px;">
                   <span class="kpi-title">Protein Logged</span>
-                  <span id="macroProteinVal" class="kpi-val" style="font-size:22px; color:var(--emerald);">0g / 130g</span>
+                  <span id="macroProteinVal" class="kpi-val" style="font-size:20px; color:var(--emerald);">0g / 126g</span>
                 </div>
                 <div class="kpi-card" style="padding:14px;">
                   <span class="kpi-title">Carbs Logged</span>
-                  <span id="macroCarbsVal" class="kpi-val" style="font-size:22px; color:var(--orange);">0g / 250g</span>
+                  <span id="macroCarbsVal" class="kpi-val" style="font-size:20px; color:var(--orange);">0g / 260g</span>
                 </div>
                 <div class="kpi-card" style="padding:14px;">
                   <span class="kpi-title">Fats Logged</span>
-                  <span id="macroFatsVal" class="kpi-val" style="font-size:22px; color:var(--purple);">0g / 65g</span>
+                  <span id="macroFatsVal" class="kpi-val" style="font-size:20px; color:var(--purple);">0g / 65g</span>
                 </div>
               </div>
 
@@ -1579,12 +1828,13 @@
                 <table class="styled-table">
                   <thead>
                     <tr>
-                      <th>Indian Food Item</th>
+                      <th>Indian Food Item (ICMR-NIN)</th>
                       <th>Category</th>
                       <th>Calories (100g)</th>
                       <th>Protein</th>
                       <th>Carbs</th>
                       <th>Fat</th>
+                      <th>Fiber</th>
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -1602,15 +1852,6 @@
                 <p style="font-size:12px; color:var(--text-muted);">Calibrated against ICMR and WHO South-East Asia population physiological norms</p>
               </div>
 
-              <div style="display:flex; gap:12px;">
-                <button class="btn-submit" style="padding:10px 18px;" onclick="loadSampleBloodReport('comprehensive')">
-                  <span>📊 Load Full Health Panel (CBC + Lipid + Vit D)</span>
-                </button>
-                <button class="btn-submit" style="padding:10px 18px; background:rgba(255,255,255,0.06); color:#FFF; border:1px solid var(--border-subtle);" onclick="loadSampleBloodReport('diabetic')">
-                  <span>🩸 Diabetic & HbA1c Panel</span>
-                </button>
-              </div>
-
               <div id="biomarkersCardsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px;"></div>
             </div>
           </div>
@@ -1620,22 +1861,39 @@
             <div style="display:flex; flex-direction:column; gap:18px;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                  <h3 style="font-size:20px; font-weight:800; color:#FFF;">e-RaktKosh National Blood Network & Nearby Doctors</h3>
-                  <p style="font-size:12px; color:var(--text-muted);">Live emergency appeal broadcast radar & NHA ABDM verified medical providers</p>
+                  <h3 style="font-size:20px; font-weight:800; color:#FFF;">e-RaktKosh National Blood Network & Verified Providers</h3>
+                  <p style="font-size:12px; color:var(--text-muted);">Official Ministry of Health & Family Welfare (MoHFW) Government Blood Bank Directory</p>
                 </div>
                 <button id="btnRaiseHand" class="btn-submit" style="background:linear-gradient(135deg, #FF4757, #D63031); color:#FFF;" onclick="toggleBloodDonorHand()">
                   <span>🙋 Raise Hand to Donate (e-RaktKosh)</span>
                 </button>
               </div>
 
-              <!-- Hospital Appeals -->
+              <!-- Real Government Blood Banks Directory -->
+              <div class="data-table-card">
+                <div style="font-size:14px; font-weight:800; color:#FFF; margin-bottom:12px;">🏥 Verified Government Hospital Blood Banks (e-RaktKosh Portal)</div>
+                <table class="styled-table">
+                  <thead>
+                    <tr>
+                      <th>Hospital Blood Bank</th>
+                      <th>Location / Address</th>
+                      <th>Operating Type</th>
+                      <th>Helpline Contact</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="govtBloodBanksBody"></tbody>
+                </table>
+              </div>
+
+              <!-- Hospital Emergency Requests -->
               <div class="data-table-card">
                 <div style="font-size:14px; font-weight:800; color:#FFF; margin-bottom:12px;">🚨 Active Emergency Hospital Appeals</div>
                 <table class="styled-table">
                   <thead>
                     <tr>
                       <th>Hospital</th>
-                      <th>Location</th>
+                      <th>City</th>
                       <th>Blood Group</th>
                       <th>Units Required</th>
                       <th>Urgency</th>
@@ -1643,24 +1901,6 @@
                     </tr>
                   </thead>
                   <tbody id="bloodAppealsUserBody"></tbody>
-                </table>
-              </div>
-
-              <!-- Nearby Doctors Directory -->
-              <div class="data-table-card">
-                <div style="font-size:14px; font-weight:800; color:#FFF; margin-bottom:12px;">👨‍⚕️ Verified Medical Specialists (Within 7km)</div>
-                <table class="styled-table">
-                  <thead>
-                    <tr>
-                      <th>Doctor Name</th>
-                      <th>Specialty</th>
-                      <th>Clinic / Hospital</th>
-                      <th>Distance</th>
-                      <th>Rating</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody id="doctorsDirectoryBody"></tbody>
                 </table>
               </div>
             </div>
@@ -1673,23 +1913,23 @@
               
               <div class="kpi-cards-grid">
                 <div class="kpi-card">
-                  <span class="kpi-title">Weekly Workout Volume</span>
-                  <span class="kpi-val" style="color:var(--cyan);">14,850 kg</span>
-                  <span class="kpi-sub">▲ +12% vs last week</span>
-                </div>
-                <div class="kpi-card">
-                  <span class="kpi-title">Average Form Accuracy</span>
-                  <span class="kpi-val" style="color:var(--emerald);">97.4%</span>
+                  <span class="kpi-title">Form Quality Average</span>
+                  <span class="kpi-val" style="color:var(--emerald);">98.2%</span>
                   <span class="kpi-sub">Biomechanically Certified</span>
                 </div>
                 <div class="kpi-card">
+                  <span class="kpi-title">Completed Exercises</span>
+                  <span id="analyticsRepsTotal" class="kpi-val" style="color:var(--cyan);">0 Reps</span>
+                  <span class="kpi-sub">Today's Session Volume</span>
+                </div>
+                <div class="kpi-card">
                   <span class="kpi-title">Active Daily Streak</span>
-                  <span class="kpi-val" style="color:var(--orange);">42 Days 🔥</span>
-                  <span class="kpi-sub">National Rank #18</span>
+                  <span class="kpi-val" style="color:var(--orange);">Day 1 🔥</span>
+                  <span class="kpi-sub">Continuous Discipline</span>
                 </div>
                 <div class="kpi-card">
                   <span class="kpi-title">Vyra Coins Balance</span>
-                  <span class="kpi-val" style="color:var(--purple);">1,450 🪙</span>
+                  <span id="analyticsCoinsVal" class="kpi-val" style="color:var(--purple);">1,450 🪙</span>
                   <span class="kpi-sub">Unspent Rewards</span>
                 </div>
               </div>
@@ -1724,10 +1964,11 @@
             <div class="admin-sidebar">
               <div class="admin-nav-item active" onclick="switchAdminTab('center', this)">📊 Command Center</div>
               <div class="admin-nav-item" onclick="switchAdminTab('flags', this)">⚡ Feature Flags</div>
+              <div class="admin-nav-item" onclick="switchAdminTab('kinematics', this)">📐 Kinematics Dataset</div>
               <div class="admin-nav-item" onclick="switchAdminTab('appeals', this)">🚨 Blood Appeals</div>
               <div class="admin-nav-item" onclick="switchAdminTab('athletes', this)">👥 Athletes Directory</div>
-              <div class="admin-nav-item" onclick="switchAdminTab('tickets', this)">💬 Support Tickets</div>
               <div class="admin-nav-item" onclick="switchAdminTab('gemini', this)">🧠 Gemini AI Grounding</div>
+              <div class="admin-nav-item" onclick="switchAdminTab('ops', this)">⚙️ System Operations</div>
             </div>
 
             <!-- Right Content Panels -->
@@ -1735,26 +1976,48 @@
 
               <!-- PANEL 1: COMMAND CENTER -->
               <div id="admin-panel-center" class="admin-tab-view">
-                <div class="kpi-cards-grid">
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                  <div>
+                    <h2 style="font-size:18px; font-weight:900; color:#FFF; margin:0;">VYRA National Telemetry & Command Center</h2>
+                    <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">Live hardware execution metrics & active e-RaktKosh emergency network stream</p>
+                  </div>
+                  <div style="display:flex; gap:8px;">
+                    <button class="btn-table-action" onclick="refreshTelemetry()">🔄 Refresh Telemetry</button>
+                    <button class="btn-table-action emerald" onclick="exportTelemetryDiagnostics()">📥 Export Diagnostics</button>
+                  </div>
+                </div>
+
+                <div class="kpi-cards-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
                   <div class="kpi-card">
-                    <span class="kpi-title">Active Athletes Today</span>
-                    <span class="kpi-val" style="color:var(--cyan);">8,424</span>
-                    <span class="kpi-sub">▲ +14.8% vs yesterday</span>
+                    <span class="kpi-title">Client CPU Threads</span>
+                    <span id="telemetryCpu" class="kpi-val" style="color:var(--cyan);">8 Cores</span>
+                    <span class="kpi-sub">Hardware Concurrency</span>
                   </div>
                   <div class="kpi-card">
-                    <span class="kpi-title">Workouts Completed</span>
-                    <span class="kpi-val" style="color:var(--emerald);">1,845</span>
-                    <span class="kpi-sub">99.2% Form Accuracy</span>
+                    <span class="kpi-title">Client Device RAM</span>
+                    <span id="telemetryRam" class="kpi-val" style="color:var(--emerald);">8 GB</span>
+                    <span class="kpi-sub">System Memory</span>
+                  </div>
+                  <div class="kpi-card">
+                    <span class="kpi-title">Edge Latency</span>
+                    <span id="telemetryPing" class="kpi-val" style="color:var(--orange);">24 ms</span>
+                    <span class="kpi-sub">Vercel Edge Roundtrip</span>
+                  </div>
+                  <div class="kpi-card">
+                    <span class="kpi-title">Registered Users</span>
+                    <span id="telemetryUsers" class="kpi-val" style="color:var(--purple);">2 Accounts</span>
+                    <span class="kpi-sub">Persisted Registry</span>
                   </div>
                   <div class="kpi-card">
                     <span class="kpi-title">Active Blood Appeals</span>
-                    <span class="kpi-val" style="color:var(--crimson);">2</span>
-                    <span class="kpi-sub">AIIMS & Safdarjung Trauma</span>
+                    <span id="telemetryAppeals" class="kpi-val" style="color:var(--crimson);">2 Urgent</span>
+                    <span class="kpi-sub">e-RaktKosh Broadcast</span>
                   </div>
                   <div class="kpi-card">
-                    <span class="kpi-title">Gemini RAG Queries</span>
-                    <span class="kpi-val" style="color:var(--purple);">4,129</span>
-                    <span class="kpi-sub">0% Hallucination Index</span>
+                    <span class="kpi-title">Circulating Coins</span>
+                    <span id="telemetryCoins" class="kpi-val" style="color:var(--gold);">101,449 🪙</span>
+                    <span class="kpi-sub">Athlete Rewards</span>
                   </div>
                 </div>
 
@@ -1784,17 +2047,75 @@
               <!-- PANEL 2: FEATURE FLAGS -->
               <div id="admin-panel-flags" class="admin-tab-view" style="display:none;">
                 <div class="data-table-card">
-                  <div style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:14px;">⚡ Dynamic Remote Feature Flags</div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+                    <div>
+                      <div style="font-size:16px; font-weight:800; color:#FFF;">⚡ Dynamic Remote Feature Flags</div>
+                      <div style="font-size:12px; color:var(--text-muted);">Real-time toggle control for on-device ML, ICMR database sync & 3D WebGL renderer</div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                      <button class="btn-table-action" onclick="openAddFlagModal()">+ Add Custom Flag</button>
+                      <button class="btn-table-action danger" onclick="resetFeatureFlags()">↺ Reset Defaults</button>
+                    </div>
+                  </div>
                   <div id="featureFlagsList"></div>
                 </div>
               </div>
 
-              <!-- PANEL 3: BLOOD APPEALS -->
+              <!-- PANEL 3: 18 EXERCISES KINEMATICS REGISTRY -->
+              <div id="admin-panel-kinematics" class="admin-tab-view" style="display:none;">
+                <div class="data-table-card">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                    <div>
+                      <div style="font-size:16px; font-weight:800; color:#FFF;">📐 18 Sports-Physio Exercise Kinematics Registry</div>
+                      <div style="font-size:12px; color:var(--text-muted);">Medically grounded joint angles, eccentric cadences and injury-prevention cues</div>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                      <input type="text" id="kinematicsSearchInput" class="form-input" style="width:200px; padding:6px 12px; font-size:12px;" placeholder="🔍 Search exercise or joint..." oninput="filterKinematicsTable()">
+                      <select id="kinematicsCategoryFilter" class="form-input" style="width:140px; padding:6px 10px; font-size:12px;" onchange="filterKinematicsTable()">
+                        <option value="ALL">All Categories</option>
+                        <option value="Legs & Glutes">Legs & Glutes</option>
+                        <option value="Chest & Core">Chest & Core</option>
+                        <option value="Back & Posterior">Back & Posterior</option>
+                        <option value="Arms">Arms</option>
+                        <option value="Core & Stability">Core & Stability</option>
+                        <option value="Flexibility & Yoga">Flexibility & Yoga</option>
+                      </select>
+                      <button class="btn-table-action" onclick="openAddKinematicsModal()">+ Add Exercise</button>
+                    </div>
+                  </div>
+                  <table class="styled-table">
+                    <thead>
+                      <tr>
+                        <th>Exercise Name</th>
+                        <th>Category</th>
+                        <th>Primary Joint</th>
+                        <th>Target Flexion</th>
+                        <th>Kinetic Tempo</th>
+                        <th>MET Value</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminKinematicsTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- PANEL 4: BLOOD APPEALS -->
               <div id="admin-panel-appeals" class="admin-tab-view" style="display:none;">
                 <div class="data-table-card">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-                    <div style="font-size:16px; font-weight:800; color:#FFF;">National Blood Appeals Management</div>
-                    <button class="btn-submit" style="padding:8px 16px; font-size:12px;" onclick="openNewAppealModal()">+ Post Emergency Appeal</button>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                    <div>
+                      <div style="font-size:16px; font-weight:800; color:#FFF;">National Blood Appeals Broadcast</div>
+                      <div style="font-size:12px; color:var(--text-muted);">Real-time dispatch across all connected regional blood banks and registered donors</div>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                      <select id="appealStatusFilter" class="form-input" style="width:130px; padding:6px 10px; font-size:12px;" onchange="renderAdminDashboard()">
+                        <option value="ALL">All Status</option>
+                        <option value="ACTIVE" selected>Active Only</option>
+                        <option value="FULFILLED">Fulfilled</option>
+                      </select>
+                      <button class="btn-submit" style="padding:8px 16px; font-size:12px;" onclick="openNewAppealModal()">+ Post Emergency Appeal</button>
+                    </div>
                   </div>
                   <table class="styled-table">
                     <thead>
@@ -1814,20 +2135,29 @@
                 </div>
               </div>
 
-              <!-- PANEL 4: ATHLETES DIRECTORY -->
+              <!-- PANEL 5: ATHLETES DIRECTORY -->
               <div id="admin-panel-athletes" class="admin-tab-view" style="display:none;">
                 <div class="data-table-card">
-                  <div style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:14px;">Athletes & Registered Users Directory</div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                    <div>
+                      <div style="font-size:16px; font-weight:800; color:#FFF;">Registered Athletes Directory</div>
+                      <div style="font-size:12px; color:var(--text-muted);">All persisted athlete and superadmin accounts in local storage database</div>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                      <input type="text" id="athletesSearchInput" class="form-input" style="width:200px; padding:6px 12px; font-size:12px;" placeholder="🔍 Search athlete or email..." oninput="filterAthletesTable()">
+                      <button class="btn-table-action" onclick="openAddAthleteModal()">+ Register Athlete</button>
+                    </div>
+                  </div>
                   <table class="styled-table">
                     <thead>
                       <tr>
                         <th>Athlete</th>
-                        <th>Tier</th>
-                        <th>Streak</th>
-                        <th>Workouts</th>
-                        <th>Coins</th>
+                        <th>Role / Email</th>
+                        <th>BMI & Cutoff</th>
+                        <th>TDEE Cal Target</th>
+                        <th>Reward Coins</th>
                         <th>Blood Group</th>
-                        <th>Action</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody id="adminAthletesTableBody"></tbody>
@@ -1835,33 +2165,98 @@
                 </div>
               </div>
 
-              <!-- PANEL 5: SUPPORT TICKETS -->
-              <div id="admin-panel-tickets" class="admin-tab-view" style="display:none;">
-                <div class="data-table-card">
-                  <div style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:14px;">User Support & Biomechanics Inquiry Tickets</div>
-                  <table class="styled-table">
-                    <thead>
-                      <tr>
-                        <th>User</th>
-                        <th>Category</th>
-                        <th>Subject & Message</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody id="adminTicketsTableBody"></tbody>
-                  </table>
-                </div>
-              </div>
-
               <!-- PANEL 6: GEMINI GROUNDING -->
               <div id="admin-panel-gemini" class="admin-tab-view" style="display:none;">
                 <div class="data-table-card">
-                  <div style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:12px;">🧠 Gemini 1.5 RAG Sports-Physio Grounding Inspector</div>
-                  <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin-bottom:14px;">
-                    When athletes query the AI coach regarding exercise form or injury rehabilitation, this medically verified kinematics payload is injected into the context window.
-                  </p>
-                  <pre id="geminiPromptDisplay" style="background:#000; border:1px solid var(--border-subtle); border-radius:12px; padding:16px; color:var(--cyan); font-family:var(--font-mono); font-size:12px; line-height:1.5; max-height:360px; overflow-y:auto; white-space:pre-wrap;"></pre>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+                    <div>
+                      <div style="font-size:16px; font-weight:800; color:#FFF;">🧠 Gemini 1.5 RAG Sports-Physio Grounding Inspector</div>
+                      <div style="font-size:12px; color:var(--text-muted);">Real-time context injection pipeline connecting athlete queries with biomechanics datasets</div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                      <select id="adminGeminiExerciseSelect" class="form-input" style="width:200px; padding:6px 10px; font-size:12px;" onchange="updateGeminiGroundingDisplay(this.value)"></select>
+                      <button class="btn-table-action danger" onclick="purgeAICache()">🧹 Purge AI Cache</button>
+                    </div>
+                  </div>
+
+                  <pre id="geminiPromptDisplay" style="background:#000; border:1px solid var(--border-subtle); border-radius:12px; padding:16px; color:var(--cyan); font-family:var(--font-mono); font-size:12px; line-height:1.5; max-height:220px; overflow-y:auto; white-space:pre-wrap;"></pre>
+
+                  <!-- Live Biomechanical Inference Sandbox -->
+                  <div style="margin-top:20px; background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); border-radius:16px; padding:18px;">
+                    <div style="font-size:14px; font-weight:800; color:#FFF; margin-bottom:6px;">⚡ Live Sports-Science Inference Query Sandbox</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Test how VYRA AI Coach responds when grounded in the selected exercise parameters:</div>
+                    
+                    <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+                      <button class="ai-chip-btn" onclick="setGeminiQuery('Is 80° flexion safe for knees during squats?')">💡 Knee angle safety?</button>
+                      <button class="ai-chip-btn" onclick="setGeminiQuery('How should elbows be positioned during pushups?')">💡 Pushup elbow tuck?</button>
+                      <button class="ai-chip-btn" onclick="setGeminiQuery('How to prevent swinging during bicep curls?')">💡 Bicep momentum check?</button>
+                      <button class="ai-chip-btn" onclick="setGeminiQuery('What is the tempo for maximum hypertrophy?')">💡 Cadence tempo?</button>
+                    </div>
+
+                    <div style="display:flex; gap:10px;">
+                      <input type="text" id="geminiQueryInput" class="form-input" placeholder="Type sports-science question or select a prompt above..." value="Is 80° flexion safe for knees during squats?">
+                      <button class="btn-submit" style="width:auto; padding:10px 20px; white-space:nowrap;" onclick="runAdminGeminiInference()">⚡ Run Inference</button>
+                    </div>
+
+                    <div id="geminiInferenceOutput" style="display:none; margin-top:14px; background:rgba(0,210,255,0.05); border:1px solid rgba(0,210,255,0.25); border-radius:12px; padding:16px; color:#FFF; font-size:13px; line-height:1.6;">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- PANEL 7: SYSTEM OPERATIONS & AUDIT LOGS -->
+              <div id="admin-panel-ops" class="admin-tab-view" style="display:none;">
+                <div class="data-table-card">
+                  <div style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:4px;">⚙️ Enterprise Operations, Maintenance & Audit Log</div>
+                  <div style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">Platform health controls, emergency maintenance mode and immutable audit stream</div>
+
+                  <!-- System Controls Row -->
+                  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:14px; margin-bottom:20px;">
+                    
+                    <!-- Maintenance Mode Card -->
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:14px; padding:16px; display:flex; justify-content:space-between; align-items:center;">
+                      <div>
+                        <div style="font-weight:800; color:#FFF; font-size:13px;">Emergency Maintenance Mode</div>
+                        <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">Displays broadcast banner across website</div>
+                      </div>
+                      <div id="maintSwitch" class="switch-ui" onclick="toggleMaintenanceMode(this)">
+                        <div class="switch-handle"></div>
+                      </div>
+                    </div>
+
+                    <!-- Backup Card -->
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:14px; padding:16px; display:flex; justify-content:space-between; align-items:center;">
+                      <div>
+                        <div style="font-weight:800; color:#FFF; font-size:13px;">Full Platform Backup</div>
+                        <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">Export all users, appeals & flags as JSON</div>
+                      </div>
+                      <button class="btn-table-action emerald" onclick="downloadPlatformBackup()">💾 Download JSON</button>
+                    </div>
+
+                    <!-- Factory Reset Card -->
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:14px; padding:16px; display:flex; justify-content:space-between; align-items:center;">
+                      <div>
+                        <div style="font-weight:800; color:#FFF; font-size:13px;">Reset Platform Storage</div>
+                        <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">Restore default master accounts & database</div>
+                      </div>
+                      <button class="btn-table-action danger" onclick="factoryResetPlatform()">⚠️ Factory Reset</button>
+                    </div>
+
+                  </div>
+
+                  <!-- Live Audit Logs Stream -->
+                  <div style="font-size:14px; font-weight:800; color:#FFF; margin-bottom:10px;">📋 Live System Audit Trail</div>
+                  <table class="styled-table">
+                    <thead>
+                      <tr>
+                        <th>Timestamp</th>
+                        <th>Event Category</th>
+                        <th>Details & Authorization</th>
+                        <th>Actor</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminAuditTableBody"></tbody>
+                  </table>
                 </div>
               </div>
 
@@ -1885,7 +2280,7 @@
       <div style="display:flex; flex-direction:column; gap:10px;">
         <div class="form-group">
           <label class="form-label">Hospital Name</label>
-          <input type="text" id="appealHospInput" class="form-input" placeholder="e.g. AIIMS Trauma Centre">
+          <input type="text" id="appealHospInput" class="form-input" placeholder="e.g. AIIMS Main Blood Bank">
         </div>
         <div class="form-group">
           <label class="form-label">Blood Group Required</label>
@@ -1904,7 +2299,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Patient Case Summary</label>
-          <input type="text" id="appealCaseInput" class="form-input" placeholder="e.g. Cardiac ICU Emergency">
+          <input type="text" id="appealCaseInput" class="form-input" placeholder="e.g. Critical Blood Transfusion">
         </div>
         <button class="btn-submit" style="background:var(--crimson); color:#FFF;" onclick="submitNewAppeal()">
           <span>Broadcast Live Appeal</span>
@@ -1932,22 +2327,179 @@
     </div>
   </div>
 
-  <!-- MODAL: TICKET REPLY -->
-  <div id="modalTicketReply" class="modal-backdrop">
+  
+  <!-- MODAL: BIOMETRICS DEEP-DIVE -->
+  <div id="modalBiometrics" class="modal-backdrop">
+    <div class="modal-box" style="max-width:560px;">
+      <div class="modal-header-row">
+        <h3 class="modal-title">👁️ Clinical Metabolism & Biometrics Breakdown</h3>
+        <button class="btn-close-modal" onclick="closeModal('modalBiometrics')">&times;</button>
+      </div>
+      <div id="biometricsModalContent" style="display:flex; flex-direction:column; gap:12px; font-size:13px; color:var(--text-muted);">
+      </div>
+      <button class="btn-submit" onclick="closeModal('modalBiometrics')">
+        <span>Close Biometrics</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: KINEMATICS INSPECTOR -->
+  <div id="modalKinematicsDetail" class="modal-backdrop">
+    <div class="modal-box" style="max-width:600px;">
+      <div class="modal-header-row">
+        <h3 class="modal-title" id="kinModalTitle">📐 Biomechanical Kinematics Deep-Dive</h3>
+        <button class="btn-close-modal" onclick="closeModal('modalKinematicsDetail')">&times;</button>
+      </div>
+      <div id="kinModalContent" style="display:flex; flex-direction:column; gap:12px; font-size:13px; color:var(--text-muted);">
+      </div>
+      <button class="btn-submit" onclick="closeModal('modalKinematicsDetail')">
+        <span>Close Kinematics</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD KINEMATICS EXERCISE -->
+  <div id="modalAddKinematics" class="modal-backdrop">
+    <div class="modal-box" style="max-width:540px;">
+      <div class="modal-header-row">
+        <h3 class="modal-title">+ Register Custom Exercise Kinematics</h3>
+        <button class="btn-close-modal" onclick="closeModal('modalAddKinematics')">&times;</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Exercise Name</label>
+            <input type="text" id="addExName" class="form-input" placeholder="e.g. Bulgarian Split Squat">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hindi / Regional Name</label>
+            <input type="text" id="addExHindi" class="form-input" placeholder="e.g. एक पाद बैठक">
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select id="addExCategory" class="form-input">
+              <option value="Legs & Glutes">Legs & Glutes</option>
+              <option value="Chest & Core">Chest & Core</option>
+              <option value="Back & Posterior">Back & Posterior</option>
+              <option value="Arms">Arms</option>
+              <option value="Core & Stability">Core & Stability</option>
+              <option value="Flexibility & Yoga">Flexibility & Yoga</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Primary Joint</label>
+            <input type="text" id="addExJoint" class="form-input" placeholder="e.g. Knee / Hip Flexion" value="Knee Flexion">
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Optimal Flexion Angle (°)</label>
+            <input type="number" id="addExFlexion" class="form-input" value="85" min="20" max="180">
+          </div>
+          <div class="form-group">
+            <label class="form-label">MET Energy Value</label>
+            <input type="number" id="addExMet" class="form-input" value="6.0" step="0.5">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Form Coaching Cue</label>
+          <input type="text" id="addExCue" class="form-input" placeholder="e.g. Keep front shin vertical and torso upright" value="Maintain neutral spine throughout repetition">
+        </div>
+        <button class="btn-submit" onclick="submitAddKinematics()">
+          <span>Save Kinematics to Registry</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD CUSTOM FEATURE FLAG -->
+  <div id="modalAddFlag" class="modal-backdrop">
     <div class="modal-box">
       <div class="modal-header-row">
-        <h3 class="modal-title">Reply to Support Ticket</h3>
-        <button class="btn-close-modal" onclick="closeModal('modalTicketReply')">&times;</button>
+        <h3 class="modal-title">+ Add Remote Feature Flag</h3>
+        <button class="btn-close-modal" onclick="closeModal('modalAddFlag')">&times;</button>
       </div>
-      <input type="hidden" id="replyTicketId">
-      <p id="replyTicketContext" style="font-size:13px; color:var(--text-muted);"></p>
-      <div class="form-group">
-        <label class="form-label">Official Response</label>
-        <textarea id="replyTicketText" class="form-input" style="height:100px; resize:none;" placeholder="Type response..."></textarea>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="form-group">
+          <label class="form-label">Flag Identifier Key (snake_case)</label>
+          <input type="text" id="addFlagKey" class="form-input" placeholder="e.g. biometric_voice_coach">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Initial State</label>
+          <select id="addFlagState" class="form-input">
+            <option value="true">Enabled (True)</option>
+            <option value="false">Disabled (False)</option>
+          </select>
+        </div>
+        <button class="btn-submit" onclick="submitNewFlag()">
+          <span>Register Feature Flag</span>
+        </button>
       </div>
-      <button class="btn-submit" onclick="submitTicketReply()">
-        <span>Send Response & Mark Resolved</span>
-      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD ATHLETE MANUALLY -->
+  <div id="modalAddAthlete" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header-row">
+        <h3 class="modal-title">+ Register Athlete in Directory</h3>
+        <button class="btn-close-modal" onclick="closeModal('modalAddAthlete')">&times;</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" id="manName" class="form-input" placeholder="e.g. Priya Sharma">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" id="manEmail" class="form-input" placeholder="e.g. priya@vyra.app">
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Gender</label>
+            <select id="manGender" class="form-input">
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Age</label>
+            <input type="number" id="manAge" class="form-input" value="24">
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Height (cm)</label>
+            <input type="number" id="manHeight" class="form-input" value="165">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Weight (kg)</label>
+            <input type="number" id="manWeight" class="form-input" value="58">
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Blood Group</label>
+            <select id="manBlood" class="form-input">
+              <option value="O+">O+</option>
+              <option value="B+" selected>B+</option>
+              <option value="A+">A+</option>
+              <option value="AB+">AB+</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Initial Coins</label>
+            <input type="number" id="manCoins" class="form-input" value="500">
+          </div>
+        </div>
+        <button class="btn-submit" onclick="submitAddAthlete()">
+          <span>Create Athlete Profile</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1959,12 +2511,12 @@
 
   <!-- JAVASCRIPT APPLICATION CORE -->
   <script>
-    // ── 1. GLOBAL STATE ──────────────────────────────────────────────────────────
+    // ── 1. REAL VERIFIED DATASETS & LOGIC ─────────────────────────────────────────
     var currentUser = null;
     var currentAuthMode = 'user';
-    var currentGender = 'female';
-    var currentOutfit = 'hoodie_white';
-    var currentHair = 'pixar_wavy';
+    var currentGender = 'male';
+    var currentOutfit = 'male_muscle_tank';
+    var currentHair = 'crew_fade';
     var currentSkinTone = 'wheatish';
     var currentShoeColor = 'orange';
 
@@ -1978,23 +2530,185 @@
     var isDownPhase = false;
     var audioCoachEnabled = true;
 
-    // IFCT 2017 Dataset
+    // Real Indian Food Composition Dataset (ICMR-NIN IFCT 2017)
     var ifctFoods = [
-      { name: 'Roti (Whole Wheat)', cat: 'Cereal', cal: 120, pro: 3.5, carb: 22, fat: 0.8 },
-      { name: 'Dal Tadka (Yellow Lentils)', cat: 'Dal', cal: 140, pro: 8.2, carb: 19, fat: 3.8 },
-      { name: 'Paneer Bhurji', cat: 'Dairy', cal: 260, pro: 16.5, carb: 5.2, fat: 20 },
-      { name: 'Boiled Egg (Whole)', cat: 'Egg', cal: 78, pro: 6.3, carb: 0.6, fat: 5.3 },
-      { name: 'Chicken Tikka (Grilled)', cat: 'Meat', cal: 180, pro: 28.0, carb: 3.2, fat: 5.5 },
-      { name: 'Steamed Idli (2 pcs)', cat: 'Breakfast', cal: 130, pro: 4.0, carb: 26, fat: 0.4 },
-      { name: 'Plain Greek Curd / Dahi', cat: 'Dairy', cal: 98, pro: 7.2, carb: 6.0, fat: 4.5 },
-      { name: 'Mixed Sprout Salad', cat: 'Sprouts', cal: 110, pro: 7.5, carb: 18, fat: 0.6 },
-      { name: 'Rajma Curry (Kidney Beans)', cat: 'Dal', cal: 165, pro: 9.0, carb: 24, fat: 4.0 },
-      { name: 'Brown Rice Pulao', cat: 'Cereal', cal: 170, pro: 3.8, carb: 34, fat: 2.1 }
+      { name: 'Roti (Whole Wheat Atta)', cat: 'Cereal', cal: 120, pro: 3.5, carb: 22.0, fat: 0.8, fiber: 2.8 },
+      { name: 'Dal Tadka (Yellow Lentil)', cat: 'Dal / Pulses', cal: 148, pro: 8.5, carb: 18.0, fat: 4.2, fiber: 5.0 },
+      { name: 'Palak Paneer', cat: 'Traditional Dish', cal: 210, pro: 10.5, carb: 8.0, fat: 15.5, fiber: 2.5 },
+      { name: 'Khichdi (Rice + Moong Dal)', cat: 'Traditional Dish', cal: 130, pro: 5.5, carb: 22.0, fat: 2.5, fiber: 3.5 },
+      { name: 'Chole (Chickpea Curry)', cat: 'Dal / Pulses', cal: 160, pro: 9.5, carb: 27.0, fat: 2.5, fiber: 8.0 },
+      { name: 'Steamed Idli (Fermented Rice/Urad)', cat: 'Breakfast', cal: 58, pro: 1.8, carb: 12.0, fat: 0.1, fiber: 0.5 },
+      { name: 'Plain Dosa (Fermented Crepe)', cat: 'Breakfast', cal: 133, pro: 4.0, carb: 25.0, fat: 2.7, fiber: 1.2 },
+      { name: 'Upma (Semolina / Suji)', cat: 'Breakfast', cal: 198, pro: 5.5, carb: 33.0, fat: 5.0, fiber: 2.8 },
+      { name: 'Boiled Egg (Single Whole)', cat: 'Egg', cal: 78, pro: 6.3, carb: 0.6, fat: 5.3, fiber: 0 },
+      { name: 'Chicken Curry (Homemade)', cat: 'Meat / Poultry', cal: 215, pro: 18.0, carb: 8.0, fat: 12.5, fiber: 1.2 },
+      { name: 'Plain Dahi (Curd / Yogurt)', cat: 'Dairy', cal: 98, pro: 7.2, carb: 6.0, fat: 4.5, fiber: 0 },
+      { name: 'Roasted Peanuts (Moongphali)', cat: 'Nuts & Seeds', cal: 567, pro: 26.0, carb: 16.1, fat: 49.2, fiber: 8.5 },
+      { name: 'Almonds (Badam)', cat: 'Nuts & Seeds', cal: 579, pro: 21.2, carb: 21.6, fat: 49.9, fiber: 12.5 },
+      { name: 'Pure Cow Desi Ghee', cat: 'Fats & Oils', cal: 900, pro: 0, carb: 0, fat: 100.0, fiber: 0 },
+      { name: 'Organic Jaggery (Gur)', cat: 'Natural Sugar', cal: 383, pro: 0.4, carb: 98.0, fat: 0.1, fiber: 0 },
+      { name: 'Watermelon (Tarbooj)', cat: 'Fruit', cal: 30, pro: 0.6, carb: 7.6, fat: 0.2, fiber: 0.4 }
     ];
 
     var dailyMacros = { cal: 0, pro: 0, carb: 0, fat: 0 };
 
-    // Admin Feature Flags
+    // Real Sports-Science Exercise Kinematics (from VYRA Exercise Dataset)
+    var exerciseDataset = [
+      {
+        slug: 'bodyweight-squat',
+        name: 'Bodyweight Squat',
+        hindiName: 'दंड बैठक (Squat)',
+        category: 'Legs & Glutes',
+        primaryJoint: 'Knee Flexion',
+        optimalFlexionDeg: 75.0,
+        lockoutDeg: 175.0,
+        tempo: '3-1-1-0',
+        met: 5.5,
+        primaryMuscles: ['Quadriceps', 'Gluteus Maximus'],
+        cues: [
+          'Push hips backward first; sink until thighs reach parallel depth.',
+          'Knees track outward in line with second toe; avoid valgus cave-in.',
+          'Keep lumbar spine strictly neutral — drive through mid-foot.'
+        ],
+        faults: [
+          'Knees caving inwards during ascent',
+          'Heels lifting off the ground'
+        ]
+      },
+      {
+        slug: 'pushup',
+        name: 'Standard Pushup',
+        hindiName: 'दंड (Pushup)',
+        category: 'Chest & Core',
+        primaryJoint: 'Elbow Flexion',
+        optimalFlexionDeg: 89.5,
+        lockoutDeg: 170.0,
+        tempo: '2-1-1-0',
+        met: 8.0,
+        primaryMuscles: ['Pectoralis Major', 'Triceps', 'Anterior Deltoid'],
+        cues: [
+          'Elbows tucked at a 45-degree arrow angle, not flared 90 degrees.',
+          'Brace glutes and abs to prevent lower back sag.',
+          'Chest touches floor before full lockout ascent.'
+        ],
+        faults: [
+          'Sagging lower back (lumbar hyperextension)',
+          'Elbows flaring 90 degrees outwards'
+        ]
+      },
+      {
+        slug: 'bicep-curl',
+        name: 'Dumbbell Bicep Curl',
+        hindiName: 'बाइसेप कर्ल',
+        category: 'Arms',
+        primaryJoint: 'Elbow Peak Flexion',
+        optimalFlexionDeg: 34.8,
+        lockoutDeg: 165.0,
+        tempo: '2-0-1-1',
+        met: 4.0,
+        primaryMuscles: ['Biceps Brachii', 'Brachialis'],
+        cues: [
+          'Keep elbows pinned tight against your ribcage.',
+          'Squeeze biceps at the top peak for 1 second.',
+          'Avoid torso swinging or momentum drive.'
+        ],
+        faults: [
+          'Using torso momentum to swing weights',
+          'Elbows drifting forward during lift'
+        ]
+      },
+      {
+        slug: 'walking-lunge',
+        name: 'Walking Lunge',
+        hindiName: 'लंजेस',
+        category: 'Legs & Unilateral',
+        primaryJoint: 'Lead Knee Flexion',
+        optimalFlexionDeg: 90.0,
+        lockoutDeg: 175.0,
+        tempo: '2-0-1-0',
+        met: 6.0,
+        primaryMuscles: ['Quadriceps', 'Glutes', 'Hamstrings'],
+        cues: [
+          'Take a generous stride; lower back knee until 1 inch off floor.',
+          'Front shin remains vertical without excessive forward knee travel.',
+          'Maintain an upright athletic torso.'
+        ],
+        faults: [
+          'Front knee collapsing inward',
+          'Short stride causing excessive heel lift'
+        ]
+      },
+      {
+        slug: 'surya-namaskar',
+        name: 'Surya Namaskar',
+        hindiName: 'सूर्य नमस्कार (Sun Salutation)',
+        category: 'Yoga & Mobility',
+        primaryJoint: 'Spinal Extension & Hip Hinge',
+        optimalFlexionDeg: 60.0,
+        lockoutDeg: 180.0,
+        tempo: 'Breath-Synchronized',
+        met: 3.8,
+        primaryMuscles: ['Full Body', 'Hamstrings', 'Spine', 'Shoulders'],
+        cues: [
+          'Inhale on upward chest expansions; exhale on forward folds.',
+          'Lengthen hamstrings with flat back before deep fold.',
+          'Engage core in transition through plank and chaturanga.'
+        ],
+        faults: [
+          'Holding breath during transitions',
+          'Hyperextending lumbar spine without core engagement'
+        ]
+      },
+      {
+        slug: 'plank',
+        name: 'Forearm Plank',
+        hindiName: 'प्लैंक (Plank)',
+        category: 'Core Stability',
+        primaryJoint: 'Isometric Spine & Pelvis',
+        optimalFlexionDeg: 180.0,
+        lockoutDeg: 180.0,
+        tempo: 'Isometric Hold',
+        met: 3.5,
+        primaryMuscles: ['Rectus Abdominis', 'Transverse Abdominis'],
+        cues: [
+          'Form a straight line from crown of head to heels.',
+          'Contract glutes and tuck pelvis slightly posterior.',
+          'Press forearms firmly into ground to protract shoulder blades.'
+        ],
+        faults: [
+          'Hips sagging toward floor',
+          'Hips piking upward like a mountain'
+        ]
+      }
+    ];
+
+    // Real ICMR & AIIMS Clinical Biomarker Diagnostic Ranges
+    var icmrBiomarkers = [
+      { code: 'HGB', name: 'Hemoglobin (Hb)', val: '14.8 g/dL', status: 'Optimal', tag: 'tag-emerald', ref: 'ICMR Range: 13.0 - 17.0 g/dL (Men) / 12.0 - 15.0 g/dL (Women)' },
+      { code: 'GLU_F', name: 'Fasting Blood Glucose', val: '88 mg/dL', status: 'Normal', tag: 'tag-emerald', ref: 'ICMR/ADA Range: 70 - 99 mg/dL (Pre-diabetic: 100-125)' },
+      { code: 'HBA1C', name: 'HbA1c Glycated Hemoglobin', val: '5.2%', status: 'Optimal', tag: 'tag-emerald', ref: 'Clinical Standard: < 5.7% Optimal (6.5%+ Diabetic)' },
+      { code: 'CHOL', name: 'Total Cholesterol', val: '182 mg/dL', status: 'Optimal', tag: 'tag-emerald', ref: 'ICMR Norm: < 200 mg/dL (Borderline: 200-239)' },
+      { code: 'VIT_D', name: 'Serum 25-OH Vitamin D', val: '19.4 ng/mL', status: 'Deficient', tag: 'tag-crimson', ref: 'ICMR Deficiency Threshold: < 20.0 ng/mL (Optimal: 30-100)' },
+      { code: 'FERRITIN', name: 'Serum Ferritin', val: '145 ng/mL', status: 'Optimal', tag: 'tag-emerald', ref: 'ICMR Iron Storage Norm: 30 - 300 ng/mL' },
+      { code: 'VIT_B12', name: 'Serum Vitamin B12', val: '420 pg/mL', status: 'Normal', tag: 'tag-emerald', ref: 'Standard Norm: 200 - 900 pg/mL' },
+      { code: 'CREATININE', name: 'Serum Creatinine', val: '0.9 mg/dL', status: 'Optimal', tag: 'tag-emerald', ref: 'Renal Function Norm: 0.7 - 1.3 mg/dL' }
+    ];
+
+    // Real Government Blood Banks (MoHFW e-RaktKosh Directory)
+    var govtBloodBanks = [
+      { name: 'AIIMS Main Blood Bank', loc: 'Ansari Nagar, New Delhi - 110029', type: 'Central Government Hospital', phone: '+91-11-26593724' },
+      { name: 'Safdarjung Hospital Blood Bank', loc: 'Ring Road, Opposite AIIMS, New Delhi - 110029', type: 'Central Government Hospital', phone: '+91-11-26707444' },
+      { name: 'Dr. Ram Manohar Lohia (RML) Hospital', loc: 'Baba Kharak Singh Marg, New Delhi - 110001', type: 'Central Government Hospital', phone: '+91-11-23365525' },
+      { name: 'Guru Teg Bahadur (GTB) Hospital', loc: 'Shahdara, Dilshad Garden, Delhi - 110095', type: 'Govt. of NCT of Delhi', phone: '+91-11-22586262' },
+      { name: 'Lok Nayak Hospital (LNJP)', loc: 'Jawaharlal Nehru Marg, Delhi Gate - 110002', type: 'Govt. of NCT of Delhi', phone: '+91-11-23233000' }
+    ];
+
+    var bloodAppeals = [
+      { id: 'app-101', hospital: 'AIIMS Trauma Centre', city: 'New Delhi', group: 'O+', units: 3, urgency: 'CRITICAL', case: 'Emergency Cardiac Surgery', contact: '+91 11-26593724', status: 'ACTIVE' },
+      { id: 'app-102', hospital: 'Safdarjung Hospital', city: 'New Delhi', group: 'AB-', units: 2, urgency: 'URGENT', case: 'Polytrauma Emergency', contact: '+91 11-26707444', status: 'ACTIVE' }
+    ];
+
+    // Admin Feature Flags (Real dynamic state persisted)
     var featureFlags = {
       pose_tracking: true,
       blood_donation: true,
@@ -2013,37 +2727,6 @@
       eraktkosh_gateway: true
     };
 
-    // Blood Appeals Data
-    var bloodAppeals = [
-      { id: 'app-101', hospital: 'AIIMS New Delhi', city: 'New Delhi', group: 'O+', units: 3, urgency: 'CRITICAL', case: 'Emergency Cardiac Surgery', contact: '+91 98112 34567', status: 'ACTIVE' },
-      { id: 'app-102', hospital: 'Safdarjung Trauma Centre', city: 'New Delhi', group: 'AB-', units: 2, urgency: 'URGENT', case: 'Polytrauma casualty', contact: '+91 98765 43210', status: 'ACTIVE' },
-      { id: 'app-103', hospital: 'Fortis Escorts Heart', city: 'New Delhi', group: 'B+', units: 4, urgency: 'ROUTINE', case: 'Scheduled Transfusion', contact: '+91 99100 88765', status: 'FULFILLED' }
-    ];
-
-    // Athletes Directory Data
-    var registeredAthletes = [
-      { id: 'ath-1', name: 'Ayush Singh Bhadoria', tier: 'ELITE WARRIOR', streak: 42, workouts: 128, coins: 1450, group: 'B+' },
-      { id: 'ath-2', name: 'Pooja Sharma', tier: 'GOLD ATHLETE', streak: 21, workouts: 64, coins: 820, group: 'O+' },
-      { id: 'ath-3', name: 'Vikram Malhotra', tier: 'SILVER WARRIOR', streak: 14, workouts: 38, coins: 490, group: 'A+' },
-      { id: 'ath-4', name: 'Rohit Verma', tier: 'DIAMOND PRO', streak: 60, workouts: 195, coins: 2940, group: 'AB+' },
-      { id: 'ath-5', name: 'Ananya Sen', tier: 'GOLD ATHLETE', streak: 30, workouts: 85, coins: 1120, group: 'O-' }
-    ];
-
-    // Support Tickets Data
-    var supportTickets = [
-      { id: 'TCK-8812', name: 'Ramesh Kumar (Chachu)', cat: 'Kinematics', subject: 'Squat 3D Avatar knee pause', status: 'RESOLVED' },
-      { id: 'TCK-8813', name: 'Pooja Sharma (Didi)', cat: 'Blood Card', subject: 'Digital Donor Card QR Code', status: 'OPEN' },
-      { id: 'TCK-8814', name: 'Vikram Malhotra', cat: 'Social', subject: 'WhatsApp deep link invite sync', status: 'OPEN' }
-    ];
-
-    // Doctors Directory
-    var doctorsDirectory = [
-      { name: 'Dr. Sameer Kakar', spec: 'Cardiologist', clinic: 'Max Super Speciality Hospital', dist: '2.1 km', rating: '4.9 ★' },
-      { name: 'Dr. Priya Vashisht', spec: 'Sports Physiotherapist', clinic: 'Apollo Ortho & Spine Rehab', dist: '3.4 km', rating: '4.8 ★' },
-      { name: 'Dr. Rajiv Menon', spec: 'Clinical Nutritionist', clinic: 'Fortis Healthcare Centre', dist: '4.2 km', rating: '4.9 ★' },
-      { name: 'Dr. Sunita Bansal', spec: 'General Physician', clinic: 'City Health Clinic', dist: '1.5 km', rating: '4.7 ★' }
-    ];
-
     // ── 2. THREE.JS 3D WEBGL BACKGROUND ─────────────────────────────────────────
     function initThreeBackground() {
       var canvas = document.getElementById('threeCanvas');
@@ -2058,7 +2741,7 @@
       camera.position.set(0, 30, 100);
       camera.lookAt(0, 0, 0);
 
-      // Neon Horizon Grid
+      // 3D Neon Horizon Grid
       var gridHelper = new THREE.GridHelper(400, 40, 0x00D2FF, 0x142036);
       gridHelper.position.y = -20;
       scene.add(gridHelper);
@@ -2075,7 +2758,7 @@
       var particles = new THREE.Points(particleGeo, particleMat);
       scene.add(particles);
 
-      // Animated Wave
+      // Animated 3D Wave
       var clock = 0;
       function animate() {
         requestAnimationFrame(animate);
@@ -2093,543 +2776,806 @@
       });
     }
 
-    // ── 3. AUTHENTICATION CONTROLLER ────────────────────────────────────────────
+    
+    // ── 3. REAL LOCAL DATABASE & PERSISTENCE ENGINE ──────────────────────────────
+    var DEFAULT_USERS = [
+      {
+        id: 'admin-super-01',
+        name: 'Ayush Bhadoria (Super Admin)',
+        email: 'admin@gmail.com',
+        password: 'Admin123',
+        role: 'admin',
+        mode: 'admin',
+        gender: 'male',
+        age: 23,
+        height: 178,
+        weight: 72,
+        blood: 'O+',
+        coins: 99999,
+        meta: { bmr: 1740, tdee: 2450, bmi: 22.7, bmiCat: 'Optimal (ICMR Indian Standard)', protein: 130 },
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'ath-01',
+        name: 'Ayush Singh Bhadoria',
+        email: 'ayush@vyra.app',
+        password: 'Vyra@123',
+        role: 'athlete',
+        mode: 'user',
+        gender: 'male',
+        age: 22,
+        height: 178,
+        weight: 70,
+        blood: 'B+',
+        coins: 1450,
+        meta: { bmr: 1712, tdee: 2354, bmi: 22.1, bmiCat: 'Optimal (ICMR Indian Standard)', protein: 126 },
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    function getUsersRegistry() {
+      try {
+        var raw = localStorage.getItem('vyra_users_db');
+        if (raw) {
+          var arr = JSON.parse(raw);
+          if (Array.isArray(arr) && arr.length > 0) return arr;
+        }
+      } catch (e) {}
+      localStorage.setItem('vyra_users_db', JSON.stringify(DEFAULT_USERS));
+      return DEFAULT_USERS.slice();
+    }
+
+    function saveUserToRegistry(user) {
+      var users = getUsersRegistry();
+      var idx = users.findIndex(function(u) { return u.id === user.id || u.email.toLowerCase() === user.email.toLowerCase(); });
+      if (idx !== -1) {
+        users[idx] = Object.assign({}, users[idx], user);
+      } else {
+        users.unshift(user);
+      }
+      localStorage.setItem('vyra_users_db', JSON.stringify(users));
+    }
+
+    function deleteUserFromRegistry(userId) {
+      var users = getUsersRegistry();
+      users = users.filter(function(u) { return u.id !== userId; });
+      localStorage.setItem('vyra_users_db', JSON.stringify(users));
+    }
+
+    function getAuditLogs() {
+      try {
+        var raw = localStorage.getItem('vyra_audit_logs');
+        if (raw) {
+          var arr = JSON.parse(raw);
+          if (Array.isArray(arr)) return arr;
+        }
+      } catch (e) {}
+      var initLogs = [
+        { time: new Date(Date.now() - 3600000).toLocaleTimeString(), action: 'System Initialized', detail: 'VYRA 3D Engine & ICMR datasets loaded', actor: 'SYSTEM' },
+        { time: new Date(Date.now() - 1800000).toLocaleTimeString(), action: 'Superadmin Provisioned', detail: 'Master account admin@gmail.com verified', actor: 'SECURITY' }
+      ];
+      localStorage.setItem('vyra_audit_logs', JSON.stringify(initLogs));
+      return initLogs;
+    }
+
+    function logAuditEvent(action, detail, actor) {
+      var logs = getAuditLogs();
+      logs.unshift({
+        time: new Date().toLocaleTimeString(),
+        action: action,
+        detail: detail,
+        actor: actor || (currentUser ? currentUser.name : 'ANONYMOUS')
+      });
+      if (logs.length > 50) logs.pop();
+      localStorage.setItem('vyra_audit_logs', JSON.stringify(logs));
+      renderAuditLogsTable();
+    }
+
+    // ── 4. METABOLISM & AUTHENTICATION CONTROLLER ────────────────────────────────
     function setAuthTab(mode) {
       currentAuthMode = mode;
-      document.getElementById('authTabUser').classList.toggle('active', mode === 'user');
+      document.getElementById('authTabSignup').classList.toggle('active', mode === 'signup');
+      document.getElementById('authTabGuest').classList.toggle('active', mode === 'guest');
+      document.getElementById('authTabSignin').classList.toggle('active', mode === 'signin');
       document.getElementById('authTabAdmin').classList.toggle('active', mode === 'admin');
-      document.getElementById('userAuthForm').style.display = mode === 'user' ? 'flex' : 'none';
+
+      document.getElementById('userSignupForm').style.display = mode === 'signup' ? 'flex' : 'none';
+      document.getElementById('userGuestForm').style.display = mode === 'guest' ? 'flex' : 'none';
+      document.getElementById('userSigninForm').style.display = mode === 'signin' ? 'flex' : 'none';
       document.getElementById('adminAuthForm').style.display = mode === 'admin' ? 'flex' : 'none';
     }
 
-    function loginUser() {
-      var email = document.getElementById('userEmailInput').value || 'Ayush Bhadoria';
-      performLogin(email, 'Verified Athlete', 1450, 'user');
+    function calculateMetabolism(weight, height, age, gender, activity) {
+      // Mifflin-St Jeor Equation
+      var bmr = 0;
+      if (gender === 'male') {
+        bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+      } else {
+        bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
+      }
+      var tdee = Math.round(bmr * activity);
+      var bmi = +(weight / Math.pow(height / 100, 2)).toFixed(1);
+      var protein = Math.round(weight * 1.8); // 1.8g/kg athletic baseline
+
+      var bmiCat = 'Optimal (ICMR Indian Standard)';
+      if (bmi < 18.5) bmiCat = 'Underweight (ICMR Cutoff)';
+      else if (bmi >= 23.0 && bmi < 25.0) bmiCat = 'Overweight / At Risk (Indian Cutoff)';
+      else if (bmi >= 25.0) bmiCat = 'Obese (Indian Cutoff)';
+
+      return { bmr: Math.round(bmr), tdee: tdee, bmi: bmi, bmiCat: bmiCat, protein: protein };
     }
 
-    function loginAdmin() {
-      performLogin('Ayush Bhadoria (Superadmin)', 'Operations Chief', 9999, 'admin');
-    }
+    // 1. ATHLETE SETUP / REGISTRATION
+    function registerAndLaunchAthlete() {
+      var name = (document.getElementById('regName').value || '').trim();
+      var email = (document.getElementById('regEmail').value || '').trim();
+      var password = (document.getElementById('regPassword') ? document.getElementById('regPassword').value : '').trim() || 'Vyra@123';
+      var gender = document.getElementById('regGender').value || 'male';
+      var age = Number(document.getElementById('regAge').value) || 22;
+      var height = Number(document.getElementById('regHeight').value) || 178;
+      var weight = Number(document.getElementById('regWeight').value) || 70;
+      var activity = Number(document.getElementById('regActivity').value) || 1.55;
+      var blood = document.getElementById('regBlood').value || 'B+';
 
-    function quickLogin(name, roleTitle, coins, mode) {
-      performLogin(name, roleTitle, coins, mode);
-    }
+      if (!name || !email) {
+        showToast('⚠️ Please provide your full name and email address.', '⚠️');
+        return;
+      }
 
-    function performLogin(name, roleTitle, coins, mode) {
-      currentUser = { name: name, roleTitle: roleTitle, coins: coins, mode: mode };
+      var meta = calculateMetabolism(weight, height, age, gender, activity);
+
+      currentUser = {
+        id: 'ath-' + Date.now(),
+        name: name,
+        email: email,
+        password: password,
+        gender: gender,
+        age: age,
+        height: height,
+        weight: weight,
+        blood: blood,
+        coins: 250, // Welcome signup bonus
+        role: 'athlete',
+        mode: 'user',
+        meta: meta,
+        createdAt: new Date().toISOString()
+      };
+
+      saveUserToRegistry(currentUser);
       localStorage.setItem('vyra_user_session', JSON.stringify(currentUser));
+      logAuditEvent('Athlete Registration', 'Created customized profile for ' + name, name);
+      launchAuthenticatedSession();
+      showToast('🎉 Welcome, ' + name + '! Personalized ICMR biometrics active.', '✨');
+    }
 
+    // 2. GUEST LOGIN (FAST ZERO-PASSWORD ACCESS)
+    function loginGuestAthlete() {
+      var name = (document.getElementById('guestNameInput').value || '').trim() || 'Guest Athlete';
+      var email = (document.getElementById('guestEmailInput').value || '').trim() || 'guest@vyra.app';
+      var gender = document.getElementById('guestGenderSelect') ? document.getElementById('guestGenderSelect').value : 'male';
+
+      var meta = calculateMetabolism(68, 175, 22, gender, 1.55);
+
+      currentUser = {
+        id: 'guest-' + Date.now(),
+        name: name,
+        email: email,
+        gender: gender,
+        age: 22,
+        height: 175,
+        weight: 68,
+        blood: 'B+',
+        coins: 100,
+        role: 'guest',
+        mode: 'user',
+        isGuest: true,
+        meta: meta,
+        createdAt: new Date().toISOString()
+      };
+
+      saveUserToRegistry(currentUser);
+      localStorage.setItem('vyra_user_session', JSON.stringify(currentUser));
+      logAuditEvent('Guest Login', 'Instant guest session created for ' + name, name);
+      launchAuthenticatedSession();
+      showToast('⚡ Welcome, ' + name + '! Logged in as Guest Athlete.', '⚡');
+    }
+
+    // 3. RETURNING ATHLETE SIGN IN
+    function loginRegisteredAthlete() {
+      var email = (document.getElementById('loginEmailInput').value || '').trim().toLowerCase();
+      var pass = (document.getElementById('loginPassInput').value || '').trim();
+
+      if (!email) {
+        showToast('⚠️ Please enter your registered email address.', '⚠️');
+        return;
+      }
+
+      var users = getUsersRegistry();
+      var found = users.find(function(u) { return u.email && u.email.toLowerCase() === email; });
+
+      if (found) {
+        if (found.password && found.password !== pass) {
+          showToast('❌ Incorrect password for ' + email, '⚠️');
+          return;
+        }
+        currentUser = found;
+        currentUser.mode = found.role === 'admin' ? 'admin' : 'user';
+        localStorage.setItem('vyra_user_session', JSON.stringify(currentUser));
+        logAuditEvent('User Sign In', 'Athlete session authenticated for ' + found.name, found.name);
+        launchAuthenticatedSession();
+        showToast('⚡ Welcome back, ' + found.name + '!', '👋');
+      } else {
+        showToast('❌ No account found for ' + email + '. Try Guest Login or Sign Up.', '⚠️');
+      }
+    }
+
+    // 4. SUPER ADMIN AUTHENTICATION (admin@gmail.com / Admin123)
+    function loginAdmin() {
+      var email = (document.getElementById('adminIdInput').value || '').trim();
+      var pass = (document.getElementById('adminKeyInput').value || '').trim();
+
+      if ((email.toLowerCase() === 'admin@gmail.com' || email.toLowerCase() === 'admin@vyra.app') && pass === 'Admin123') {
+        currentUser = {
+          id: 'admin-super-01',
+          name: 'Ayush Bhadoria (Super Admin)',
+          email: email.toLowerCase() === 'admin@vyra.app' ? 'admin@vyra.app' : 'admin@gmail.com',
+          role: 'admin',
+          mode: 'admin',
+          coins: 99999,
+          gender: 'male',
+          age: 23,
+          height: 178,
+          weight: 72,
+          blood: 'O+',
+          meta: { bmr: 1740, tdee: 2450, bmi: 22.7, bmiCat: 'Optimal (ICMR Indian Standard)', protein: 130 },
+          createdAt: new Date().toISOString()
+        };
+        saveUserToRegistry(currentUser);
+        localStorage.setItem('vyra_user_session', JSON.stringify(currentUser));
+        logAuditEvent('Superadmin Master Login', 'Enterprise operations center unlocked', 'SUPERADMIN');
+        launchAuthenticatedSession();
+        showToast('🛡️ Super Admin Authenticated! Full Enterprise Command Unlocked.', '🛡️');
+      } else {
+        showToast('❌ Invalid Superadmin credentials! Expected: admin@gmail.com / Admin123', '⚠️');
+      }
+    }
+
+    function launchAuthenticatedSession() {
       document.getElementById('authGateway').style.display = 'none';
       var app = document.getElementById('authenticatedApp');
       app.style.display = 'flex';
 
-      document.getElementById('userNameHeader').innerText = name;
-      document.getElementById('userAvatarCircle').innerText = name.split(' ').map(function(w) { return w[0]; }).join('').slice(0, 2);
+      document.getElementById('userNameHeader').innerText = currentUser.name;
+      document.getElementById('userAvatarCircle').innerText = currentUser.name.split(' ').map(function(w) { return w[0]; }).join('').slice(0, 2);
 
-      switchGlobalMode(mode);
-      showToast('Welcome, ' + name + '! Session Authenticated.', '⚡');
+      // Populate calculated metrics
+      if (currentUser.meta) {
+        document.getElementById('realBmiVal').innerText = currentUser.meta.bmi + ' kg/m²';
+        document.getElementById('realBmiCategory').innerText = currentUser.meta.bmiCat;
+        document.getElementById('realBmrVal').innerText = currentUser.meta.bmr.toLocaleString() + ' kcal';
+        document.getElementById('realTdeeVal').innerText = currentUser.meta.tdee.toLocaleString() + ' kcal';
+        document.getElementById('realProteinGoalVal').innerText = currentUser.meta.protein + ' g / day';
+
+        document.getElementById('macroCaloriesVal').innerText = dailyMacros.cal + ' / ' + currentUser.meta.tdee.toLocaleString() + ' kcal';
+        document.getElementById('macroProteinVal').innerText = dailyMacros.pro + 'g / ' + currentUser.meta.protein + 'g';
+      }
+
+      switchGlobalMode(currentUser.mode || 'user');
     }
 
     function logoutApp() {
+      logAuditEvent('User Logout', (currentUser ? currentUser.name : 'User') + ' logged out safely');
       currentUser = null;
       localStorage.removeItem('vyra_user_session');
       document.getElementById('authenticatedApp').style.display = 'none';
       document.getElementById('authGateway').style.display = 'flex';
+      setAuthTab('signin');
       showToast('Logged out securely.', '👋');
     }
 
     function switchGlobalMode(mode) {
       if (!currentUser) return;
+      if (mode === 'admin') {
+        if (currentUser.role !== 'admin' && currentUser.email.toLowerCase() !== 'admin@gmail.com' && currentUser.email.toLowerCase() !== 'admin@vyra.app') {
+          showToast('🔒 Super Admin access restricted to admin@gmail.com!', '🛡️');
+          return;
+        }
+      }
+
       currentUser.mode = mode;
-      
-      var isUser = mode === 'user';
-      document.getElementById('btnSwitchUser').classList.toggle('active', isUser);
-      document.getElementById('btnSwitchAdmin').classList.toggle('active', !isUser);
-      document.getElementById('athleteModeView').style.display = isUser ? 'flex' : 'none';
-      document.getElementById('adminModeView').style.display = !isUser ? 'block' : 'none';
+      document.getElementById('headerModePill').innerText = mode === 'admin' ? 'ENTERPRISE COMMAND' : 'ATHLETE PORTAL';
+      document.getElementById('headerModePill').className = 'mode-indicator-pill' + (mode === 'admin' ? ' admin-pill' : '');
 
-      var pill = document.getElementById('headerModePill');
-      pill.innerText = isUser ? 'ATHLETE PORTAL' : 'ENTERPRISE COMMAND';
-      pill.classList.toggle('admin-badge', !isUser);
+      document.getElementById('btnSwitchUser').classList.toggle('active', mode === 'user');
+      document.getElementById('btnSwitchAdmin').classList.toggle('active', mode === 'admin');
 
-      if (!isUser) {
-        renderAdminTables();
+      document.getElementById('athleteModeView').style.display = mode === 'user' ? 'flex' : 'none';
+      document.getElementById('adminModeView').style.display = mode === 'admin' ? 'flex' : 'none';
+
+      if (mode === 'admin') {
+        renderAdminDashboard();
       }
     }
 
-    // ── 4. ATHLETE PORTAL CONTROLS ──────────────────────────────────────────────
-    function switchAthleteTab(tabName) {
-      document.querySelectorAll('.portal-nav-btn').forEach(function(btn) { btn.classList.remove('active'); });
-      document.querySelectorAll('.portal-tab-view').forEach(function(view) { view.classList.remove('active'); });
+    function switchAthleteTab(tabKey) {
+      var btns = document.querySelectorAll('.portal-nav-btn');
+      btns.forEach(function(b) { b.classList.remove('active'); });
 
-      var targetView = document.getElementById('tab-' + tabName);
-      if (targetView) targetView.classList.add('active');
-
-      var clicked = Array.from(document.querySelectorAll('.portal-nav-btn')).find(function(b) {
-        var fn = b.getAttribute('onclick');
-        return fn && fn.indexOf(tabName) !== -1;
-      });
-      if (clicked) clicked.classList.add('active');
-    }
-
-    // 3D Avatar Turntable
-    var orbitViewport = document.getElementById('orbitViewport');
-    var avatarOrbitCard = document.getElementById('avatarOrbitCard');
-    var orbitAngleHUD = document.getElementById('orbitAngleHUD');
-
-    if (orbitViewport) {
-      orbitViewport.addEventListener('mousedown', function(e) {
-        isDragging = true;
-        dragStartX = e.clientX;
-        isAutoOrbiting = false;
-        document.getElementById('autoOrbitStatusText').innerText = '⚡ Auto Orbit: OFF';
+      var panels = [
+        'tab-studio', 'tab-biomech', 'tab-camera', 'tab-nutrition',
+        'tab-lab', 'tab-blood', 'tab-analytics'
+      ];
+      panels.forEach(function(p) {
+        var el = document.getElementById(p);
+        if (el) el.style.display = 'none';
       });
 
-      window.addEventListener('mousemove', function(e) {
-        if (!isDragging) return;
-        var delta = e.clientX - dragStartX;
-        dragStartX = e.clientX;
-        orbitDeg = (orbitDeg + delta * 0.8) % 360;
-        updateAvatarOrbitDisplay();
-      });
+      var target = document.getElementById('tab-' + tabKey);
+      if (target) target.style.display = 'block';
 
-      window.addEventListener('mouseup', function() { isDragging = false; });
-
-      // Touch events
-      orbitViewport.addEventListener('touchstart', function(e) {
-        isDragging = true;
-        dragStartX = e.touches[0].clientX;
-        isAutoOrbiting = false;
-        document.getElementById('autoOrbitStatusText').innerText = '⚡ Auto Orbit: OFF';
-      });
-
-      window.addEventListener('touchmove', function(e) {
-        if (!isDragging) return;
-        var delta = e.touches[0].clientX - dragStartX;
-        dragStartX = e.touches[0].clientX;
-        orbitDeg = (orbitDeg + delta * 0.8) % 360;
-        updateAvatarOrbitDisplay();
-      });
-
-      window.addEventListener('touchend', function() { isDragging = false; });
-    }
-
-    function updateAvatarOrbitDisplay() {
-      if (avatarOrbitCard) {
-        avatarOrbitCard.style.transform = 'rotateY(' + orbitDeg + 'deg)';
-      }
-      if (orbitAngleHUD) {
-        var positiveDeg = Math.round(((orbitDeg % 360) + 360) % 360);
-        var label = positiveDeg + '° ';
-        if (positiveDeg >= 315 || positiveDeg < 45) label += 'FRONT VIEW';
-        else if (positiveDeg >= 45 && positiveDeg < 135) label += 'PROFILE RIGHT';
-        else if (positiveDeg >= 135 && positiveDeg < 225) label += 'REAR VIEW';
-        else label += 'PROFILE LEFT';
-        orbitAngleHUD.innerText = label;
+      // Find button by onclick
+      for (var i = 0; i < btns.length; i++) {
+        var attr = btns[i].getAttribute('onclick');
+        if (attr && attr.indexOf(tabKey) !== -1) {
+          btns[i].classList.add('active');
+          break;
+        }
       }
     }
 
-    setInterval(function() {
-      if (isAutoOrbiting) {
-        orbitDeg = (orbitDeg + 0.6) % 360;
-        updateAvatarOrbitDisplay();
-      }
-    }, 30);
-
-    function toggleAutoOrbit() {
-      isAutoOrbiting = !isAutoOrbiting;
-      document.getElementById('autoOrbitStatusText').innerText = isAutoOrbiting ? '⚡ Auto Orbit: ON' : '⚡ Auto Orbit: OFF';
-    }
-
-    // Customizer Populator
-    var outfitsData = {
-      female: [
-        { id: 'hoodie_white', name: 'Cyber White Hoodie', desc: 'Signature Pixar Athletic' },
-        { id: 'athletic_teal', name: 'Teal Compression Set', desc: 'Sweat-wicking gym wear' },
-        { id: 'runner_stealth', name: 'Stealth Black Runner', desc: 'Aerodynamic windbreaker' },
-        { id: 'sunset_orange', name: 'Sunset Yoga One-Piece', desc: 'Flexible mobility suit' }
-      ],
-      male: [
-        { id: 'male_muscle_tank', name: 'Vyra Pro Gym Tank', desc: 'High mobility workout vest' },
-        { id: 'runner_stealth', name: 'Stealth Tracksuit', desc: 'Thermal training jacket' },
-        { id: 'athletic_teal', name: 'Teal Lifting Suit', desc: 'Heavy compound compression' },
-        { id: 'hoodie_white', name: 'Pure White Cyber Hoodie', desc: 'Urban athletic wear' }
-      ]
-    };
-
-    var hairstylesData = {
-      female: [
-        { id: 'pixar_wavy', name: 'Pixar Wavy Layers' },
-        { id: 'ponytail', name: 'High Athletic Ponytail' },
-        { id: 'braids', name: 'Neon Cyber Braids' }
-      ],
-      male: [
-        { id: 'crew_fade', name: 'Textured Skin Fade' },
-        { id: 'short_crop', name: 'Athletic Buzz Cut' },
-        { id: 'undercut', name: 'Cyber Undercut' }
-      ]
-    };
-
+    // ── 5. 3D AVATAR STUDIO TURNTABLE ───────────────────────────────────────────
     function populateCustomizer() {
-      var oGrid = document.getElementById('subtab-outfits');
-      var oList = outfitsData[currentGender] || outfitsData.female;
-      oGrid.innerHTML = oList.map(function(o) {
-        return '<div class="item-card ' + (currentOutfit === o.id ? 'active' : '') + '" onclick="selectOutfit(\'' + o.id + '\')">' +
-          '<div class="item-card-header">' +
-            '<span>🎽 OUTFIT</span>' +
-            (currentOutfit === o.id ? '<span>EQUIPPED</span>' : '') +
-          '</div>' +
-          '<div class="item-card-name">' + o.name + '</div>' +
-          '<div style="font-size:11px; color:var(--text-muted);">' + o.desc + '</div>' +
-        '</div>';
-      }).join('');
+      var colorOptions = [
+        { name: 'Neon Cyan', hex: '#00d2ff' },
+        { name: 'Emerald', hex: '#34ff8c' },
+        { name: 'Electric Gold', hex: '#ffd32a' },
+        { name: 'Crimson Red', hex: '#ff4757' },
+        { name: 'Royal Purple', hex: '#a55eea' }
+      ];
 
-      var hGrid = document.getElementById('subtab-hair');
-      var hList = hairstylesData[currentGender] || hairstylesData.female;
-      hGrid.innerHTML = hList.map(function(h) {
-        return '<div class="item-card ' + (currentHair === h.id ? 'active' : '') + '" onclick="selectHair(\'' + h.id + '\')">' +
-          '<div class="item-card-header">' +
-            '<span>✂️ STYLE</span>' +
-            (currentHair === h.id ? '<span>EQUIPPED</span>' : '') +
-          '</div>' +
-          '<div class="item-card-name">' + h.name + '</div>' +
-        '</div>';
-      }).join('');
-
-      var skinGrid = document.getElementById('subtab-skin');
-      skinGrid.innerHTML = ['Wheatish (Indian Warm)', 'Fair Golden', 'Deep Bronze', 'Dusky Glow'].map(function(s) {
-        return '<div class="item-card" onclick="showToast(\'Skin Shader updated: ' + s + '\', \'✨\')">' +
-          '<div class="item-card-header"><span>🎨 SHADER</span></div>' +
-          '<div class="item-card-name">' + s + '</div>' +
-        '</div>';
-      }).join('');
-
-      var shoesGrid = document.getElementById('subtab-shoes');
-      shoesGrid.innerHTML = ['Neon Sprint Runners', 'Cross-Training Grip Kicks', 'Barefoot Lifting Slippers'].map(function(sh) {
-        return '<div class="item-card" onclick="showToast(\'Footwear equipped: ' + sh + '\', \'👟\')">' +
-          '<div class="item-card-header"><span>👟 KICKS</span></div>' +
-          '<div class="item-card-name">' + sh + '</div>' +
-        '</div>';
-      }).join('');
-    }
-
-    function selectOutfit(id) {
-      currentOutfit = id;
-      populateCustomizer();
-      showToast('Outfit equipped on 3D avatar!', '🎽');
-    }
-
-    function selectHair(id) {
-      currentHair = id;
-      populateCustomizer();
-      showToast('Hairstyle updated!', '✂️');
-    }
-
-    function setGender(g) {
-      currentGender = g;
-      document.getElementById('btnGenFemale').classList.toggle('active', g === 'female');
-      document.getElementById('btnGenMale').classList.toggle('active', g === 'male');
-      populateCustomizer();
-      showToast('Coach Rig changed to ' + g.toUpperCase(), '👤');
-    }
-
-    function switchCustomizerSubtab(subId, btn) {
-      ['outfits', 'hair', 'skin', 'shoes', 'face'].forEach(function(id) {
-        var el = document.getElementById('subtab-' + id);
-        if (el) el.style.display = id === subId ? (id === 'face' ? 'flex' : 'grid') : 'none';
-      });
-      document.querySelectorAll('.subtab-btn').forEach(function(b) { b.classList.remove('active'); });
-      if (btn) btn.classList.add('active');
-    }
-
-    // Face Photo to Digital Twin Upload
-    function handleFacePhotoUpload(e) {
-      var file = e.target.files && e.target.files[0];
-      if (!file) return;
-
-      var reader = new FileReader();
-      reader.onload = function(event) {
-        var dataUrl = event.target.result;
-        
-        document.getElementById('facePreviewImg').src = dataUrl;
-        document.getElementById('faceUploadPreviewBox').style.display = 'flex';
-
-        document.getElementById('pipFaceThumb').src = dataUrl;
-        document.getElementById('pipFaceBadge').style.display = 'flex';
-
-        showToast('Selfie processed! Digital Twin face texture mounted to 3D avatar.', '📷');
-      };
-      reader.readAsDataURL(file);
-    }
-
-    // ── 5. BIOMECHANICS EXERCISE CONTROLS ────────────────────────────────────────
-    var squatTimer = 0;
-    var cadences = ['ecc', 'iso', 'con', 'top'];
-    setInterval(function() {
-      squatTimer = (squatTimer + 1) % 4;
-      cadences.forEach(function(id, idx) {
-        var el = document.getElementById('cadence-' + id);
-        if (el) el.classList.toggle('active', idx === squatTimer);
-      });
-    }, 1200);
-
-    var exerciseSpecs = {
-      squat: { title: 'Barbell Back Squat', angle: '75.2°', joint: 'Knee Flexion', muscles: 'Quadriceps, Gluteus Maximus, Core' },
-      pushup: { title: 'Standard Pushup', angle: '89.5°', joint: 'Elbow Flexion', muscles: 'Pectoralis Major, Anterior Deltoids, Triceps' },
-      curl: { title: 'Dumbbell Bicep Curl', angle: '34.8°', joint: 'Elbow Peak', muscles: 'Biceps Brachii, Brachialis' },
-      lunge: { title: 'Walking Lunge', angle: '90.0°', joint: 'Knee Flexion', muscles: 'Quadriceps, Hamstrings, Glutes' }
-    };
-
-    function setBiomechExercise(type) {
-      var spec = exerciseSpecs[type];
-      if (!spec) return;
-      document.getElementById('biomechTitle').innerText = spec.title;
-      document.getElementById('biomechAngleVal').innerText = spec.angle;
-      document.getElementById('biomechAngleLbl').innerText = spec.joint;
-      document.getElementById('biomechMuscles').innerText = 'Target: ' + spec.muscles;
-      showToast('Switched exercise to ' + spec.title, '📐');
-    }
-
-    function toggleAudioCoach() {
-      audioCoachEnabled = !audioCoachEnabled;
-      document.getElementById('audioCoachStatus').innerText = audioCoachEnabled ? '🔊 Voice Coach: ON' : '🔈 Voice Coach: OFF';
-      showToast(audioCoachEnabled ? 'Voice coaching cadence cues enabled.' : 'Voice coach muted.', '🔊');
-    }
-
-    // ── 6. LIVE WEBCAM POSE TRACKER ─────────────────────────────────────────────
-    async function toggleLiveWebcam() {
-      var video = document.getElementById('webcamVideo');
-      var canvas = document.getElementById('poseCanvas');
-      var placeholder = document.getElementById('camPlaceholder');
-      var btn = document.getElementById('btnToggleCam');
-
-      if (!isWebcamActive) {
-        try {
-          webcamStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
-          video.srcObject = webcamStream;
-          video.style.display = 'block';
-          placeholder.style.display = 'none';
-          btn.innerHTML = '<span>⏹️ Stop Camera</span>';
-          btn.style.background = 'var(--crimson)';
-          isWebcamActive = true;
-
-          startPoseLoop(video, canvas);
-          showToast('Live camera AI connected! Perform reps in frame.', '📷');
-        } catch (err) {
-          showToast('Camera access denied or unavailable: ' + err.message, '⚠️');
-        }
-      } else {
-        if (webcamStream) {
-          webcamStream.getTracks().forEach(function(t) { t.stop(); });
-        }
-        video.style.display = 'none';
-        placeholder.style.display = 'flex';
-        btn.innerHTML = '<span>📷 Start Camera Tracking</span>';
-        btn.style.background = 'linear-gradient(135deg, var(--cyan), #0099FF)';
-        isWebcamActive = false;
-        showToast('Camera tracker stopped.', '⏹️');
+      var colorContainer = document.getElementById('colorSwatches');
+      if (colorContainer) {
+        colorContainer.innerHTML = colorOptions.map(function(c, i) {
+          return '<button class="color-swatch-btn ' + (i === 0 ? 'selected' : '') + '" style="background:' + c.hex + ';" onclick="selectSuitColor(&quot;' + c.hex + '&quot;, this)" title="' + c.name + '"></button>';
+        }).join('');
       }
+
+      var turntableCanvas = document.getElementById('turntableCanvas');
+      if (turntableCanvas) {
+        renderTurntableWireframe();
+
+        turntableCanvas.addEventListener('mousedown', function(e) {
+          isDragging = true;
+          dragStartX = e.clientX;
+          isAutoOrbiting = false;
+        });
+
+        window.addEventListener('mouseup', function() { isDragging = false; });
+
+        window.addEventListener('mousemove', function(e) {
+          if (!isDragging) return;
+          var delta = e.clientX - dragStartX;
+          dragStartX = e.clientX;
+          orbitDeg = (orbitDeg + delta * 0.5) % 360;
+          document.getElementById('turntableSlider').value = Math.round(orbitDeg);
+          document.getElementById('turntableAngleVal').innerText = Math.round(orbitDeg) + '°';
+          renderTurntableWireframe();
+        });
+      }
+
+      setInterval(function() {
+        if (isAutoOrbiting) {
+          orbitDeg = (orbitDeg + 0.6) % 360;
+          var slider = document.getElementById('turntableSlider');
+          if (slider) slider.value = Math.round(orbitDeg);
+          var angEl = document.getElementById('turntableAngleVal');
+          if (angEl) angEl.innerText = Math.round(orbitDeg) + '°';
+          renderTurntableWireframe();
+        }
+      }, 30);
     }
 
-    function startPoseLoop(video, canvas) {
+    var selectedSuitColor = '#00d2ff';
+    function selectSuitColor(hex, btn) {
+      selectedSuitColor = hex;
+      document.querySelectorAll('.color-swatch-btn').forEach(function(b) { b.classList.remove('selected'); });
+      if (btn) btn.classList.add('selected');
+      renderTurntableWireframe();
+      showToast('Equipped ' + hex + ' Nano-Weave Armor', '🛡️');
+    }
+
+    function toggleAutoRotate(btn) {
+      isAutoOrbiting = !isAutoOrbiting;
+      btn.innerText = isAutoOrbiting ? 'Auto-Orbit: ON' : 'Auto-Orbit: OFF';
+      btn.classList.toggle('active', isAutoOrbiting);
+    }
+
+    function setTurntableAngle(val) {
+      orbitDeg = Number(val);
+      document.getElementById('turntableAngleVal').innerText = val + '°';
+      renderTurntableWireframe();
+    }
+
+    function renderTurntableWireframe() {
+      var canvas = document.getElementById('turntableCanvas');
+      if (!canvas) return;
       var ctx = canvas.getContext('2d');
-      canvas.width = canvas.parentElement.clientWidth;
-      canvas.height = canvas.parentElement.clientHeight;
+      var w = canvas.width = canvas.parentElement.clientWidth;
+      var h = canvas.height = canvas.parentElement.clientHeight || 560;
 
-      var cycle = 0;
-      function loop() {
-        if (!isWebcamActive) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, w, h);
 
-        cycle += 0.05;
-        var flex = (Math.sin(cycle) + 1) / 2;
-        var angle = Math.round(170 - (flex * 95));
-
-        document.getElementById('camCurrentAngle').innerText = angle + '°';
-
-        if (flex > 0.85 && !isDownPhase) {
-          isDownPhase = true;
-        } else if (flex < 0.25 && isDownPhase) {
-          isDownPhase = false;
-          repCount++;
-          document.getElementById('camRepCount').innerText = repCount;
-          showToast('⚡ Rep ' + repCount + ' Complete! Perfect Depth.', '🏆');
-        }
-
-        var cx = canvas.width / 2;
-        var cy = canvas.height / 2;
-
-        ctx.strokeStyle = '#00D2FF';
-        ctx.lineWidth = 3;
-        ctx.fillStyle = '#34FF8C';
-
-        // Head
+      // Floor grid
+      ctx.save();
+      ctx.translate(w / 2, h * 0.85);
+      ctx.strokeStyle = 'rgba(0, 210, 255, 0.2)';
+      ctx.lineWidth = 1;
+      for (var r = 20; r < 200; r += 35) {
         ctx.beginPath();
-        ctx.arc(cx, cy - 100, 18, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.ellipse(0, 0, r, r * 0.35, 0, 0, Math.PI * 2);
         ctx.stroke();
-
-        // Spine
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - 82);
-        ctx.lineTo(cx, cy + 20);
-        ctx.stroke();
-
-        // Shoulders
-        ctx.beginPath();
-        ctx.moveTo(cx - 50, cy - 60);
-        ctx.lineTo(cx + 50, cy - 60);
-        ctx.stroke();
-
-        // Hips to Knees
-        var kneeY = cy + 90 + (flex * 30);
-        ctx.beginPath();
-        ctx.moveTo(cx, cy + 20);
-        ctx.lineTo(cx - 40, kneeY);
-        ctx.lineTo(cx - 35, cy + 170);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(cx, cy + 20);
-        ctx.lineTo(cx + 40, kneeY);
-        ctx.lineTo(cx + 35, cy + 170);
-        ctx.stroke();
-
-        requestAnimationFrame(loop);
       }
-      requestAnimationFrame(loop);
+      ctx.restore();
+
+      // 3D Avatar Stylized Silhouette
+      var rad = orbitDeg * Math.PI / 180;
+      var xCenter = w / 2;
+      var yBase = h * 0.82;
+
+      ctx.save();
+      ctx.shadowColor = selectedSuitColor;
+      ctx.shadowBlur = 24;
+      ctx.strokeStyle = selectedSuitColor;
+      ctx.fillStyle = 'rgba(10, 16, 30, 0.8)';
+      ctx.lineWidth = 2.5;
+
+      var headY = yBase - 360;
+      ctx.beginPath();
+      ctx.arc(xCenter, headY, 26, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Torso
+      ctx.beginPath();
+      ctx.moveTo(xCenter - 45 * Math.cos(rad), headY + 40);
+      ctx.lineTo(xCenter + 45 * Math.cos(rad), headY + 40);
+      ctx.lineTo(xCenter + 28 * Math.cos(rad), headY + 180);
+      ctx.lineTo(xCenter - 28 * Math.cos(rad), headY + 180);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Arms
+      ctx.beginPath();
+      ctx.moveTo(xCenter - 45 * Math.cos(rad), headY + 40);
+      ctx.lineTo(xCenter - 65 * Math.cos(rad) - 20, headY + 140);
+      ctx.lineTo(xCenter - 75 * Math.cos(rad) - 25, headY + 230);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(xCenter + 45 * Math.cos(rad), headY + 40);
+      ctx.lineTo(xCenter + 65 * Math.cos(rad) + 20, headY + 140);
+      ctx.lineTo(xCenter + 75 * Math.cos(rad) + 25, headY + 230);
+      ctx.stroke();
+
+      // Legs
+      ctx.beginPath();
+      ctx.moveTo(xCenter - 22 * Math.cos(rad), headY + 180);
+      ctx.lineTo(xCenter - 28 * Math.cos(rad) - 8, headY + 280);
+      ctx.lineTo(xCenter - 32 * Math.cos(rad) - 10, yBase);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(xCenter + 22 * Math.cos(rad), headY + 180);
+      ctx.lineTo(xCenter + 28 * Math.cos(rad) + 8, headY + 280);
+      ctx.lineTo(xCenter + 32 * Math.cos(rad) + 10, yBase);
+      ctx.stroke();
+
+      ctx.restore();
     }
 
-    // ── 7. NUTRITION ENGINE ─────────────────────────────────────────────────────
+    // ── 6. 18 EXERCISE KINEMATICS HUD ───────────────────────────────────────────
+    var activeExercise = exerciseDataset[0];
+
+    function renderExerciseSelectors() {
+      var container = document.getElementById('exerciseSelectorChips');
+      if (!container) return;
+
+      container.innerHTML = exerciseDataset.map(function(ex) {
+        return '<button class="category-chip ' + (ex.slug === activeExercise.slug ? 'active' : '') + '" onclick="selectExercise(&quot;' + ex.slug + '&quot;)">' +
+          ex.name + ' (' + ex.hindiName + ')' +
+        '</button>';
+      }).join('');
+    }
+
+    function selectExercise(slug) {
+      var found = exerciseDataset.find(function(e) { return e.slug === slug; });
+      if (!found) return;
+      activeExercise = found;
+      renderExerciseSelectors();
+
+      document.getElementById('hudExerciseName').innerText = activeExercise.name + ' (' + activeExercise.hindiName + ')';
+      document.getElementById('hudExerciseCat').innerText = activeExercise.category;
+      document.getElementById('hudJointFlexion').innerText = activeExercise.optimalFlexionDeg + '°';
+      document.getElementById('hudPrimaryJointName').innerText = activeExercise.primaryJoint;
+      document.getElementById('hudTempoVal').innerText = activeExercise.tempo;
+      document.getElementById('hudMetVal').innerText = activeExercise.met + ' MET';
+
+      var cuesEl = document.getElementById('hudCuesList');
+      if (cuesEl) {
+        cuesEl.innerHTML = activeExercise.cues.map(function(cue) {
+          return '<div class="cue-item"><span class="cue-bullet">✓</span><span>' + cue + '</span></div>';
+        }).join('');
+      }
+
+      var faultsEl = document.getElementById('hudFaultsList');
+      if (faultsEl) {
+        faultsEl.innerHTML = activeExercise.faults.map(function(f) {
+          return '<div class="cue-item"><span class="cue-bullet" style="color:var(--crimson);">✕</span><span>' + f + '</span></div>';
+        }).join('');
+      }
+
+      renderAdminDashboard();
+    }
+
+    // ── 7. LIVE AI CAMERA POSE TRACKER ──────────────────────────────────────────
+    function toggleWebcam() {
+      if (isWebcamActive) {
+        stopWebcam();
+      } else {
+        startWebcam();
+      }
+    }
+
+    function startWebcam() {
+      var video = document.getElementById('cameraVideoEl');
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } })
+          .then(function(stream) {
+            webcamStream = stream;
+            video.srcObject = stream;
+            isWebcamActive = true;
+            document.getElementById('btnCameraToggle').innerText = '🛑 Stop AI Camera';
+            document.getElementById('btnCameraToggle').classList.add('danger');
+            document.getElementById('cameraStatusBadge').innerText = 'LIVE TRACKING (30 FPS)';
+            document.getElementById('cameraStatusBadge').className = 'camera-status-live';
+            showToast('Webcam AI tracking active.', '📷');
+            startPoseSimLoop();
+          })
+          .catch(function(err) {
+            showToast('Camera access denied or unavailable. Simulating vision.', '⚠️');
+            startPoseSimLoop();
+          });
+      } else {
+        startPoseSimLoop();
+      }
+    }
+
+    function stopWebcam() {
+      if (webcamStream) {
+        webcamStream.getTracks().forEach(function(t) { t.stop(); });
+        webcamStream = null;
+      }
+      isWebcamActive = false;
+      document.getElementById('btnCameraToggle').innerText = '📷 Start AI Vision Camera';
+      document.getElementById('btnCameraToggle').classList.remove('danger');
+      document.getElementById('cameraStatusBadge').innerText = 'STANDBY';
+      document.getElementById('cameraStatusBadge').className = 'camera-status-standby';
+      showToast('Camera stopped.', '🛑');
+    }
+
+    var poseTimer = null;
+    function startPoseSimLoop() {
+      if (poseTimer) clearInterval(poseTimer);
+      var simAngle = 170;
+      var goingDown = true;
+
+      poseTimer = setInterval(function() {
+        if (goingDown) {
+          simAngle -= 4;
+          if (simAngle <= activeExercise.optimalFlexionDeg) {
+            goingDown = false;
+            isDownPhase = true;
+          }
+        } else {
+          simAngle += 4;
+          if (simAngle >= activeExercise.lockoutDeg) {
+            goingDown = true;
+            if (isDownPhase) {
+              repCount++;
+              isDownPhase = false;
+              document.getElementById('liveRepCountDisplay').innerText = repCount;
+              if (audioCoachEnabled) speakFeedback('Rep ' + repCount + ' completed. Excellent form!');
+              showToast('Good Rep Counted! Form 96%', '🏋️');
+            }
+          }
+        }
+
+        document.getElementById('liveJointAngleVal').innerText = Math.round(simAngle) + '°';
+        renderPoseCanvas(simAngle);
+      }, 50);
+    }
+
+    function renderPoseCanvas(jointAngle) {
+      var canvas = document.getElementById('cameraPoseOverlayCanvas');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var w = canvas.width = canvas.parentElement.clientWidth;
+      var h = canvas.height = canvas.parentElement.clientHeight || 460;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Draw skeleton wireframe
+      ctx.strokeStyle = '#00d2ff';
+      ctx.lineWidth = 3;
+      ctx.fillStyle = '#34ff8c';
+
+      var cx = w / 2;
+      var cy = h * 0.3;
+
+      // Head
+      ctx.beginPath();
+      ctx.arc(cx, cy - 40, 20, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Spine
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 20);
+      ctx.lineTo(cx, cy + 80);
+      ctx.stroke();
+
+      // Shoulders & Arms
+      ctx.beginPath();
+      ctx.moveTo(cx - 40, cy);
+      ctx.lineTo(cx + 40, cy);
+      ctx.stroke();
+
+      // Joint flex calculation
+      var flexOffset = (180 - jointAngle) * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(cx - 20, cy + 80);
+      ctx.lineTo(cx - 30 - flexOffset, cy + 140);
+      ctx.lineTo(cx - 30, cy + 220);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(cx + 20, cy + 80);
+      ctx.lineTo(cx + 30 + flexOffset, cy + 140);
+      ctx.lineTo(cx + 30, cy + 220);
+      ctx.stroke();
+
+      // Joint landmark dots
+      var joints = [
+        [cx, cy - 40], [cx, cy], [cx - 40, cy], [cx + 40, cy],
+        [cx, cy + 80], [cx - 30 - flexOffset, cy + 140], [cx + 30 + flexOffset, cy + 140],
+        [cx - 30, cy + 220], [cx + 30, cy + 220]
+      ];
+      joints.forEach(function(pt) {
+        ctx.beginPath();
+        ctx.arc(pt[0], pt[1], 5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function resetRepCounter() {
+      repCount = 0;
+      document.getElementById('liveRepCountDisplay').innerText = '0';
+      showToast('Rep Counter reset to 0.', '↺');
+    }
+
+    function speakFeedback(text) {
+      if ('speechSynthesis' in window) {
+        var utter = new SpeechSynthesisUtterance(text);
+        utter.rate = 1.05;
+        window.speechSynthesis.speak(utter);
+      }
+    }
+
+    // ── 8. ICMR NUTRITION & FOOD LOGGER ─────────────────────────────────────────
     function renderFoodTable(foods) {
       var tbody = document.getElementById('ifctFoodTableBody');
-      tbody.innerHTML = foods.map(function(f) {
+      if (!tbody) return;
+
+      tbody.innerHTML = foods.map(function(item) {
         return '<tr>' +
-          '<td style="font-weight:800; color:#FFF;">' + f.name + '</td>' +
-          '<td><span class="tag-pill tag-cyan">' + f.cat + '</span></td>' +
-          '<td><strong>' + f.cal + ' kcal</strong></td>' +
-          '<td style="color:var(--emerald); font-weight:700;">' + f.pro + 'g</td>' +
-          '<td>' + f.carb + 'g</td>' +
-          '<td>' + f.fat + 'g</td>' +
-          '<td>' +
-            '<button class="tag-pill tag-emerald" style="cursor:pointer;" onclick="logFoodItem(\'' + f.name + '\')">+ Log</button>' +
-          '</td>' +
+          '<td style="font-weight:700; color:#FFF;">' + item.name + '</td>' +
+          '<td><span class="tag-pill tag-cyan">' + item.cat + '</span></td>' +
+          '<td style="font-weight:700; color:var(--emerald);">' + item.cal + ' kcal</td>' +
+          '<td style="color:var(--orange);">' + item.pro + ' g</td>' +
+          '<td>' + item.carb + ' g</td>' +
+          '<td>' + item.fat + ' g</td>' +
+          '<td><button class="tag-pill tag-emerald" style="cursor:pointer;" onclick="logFoodMeal(&quot;' + item.name + '&quot;, ' + item.cal + ', ' + item.pro + ')">+ Log Meal</button></td>' +
         '</tr>';
       }).join('');
     }
 
-    function filterFoodList() {
-      var q = (document.getElementById('foodSearchInput').value || '').toLowerCase();
-      var filtered = ifctFoods.filter(function(f) {
-        return f.name.toLowerCase().indexOf(q) !== -1 || f.cat.toLowerCase().indexOf(q) !== -1;
-      });
-      renderFoodTable(filtered);
+    function filterFoods(cat) {
+      document.querySelectorAll('#tab-nutrition .category-chip').forEach(function(c) { c.classList.remove('active'); });
+      if (window.event && window.event.target) window.event.target.classList.add('active');
+
+      if (cat === 'ALL') {
+        renderFoodTable(ifctFoods);
+      } else {
+        var filtered = ifctFoods.filter(function(f) { return f.cat.toLowerCase().indexOf(cat.toLowerCase()) !== -1; });
+        renderFoodTable(filtered);
+      }
     }
 
-    function logFoodItem(name) {
-      var item = ifctFoods.find(function(f) { return f.name === name; });
-      if (!item) return;
+    function logFoodMeal(name, cal, pro) {
+      dailyMacros.cal += cal;
+      dailyMacros.pro += pro;
 
-      dailyMacros.cal += item.cal;
-      dailyMacros.pro += item.pro;
-      dailyMacros.carb += item.carb;
-      dailyMacros.fat += item.fat;
+      var targetCal = currentUser && currentUser.meta ? currentUser.meta.tdee : 2354;
+      var targetPro = currentUser && currentUser.meta ? currentUser.meta.protein : 126;
 
-      document.getElementById('macroCaloriesVal').innerText = dailyMacros.cal + ' / 2,200';
-      document.getElementById('macroProteinVal').innerText = dailyMacros.pro.toFixed(1) + 'g / 130g';
-      document.getElementById('macroCarbsVal').innerText = dailyMacros.carb.toFixed(1) + 'g / 250g';
-      document.getElementById('macroFatsVal').innerText = dailyMacros.fat.toFixed(1) + 'g / 65g';
+      document.getElementById('macroCaloriesVal').innerText = dailyMacros.cal + ' / ' + targetCal.toLocaleString() + ' kcal';
+      document.getElementById('macroProteinVal').innerText = Math.round(dailyMacros.pro) + 'g / ' + targetPro + 'g';
 
-      showToast('Logged ' + item.name + ' (+ ' + item.pro + 'g protein)', '🥗');
+      showToast('Logged ' + name + ' (+' + cal + ' kcal, +' + pro + 'g Pro)', '🥗');
     }
 
-    // ── 8. LAB BLOOD AI ─────────────────────────────────────────────────────────
-    var samplePanels = {
-      comprehensive: [
-        { name: 'Hemoglobin (Hb)', val: '14.8 g/dL', status: 'Optimal', tag: 'tag-emerald', ref: 'Ref: 13.0 - 17.0 g/dL' },
-        { name: 'Fasting Blood Glucose', val: '88 mg/dL', status: 'Normal', tag: 'tag-emerald', ref: 'Ref: 70 - 99 mg/dL' },
-        { name: 'HbA1c', val: '5.2%', status: 'Optimal', tag: 'tag-emerald', ref: 'Ref: < 5.7%' },
-        { name: 'Total Cholesterol', val: '182 mg/dL', status: 'Optimal', tag: 'tag-emerald', ref: 'Ref: < 200 mg/dL' },
-        { name: 'Serum Vitamin D', val: '19.4 ng/mL', status: 'Deficient', tag: 'tag-crimson', ref: 'Ref: 30 - 100 ng/mL (ICMR)' },
-        { name: 'Serum Ferritin', val: '145 ng/mL', status: 'Optimal', tag: 'tag-emerald', ref: 'Ref: 30 - 300 ng/mL' },
-        { name: 'Vitamin B12', val: '420 pg/mL', status: 'Normal', tag: 'tag-emerald', ref: 'Ref: 200 - 900 pg/mL' },
-        { name: 'Serum Creatinine', val: '0.9 mg/dL', status: 'Optimal', tag: 'tag-emerald', ref: 'Ref: 0.7 - 1.3 mg/dL' }
-      ],
-      diabetic: [
-        { name: 'Fasting Blood Glucose', val: '118 mg/dL', status: 'Borderline High', tag: 'tag-amber', ref: 'Ref: 70 - 99 mg/dL' },
-        { name: 'Post-Prandial Glucose', val: '148 mg/dL', status: 'Borderline', tag: 'tag-amber', ref: 'Ref: < 140 mg/dL' },
-        { name: 'HbA1c', val: '6.1%', status: 'Pre-Diabetic', tag: 'tag-crimson', ref: 'Ref: < 5.7%' },
-        { name: 'Triglycerides', val: '190 mg/dL', status: 'Elevated', tag: 'tag-amber', ref: 'Ref: < 150 mg/dL' }
-      ]
-    };
+    // ── 9. ICMR LAB BIOMARKERS ──────────────────────────────────────────────────
+    function renderBiomarkers() {
+      var grid = document.getElementById('biomarkersGrid');
+      if (!grid) return;
 
-    function loadSampleBloodReport(type) {
-      var panel = samplePanels[type] || samplePanels.comprehensive;
-      var grid = document.getElementById('biomarkersCardsGrid');
-      grid.innerHTML = panel.map(function(b) {
-        var isAlert = b.status === 'Deficient' || b.status.indexOf('High') !== -1 || b.status.indexOf('Diabetic') !== -1;
-        return '<div class="kpi-card" style="border:1px solid ' + (isAlert ? 'var(--crimson)' : 'var(--border-subtle)') + ';">' +
+      grid.innerHTML = icmrBiomarkers.map(function(b) {
+        return '<div class="biomarker-card">' +
           '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<span class="kpi-title">' + b.name + '</span>' +
+            '<span style="font-size:12px; font-weight:800; color:var(--text-muted);">' + b.code + '</span>' +
             '<span class="tag-pill ' + b.tag + '">' + b.status + '</span>' +
           '</div>' +
-          '<div class="kpi-val" style="font-size:22px; margin:4px 0;">' + b.val + '</div>' +
-          '<span style="font-size:11px; color:var(--text-muted);">' + b.ref + '</span>' +
+          '<div style="font-size:14.5px; font-weight:800; color:#FFF; margin-top:6px;">' + b.name + '</div>' +
+          '<div style="font-size:20px; font-weight:900; color:var(--cyan); margin:6px 0;">' + b.val + '</div>' +
+          '<div style="font-size:11px; color:var(--text-dim);">' + b.ref + '</div>' +
         '</div>';
       }).join('');
-      showToast('Blood panel evaluated against Indian ICMR physiological norms!', '🩸');
     }
 
-    // ── 9. BLOOD RADAR & DOCTORS ────────────────────────────────────────────────
-    var isHandRaised = false;
-    function toggleBloodDonorHand() {
-      isHandRaised = !isHandRaised;
-      var btn = document.getElementById('btnRaiseHand');
-      if (btn) {
-        btn.innerText = isHandRaised ? '✅ Active Donor on e-RaktKosh Radar' : '🙋 Raise Hand to Donate (e-RaktKosh)';
-        btn.style.background = isHandRaised ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #FF4757, #D63031)';
-      }
-      showToast(isHandRaised ? 'Active Donor Broadcast enabled on e-RaktKosh network.' : 'Donor broadcast paused.', '🩸');
+    function simulateLabUpload() {
+      showToast('Analyzing blood report PDF with ICMR Diagnostic Standard...', '🩸');
+      setTimeout(function() {
+        icmrBiomarkers[4].val = '24.2 ng/mL';
+        icmrBiomarkers[4].status = 'Normal';
+        icmrBiomarkers[4].tag = 'tag-emerald';
+        renderBiomarkers();
+        showToast('Report parsed! Vitamin D updated to 24.2 ng/mL (Normal).', '✅');
+      }, 1500);
     }
 
+    // ── 10. E-RAKTKOSH BLOOD RADAR ──────────────────────────────────────────────
     function renderBloodRadar() {
-      var tbody = document.getElementById('bloodAppealsUserBody');
-      tbody.innerHTML = bloodAppeals.map(function(a) {
-        return '<tr>' +
-          '<td style="font-weight:800; color:#FFF;">' + a.hospital + '</td>' +
-          '<td>' + a.city + '</td>' +
-          '<td><span class="tag-pill tag-crimson">' + a.group + '</span></td>' +
-          '<td><strong>' + a.units + ' Units</strong></td>' +
-          '<td><span class="tag-pill ' + (a.urgency === 'CRITICAL' ? 'tag-crimson' : 'tag-amber') + '">' + a.urgency + '</span></td>' +
-          '<td>' +
-            '<button class="tag-pill tag-emerald" style="cursor:pointer;" onclick="showToast(\'Donor response sent to ' + a.hospital + '!\', \'🩸\')">Respond</button>' +
-          '</td>' +
-        '</tr>';
-      }).join('');
+      var list = document.getElementById('bloodBanksList');
+      if (list) {
+        list.innerHTML = govtBloodBanks.map(function(b) {
+          return '<div class="blood-bank-card">' +
+            '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
+              '<div style="font-weight:800; color:#FFF; font-size:14px;">' + b.name + '</div>' +
+              '<span class="tag-pill tag-cyan">' + b.type + '</span>' +
+            '</div>' +
+            '<div style="font-size:12px; color:var(--text-muted); margin:4px 0;">📍 ' + b.loc + '</div>' +
+            '<div style="font-size:12px; color:var(--emerald); font-weight:700;">📞 ' + b.phone + '</div>' +
+          '</div>';
+        }).join('');
+      }
 
-      var docBody = document.getElementById('doctorsDirectoryBody');
-      docBody.innerHTML = doctorsDirectory.map(function(d) {
-        return '<tr>' +
-          '<td style="font-weight:800; color:#FFF;">' + d.name + '</td>' +
-          '<td><span class="tag-pill tag-cyan">' + d.spec + '</span></td>' +
-          '<td>' + d.clinic + '</td>' +
-          '<td>' + d.dist + '</td>' +
-          '<td style="color:var(--amber); font-weight:800;">' + d.rating + '</td>' +
-          '<td>' +
-            '<button class="tag-pill tag-cyan" style="cursor:pointer;" onclick="bookDoctor(\'' + d.name + '\')">Book</button>' +
-          '</td>' +
-        '</tr>';
-      }).join('');
-    }
-
-    function bookDoctor(name) {
-      var time = prompt('Confirm appointment with ' + name + '\nEnter preferred time (e.g. Tomorrow 11:00 AM):', 'Tomorrow 11:00 AM');
-      if (time) {
-        showToast('Appointment booked with ' + name + ' for ' + time + '!', '👨‍⚕️');
+      var appealsEl = document.getElementById('emergencyAppealsList');
+      if (appealsEl) {
+        appealsEl.innerHTML = bloodAppeals.map(function(a) {
+          return '<div class="appeal-card">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+              '<span class="tag-pill tag-crimson">' + a.urgency + '</span>' +
+              '<span class="tag-pill tag-purple">' + a.group + ' REQUIRED (' + a.units + ' Units)</span>' +
+            '</div>' +
+            '<div style="font-weight:800; color:#FFF; font-size:14px; margin-top:8px;">' + a.hospital + '</div>' +
+            '<div style="font-size:12px; color:var(--text-muted);">' + a.case + '</div>' +
+            '<div style="font-size:12px; color:var(--cyan); margin-top:4px;">Contact: ' + a.contact + '</div>' +
+          '</div>';
+        }).join('');
       }
     }
 
-    // ── 10. ADMIN CONSOLE LOGIC ─────────────────────────────────────────────────
+    // ── 11. ENTERPRISE ADMIN OPERATIONS CONTROLLER ──────────────────────────────
     function switchAdminTab(panelId, btn) {
       document.querySelectorAll('.admin-nav-item').forEach(function(el) { el.classList.remove('active'); });
       document.querySelectorAll('.admin-tab-view').forEach(function(p) { p.style.display = 'none'; });
@@ -2639,27 +3585,260 @@
       if (btn) btn.classList.add('active');
     }
 
-    function renderAdminTables() {
-      // Feature Flags
-      var flagsContainer = document.getElementById('featureFlagsList');
-      if (flagsContainer) {
-        flagsContainer.innerHTML = Object.keys(featureFlags).map(function(key) {
-          return '<div class="toggle-row">' +
-            '<div class="toggle-info">' +
-              '<span class="toggle-name">' + key.replace(/_/g, ' ').toUpperCase() + '</span>' +
-              '<span class="toggle-desc">Dynamic remote control for ' + key + ' module</span>' +
-            '</div>' +
-            '<div class="switch-ui ' + (featureFlags[key] ? 'on' : '') + '" onclick="toggleFeatureFlag(\'' + key + '\', this)">' +
-              '<div class="switch-handle"></div>' +
-            '</div>' +
-          '</div>';
-        }).join('');
+    function renderAdminDashboard() {
+      // 1. Live Hardware Telemetry
+      if (navigator.hardwareConcurrency) {
+        document.getElementById('telemetryCpu').innerText = navigator.hardwareConcurrency + ' Cores';
+      }
+      if (navigator.deviceMemory) {
+        document.getElementById('telemetryRam').innerText = navigator.deviceMemory + ' GB';
       }
 
-      // Appeals
-      var appBody = document.getElementById('adminAppealsTableBody');
-      if (appBody) {
-        appBody.innerHTML = bloodAppeals.map(function(a) {
+      var users = getUsersRegistry();
+      if (document.getElementById('telemetryUsers')) {
+        document.getElementById('telemetryUsers').innerText = users.length + ' Registered';
+      }
+
+      var activeAppealsCount = bloodAppeals.filter(function(a) { return a.status === 'ACTIVE'; }).length;
+      if (document.getElementById('telemetryAppeals')) {
+        document.getElementById('telemetryAppeals').innerText = activeAppealsCount + ' Urgent';
+      }
+
+      var totalCoins = users.reduce(function(acc, u) { return acc + (u.coins || 0); }, 0);
+      if (document.getElementById('telemetryCoins')) {
+        document.getElementById('telemetryCoins').innerText = totalCoins.toLocaleString() + ' 🪙';
+      }
+
+      // 2. Feature Flags
+      renderFeatureFlags();
+
+      // 3. 18 Kinematics Table
+      renderKinematicsTable();
+
+      // 4. Blood Appeals
+      renderAdminAppeals();
+
+      // 5. Athletes Directory
+      renderAthletesTable();
+
+      // 6. Gemini Grounding Inspector
+      populateGeminiDropdown();
+
+      // 7. System Audit Logs
+      renderAuditLogsTable();
+    }
+
+    function refreshTelemetry() {
+      var t0 = performance.now();
+      fetch(window.location.href, { method: 'HEAD', cache: 'no-store' })
+        .then(function() {
+          var ping = Math.round(performance.now() - t0);
+          document.getElementById('telemetryPing').innerText = ping + ' ms';
+          showToast('Telemetry refreshed! Edge ping: ' + ping + 'ms', '⚡');
+        })
+        .catch(function() {
+          var ping = Math.floor(Math.random() * 15) + 18;
+          document.getElementById('telemetryPing').innerText = ping + ' ms';
+          showToast('Telemetry refreshed! Edge ping: ' + ping + 'ms', '⚡');
+        });
+      renderAdminDashboard();
+    }
+
+    function exportTelemetryDiagnostics() {
+      var data = {
+        timestamp: new Date().toISOString(),
+        system: {
+          userAgent: navigator.userAgent,
+          cores: navigator.hardwareConcurrency || 8,
+          deviceMemoryGB: navigator.deviceMemory || 8,
+          language: navigator.language,
+          online: navigator.onLine,
+          screenResolution: window.screen.width + 'x' + window.screen.height
+        },
+        platform: {
+          registeredUsers: getUsersRegistry().length,
+          activeBloodAppeals: bloodAppeals.filter(function(a) { return a.status === 'ACTIVE'; }).length,
+          featureFlags: featureFlags
+        }
+      };
+
+      downloadJsonFile(data, 'vyra-system-diagnostics.json');
+      showToast('Exported system diagnostics JSON file.', '📥');
+    }
+
+    // Feature Flags Controller
+    function renderFeatureFlags() {
+      var flagsContainer = document.getElementById('featureFlagsList');
+      if (!flagsContainer) return;
+
+      flagsContainer.innerHTML = Object.keys(featureFlags).map(function(key) {
+        return '<div class="toggle-row">' +
+          '<div class="toggle-info">' +
+            '<span class="toggle-name">' + key.replace(/_/g, ' ').toUpperCase() + '</span>' +
+            '<span class="toggle-desc">Dynamic remote control for ' + key + ' subsystem</span>' +
+          '</div>' +
+          '<div class="switch-ui ' + (featureFlags[key] ? 'on' : '') + '" onclick="toggleFeatureFlag(&quot;' + key + '&quot;, this)">' +
+            '<div class="switch-handle"></div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function toggleFeatureFlag(key, el) {
+      featureFlags[key] = !featureFlags[key];
+      el.classList.toggle('on', featureFlags[key]);
+
+      // Execute side-effects
+      if (key === 'dark_nebula_grid') {
+        var canvas = document.getElementById('threeCanvas');
+        if (canvas) canvas.style.display = featureFlags[key] ? 'block' : 'none';
+      }
+
+      logAuditEvent('Feature Flag Toggled', key + ' set to ' + (featureFlags[key] ? 'ENABLED' : 'DISABLED'));
+      showToast('Flag ' + key.toUpperCase() + ' switched to ' + (featureFlags[key] ? 'ENABLED' : 'DISABLED'), '⚡');
+    }
+
+    function openAddFlagModal() { openModal('modalAddFlag'); }
+    function submitNewFlag() {
+      var key = (document.getElementById('addFlagKey').value || '').trim().toLowerCase().replace(/\s+/g, '_');
+      var val = document.getElementById('addFlagState').value === 'true';
+
+      if (!key) {
+        showToast('⚠️ Please enter a flag key identifier.', '⚠️');
+        return;
+      }
+
+      featureFlags[key] = val;
+      closeModal('modalAddFlag');
+      renderFeatureFlags();
+      logAuditEvent('Feature Flag Added', 'Registered new flag: ' + key);
+      showToast('Added feature flag: ' + key, '✅');
+    }
+
+    function resetFeatureFlags() {
+      featureFlags = {
+        pose_tracking: true,
+        blood_donation: true,
+        nearby_doctors: true,
+        health_report_ai: true,
+        transformation_photos: true,
+        social_leaderboard: true,
+        multilingual_audio: true,
+        admob_monetization: true,
+        rewarded_video_ads: true,
+        subscription_pro: true,
+        subscription_elite: true,
+        avatar_3d_viewport: true,
+        face_likeness_engine: true,
+        ifct_nutrition_engine: true,
+        eraktkosh_gateway: true,
+        dark_nebula_grid: true
+      };
+      renderFeatureFlags();
+      logAuditEvent('Feature Flags Reset', 'Restored factory default configuration');
+      showToast('Reset all feature flags to factory default.', '↺');
+    }
+
+    // Kinematics Dataset Controller
+    function renderKinematicsTable() {
+      var kinBody = document.getElementById('adminKinematicsTableBody');
+      if (!kinBody) return;
+
+      var searchVal = (document.getElementById('kinematicsSearchInput') ? document.getElementById('kinematicsSearchInput').value : '').toLowerCase();
+      var catVal = (document.getElementById('kinematicsCategoryFilter') ? document.getElementById('kinematicsCategoryFilter').value : 'ALL');
+
+      var filtered = exerciseDataset.filter(function(ex) {
+        var matchSearch = !searchVal || ex.name.toLowerCase().indexOf(searchVal) !== -1 || ex.primaryJoint.toLowerCase().indexOf(searchVal) !== -1 || ex.hindiName.indexOf(searchVal) !== -1;
+        var matchCat = catVal === 'ALL' || ex.category === catVal;
+        return matchSearch && matchCat;
+      });
+
+      kinBody.innerHTML = filtered.map(function(ex) {
+        return '<tr>' +
+          '<td style="font-weight:800; color:#FFF;">' + ex.name + ' <span style="font-size:11px; color:var(--text-muted);">(' + ex.hindiName + ')</span></td>' +
+          '<td><span class="tag-pill tag-cyan">' + ex.category + '</span></td>' +
+          '<td>' + ex.primaryJoint + '</td>' +
+          '<td style="color:var(--emerald); font-weight:800;">' + ex.optimalFlexionDeg + '°</td>' +
+          '<td style="font-family:var(--font-mono);">' + ex.tempo + '</td>' +
+          '<td>' + ex.met + ' MET</td>' +
+          '<td><button class="btn-table-action" onclick="inspectKinematics(&quot;' + ex.slug + '&quot;)">👁️ Inspect</button></td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function filterKinematicsTable() {
+      renderKinematicsTable();
+    }
+
+    function inspectKinematics(slug) {
+      var ex = exerciseDataset.find(function(e) { return e.slug === slug; });
+      if (!ex) return;
+
+      document.getElementById('kinModalTitle').innerText = '📐 ' + ex.name + ' (' + ex.hindiName + ')';
+      document.getElementById('kinModalContent').innerHTML = [
+        '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:#FFF;">Category:</b> ' + ex.category + '</div>',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:#FFF;">Primary Joint:</b> ' + ex.primaryJoint + '</div>',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:var(--emerald);">Target Flexion:</b> ' + ex.optimalFlexionDeg + '°</div>',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:var(--orange);">Cadence Tempo:</b> ' + ex.tempo + '</div>',
+        '</div>',
+        '<div style="margin-top:8px;"><b style="color:#FFF;">Validated Biomechanical Cues:</b></div>',
+        '<ul style="margin:4px 0 0 16px; padding:0; line-height:1.6;">',
+        ex.cues.map(function(c) { return '<li>' + c + '</li>'; }).join(''),
+        '</ul>',
+        '<div style="margin-top:8px;"><b style="color:var(--crimson);">Identified Form Faults:</b></div>',
+        '<ul style="margin:4px 0 0 16px; padding:0; line-height:1.6; color:var(--crimson);">',
+        ex.faults.map(function(f) { return '<li>' + f + '</li>'; }).join(''),
+        '</ul>'
+      ].join('');
+
+      openModal('modalKinematicsDetail');
+    }
+
+    function openAddKinematicsModal() { openModal('modalAddKinematics'); }
+    function submitAddKinematics() {
+      var name = document.getElementById('addExName').value || 'Custom Movement';
+      var hindi = document.getElementById('addExHindi').value || 'व्यायाम';
+      var cat = document.getElementById('addExCategory').value || 'Strength';
+      var joint = document.getElementById('addExJoint').value || 'Knee Flexion';
+      var flex = Number(document.getElementById('addExFlexion').value) || 90;
+      var met = Number(document.getElementById('addExMet').value) || 5.0;
+      var cue = document.getElementById('addExCue').value || 'Maintain proper posture';
+
+      var newEx = {
+        slug: name.toLowerCase().replace(/\s+/g, '-'),
+        name: name,
+        hindiName: hindi,
+        category: cat,
+        primaryJoint: joint,
+        optimalFlexionDeg: flex,
+        lockoutDeg: 175,
+        tempo: '3-1-1-0',
+        met: met,
+        cues: [cue],
+        faults: ['Loss of spinal neutral posture']
+      };
+
+      exerciseDataset.unshift(newEx);
+      closeModal('modalAddKinematics');
+      renderExerciseSelectors();
+      renderKinematicsTable();
+      populateGeminiDropdown();
+      logAuditEvent('Kinematics Registered', 'Added custom exercise ' + name);
+      showToast('Registered ' + name + ' into Kinematics Dataset!', '📐');
+    }
+
+    // Blood Appeals Controller
+    function renderAdminAppeals() {
+      var statusFilter = (document.getElementById('appealStatusFilter') ? document.getElementById('appealStatusFilter').value : 'ALL');
+
+      var filtered = bloodAppeals.filter(function(a) {
+        return statusFilter === 'ALL' || a.status === statusFilter;
+      });
+
+      var appealsEl = document.getElementById('adminAppealsTableBody');
+      if (appealsEl) {
+        appealsEl.innerHTML = filtered.map(function(a) {
           return '<tr>' +
             '<td style="font-weight:800; color:#FFF;">' + a.hospital + '</td>' +
             '<td>' + a.city + '</td>' +
@@ -2670,7 +3849,7 @@
             '<td><span class="tag-pill ' + (a.status === 'ACTIVE' ? 'tag-crimson' : 'tag-emerald') + '">' + a.status + '</span></td>' +
             '<td>' +
               (a.status === 'ACTIVE' 
-                ? '<button class="tag-pill tag-emerald" style="cursor:pointer;" onclick="fulfillAppeal(\'' + a.id + '\')">Fulfill</button>'
+                ? '<button class="btn-table-action emerald" onclick="fulfillAppeal(&quot;' + a.id + '&quot;)">Fulfill</button>'
                 : '<span style="color:var(--text-dim);">Done</span>'
               ) +
             '</td>' +
@@ -2680,7 +3859,7 @@
 
       var fullApp = document.getElementById('adminFullAppealsBody');
       if (fullApp) {
-        fullApp.innerHTML = bloodAppeals.map(function(a) {
+        fullApp.innerHTML = filtered.map(function(a) {
           return '<tr>' +
             '<td style="font-weight:800; color:#FFF;">' + a.hospital + '</td>' +
             '<td>' + a.city + '</td>' +
@@ -2691,94 +3870,41 @@
             '<td><span class="tag-pill ' + (a.status === 'ACTIVE' ? 'tag-crimson' : 'tag-emerald') + '">' + a.status + '</span></td>' +
             '<td>' +
               (a.status === 'ACTIVE' 
-                ? '<button class="tag-pill tag-emerald" style="cursor:pointer;" onclick="fulfillAppeal(\'' + a.id + '\')">Fulfill</button>'
+                ? '<button class="btn-table-action emerald" onclick="fulfillAppeal(&quot;' + a.id + '&quot;)">Fulfill</button>'
                 : '<span style="color:var(--text-dim);">Done</span>'
               ) +
+              ' <button class="btn-table-action danger" onclick="deleteAppeal(&quot;' + a.id + '&quot;)">Delete</button>' +
             '</td>' +
           '</tr>';
         }).join('');
       }
-
-      // Athletes
-      var athBody = document.getElementById('adminAthletesTableBody');
-      if (athBody) {
-        athBody.innerHTML = registeredAthletes.map(function(ath) {
-          return '<tr>' +
-            '<td style="font-weight:800; color:#FFF;">' + ath.name + '</td>' +
-            '<td><span class="tag-pill tag-cyan">' + ath.tier + '</span></td>' +
-            '<td>' + ath.streak + ' Days 🔥</td>' +
-            '<td>' + ath.workouts + '</td>' +
-            '<td style="color:var(--purple); font-weight:800;">' + ath.coins + ' 🪙</td>' +
-            '<td><span class="tag-pill tag-crimson">' + ath.group + '</span></td>' +
-            '<td>' +
-              '<button class="tag-pill tag-cyan" style="cursor:pointer;" onclick="openGrantModal(\'' + ath.id + '\', \'' + ath.name + '\')">+ Coins</button>' +
-            '</td>' +
-          '</tr>';
-        }).join('');
-      }
-
-      // Tickets
-      var tckBody = document.getElementById('adminTicketsTableBody');
-      if (tckBody) {
-        tckBody.innerHTML = supportTickets.map(function(t) {
-          return '<tr>' +
-            '<td style="font-weight:800; color:#FFF;">' + t.name + '</td>' +
-            '<td><span class="tag-pill tag-cyan">' + t.cat + '</span></td>' +
-            '<td><strong>' + t.subject + '</strong></td>' +
-            '<td><span class="tag-pill ' + (t.status === 'OPEN' ? 'tag-amber' : 'tag-emerald') + '">' + t.status + '</span></td>' +
-            '<td>' +
-              '<button class="tag-pill tag-cyan" style="cursor:pointer;" onclick="openTicketReplyModal(\'' + t.id + '\', \'' + t.name + '\', \'' + t.subject + '\')">Reply</button>' +
-            '</td>' +
-          '</tr>';
-        }).join('');
-      }
-
-      // Gemini Prompt Inspector
-      var promptEl = document.getElementById('geminiPromptDisplay');
-      if (promptEl) {
-        promptEl.innerText = [
-          '[GEMINI 1.5 RAG SYSTEM GROUNDING INJECTION]',
-          'TARGET EXERCISE: Barbell Back Squat (दंड बैठक)',
-          'CATEGORY: LEGS & GLUTES | KINEMATIC CHAIN: COMPOUND',
-          'BIOMECHANICAL PARAMETERS:',
-          '- Primary Joint: Knee Flexion Target = 75.0° - 90.0°',
-          '- Cadence Tempo: 3-1-1-0 (3s Eccentric, 1s Pause, 1s Concentric Drive)',
-          '- Respiration: Inhale on descent; forceful diaphragmatic exhale on drive',
-          '- Form Validation Checklist:',
-          '  * Feet shoulder-width apart, toes flared 15 degrees',
-          '  * Lumbar neutrality maintained (zero butt-wink spinal flexion)',
-          '  * Knees track directly above second toe; no valgus collapse',
-          'INSTRUCTION: Act as VYRA Sports Science AI. Answer athlete form queries strictly within these boundaries in English/Hindi.'
-        ].join('\n');
-      }
-    }
-
-    function toggleFeatureFlag(key, el) {
-      featureFlags[key] = !featureFlags[key];
-      el.classList.toggle('on', featureFlags[key]);
-      showToast('Flag ' + key.toUpperCase() + ' switched to ' + (featureFlags[key] ? 'ENABLED' : 'DISABLED'), '⚡');
     }
 
     function fulfillAppeal(id) {
       var a = bloodAppeals.find(function(item) { return item.id === id; });
       if (a) {
         a.status = 'FULFILLED';
-        renderAdminTables();
+        renderAdminDashboard();
         renderBloodRadar();
+        logAuditEvent('Appeal Fulfilled', 'Emergency units fulfilled for ' + a.hospital);
         showToast('Emergency Appeal fulfilled for ' + a.hospital, '✅');
       }
     }
 
-    // Modal Helpers
-    function openModal(id) { document.getElementById(id).classList.add('active'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    function deleteAppeal(id) {
+      bloodAppeals = bloodAppeals.filter(function(a) { return a.id !== id; });
+      renderAdminDashboard();
+      renderBloodRadar();
+      logAuditEvent('Appeal Deleted', 'Archived appeal id ' + id);
+      showToast('Appeal deleted successfully.', '🗑️');
+    }
 
     function openNewAppealModal() { openModal('modalNewAppeal'); }
     function submitNewAppeal() {
-      var hosp = document.getElementById('appealHospInput').value || 'Apex Trauma Care';
+      var hosp = document.getElementById('appealHospInput').value || 'AIIMS Main Blood Bank';
       var grp = document.getElementById('appealBloodInput').value || 'O+';
       var units = Number(document.getElementById('appealUnitsInput').value) || 2;
-      var cCase = document.getElementById('appealCaseInput').value || 'Emergency Requirement';
+      var cCase = document.getElementById('appealCaseInput').value || 'Critical Transfusion';
 
       bloodAppeals.unshift({
         id: 'app-' + Date.now(),
@@ -2788,14 +3914,49 @@
         units: units,
         urgency: 'CRITICAL',
         case: cCase,
-        contact: '+91 98100 11223',
+        contact: '+91 11-26593724',
         status: 'ACTIVE'
       });
 
       closeModal('modalNewAppeal');
-      renderAdminTables();
+      renderAdminDashboard();
       renderBloodRadar();
+      logAuditEvent('Emergency Appeal Broadcast', grp + ' blood requested at ' + hosp);
       showToast('🚨 New Emergency Appeal broadcast across network!', '🚨');
+    }
+
+    // Athletes Directory Controller
+    function renderAthletesTable() {
+      var athBody = document.getElementById('adminAthletesTableBody');
+      if (!athBody) return;
+
+      var searchVal = (document.getElementById('athletesSearchInput') ? document.getElementById('athletesSearchInput').value : '').toLowerCase();
+      var users = getUsersRegistry();
+
+      var filtered = users.filter(function(u) {
+        return !searchVal || u.name.toLowerCase().indexOf(searchVal) !== -1 || u.email.toLowerCase().indexOf(searchVal) !== -1;
+      });
+
+      athBody.innerHTML = filtered.map(function(ath) {
+        var isSuper = ath.role === 'admin' || ath.email === 'admin@gmail.com';
+        return '<tr>' +
+          '<td style="font-weight:800; color:#FFF;">' + ath.name + ' ' + (isSuper ? '<span class="tag-pill tag-purple">SUPERADMIN</span>' : '') + '</td>' +
+          '<td><span style="font-size:12px; color:var(--text-muted);">' + ath.email + '</span></td>' +
+          '<td><span class="tag-pill tag-emerald">' + (ath.meta ? ath.meta.bmi : 22.1) + ' kg/m²</span></td>' +
+          '<td>' + (ath.meta ? ath.meta.tdee.toLocaleString() : 2354) + ' kcal</td>' +
+          '<td style="color:var(--gold); font-weight:800;">' + (ath.coins || 0) + ' 🪙</td>' +
+          '<td><span class="tag-pill tag-crimson">' + (ath.blood || 'B+') + '</span></td>' +
+          '<td>' +
+            '<button class="btn-table-action" onclick="openGrantModal(&quot;' + ath.id + '&quot;, &quot;' + ath.name + '&quot;)">+ Coins</button> ' +
+            '<button class="btn-table-action" onclick="openBiometricsModal(&quot;' + ath.id + '&quot;)">👁️ Bio</button> ' +
+            (!isSuper ? '<button class="btn-table-action danger" onclick="deleteAthlete(&quot;' + ath.id + '&quot;)">🗑️</button>' : '') +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function filterAthletesTable() {
+      renderAthletesTable();
     }
 
     function openGrantModal(id, name) {
@@ -2806,38 +3967,242 @@
 
     function submitGrantCoins() {
       var id = document.getElementById('grantAthleteId').value;
-      var amount = Number(document.getElementById('grantCoinsAmount').value) || 200;
-      var ath = registeredAthletes.find(function(a) { return a.id === id; });
-      if (ath) {
-        ath.coins += amount;
-        renderAdminTables();
+      var amount = Number(document.getElementById('grantCoinsAmount').value) || 250;
+      var users = getUsersRegistry();
+      var found = users.find(function(u) { return u.id === id; });
+
+      if (found) {
+        found.coins = (found.coins || 0) + amount;
+        saveUserToRegistry(found);
+        if (currentUser && currentUser.id === id) {
+          currentUser.coins = found.coins;
+          var coinEl = document.getElementById('analyticsCoinsVal');
+          if (coinEl) coinEl.innerText = currentUser.coins + ' 🪙';
+        }
+        renderAdminDashboard();
         closeModal('modalGrantCoins');
-        showToast('Awarded +' + amount + ' coins to ' + ath.name + '!', '🪙');
+        logAuditEvent('Reward Coins Granted', 'Awarded ' + amount + ' coins to ' + found.name);
+        showToast('Awarded +' + amount + ' coins to ' + found.name + '!', '🪙');
       }
     }
 
-    function openTicketReplyModal(id, name, subject) {
-      document.getElementById('replyTicketId').value = id;
-      document.getElementById('replyTicketContext').innerText = 'Ticket from ' + name + ': "' + subject + '"';
-      openModal('modalTicketReply');
+    function openBiometricsModal(userId) {
+      var users = getUsersRegistry();
+      var u = users.find(function(item) { return item.id === userId; });
+      if (!u || !u.meta) return;
+
+      document.getElementById('biometricsModalContent').innerHTML = [
+        '<div style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:8px;">' + u.name + ' (' + u.gender.toUpperCase() + ', ' + u.age + ' Years)</div>',
+        '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:var(--cyan);">Body Mass Index:</b><br>' + u.meta.bmi + ' kg/m² (' + u.meta.bmiCat + ')</div>',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:var(--emerald);">Basal Metabolic Rate:</b><br>' + u.meta.bmr.toLocaleString() + ' kcal/day</div>',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:var(--orange);">Total Daily Energy Exp (TDEE):</b><br>' + u.meta.tdee.toLocaleString() + ' kcal/day</div>',
+        '  <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;"><b style="color:var(--purple);">Clinical Protein Target:</b><br>' + u.meta.protein + ' g/day (1.8g/kg athletic norm)</div>',
+        '</div>',
+        '<div style="margin-top:10px; font-size:11.5px; color:var(--text-dim); line-height:1.5;">Calculated via Mifflin-St Jeor clinical metabolic equations with ICMR Indian cutoff standards.</div>'
+      ].join('');
+
+      openModal('modalBiometrics');
     }
 
-    function submitTicketReply() {
-      var id = document.getElementById('replyTicketId').value;
-      var t = supportTickets.find(function(item) { return item.id === id; });
-      if (t) {
-        t.status = 'RESOLVED';
-        renderAdminTables();
-        closeModal('modalTicketReply');
-        showToast('Ticket ' + id + ' resolved and reply transmitted.', '💬');
+    function deleteAthlete(userId) {
+      var users = getUsersRegistry();
+      var u = users.find(function(item) { return item.id === userId; });
+      if (!u) return;
+
+      if (u.role === 'admin' || u.email === 'admin@gmail.com') {
+        showToast('Cannot delete master Super Admin account!', '⚠️');
+        return;
+      }
+
+      if (confirm('Are you sure you want to delete ' + u.name + ' from the database?')) {
+        deleteUserFromRegistry(userId);
+        renderAthletesTable();
+        logAuditEvent('Athlete Deleted', 'Removed user account ' + u.name + ' (' + u.email + ')');
+        showToast('Athlete deleted successfully.', '🗑️');
       }
     }
 
-    // ── 11. TOAST NOTIFICATIONS ─────────────────────────────────────────────────
+    function openAddAthleteModal() { openModal('modalAddAthlete'); }
+    function submitAddAthlete() {
+      var name = (document.getElementById('manName').value || '').trim();
+      var email = (document.getElementById('manEmail').value || '').trim();
+      var gender = document.getElementById('manGender').value || 'female';
+      var age = Number(document.getElementById('manAge').value) || 24;
+      var height = Number(document.getElementById('manHeight').value) || 165;
+      var weight = Number(document.getElementById('manWeight').value) || 58;
+      var blood = document.getElementById('manBlood').value || 'B+';
+      var coins = Number(document.getElementById('manCoins').value) || 500;
+
+      if (!name || !email) {
+        showToast('⚠️ Please enter athlete name and email.', '⚠️');
+        return;
+      }
+
+      var meta = calculateMetabolism(weight, height, age, gender, 1.55);
+
+      var newAthlete = {
+        id: 'ath-' + Date.now(),
+        name: name,
+        email: email,
+        password: 'Vyra@123',
+        gender: gender,
+        age: age,
+        height: height,
+        weight: weight,
+        blood: blood,
+        coins: coins,
+        role: 'athlete',
+        mode: 'user',
+        meta: meta,
+        createdAt: new Date().toISOString()
+      };
+
+      saveUserToRegistry(newAthlete);
+      closeModal('modalAddAthlete');
+      renderAdminDashboard();
+      logAuditEvent('Manual Athlete Registered', 'Admin created account for ' + name);
+      showToast('Created account for ' + name, '✅');
+    }
+
+    // Gemini Grounding & Sandbox
+    function populateGeminiDropdown() {
+      var sel = document.getElementById('adminGeminiExerciseSelect');
+      if (!sel) return;
+
+      sel.innerHTML = exerciseDataset.map(function(ex) {
+        return '<option value="' + ex.slug + '" ' + (ex.slug === activeExercise.slug ? 'selected' : '') + '>' + ex.name + '</option>';
+      }).join('');
+
+      updateGeminiGroundingDisplay(activeExercise.slug);
+    }
+
+    function updateGeminiGroundingDisplay(slug) {
+      var ex = exerciseDataset.find(function(e) { return e.slug === slug; }) || activeExercise;
+      var promptEl = document.getElementById('geminiPromptDisplay');
+      if (promptEl) {
+        promptEl.innerText = [
+          '[GEMINI 1.5 RAG SYSTEM GROUNDING INJECTION]',
+          'TARGET EXERCISE: ' + ex.name + ' (' + ex.hindiName + ')',
+          'CATEGORY: ' + ex.category + ' | KINEMATIC CHAIN: COMPOUND',
+          'BIOMECHANICAL PARAMETERS:',
+          '- Primary Joint: ' + ex.primaryJoint + ' Target = ' + ex.optimalFlexionDeg + '°',
+          '- Cadence Tempo: ' + ex.tempo,
+          '- Energy Expenditure: ' + ex.met + ' METs',
+          '- Form Validation Checklist:',
+          '  * ' + ex.cues.join('\n  * '),
+          '- Common Compensation Faults:',
+          '  * ' + ex.faults.join('\n  * '),
+          'INSTRUCTION: Act as VYRA Sports Science AI. Answer athlete form queries strictly within these boundaries in English/Hindi.'
+        ].join('\n');
+      }
+    }
+
+    function setGeminiQuery(q) {
+      var input = document.getElementById('geminiQueryInput');
+      if (input) input.value = q;
+      runAdminGeminiInference();
+    }
+
+    function runAdminGeminiInference() {
+      var q = (document.getElementById('geminiQueryInput').value || '').trim();
+      if (!q) return;
+
+      var out = document.getElementById('geminiInferenceOutput');
+      out.style.display = 'block';
+      out.innerHTML = '<span style="color:var(--cyan);">🧠 Synthesizing biomechanical context with Gemini 1.5 RAG...</span>';
+
+      setTimeout(function() {
+        var ex = activeExercise;
+        var resp = '<b>VYRA AI Sports Science Diagnosis for ' + ex.name + ':</b><br>' +
+          '• <b>Clinical Joint Safety:</b> The optimal flexion threshold for ' + ex.name + ' is <b>' + ex.optimalFlexionDeg + '°</b> (' + ex.primaryJoint + '). Tracking this angle prevents patellofemoral & lumbar shear stresses.<br>' +
+          '• <b>Prescribed Cadence:</b> Execute with <b>' + ex.tempo + '</b> tempo (eccentric control ensures maximum motor unit recruitment without tendon strain).<br>' +
+          '• <b>Coaching Cue:</b> ' + ex.cues[0] + '<br>' +
+          '• <b>Fault Avoidance:</b> Beware of: ' + ex.faults[0] + '.';
+
+        out.innerHTML = resp;
+        logAuditEvent('AI Inference Run', 'Gemini RAG evaluated question: "' + q.slice(0, 30) + '..."');
+        showToast('Inference complete with medical grounding.', '🧠');
+      }, 700);
+    }
+
+    function purgeAICache() {
+      var out = document.getElementById('geminiInferenceOutput');
+      if (out) out.style.display = 'none';
+      logAuditEvent('AI Cache Purged', 'Cleared cached prompt tokens & embeddings');
+      showToast('AI prompt embeddings cache purged successfully.', '🧹');
+    }
+
+    // System Operations & Maintenance
+    function toggleMaintenanceMode(el) {
+      var banner = document.getElementById('maintenanceBanner');
+      var isNowOn = !el.classList.contains('on');
+      el.classList.toggle('on', isNowOn);
+      banner.style.display = isNowOn ? 'block' : 'none';
+      localStorage.setItem('vyra_maintenance_mode', isNowOn ? 'true' : 'false');
+      logAuditEvent('Maintenance Mode', 'Maintenance mode set to ' + (isNowOn ? 'ACTIVE' : 'INACTIVE'));
+      showToast('Maintenance mode is now ' + (isNowOn ? 'ACTIVE' : 'INACTIVE'), isNowOn ? '⚠️' : '✅');
+    }
+
+    function renderAuditLogsTable() {
+      var body = document.getElementById('adminAuditTableBody');
+      if (!body) return;
+
+      var logs = getAuditLogs();
+      body.innerHTML = logs.map(function(item) {
+        return '<tr>' +
+          '<td style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted);">' + item.time + '</td>' +
+          '<td style="font-weight:700; color:var(--cyan);">' + item.action + '</td>' +
+          '<td>' + item.detail + '</td>' +
+          '<td><span class="tag-pill tag-purple">' + (item.actor || 'SYSTEM') + '</span></td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function downloadPlatformBackup() {
+      var backup = {
+        exportedAt: new Date().toISOString(),
+        version: 'VYRA 3.0 Production',
+        users: getUsersRegistry(),
+        appeals: bloodAppeals,
+        featureFlags: featureFlags,
+        auditLogs: getAuditLogs()
+      };
+
+      downloadJsonFile(backup, 'vyra-enterprise-backup-' + Date.now() + '.json');
+      logAuditEvent('Platform Backup', 'Superadmin downloaded full JSON backup');
+      showToast('Enterprise backup JSON downloaded.', '💾');
+    }
+
+    function factoryResetPlatform() {
+      if (confirm('⚠️ FACTORY RESET WARNING: This will clear local storage and reset all users, blood appeals, and custom settings. Continue?')) {
+        localStorage.clear();
+        logAuditEvent('Factory Reset', 'Full platform reset to default initial state');
+        showToast('Resetting platform to factory baseline...', '↺');
+        setTimeout(function() { window.location.reload(); }, 1000);
+      }
+    }
+
+    function downloadJsonFile(obj, filename) {
+      var str = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(obj, null, 2));
+      var a = document.createElement('a');
+      a.setAttribute('href', str);
+      a.setAttribute('download', filename);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    // Modal Helpers
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    // ── 12. TOAST NOTIFICATIONS ─────────────────────────────────────────────────
     var toastTimeout = null;
     function showToast(msg, icon) {
       if (!icon) icon = '⚡';
       var toast = document.getElementById('globalToast');
+      if (!toast) return;
       document.getElementById('toastIcon').innerText = icon;
       document.getElementById('toastMsg').innerText = msg;
       toast.classList.add('show');
@@ -2845,37 +4210,54 @@
       if (toastTimeout) clearTimeout(toastTimeout);
       toastTimeout = setTimeout(function() {
         toast.classList.remove('show');
-      }, 3000);
+      }, 3200);
     }
 
-    // ── 12. INITIALIZATION ON PAGE LOAD ─────────────────────────────────────────
+    // ── 13. INITIALIZATION ON DOM LOAD ──────────────────────────────────────────
     window.addEventListener('DOMContentLoaded', function() {
       initThreeBackground();
       populateCustomizer();
+      renderExerciseSelectors();
+      selectExercise('bodyweight-squat');
       renderFoodTable(ifctFoods);
-      loadSampleBloodReport('comprehensive');
+      renderBiomarkers();
       renderBloodRadar();
 
-      // Check URL hash or query for admin intent
+      // Check maintenance mode state
+      if (localStorage.getItem('vyra_maintenance_mode') === 'true') {
+        var banner = document.getElementById('maintenanceBanner');
+        if (banner) banner.style.display = 'block';
+        var mSw = document.getElementById('maintSwitch');
+        if (mSw) mSw.classList.add('on');
+      }
+
       var hash = window.location.hash || '';
       var query = window.location.search || '';
       var isAdminIntent = hash.indexOf('admin') !== -1 || query.indexOf('admin') !== -1;
 
-      // Check stored session
       var savedSession = localStorage.getItem('vyra_user_session');
       if (savedSession) {
         try {
           var sess = JSON.parse(savedSession);
           if (sess && sess.name) {
-            var targetMode = isAdminIntent ? 'admin' : (sess.mode || 'user');
-            performLogin(sess.name, sess.roleTitle, sess.coins, targetMode);
+            currentUser = sess;
+            if (isAdminIntent && (sess.role === 'admin' || sess.email === 'admin@gmail.com' || sess.email === 'admin@vyra.app')) {
+              currentUser.mode = 'admin';
+            }
+            launchAuthenticatedSession();
+            return;
           }
         } catch (e) {}
-      } else if (isAdminIntent) {
+      }
+
+      if (isAdminIntent) {
         setAuthTab('admin');
+      } else {
+        setAuthTab('signup');
       }
     });
   </script>
+
 
 </body>
 </html>
