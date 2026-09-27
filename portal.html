@@ -1671,9 +1671,18 @@
           <div class="auth-logo-badge">⚡</div>
           <div class="auth-title">VYRA</div>
         </div>
-        <p class="auth-sub" style="margin-bottom:4px;">
+        <p class="auth-sub" style="margin-bottom:10px;">
           Next-Generation 3D Athletic Intelligence, Biomechanics & National Health Infrastructure.
         </p>
+
+        <!-- SIH Official GitHub Repo Banner -->
+        <div style="display:flex; justify-content:center; align-items:center; margin-bottom:16px;">
+          <a href="https://github.com/ayushbh54/vyra-app" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:rgba(0,210,255,0.08); border:1px solid rgba(0,210,255,0.4); border-radius:30px; padding:7px 16px; text-decoration:none; color:#FFF; font-size:12px; font-weight:700; box-shadow:0 0 15px rgba(0,210,255,0.15); transition:all 0.2s;" onmouseover="this.style.background='rgba(0,210,255,0.18)'" onmouseout="this.style.background='rgba(0,210,255,0.08)'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#00D2FF"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            <span>GitHub Repository: <span style="color:var(--cyan); text-decoration:underline;">github.com/ayushbh54/vyra-app</span></span>
+            <span style="background:var(--cyan); color:#000; font-size:10px; font-weight:900; border-radius:10px; padding:2px 7px;">SIH 2026</span>
+          </a>
+        </div>
 
         <!-- 4 Role / Access Tabs -->
         <div class="auth-tabs">
@@ -1821,21 +1830,30 @@
 
         <!-- 4. SUPER ADMIN MASTER AUTHENTICATION -->
         <div id="adminAuthForm" style="display:none; flex-direction:column; gap:14px;">
-          <div style="font-size:12.5px; color:var(--purple); background:rgba(165,94,234,0.08); border:1px solid rgba(165,94,234,0.3); border-radius:12px; padding:12px; line-height:1.5;">
-            🛡️ <b>Superadmin Security Protocol:</b> Master access to live hardware telemetry, remote feature flags, national blood appeals & Gemini AI engine.
+          <!-- Prominent Jury & Demo Credentials Callout -->
+          <div style="background:linear-gradient(135deg, rgba(165,94,234,0.12), rgba(0,210,255,0.06)); border:1.5px solid var(--purple); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:12.5px; font-weight:800; color:var(--cyan); text-transform:uppercase; letter-spacing:0.5px;">👨‍⚖️ SIH Jury & Evaluator Credentials</span>
+              <button type="button" class="tag-pill tag-purple" style="cursor:pointer; border:none; padding:4px 10px; font-weight:800;" onclick="autofillAdminCredentials()">⚡ 1-Click Autofill</button>
+            </div>
+            <div style="font-size:13px; color:#FFF; font-family:var(--font-mono); background:rgba(0,0,0,0.35); padding:8px 12px; border-radius:8px; line-height:1.6;">
+              <b>Master ID:</b> <span style="color:var(--cyan); font-weight:700; user-select:all;">admin@gmail.com</span><br>
+              <b>Passkey:</b> <span style="color:var(--emerald); font-weight:700; user-select:all;">Admin123</span>
+            </div>
+            <div style="font-size:11.5px; color:var(--text-muted);">
+              🛡️ Master access to 15 remote feature flags, live hardware telemetry, national blood network & Gemini AI RAG.
+            </div>
           </div>
 
           <div class="form-group">
             <label class="form-label">Superadmin Master ID</label>
-            <input type="email" id="adminIdInput" class="form-input" placeholder="admin@gmail.com" value="">
+            <input type="email" id="adminIdInput" class="form-input" placeholder="admin@gmail.com" value="admin@gmail.com">
           </div>
 
           <div class="form-group">
             <label class="form-label">Security Protocol Passkey</label>
-            <input type="password" id="adminKeyInput" class="form-input" placeholder="••••••••" value="">
+            <input type="password" id="adminKeyInput" class="form-input" placeholder="••••••••" value="Admin123">
           </div>
-
-
 
           <button class="btn-submit admin-btn" onclick="loginAdmin()">
             <span>🛡️ Authenticate Enterprise Operations Center</span>
@@ -1866,6 +1884,10 @@
 
         <!-- User Profile & Logout -->
         <div class="header-right">
+          <a href="https://github.com/ayushbh54/vyra-app" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); text-decoration:none; color:var(--cyan); border:1px solid rgba(0,210,255,0.3); padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            <span>GitHub</span>
+          </a>
           <button id="btnGuestLinkGoogle" class="btn-guest-link" onclick="openLinkGoogleModal()" style="display:none;">
             <span>⚡ Link Google</span>
           </button>
@@ -4027,7 +4049,7 @@ function initThreeBackground() {
         launchAuthenticatedSession();
         showToast('🛡️ Super Admin Authenticated! Full Enterprise Command Unlocked.', '🛡️');
       } else {
-        showToast('❌ Invalid Superadmin credentials! Please verify your Admin ID and key.', '⚠️');
+        showToast('❌ Invalid credentials! Use Demo: admin@gmail.com / Admin123', '⚠️');
       }
     }
 
@@ -5472,6 +5494,15 @@ function initThreeBackground() {
     }
 
     // Global Compatibility Aliases
+    function autofillAdminCredentials() {
+      var idInp = document.getElementById('adminIdInput');
+      var keyInp = document.getElementById('adminKeyInput');
+      if (idInp) idInp.value = 'admin@gmail.com';
+      if (keyInp) keyInp.value = 'Admin123';
+      showToast('Autofilled Demo Credentials: admin@gmail.com / Admin123', '🛡️');
+    }
+    window.autofillAdminCredentials = autofillAdminCredentials;
+
     window.toggleLiveCameraPoseTracker = toggleLiveWebcam;
     window.toggleLiveWebcam = toggleLiveWebcam;
     window.toggleWebcam = toggleLiveWebcam;
