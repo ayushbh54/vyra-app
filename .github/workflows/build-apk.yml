@@ -45,6 +45,29 @@ jobs:
           chmod +x android/gradlew
           flutter pub get
 
+      - name: Patch Legacy Android Plugins for AGP 8 (Missing Namespace)
+        shell: bash
+        run: |
+          python3 -c "
+          import glob, os
+          pattern = os.path.expanduser('~/.pub-cache/hosted/pub.dev/**/android/build.gradle')
+          count = 0
+          for f in glob.glob(pattern, recursive=True):
+              try:
+                  with open(f, 'r', encoding='utf-8') as fp:
+                      content = fp.read()
+                  if 'android {' in content and 'namespace' not in content:
+                      pkg = 'flutter.plugins.contactsservice.contactsservice' if 'contacts_service' in f else 'com.vyra.plugin.' + os.path.basename(os.path.dirname(os.path.dirname(f))).split('-')[0].replace('.', '_')
+                      patched = content.replace('android {', f'android {{\\n    namespace \"{pkg}\"')
+                      with open(f, 'w', encoding='utf-8') as fp:
+                          fp.write(patched)
+                      print(f'✓ Successfully injected namespace \"{pkg}\" into: {f}')
+                      count += 1
+              except Exception as e:
+                  print(f'Warning patching {f}: {e}')
+          print(f'Total plugins patched: {count}')
+          "
+
       - name: Analyze Flutter Code
         run: |
           cd apps/mobile
