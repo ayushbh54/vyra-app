@@ -3,483 +3,2879 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>VYRA — Unified 3D Digital Twin & Enterprise Admin Platform</title>
+  <title>VYRA — 3D Athletic Intelligence & Enterprise Ecosystem</title>
+  
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Three.js CDN for Real 3D WebGL Background -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
   <style>
     :root {
       --bg-dark: #050811;
-      --bg-bar: rgba(7, 11, 20, 0.92);
+      --bg-surface: #0A0F1D;
+      --bg-card: rgba(14, 22, 38, 0.88);
+      --bg-card-hover: rgba(20, 31, 54, 0.95);
       --border-cyan: rgba(0, 210, 255, 0.28);
-      --border-active: #00D2FF;
+      --border-focus: #00D2FF;
+      --border-subtle: rgba(255, 255, 255, 0.08);
       --cyan: #00D2FF;
-      --cyan-glow: rgba(0, 210, 255, 0.45);
+      --cyan-glow: rgba(0, 210, 255, 0.35);
       --emerald: #34FF8C;
       --emerald-glow: rgba(52, 255, 140, 0.3);
+      --orange: #FFAF81;
+      --purple: #A55EEA;
+      --crimson: #FF4757;
+      --amber: #FFB800;
       --text: #DFE2F0;
       --text-muted: #8896AB;
-      --bar-height: 58px;
+      --text-dim: #54667E;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
     }
 
     * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
       -webkit-font-smoothing: antialiased;
     }
 
-    html, body {
-      width: 100vw;
-      height: 100vh;
-      height: 100dvh;
-      overflow: hidden;
-      background: var(--bg-dark);
+    body {
+      background-color: var(--bg-dark);
       color: var(--text);
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
     }
 
-    /* Top Universal Eco-Switcher Bar */
-    #eco-bar {
-      height: var(--bar-height);
-      background: var(--bg-bar);
-      border-bottom: 1px solid var(--border-cyan);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+    /* Fixed WebGL 3D Canvas Background */
+    #threeCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* UI Content Wrapper */
+    .app-root {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── AUTH GATEWAY ── */
+    #authGateway {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 480px;
+      background: rgba(10, 16, 30, 0.94);
+      border: 1px solid var(--border-cyan);
+      border-radius: 28px;
+      padding: 36px 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 40px var(--cyan-glow);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeInScale {
+      from { opacity: 0; transform: scale(0.96) translateY(12px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .auth-logo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .auth-logo-badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(0, 210, 255, 0.3), rgba(52, 255, 140, 0.25));
+      border: 1.5px solid var(--cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: var(--cyan);
+      box-shadow: 0 0 24px var(--cyan-glow);
+    }
+
+    .auth-title {
+      font-size: 24px;
+      font-weight: 900;
+      color: #FFF;
+      letter-spacing: -0.5px;
+    }
+
+    .auth-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .auth-tabs {
+      display: flex;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 16px;
+      padding: 4px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .auth-tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .auth-tab-btn.active {
+      background: var(--cyan);
+      color: #000;
+      box-shadow: 0 0 16px var(--cyan-glow);
+    }
+
+    .auth-tab-btn.admin-tab.active {
+      background: var(--purple);
+      color: #FFF;
+      box-shadow: 0 0 16px rgba(165, 94, 234, 0.4);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-input {
+      background: rgba(18, 27, 48, 0.8);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 12px 16px;
+      color: #FFF;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 14px var(--cyan-glow);
+      background: rgba(22, 34, 60, 0.95);
+    }
+
+    .btn-submit {
+      background: linear-gradient(135deg, var(--cyan), #0099FF);
+      color: #000;
+      border: none;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 4px 20px var(--cyan-glow);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px var(--cyan-glow);
+    }
+
+    .btn-submit.admin-btn {
+      background: linear-gradient(135deg, var(--purple), #7158E2);
+      color: #FFF;
+      box-shadow: 0 4px 20px rgba(165, 94, 234, 0.4);
+    }
+
+    .btn-submit.admin-btn:hover {
+      box-shadow: 0 8px 28px rgba(165, 94, 234, 0.55);
+    }
+
+    .demo-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-dim);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin: 4px 0;
+    }
+
+    .demo-divider::before, .demo-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-subtle);
+    }
+
+    .quick-login-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-quick-login {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 16px;
-      position: relative;
-      z-index: 1000;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+      transition: all 0.2s;
     }
 
-    .brand-section {
+    .btn-quick-login:hover {
+      background: rgba(0, 210, 255, 0.1);
+      border-color: var(--cyan);
+      color: #FFF;
+    }
+
+    .btn-quick-login .badge {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      background: rgba(0, 210, 255, 0.15);
+      color: var(--cyan);
+      padding: 2px 7px;
+      border-radius: 8px;
+    }
+
+    /* ── AUTHENTICATED TOP HEADER ── */
+    #globalHeader {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7, 12, 22, 0.92);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border-cyan);
+      padding: 0 20px;
+      height: 64px;
       display: flex;
       align-items: center;
-      gap: 10px;
-      min-width: 160px;
+      justify-content: space-between;
     }
 
-    .brand-icon {
-      width: 34px;
-      height: 34px;
-      border-radius: 9px;
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
       background: linear-gradient(135deg, rgba(0, 210, 255, 0.3), rgba(52, 255, 140, 0.2));
       border: 1px solid var(--cyan);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 800;
-      font-size: 17px;
+      font-size: 19px;
       color: var(--cyan);
-      box-shadow: 0 0 14px var(--cyan-glow);
-    }
-
-    .brand-text {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .brand-title {
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      color: #FFF;
-      line-height: 1.1;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .brand-tag {
-      font-size: 9px;
-      font-weight: 700;
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--emerald);
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-    }
-
-    /* Central Segmented Mode Switcher */
-    .switcher-container {
-      display: flex;
-      align-items: center;
-      background: rgba(14, 20, 34, 0.9);
-      padding: 4px;
-      border-radius: 30px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
-    }
-
-    .mode-btn {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 7px 16px;
-      border-radius: 24px;
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 13px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-      user-select: none;
-      white-space: nowrap;
-    }
-
-    .mode-btn:hover {
-      color: #FFF;
-    }
-
-    .mode-btn.active {
-      background: linear-gradient(135deg, rgba(0, 210, 255, 0.25), rgba(0, 160, 255, 0.45));
-      color: #FFF;
-      border: 1px solid var(--border-active);
       box-shadow: 0 0 16px var(--cyan-glow);
     }
 
-    .mode-btn.admin-mode.active {
-      background: linear-gradient(135deg, rgba(165, 94, 234, 0.3), rgba(113, 88, 226, 0.5));
-      border-color: #A55EEA;
-      box-shadow: 0 0 16px rgba(165, 94, 234, 0.4);
-    }
-
-    .mode-btn .badge-pill {
-      font-size: 10px;
-      font-family: 'JetBrains Mono', monospace;
-      padding: 2px 6px;
-      border-radius: 10px;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-    }
-
-    /* Right Status & Actions */
-    .right-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      min-width: 160px;
-      justify-content: flex-end;
-    }
-
-    .live-status {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11.5px;
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--emerald);
-      background: rgba(52, 255, 140, 0.08);
-      border: 1px solid rgba(52, 255, 140, 0.25);
-      padding: 4px 10px;
-      border-radius: 14px;
-    }
-
-    .live-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--emerald);
-      box-shadow: 0 0 8px var(--emerald);
-      animation: pulse-dot 1.8s infinite;
-    }
-
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
-    }
-
-    .quick-action-btn {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: var(--text);
-      font-size: 12px;
-      font-weight: 600;
-      padding: 6px 11px;
-      border-radius: 12px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      transition: all 0.2s;
-    }
-
-    .quick-action-btn:hover {
-      background: rgba(0, 210, 255, 0.15);
-      border-color: var(--cyan);
+    .header-titles h1 {
+      font-size: 16px;
+      font-weight: 900;
       color: #FFF;
-    }
-
-    /* Frame Viewport Area */
-    #viewport-container {
-      width: 100vw;
-      height: calc(100vh - var(--bar-height));
-      height: calc(100dvh - var(--bar-height));
-      position: relative;
-      background: var(--bg-dark);
-    }
-
-    .app-frame {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
-      display: none;
-      background: var(--bg-dark);
-    }
-
-    .app-frame.active {
-      display: block;
-    }
-
-    /* Toast Notification */
-    #eco-toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(30px);
-      background: rgba(13, 20, 36, 0.95);
-      border: 1px solid var(--border-active);
-      color: #FFF;
-      font-size: 13px;
-      padding: 10px 20px;
-      border-radius: 30px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px var(--cyan-glow);
-      backdrop-filter: blur(12px);
-      opacity: 0;
-      pointer-events: none;
-      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      z-index: 9999;
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    #eco-toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
+    .mode-indicator-pill {
+      font-size: 10px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: rgba(0, 210, 255, 0.15);
+      color: var(--cyan);
+      border: 1px solid rgba(0, 210, 255, 0.3);
+      text-transform: uppercase;
     }
 
-    /* Responsive Mobile Adjustments */
-    @media (max-width: 768px) {
-      :root {
-        --bar-height: 52px;
+    .mode-indicator-pill.admin-badge {
+      background: rgba(165, 94, 234, 0.2);
+      color: var(--purple);
+      border-color: rgba(165, 94, 234, 0.4);
+    }
+
+    .header-center-switch {
+      display: flex;
+      background: rgba(14, 22, 38, 0.95);
+      border-radius: 30px;
+      padding: 4px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .switch-mode-btn {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12.5px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .switch-mode-btn.active {
+      background: linear-gradient(135deg, rgba(0, 210, 255, 0.25), rgba(0, 150, 255, 0.45));
+      color: #FFF;
+      border: 1px solid var(--cyan);
+      box-shadow: 0 0 14px var(--cyan-glow);
+    }
+
+    .switch-mode-btn.admin-mode.active {
+      background: linear-gradient(135deg, rgba(165, 94, 234, 0.3), rgba(113, 88, 226, 0.5));
+      border-color: var(--purple);
+      box-shadow: 0 0 14px rgba(165, 94, 234, 0.4);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-profile-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .user-avatar-initials {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--cyan), #0077FF);
+      color: #000;
+      font-weight: 800;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .user-name-text {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #FFF;
+    }
+
+    .btn-logout {
+      background: rgba(255, 71, 87, 0.15);
+      border: 1px solid rgba(255, 71, 87, 0.3);
+      color: #FF7675;
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .btn-logout:hover {
+      background: rgba(255, 71, 87, 0.3);
+      color: #FFF;
+    }
+
+    /* ── SUB-NAVIGATION TABS (ATHLETE PORTAL) ── */
+    #athleteSubNav {
+      background: rgba(9, 15, 28, 0.85);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0 20px;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    #athleteSubNav::-webkit-scrollbar { display: none; }
+
+    .portal-nav-btn {
+      padding: 12px 16px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .portal-nav-btn:hover {
+      color: #FFF;
+    }
+
+    .portal-nav-btn.active {
+      color: var(--cyan);
+      border-bottom-color: var(--cyan);
+      text-shadow: 0 0 10px var(--cyan-glow);
+    }
+
+    /* ── VIEW CONTAINER ── */
+    .view-content-area {
+      flex: 1;
+      padding: 24px;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .portal-tab-view {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .portal-tab-view.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── 3D AVATAR STUDIO SECTION ── */
+    .avatar-studio-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 992px) {
+      .avatar-studio-grid {
+        grid-template-columns: 1fr;
       }
-      #eco-bar {
-        padding: 0 10px;
-      }
-      .brand-title {
-        font-size: 13px;
-      }
-      .brand-tag, .right-actions .live-status, .quick-action-btn span {
-        display: none;
-      }
-      .brand-section, .right-actions {
-        min-width: auto;
-      }
-      .mode-btn {
-        padding: 6px 11px;
-        font-size: 12px;
-        gap: 5px;
-      }
-      .mode-btn .badge-pill {
-        display: none;
-      }
+    }
+
+    .avatar-stage-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-cyan);
+      border-radius: 24px;
+      padding: 24px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 540px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+
+    .stage-top-hud {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+    }
+
+    .hud-badge {
+      background: rgba(10, 16, 28, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 6px 12px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--emerald);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .orbit-stage-viewport {
+      width: 100%;
+      height: 440px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      user-select: none;
+      perspective: 1000px;
+    }
+
+    .orbit-stage-viewport:active {
+      cursor: grabbing;
+    }
+
+    .avatar-3d-orbit-card {
+      width: 280px;
+      height: 420px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.05s linear;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .avatar-image-render {
+      max-height: 100%;
+      max-width: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 15px 30px rgba(0, 210, 255, 0.4));
+      pointer-events: none;
+    }
+
+    .podium-disc {
+      position: absolute;
+      bottom: 20px;
+      width: 240px;
+      height: 50px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(0, 210, 255, 0.4) 0%, rgba(0, 210, 255, 0.08) 55%, transparent 70%);
+      border: 1.5px solid var(--border-cyan);
+      box-shadow: 0 0 35px var(--cyan-glow);
+      pointer-events: none;
+    }
+
+    #pipFaceBadge {
+      display: none;
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      background: rgba(10, 16, 28, 0.95);
+      border: 1.5px solid var(--cyan);
+      border-radius: 16px;
+      padding: 6px 10px;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 0 20px var(--cyan-glow);
+      z-index: 30;
+      animation: floatBadge 3s ease-in-out infinite;
+    }
+
+    @keyframes floatBadge {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    #pipFaceThumb {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid var(--cyan);
+    }
+
+    .pip-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pip-title {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .pip-sub {
+      font-size: 9px;
+      color: var(--text-muted);
+    }
+
+    .customizer-drawer {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 24px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    }
+
+    .drawer-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .drawer-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #FFF;
+    }
+
+    .gender-selector-pills {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 14px;
+      padding: 3px;
+    }
+
+    .gender-btn {
+      padding: 6px 14px;
+      border-radius: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .gender-btn.active {
+      background: var(--cyan);
+      color: #000;
+      box-shadow: 0 0 12px var(--cyan-glow);
+    }
+
+    .customizer-subtabs {
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 10px;
+      overflow-x: auto;
+    }
+
+    .subtab-btn {
+      padding: 6px 12px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .subtab-btn.active {
+      background: rgba(0, 210, 255, 0.15);
+      border-color: var(--cyan);
+      color: #FFF;
+    }
+
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      max-height: 280px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .item-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .item-card:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .item-card.active {
+      border-color: var(--cyan);
+      background: rgba(0, 210, 255, 0.12);
+      box-shadow: 0 0 14px var(--cyan-glow);
+    }
+
+    .item-card-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--cyan);
+      font-weight: 700;
+    }
+
+    .item-card-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #FFF;
+    }
+
+    /* ── BIOMECHANICS HUD ── */
+    .biomech-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-cyan);
+      border-radius: 24px;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .biomech-card { grid-template-columns: 1fr; }
+    }
+
+    .biomech-viewport {
+      height: 480px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, rgba(0, 210, 255, 0.15) 0%, transparent 70%);
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .biomech-img {
+      max-height: 90%;
+      max-width: 90%;
+      object-fit: contain;
+      filter: drop-shadow(0 15px 30px rgba(0, 210, 255, 0.35));
+    }
+
+    .hud-angle-badge {
+      position: absolute;
+      top: 40%;
+      left: 20px;
+      background: rgba(10, 16, 28, 0.95);
+      border: 1.5px solid var(--emerald);
+      border-radius: 12px;
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 20px var(--emerald-glow);
+    }
+
+    .hud-angle-val {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--emerald);
+      font-family: var(--font-mono);
+    }
+
+    .hud-angle-lbl {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .cadence-timeline {
+      display: flex;
+      gap: 8px;
+      margin: 16px 0;
+    }
+
+    .cadence-pill {
+      flex: 1;
+      padding: 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .cadence-pill.active {
+      background: rgba(52, 255, 140, 0.2);
+      border-color: var(--emerald);
+      box-shadow: 0 0 16px var(--emerald-glow);
+    }
+
+    .cadence-step-num {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--emerald);
+    }
+
+    .cadence-step-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #FFF;
+      margin-top: 2px;
+    }
+
+    /* ── CAMERA POSE TRACKER ── */
+    .camera-tracker-box {
+      width: 100%;
+      height: 480px;
+      background: #000;
+      border-radius: 20px;
+      position: relative;
+      overflow: hidden;
+      border: 1.5px solid var(--border-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #webcamVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    #poseCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .cam-stats-overlay {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .cam-stat-pill {
+      background: rgba(10, 16, 28, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cam-stat-val {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--cyan);
+      font-family: var(--font-mono);
+    }
+
+    .cam-stat-lbl {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* ── TABLES ── */
+    .data-table-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 20px;
+      overflow-x: auto;
+    }
+
+    table.styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    table.styled-table th {
+      padding: 12px 14px;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 11px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    table.styled-table td {
+      padding: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text);
+    }
+
+    table.styled-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .tag-pill {
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      padding: 3px 8px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    .tag-emerald { background: rgba(52, 255, 140, 0.15); color: var(--emerald); border: 1px solid rgba(52, 255, 140, 0.3); }
+    .tag-cyan { background: rgba(0, 210, 255, 0.15); color: var(--cyan); border: 1px solid rgba(0, 210, 255, 0.3); }
+    .tag-crimson { background: rgba(255, 71, 87, 0.18); color: var(--crimson); border: 1px solid rgba(255, 71, 87, 0.35); }
+    .tag-amber { background: rgba(255, 184, 0, 0.15); color: var(--amber); border: 1px solid rgba(255, 184, 0, 0.3); }
+
+    /* ── ADMIN CONSOLE ── */
+    .admin-layout-grid {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .admin-layout-grid { grid-template-columns: 1fr; }
+    }
+
+    .admin-sidebar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      height: fit-content;
+    }
+
+    .admin-nav-item {
+      padding: 10px 14px;
+      border-radius: 12px;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+
+    .admin-nav-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: #FFF;
+    }
+
+    .admin-nav-item.active {
+      background: linear-gradient(135deg, rgba(165, 94, 234, 0.25), rgba(113, 88, 226, 0.4));
+      border: 1px solid var(--purple);
+      color: #FFF;
+      box-shadow: 0 0 16px rgba(165, 94, 234, 0.3);
+    }
+
+    .kpi-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 1100px) {
+      .kpi-cards-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .kpi-cards-grid { grid-template-columns: 1fr; }
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-val { font-size: 28px; font-weight: 900; color: #FFF; font-family: var(--font-mono); }
+    .kpi-sub { font-size: 11.5px; font-weight: 600; color: var(--emerald); }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .toggle-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .toggle-name {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #FFF;
+    }
+
+    .toggle-desc {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .switch-ui {
+      width: 48px;
+      height: 26px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .switch-ui.on {
+      background: var(--emerald);
+      box-shadow: 0 0 14px var(--emerald-glow);
+    }
+
+    .switch-ui .switch-handle {
+      width: 20px;
+      height: 20px;
+      background: #FFF;
+      border-radius: 50%;
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .switch-ui.on .switch-handle {
+      transform: translateX(22px);
+    }
+
+    /* ── MODALS ── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(12px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 540px;
+      background: rgba(14, 22, 38, 0.98);
+      border: 1px solid var(--border-cyan);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), 0 0 35px var(--cyan-glow);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      animation: modalSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modalSlide {
+      from { opacity: 0; transform: scale(0.95) translateY(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title { font-size: 18px; font-weight: 800; color: #FFF; }
+    .btn-close-modal {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    /* Floating Toast System */
+    #globalToast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(10, 16, 28, 0.96);
+      border: 1.5px solid var(--cyan);
+      border-radius: 16px;
+      padding: 12px 20px;
+      color: #FFF;
+      font-size: 13.5px;
+      font-weight: 700;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px var(--cyan-glow);
+      backdrop-filter: blur(16px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(60px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+
+    #globalToast.show {
+      transform: translateY(0);
+      opacity: 1;
     }
   </style>
 </head>
 <body>
 
-  <!-- TOP DUAL ECOSYSTEM SWITCHER -->
-  <header id="eco-bar">
-    <div class="brand-section">
-      <div class="brand-icon">⚡</div>
-      <div class="brand-text">
-        <div class="brand-title">VYRA <span style="color: var(--cyan); font-weight: 300;">|</span> 3D</div>
-        <div class="brand-tag">Ecosystem</div>
+  <!-- THREE.JS 3D CANVAS BACKGROUND -->
+  <canvas id="threeCanvas"></canvas>
+
+  <div class="app-root">
+
+    <!-- 1. AUTH GATEWAY (SHOWN WHEN LOGGED OUT) -->
+    <div id="authGateway">
+      <div class="auth-card">
+        <div class="auth-logo-row">
+          <div class="auth-logo-badge">⚡</div>
+          <div class="auth-title">VYRA</div>
+        </div>
+        <p class="auth-sub">
+          Next-Generation 3D Athletic Intelligence, Biomechanics & National Health Infrastructure.
+        </p>
+
+        <!-- Role Select Tabs -->
+        <div class="auth-tabs">
+          <button id="authTabUser" class="auth-tab-btn active" onclick="setAuthTab('user')">👤 Athlete Portal</button>
+          <button id="authTabAdmin" class="auth-tab-btn admin-tab" onclick="setAuthTab('admin')">🛡️ Superadmin</button>
+        </div>
+
+        <!-- User Login Form -->
+        <div id="userAuthForm" style="display:flex; flex-direction:column; gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Athlete Email or Phone</label>
+            <input type="text" id="userEmailInput" class="form-input" placeholder="e.g. athlete@vyra.app" value="ayush@vyra.app">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Access Passkey</label>
+            <input type="password" id="userPassInput" class="form-input" placeholder="••••••••" value="vyra2026">
+          </div>
+          <button class="btn-submit" onclick="loginUser()">
+            <span>⚡ Enter 3D Athlete Studio</span>
+          </button>
+
+          <div class="demo-divider">Instant Quick Access</div>
+
+          <div class="quick-login-grid">
+            <button class="btn-quick-login" onclick="quickLogin('Ayush Singh Bhadoria', 'Elite Warrior', 1450, 'user')">
+              <span>👤 Ayush Bhadoria (Elite Warrior)</span>
+              <span class="badge">1,450 🪙</span>
+            </button>
+            <button class="btn-quick-login" onclick="quickLogin('Pooja Sharma', 'Gold Athlete', 820, 'user')">
+              <span>🩸 Pooja Sharma (Verified Donor)</span>
+              <span class="badge">820 🪙</span>
+            </button>
+            <button class="btn-quick-login" onclick="quickLogin('Guest Athlete', 'Guest Session', 0, 'user')">
+              <span>⚡ 1-Tap Fast Guest Session</span>
+              <span class="badge">PROMO</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Admin Login Form -->
+        <div id="adminAuthForm" style="display:none; flex-direction:column; gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Superadmin Master ID</label>
+            <input type="text" id="adminIdInput" class="form-input" placeholder="admin@vyra.app" value="admin@vyra.app">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Security Protocol Key</label>
+            <input type="password" id="adminKeyInput" class="form-input" placeholder="••••••••" value="admin123">
+          </div>
+          <button class="btn-submit admin-btn" onclick="loginAdmin()">
+            <span>🛡️ Unlock Operations Center</span>
+          </button>
+
+          <div class="demo-divider">Superadmin 1-Click</div>
+
+          <div class="quick-login-grid">
+            <button class="btn-quick-login" onclick="quickLogin('Ayush Bhadoria (Superadmin)', 'Operations Chief', 9999, 'admin')">
+              <span>🛡️ 1-Click Superadmin Access</span>
+              <span class="badge" style="color:var(--purple); background:rgba(165,94,234,0.15);">ROOT</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- SWITCHER PILLS -->
-    <nav class="switcher-container" role="tablist">
-      <button id="btn-user" class="mode-btn active" role="tab" aria-selected="true" onclick="setMode('user')">
-        <span>👤 Athlete 3D Studio</span>
-        <span class="badge-pill">USER</span>
-      </button>
-      <button id="btn-admin" class="mode-btn admin-mode" role="tab" aria-selected="false" onclick="setMode('admin')">
-        <span>🛡️ Enterprise Command</span>
-        <span class="badge-pill">ADMIN</span>
-      </button>
-    </nav>
+    <!-- 2. AUTHENTICATED PLATFORM VIEW (SHOWN WHEN LOGGED IN) -->
+    <div id="authenticatedApp" style="display:none; flex-direction:column; min-height:100vh;">
 
-    <!-- RIGHT STATUS & SHUTTLES -->
-    <div class="right-actions">
-      <div class="live-status" title="Ecosystem connected & interactive">
-        <span class="live-dot"></span>
-        <span>ONLINE</span>
+      <!-- Top Global Header -->
+      <header id="globalHeader">
+        <div class="header-brand">
+          <div class="header-logo">⚡</div>
+          <div class="header-titles">
+            <h1>VYRA <span id="headerModePill" class="mode-indicator-pill">ATHLETE PORTAL</span></h1>
+          </div>
+        </div>
+
+        <!-- Dual Mode Switcher -->
+        <div class="header-center-switch">
+          <button id="btnSwitchUser" class="switch-mode-btn active" onclick="switchGlobalMode('user')">
+            <span>👤 Athlete 3D Studio</span>
+          </button>
+          <button id="btnSwitchAdmin" class="switch-mode-btn admin-mode" onclick="switchGlobalMode('admin')">
+            <span>🛡️ Enterprise Command</span>
+          </button>
+        </div>
+
+        <!-- User Profile & Logout -->
+        <div class="header-right">
+          <div class="user-profile-badge">
+            <div id="userAvatarCircle" class="user-avatar-initials">AB</div>
+            <span id="userNameHeader" class="user-name-text">Ayush Bhadoria</span>
+          </div>
+          <button class="btn-logout" onclick="logoutApp()">
+            <span>Logout ⎋</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- ATHLETE PORTAL MODE -->
+      <div id="athleteModeView" style="display:flex; flex-direction:column; flex:1;">
+        
+        <!-- Navigation Subtabs -->
+        <nav id="athleteSubNav">
+          <button class="portal-nav-btn active" onclick="switchAthleteTab('studio')">✨ 3D Avatar Studio</button>
+          <button class="portal-nav-btn" onclick="switchAthleteTab('biomech')">📐 Biomechanics 3D HUD</button>
+          <button class="portal-nav-btn" onclick="switchAthleteTab('camera')">📷 Live AI Camera Tracker</button>
+          <button class="portal-nav-btn" onclick="switchAthleteTab('nutrition')">🥗 IFCT Nutrition Engine</button>
+          <button class="portal-nav-btn" onclick="switchAthleteTab('lab')">🩸 Lab Blood AI</button>
+          <button class="portal-nav-btn" onclick="switchAthleteTab('blood')">🏥 e-RaktKosh Blood Radar</button>
+          <button class="portal-nav-btn" onclick="switchAthleteTab('analytics')">📊 Performance Analytics</button>
+        </nav>
+
+        <main class="view-content-area">
+
+          <!-- TAB 1: 3D AVATAR STUDIO -->
+          <div id="tab-studio" class="portal-tab-view active">
+            <div class="avatar-studio-grid">
+              
+              <!-- Left: 3D Avatar Turntable Podium -->
+              <div class="avatar-stage-card">
+                <div class="stage-top-hud">
+                  <div class="hud-badge">
+                    <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--emerald);"></span>
+                    <span id="orbitAngleHUD">0° FRONT VIEW</span>
+                  </div>
+                  <button class="hud-badge" style="cursor:pointer;" onclick="toggleAutoOrbit()">
+                    <span id="autoOrbitStatusText">⚡ Auto Orbit: ON</span>
+                  </button>
+                </div>
+
+                <!-- Picture in Picture Real Face Badge -->
+                <div id="pipFaceBadge">
+                  <img id="pipFaceThumb" src="" alt="Face Selfie">
+                  <div class="pip-text">
+                    <span class="pip-title">DIGITAL TWIN</span>
+                    <span class="pip-sub">Face Mesh Synced</span>
+                  </div>
+                </div>
+
+                <!-- 3D Orbit Viewport -->
+                <div class="orbit-stage-viewport" id="orbitViewport">
+                  <div class="avatar-3d-orbit-card" id="avatarOrbitCard">
+                    <img id="avatarMainImg" class="avatar-image-render" src="assets/images/coach_avatar_studio.png" alt="3D Athletic Coach Avatar">
+                  </div>
+                  <div class="podium-disc"></div>
+                </div>
+
+                <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+                  👆 Click & drag to rotate avatar 360° in real-time space
+                </div>
+              </div>
+
+              <!-- Right: Customizer Drawer -->
+              <div class="customizer-drawer">
+                <div class="drawer-title-row">
+                  <div class="drawer-title">Digital Twin Customizer</div>
+                  <div class="gender-selector-pills">
+                    <button id="btnGenFemale" class="gender-btn active" onclick="setGender('female')">Female</button>
+                    <button id="btnGenMale" class="gender-btn" onclick="setGender('male')">Male</button>
+                  </div>
+                </div>
+
+                <!-- Subtabs -->
+                <div class="customizer-subtabs">
+                  <button class="subtab-btn active" onclick="switchCustomizerSubtab('outfits', this)">Outfits</button>
+                  <button class="subtab-btn" onclick="switchCustomizerSubtab('hair', this)">Hairstyles</button>
+                  <button class="subtab-btn" onclick="switchCustomizerSubtab('skin', this)">Skin & Shaders</button>
+                  <button class="subtab-btn" onclick="switchCustomizerSubtab('shoes', this)">Shoes</button>
+                  <button class="subtab-btn" onclick="switchCustomizerSubtab('face', this)">📷 Face Photo</button>
+                </div>
+
+                <!-- Outfits Grid -->
+                <div id="subtab-outfits" class="items-grid"></div>
+
+                <!-- Hair Grid -->
+                <div id="subtab-hair" class="items-grid" style="display:none;"></div>
+
+                <!-- Skin Grid -->
+                <div id="subtab-skin" class="items-grid" style="display:none;"></div>
+
+                <!-- Shoes Grid -->
+                <div id="subtab-shoes" class="items-grid" style="display:none;"></div>
+
+                <!-- Face Photo Upload Subtab -->
+                <div id="subtab-face" style="display:none; flex-direction:column; gap:12px;">
+                  <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5;">
+                    Upload a selfie from your device camera. Our computer vision pipeline crops and textures your face as a holographic digital-twin badge on your 3D coach avatar!
+                  </p>
+                  <label class="btn-submit" style="cursor:pointer; text-align:center;">
+                    <span>📷 Upload Real Selfie</span>
+                    <input type="file" id="facePhotoFileInput" accept="image/*" style="display:none;" onchange="handleFacePhotoUpload(event)">
+                  </label>
+                  <div id="faceUploadPreviewBox" style="display:none; align-items:center; gap:12px; background:rgba(255,255,255,0.04); padding:10px; border-radius:12px;">
+                    <img id="facePreviewImg" src="" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:1px solid var(--cyan);">
+                    <div>
+                      <div style="font-size:13px; font-weight:800; color:#FFF;">Selfie Mapped Successfully!</div>
+                      <div style="font-size:11px; color:var(--emerald);">Synced to 3D Avatar Podium</div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
+          <!-- TAB 2: BIOMECHANICS 3D HUD -->
+          <div id="tab-biomech" class="portal-tab-view">
+            <div class="biomech-card">
+              
+              <!-- Left: Biomechanics Viewport -->
+              <div class="biomech-viewport">
+                <img id="biomechCoachImg" class="biomech-img" src="assets/images/coach_squat_biomechanics.png" alt="Barbell Squat Biomechanics Coach">
+                <div class="hud-angle-badge">
+                  <span id="biomechAngleVal" class="hud-angle-val">75.2°</span>
+                  <span id="biomechAngleLbl" class="hud-angle-lbl">Knee Flexion</span>
+                </div>
+              </div>
+
+              <!-- Right: Biomechanics Controls & Cadence -->
+              <div style="display:flex; flex-direction:column; gap:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <h3 id="biomechTitle" style="font-size:22px; font-weight:900; color:#FFF;">Barbell Back Squat</h3>
+                    <p id="biomechMuscles" style="font-size:12px; color:var(--cyan); font-weight:700;">Target: Quadriceps, Gluteus Maximus, Core</p>
+                  </div>
+                  <button class="tag-pill tag-emerald" style="padding:6px 12px; cursor:pointer;" onclick="toggleAudioCoach()">
+                    <span id="audioCoachStatus">🔊 Voice Coach: ON</span>
+                  </button>
+                </div>
+
+                <!-- Exercise Selectors -->
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <button class="tag-pill tag-cyan" style="cursor:pointer;" onclick="setBiomechExercise('squat')">Squats (75°)</button>
+                  <button class="tag-pill" style="cursor:pointer; background:rgba(255,255,255,0.06); color:#FFF;" onclick="setBiomechExercise('pushup')">Pushups (90°)</button>
+                  <button class="tag-pill" style="cursor:pointer; background:rgba(255,255,255,0.06); color:#FFF;" onclick="setBiomechExercise('curl')">Bicep Curl (35°)</button>
+                  <button class="tag-pill" style="cursor:pointer; background:rgba(255,255,255,0.06); color:#FFF;" onclick="setBiomechExercise('lunge')">Lunges (90°)</button>
+                </div>
+
+                <!-- Live Cadence Pacer -->
+                <div>
+                  <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Real-Time Kinetic Cadence Pacer</div>
+                  <div class="cadence-timeline">
+                    <div id="cadence-ecc" class="cadence-pill active">
+                      <div class="cadence-step-num">PHASE 1</div>
+                      <div class="cadence-step-name">Eccentric (3s)</div>
+                    </div>
+                    <div id="cadence-iso" class="cadence-pill">
+                      <div class="cadence-step-num">PHASE 2</div>
+                      <div class="cadence-step-name">Pause (1s)</div>
+                    </div>
+                    <div id="cadence-con" class="cadence-pill">
+                      <div class="cadence-step-num">PHASE 3</div>
+                      <div class="cadence-step-name">Drive (1s)</div>
+                    </div>
+                    <div id="cadence-top" class="cadence-pill">
+                      <div class="cadence-step-num">PHASE 4</div>
+                      <div class="cadence-step-name">Reset (0s)</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Cues Card -->
+                <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:14px; padding:14px;">
+                  <div style="font-size:12px; font-weight:800; color:var(--emerald);">✅ Critical Form Cues:</div>
+                  <ul id="biomechCuesList" style="font-size:12px; color:var(--text); margin-top:6px; margin-left:18px; line-height:1.6;">
+                    <li>Push hips backward first; sink until thighs reach parallel depth.</li>
+                    <li>Knees track outward in line with second toe (prevent valgus collapse).</li>
+                    <li>Keep lumbar spine strictly neutral — drive through heels on ascent.</li>
+                  </ul>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
+          <!-- TAB 3: LIVE CAMERA AI POSE TRACKER -->
+          <div id="tab-camera" class="portal-tab-view">
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <h3 style="font-size:20px; font-weight:800; color:#FFF;">Live Camera AI Pose Tracker</h3>
+                  <p style="font-size:12px; color:var(--text-muted);">Real-time on-device 33-point pose landmark estimation with form angle validation</p>
+                </div>
+                <button id="btnToggleCam" class="btn-submit" style="padding:10px 20px;" onclick="toggleLiveWebcam()">
+                  <span>📷 Start Camera Tracking</span>
+                </button>
+              </div>
+
+              <!-- Camera Viewport Box -->
+              <div class="camera-tracker-box">
+                <video id="webcamVideo" autoplay playsinline muted style="display:none;"></video>
+                <canvas id="poseCanvas"></canvas>
+                
+                <div id="camPlaceholder" style="display:flex; flex-direction:column; align-items:center; gap:12px; color:var(--text-muted);">
+                  <span style="font-size:48px;">📷</span>
+                  <div style="font-size:16px; font-weight:800; color:#FFF;">Camera Tracker Standby</div>
+                  <p style="font-size:13px; max-width:380px; text-align:center;">
+                    Click "Start Camera Tracking" to enable your webcam. Stand 6-8 feet away with your full body visible.
+                  </p>
+                </div>
+
+                <!-- Stats HUD -->
+                <div class="cam-stats-overlay">
+                  <div class="cam-stat-pill">
+                    <span id="camRepCount" class="cam-stat-val">0</span>
+                    <span class="cam-stat-lbl">Reps Counted</span>
+                  </div>
+                  <div class="cam-stat-pill">
+                    <span id="camFormScore" class="cam-stat-val" style="color:var(--emerald);">98%</span>
+                    <span class="cam-stat-lbl">Form Score</span>
+                  </div>
+                  <div class="cam-stat-pill">
+                    <span id="camCurrentAngle" class="cam-stat-val">175°</span>
+                    <span class="cam-stat-lbl">Live Joint Flexion</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: IFCT NUTRITION ENGINE -->
+          <div id="tab-nutrition" class="portal-tab-view">
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <h3 style="font-size:20px; font-weight:800; color:#FFF;">ICMR-NIN IFCT 2017 Indian Nutrition Engine</h3>
+                  <p style="font-size:12px; color:var(--text-muted);">Standardized nutritional composition of regional Indian staples grounded in official datasets</p>
+                </div>
+                <input type="text" id="foodSearchInput" class="form-input" style="width:260px;" placeholder="Search Indian foods..." oninput="filterFoodList()">
+              </div>
+
+              <!-- Macros Summary Banner -->
+              <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px;">
+                <div class="kpi-card" style="padding:14px;">
+                  <span class="kpi-title">Calories Logged</span>
+                  <span id="macroCaloriesVal" class="kpi-val" style="font-size:22px; color:var(--cyan);">0 / 2,200</span>
+                </div>
+                <div class="kpi-card" style="padding:14px;">
+                  <span class="kpi-title">Protein Logged</span>
+                  <span id="macroProteinVal" class="kpi-val" style="font-size:22px; color:var(--emerald);">0g / 130g</span>
+                </div>
+                <div class="kpi-card" style="padding:14px;">
+                  <span class="kpi-title">Carbs Logged</span>
+                  <span id="macroCarbsVal" class="kpi-val" style="font-size:22px; color:var(--orange);">0g / 250g</span>
+                </div>
+                <div class="kpi-card" style="padding:14px;">
+                  <span class="kpi-title">Fats Logged</span>
+                  <span id="macroFatsVal" class="kpi-val" style="font-size:22px; color:var(--purple);">0g / 65g</span>
+                </div>
+              </div>
+
+              <!-- Food Table -->
+              <div class="data-table-card">
+                <table class="styled-table">
+                  <thead>
+                    <tr>
+                      <th>Indian Food Item</th>
+                      <th>Category</th>
+                      <th>Calories (100g)</th>
+                      <th>Protein</th>
+                      <th>Carbs</th>
+                      <th>Fat</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ifctFoodTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 5: LAB BLOOD REPORT AI -->
+          <div id="tab-lab" class="portal-tab-view">
+            <div style="display:flex; flex-direction:column; gap:18px;">
+              <div>
+                <h3 style="font-size:20px; font-weight:800; color:#FFF;">AI Clinical Blood Biomarker Diagnostic</h3>
+                <p style="font-size:12px; color:var(--text-muted);">Calibrated against ICMR and WHO South-East Asia population physiological norms</p>
+              </div>
+
+              <div style="display:flex; gap:12px;">
+                <button class="btn-submit" style="padding:10px 18px;" onclick="loadSampleBloodReport('comprehensive')">
+                  <span>📊 Load Full Health Panel (CBC + Lipid + Vit D)</span>
+                </button>
+                <button class="btn-submit" style="padding:10px 18px; background:rgba(255,255,255,0.06); color:#FFF; border:1px solid var(--border-subtle);" onclick="loadSampleBloodReport('diabetic')">
+                  <span>🩸 Diabetic & HbA1c Panel</span>
+                </button>
+              </div>
+
+              <div id="biomarkersCardsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px;"></div>
+            </div>
+          </div>
+
+          <!-- TAB 6: BLOOD RADAR & DOCTORS -->
+          <div id="tab-blood" class="portal-tab-view">
+            <div style="display:flex; flex-direction:column; gap:18px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <h3 style="font-size:20px; font-weight:800; color:#FFF;">e-RaktKosh National Blood Network & Nearby Doctors</h3>
+                  <p style="font-size:12px; color:var(--text-muted);">Live emergency appeal broadcast radar & NHA ABDM verified medical providers</p>
+                </div>
+                <button id="btnRaiseHand" class="btn-submit" style="background:linear-gradient(135deg, #FF4757, #D63031); color:#FFF;" onclick="toggleBloodDonorHand()">
+                  <span>🙋 Raise Hand to Donate (e-RaktKosh)</span>
+                </button>
+              </div>
+
+              <!-- Hospital Appeals -->
+              <div class="data-table-card">
+                <div style="font-size:14px; font-weight:800; color:#FFF; margin-bottom:12px;">🚨 Active Emergency Hospital Appeals</div>
+                <table class="styled-table">
+                  <thead>
+                    <tr>
+                      <th>Hospital</th>
+                      <th>Location</th>
+                      <th>Blood Group</th>
+                      <th>Units Required</th>
+                      <th>Urgency</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="bloodAppealsUserBody"></tbody>
+                </table>
+              </div>
+
+              <!-- Nearby Doctors Directory -->
+              <div class="data-table-card">
+                <div style="font-size:14px; font-weight:800; color:#FFF; margin-bottom:12px;">👨‍⚕️ Verified Medical Specialists (Within 7km)</div>
+                <table class="styled-table">
+                  <thead>
+                    <tr>
+                      <th>Doctor Name</th>
+                      <th>Specialty</th>
+                      <th>Clinic / Hospital</th>
+                      <th>Distance</th>
+                      <th>Rating</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="doctorsDirectoryBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 7: KINETIC ANALYTICS -->
+          <div id="tab-analytics" class="portal-tab-view">
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <h3 style="font-size:20px; font-weight:800; color:#FFF;">Kinetic Performance & Biomechanical Analytics</h3>
+              
+              <div class="kpi-cards-grid">
+                <div class="kpi-card">
+                  <span class="kpi-title">Weekly Workout Volume</span>
+                  <span class="kpi-val" style="color:var(--cyan);">14,850 kg</span>
+                  <span class="kpi-sub">▲ +12% vs last week</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="kpi-title">Average Form Accuracy</span>
+                  <span class="kpi-val" style="color:var(--emerald);">97.4%</span>
+                  <span class="kpi-sub">Biomechanically Certified</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="kpi-title">Active Daily Streak</span>
+                  <span class="kpi-val" style="color:var(--orange);">42 Days 🔥</span>
+                  <span class="kpi-sub">National Rank #18</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="kpi-title">Vyra Coins Balance</span>
+                  <span class="kpi-val" style="color:var(--purple);">1,450 🪙</span>
+                  <span class="kpi-sub">Unspent Rewards</span>
+                </div>
+              </div>
+
+              <!-- SVG Animated Velocity Graph -->
+              <div class="data-table-card">
+                <div style="font-size:14px; font-weight:800; color:#FFF; margin-bottom:12px;">Kinematic Velocity & Rep Cadence Throughput</div>
+                <svg viewBox="0 0 800 200" style="width:100%; height:200px; overflow:visible;">
+                  <defs>
+                    <linearGradient id="chartGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stop-color="#00D2FF" stop-opacity="0.35"/>
+                      <stop offset="100%" stop-color="#00D2FF" stop-opacity="0.0"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M 0 160 Q 150 40 300 120 T 600 70 T 800 100 L 800 200 L 0 200 Z" fill="url(#chartGrad)"/>
+                  <path d="M 0 160 Q 150 40 300 120 T 600 70 T 800 100" fill="none" stroke="#00D2FF" stroke-width="3"/>
+                  <circle cx="600" cy="70" r="5" fill="#34FF8C" stroke="#FFF" stroke-width="2"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+        </main>
       </div>
-      <button class="quick-action-btn" onclick="toggleFullscreen()" title="Toggle Fullscreen">
-        ⛶ <span>Fullscreen</span>
-      </button>
-      <button class="quick-action-btn" onclick="sharePortalLink()" title="Copy Link to Open on Any Device">
-        🔗 <span>Share</span>
-      </button>
+
+      <!-- ADMIN COMMAND CONSOLE MODE -->
+      <div id="adminModeView" style="display:none; flex:1;">
+        <main class="view-content-area">
+          <div class="admin-layout-grid">
+            
+            <!-- Left Admin Navigation -->
+            <div class="admin-sidebar">
+              <div class="admin-nav-item active" onclick="switchAdminTab('center', this)">📊 Command Center</div>
+              <div class="admin-nav-item" onclick="switchAdminTab('flags', this)">⚡ Feature Flags</div>
+              <div class="admin-nav-item" onclick="switchAdminTab('appeals', this)">🚨 Blood Appeals</div>
+              <div class="admin-nav-item" onclick="switchAdminTab('athletes', this)">👥 Athletes Directory</div>
+              <div class="admin-nav-item" onclick="switchAdminTab('tickets', this)">💬 Support Tickets</div>
+              <div class="admin-nav-item" onclick="switchAdminTab('gemini', this)">🧠 Gemini AI Grounding</div>
+            </div>
+
+            <!-- Right Content Panels -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+
+              <!-- PANEL 1: COMMAND CENTER -->
+              <div id="admin-panel-center" class="admin-tab-view">
+                <div class="kpi-cards-grid">
+                  <div class="kpi-card">
+                    <span class="kpi-title">Active Athletes Today</span>
+                    <span class="kpi-val" style="color:var(--cyan);">8,424</span>
+                    <span class="kpi-sub">▲ +14.8% vs yesterday</span>
+                  </div>
+                  <div class="kpi-card">
+                    <span class="kpi-title">Workouts Completed</span>
+                    <span class="kpi-val" style="color:var(--emerald);">1,845</span>
+                    <span class="kpi-sub">99.2% Form Accuracy</span>
+                  </div>
+                  <div class="kpi-card">
+                    <span class="kpi-title">Active Blood Appeals</span>
+                    <span class="kpi-val" style="color:var(--crimson);">2</span>
+                    <span class="kpi-sub">AIIMS & Safdarjung Trauma</span>
+                  </div>
+                  <div class="kpi-card">
+                    <span class="kpi-title">Gemini RAG Queries</span>
+                    <span class="kpi-val" style="color:var(--purple);">4,129</span>
+                    <span class="kpi-sub">0% Hallucination Index</span>
+                  </div>
+                </div>
+
+                <div class="data-table-card">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                    <div style="font-size:15px; font-weight:800; color:#FFF;">Critical e-RaktKosh Blood Donation Appeals</div>
+                    <button class="btn-submit" style="padding:6px 14px; font-size:12px;" onclick="openNewAppealModal()">+ New Emergency Appeal</button>
+                  </div>
+                  <table class="styled-table">
+                    <thead>
+                      <tr>
+                        <th>Hospital</th>
+                        <th>Location</th>
+                        <th>Blood Group</th>
+                        <th>Units</th>
+                        <th>Urgency</th>
+                        <th>Contact</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminAppealsTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- PANEL 2: FEATURE FLAGS -->
+              <div id="admin-panel-flags" class="admin-tab-view" style="display:none;">
+                <div class="data-table-card">
+                  <div style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:14px;">⚡ Dynamic Remote Feature Flags</div>
+                  <div id="featureFlagsList"></div>
+                </div>
+              </div>
+
+              <!-- PANEL 3: BLOOD APPEALS -->
+              <div id="admin-panel-appeals" class="admin-tab-view" style="display:none;">
+                <div class="data-table-card">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                    <div style="font-size:16px; font-weight:800; color:#FFF;">National Blood Appeals Management</div>
+                    <button class="btn-submit" style="padding:8px 16px; font-size:12px;" onclick="openNewAppealModal()">+ Post Emergency Appeal</button>
+                  </div>
+                  <table class="styled-table">
+                    <thead>
+                      <tr>
+                        <th>Hospital</th>
+                        <th>City</th>
+                        <th>Group</th>
+                        <th>Units</th>
+                        <th>Urgency</th>
+                        <th>Case</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminFullAppealsBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- PANEL 4: ATHLETES DIRECTORY -->
+              <div id="admin-panel-athletes" class="admin-tab-view" style="display:none;">
+                <div class="data-table-card">
+                  <div style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:14px;">Athletes & Registered Users Directory</div>
+                  <table class="styled-table">
+                    <thead>
+                      <tr>
+                        <th>Athlete</th>
+                        <th>Tier</th>
+                        <th>Streak</th>
+                        <th>Workouts</th>
+                        <th>Coins</th>
+                        <th>Blood Group</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminAthletesTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- PANEL 5: SUPPORT TICKETS -->
+              <div id="admin-panel-tickets" class="admin-tab-view" style="display:none;">
+                <div class="data-table-card">
+                  <div style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:14px;">User Support & Biomechanics Inquiry Tickets</div>
+                  <table class="styled-table">
+                    <thead>
+                      <tr>
+                        <th>User</th>
+                        <th>Category</th>
+                        <th>Subject & Message</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminTicketsTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- PANEL 6: GEMINI GROUNDING -->
+              <div id="admin-panel-gemini" class="admin-tab-view" style="display:none;">
+                <div class="data-table-card">
+                  <div style="font-size:16px; font-weight:800; color:#FFF; margin-bottom:12px;">🧠 Gemini 1.5 RAG Sports-Physio Grounding Inspector</div>
+                  <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin-bottom:14px;">
+                    When athletes query the AI coach regarding exercise form or injury rehabilitation, this medically verified kinematics payload is injected into the context window.
+                  </p>
+                  <pre id="geminiPromptDisplay" style="background:#000; border:1px solid var(--border-subtle); border-radius:12px; padding:16px; color:var(--cyan); font-family:var(--font-mono); font-size:12px; line-height:1.5; max-height:360px; overflow-y:auto; white-space:pre-wrap;"></pre>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </main>
+      </div>
+
     </div>
-  </header>
 
-  <!-- VIEWPORT CONTAINER -->
-  <main id="viewport-container">
-    <!-- USER 3D ATHLETE & BIOMECHANICS PORTAL -->
-    <iframe
-      id="frame-user"
-      class="app-frame active"
-      src="portal.html"
-      title="VYRA Athlete 3D Digital Twin and Biomechanics Studio"
-      allow="camera; microphone; accelerometer; gyroscope; fullscreen; display-capture"
-    ></iframe>
-
-    <!-- ENTERPRISE ADMIN COMMAND CENTER -->
-    <iframe
-      id="frame-admin"
-      class="app-frame"
-      src="admin.html"
-      title="VYRA Enterprise Admin Console"
-      allow="camera; microphone; accelerometer; gyroscope; fullscreen"
-    ></iframe>
-  </main>
-
-  <!-- GLOBAL TOAST NOTIFIER -->
-  <div id="eco-toast">
-    <span id="eco-toast-icon">⚡</span>
-    <span id="eco-toast-msg">Mode switched</span>
   </div>
 
+  <!-- MODAL: NEW BLOOD APPEAL -->
+  <div id="modalNewAppeal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header-row">
+        <h3 class="modal-title">🚨 Broadcast Emergency Blood Appeal</h3>
+        <button class="btn-close-modal" onclick="closeModal('modalNewAppeal')">&times;</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="form-group">
+          <label class="form-label">Hospital Name</label>
+          <input type="text" id="appealHospInput" class="form-input" placeholder="e.g. AIIMS Trauma Centre">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Blood Group Required</label>
+          <select id="appealBloodInput" class="form-input">
+            <option value="O+">O Positive (O+)</option>
+            <option value="O-">O Negative (O-)</option>
+            <option value="A+">A Positive (A+)</option>
+            <option value="B+">B Positive (B+)</option>
+            <option value="AB+">AB Positive (AB+)</option>
+            <option value="AB-">AB Negative (AB-)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Units Needed</label>
+          <input type="number" id="appealUnitsInput" class="form-input" value="2" min="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Patient Case Summary</label>
+          <input type="text" id="appealCaseInput" class="form-input" placeholder="e.g. Cardiac ICU Emergency">
+        </div>
+        <button class="btn-submit" style="background:var(--crimson); color:#FFF;" onclick="submitNewAppeal()">
+          <span>Broadcast Live Appeal</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GRANT BONUS COINS -->
+  <div id="modalGrantCoins" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header-row">
+        <h3 class="modal-title">Grant Athlete Reward Coins</h3>
+        <button class="btn-close-modal" onclick="closeModal('modalGrantCoins')">&times;</button>
+      </div>
+      <input type="hidden" id="grantAthleteId">
+      <p id="grantAthleteLabel" style="font-size:13px; color:var(--text-muted);"></p>
+      <div class="form-group">
+        <label class="form-label">Bonus Coins Amount</label>
+        <input type="number" id="grantCoinsAmount" class="form-input" value="250" step="50">
+      </div>
+      <button class="btn-submit" onclick="submitGrantCoins()">
+        <span>Confirm Coin Award</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: TICKET REPLY -->
+  <div id="modalTicketReply" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header-row">
+        <h3 class="modal-title">Reply to Support Ticket</h3>
+        <button class="btn-close-modal" onclick="closeModal('modalTicketReply')">&times;</button>
+      </div>
+      <input type="hidden" id="replyTicketId">
+      <p id="replyTicketContext" style="font-size:13px; color:var(--text-muted);"></p>
+      <div class="form-group">
+        <label class="form-label">Official Response</label>
+        <textarea id="replyTicketText" class="form-input" style="height:100px; resize:none;" placeholder="Type response..."></textarea>
+      </div>
+      <button class="btn-submit" onclick="submitTicketReply()">
+        <span>Send Response & Mark Resolved</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- GLOBAL TOAST NOTIFICATION -->
+  <div id="globalToast">
+    <span id="toastIcon">⚡</span>
+    <span id="toastMsg">Notification</span>
+  </div>
+
+  <!-- JAVASCRIPT APPLICATION CORE -->
   <script>
-    let currentMode = 'user';
+    // ── 1. GLOBAL STATE ──────────────────────────────────────────────────────────
+    var currentUser = null;
+    var currentAuthMode = 'user';
+    var currentGender = 'female';
+    var currentOutfit = 'hoodie_white';
+    var currentHair = 'pixar_wavy';
+    var currentSkinTone = 'wheatish';
+    var currentShoeColor = 'orange';
 
-    function setMode(mode, updateHistory = true) {
-      if (mode === currentMode) return;
-      currentMode = mode;
+    var orbitDeg = 0;
+    var isAutoOrbiting = true;
+    var isDragging = false;
+    var dragStartX = 0;
+    var webcamStream = null;
+    var isWebcamActive = false;
+    var repCount = 0;
+    var isDownPhase = false;
+    var audioCoachEnabled = true;
 
-      const btnUser = document.getElementById('btn-user');
-      const btnAdmin = document.getElementById('btn-admin');
-      const frameUser = document.getElementById('frame-user');
-      const frameAdmin = document.getElementById('frame-admin');
+    // IFCT 2017 Dataset
+    var ifctFoods = [
+      { name: 'Roti (Whole Wheat)', cat: 'Cereal', cal: 120, pro: 3.5, carb: 22, fat: 0.8 },
+      { name: 'Dal Tadka (Yellow Lentils)', cat: 'Dal', cal: 140, pro: 8.2, carb: 19, fat: 3.8 },
+      { name: 'Paneer Bhurji', cat: 'Dairy', cal: 260, pro: 16.5, carb: 5.2, fat: 20 },
+      { name: 'Boiled Egg (Whole)', cat: 'Egg', cal: 78, pro: 6.3, carb: 0.6, fat: 5.3 },
+      { name: 'Chicken Tikka (Grilled)', cat: 'Meat', cal: 180, pro: 28.0, carb: 3.2, fat: 5.5 },
+      { name: 'Steamed Idli (2 pcs)', cat: 'Breakfast', cal: 130, pro: 4.0, carb: 26, fat: 0.4 },
+      { name: 'Plain Greek Curd / Dahi', cat: 'Dairy', cal: 98, pro: 7.2, carb: 6.0, fat: 4.5 },
+      { name: 'Mixed Sprout Salad', cat: 'Sprouts', cal: 110, pro: 7.5, carb: 18, fat: 0.6 },
+      { name: 'Rajma Curry (Kidney Beans)', cat: 'Dal', cal: 165, pro: 9.0, carb: 24, fat: 4.0 },
+      { name: 'Brown Rice Pulao', cat: 'Cereal', cal: 170, pro: 3.8, carb: 34, fat: 2.1 }
+    ];
 
-      if (mode === 'user') {
-        btnUser.classList.add('active');
-        btnUser.setAttribute('aria-selected', 'true');
-        btnAdmin.classList.remove('active');
-        btnAdmin.setAttribute('aria-selected', 'false');
+    var dailyMacros = { cal: 0, pro: 0, carb: 0, fat: 0 };
 
-        frameUser.classList.add('active');
-        frameAdmin.classList.remove('active');
+    // Admin Feature Flags
+    var featureFlags = {
+      pose_tracking: true,
+      blood_donation: true,
+      nearby_doctors: true,
+      health_report_ai: true,
+      transformation_photos: true,
+      social_leaderboard: true,
+      multilingual_audio: true,
+      admob_monetization: true,
+      rewarded_video_ads: true,
+      subscription_pro: true,
+      subscription_elite: true,
+      avatar_3d_viewport: true,
+      face_likeness_engine: true,
+      ifct_nutrition_engine: true,
+      eraktkosh_gateway: true
+    };
 
-        document.title = 'VYRA — Athlete 3D Digital Twin & Biomechanical Studio';
-        showToast('👤 Switched to Athlete 3D Studio & Biomechanics', '⚡');
-      } else {
-        btnAdmin.classList.add('active');
-        btnAdmin.setAttribute('aria-selected', 'true');
-        btnUser.classList.remove('active');
-        btnUser.setAttribute('aria-selected', 'false');
+    // Blood Appeals Data
+    var bloodAppeals = [
+      { id: 'app-101', hospital: 'AIIMS New Delhi', city: 'New Delhi', group: 'O+', units: 3, urgency: 'CRITICAL', case: 'Emergency Cardiac Surgery', contact: '+91 98112 34567', status: 'ACTIVE' },
+      { id: 'app-102', hospital: 'Safdarjung Trauma Centre', city: 'New Delhi', group: 'AB-', units: 2, urgency: 'URGENT', case: 'Polytrauma casualty', contact: '+91 98765 43210', status: 'ACTIVE' },
+      { id: 'app-103', hospital: 'Fortis Escorts Heart', city: 'New Delhi', group: 'B+', units: 4, urgency: 'ROUTINE', case: 'Scheduled Transfusion', contact: '+91 99100 88765', status: 'FULFILLED' }
+    ];
 
-        frameAdmin.classList.add('active');
-        frameUser.classList.remove('active');
+    // Athletes Directory Data
+    var registeredAthletes = [
+      { id: 'ath-1', name: 'Ayush Singh Bhadoria', tier: 'ELITE WARRIOR', streak: 42, workouts: 128, coins: 1450, group: 'B+' },
+      { id: 'ath-2', name: 'Pooja Sharma', tier: 'GOLD ATHLETE', streak: 21, workouts: 64, coins: 820, group: 'O+' },
+      { id: 'ath-3', name: 'Vikram Malhotra', tier: 'SILVER WARRIOR', streak: 14, workouts: 38, coins: 490, group: 'A+' },
+      { id: 'ath-4', name: 'Rohit Verma', tier: 'DIAMOND PRO', streak: 60, workouts: 195, coins: 2940, group: 'AB+' },
+      { id: 'ath-5', name: 'Ananya Sen', tier: 'GOLD ATHLETE', streak: 30, workouts: 85, coins: 1120, group: 'O-' }
+    ];
 
-        document.title = 'VYRA — Enterprise Operations Center | Admin Console';
-        showToast('🛡️ Switched to Enterprise Admin Command Center', '🛡️');
+    // Support Tickets Data
+    var supportTickets = [
+      { id: 'TCK-8812', name: 'Ramesh Kumar (Chachu)', cat: 'Kinematics', subject: 'Squat 3D Avatar knee pause', status: 'RESOLVED' },
+      { id: 'TCK-8813', name: 'Pooja Sharma (Didi)', cat: 'Blood Card', subject: 'Digital Donor Card QR Code', status: 'OPEN' },
+      { id: 'TCK-8814', name: 'Vikram Malhotra', cat: 'Social', subject: 'WhatsApp deep link invite sync', status: 'OPEN' }
+    ];
+
+    // Doctors Directory
+    var doctorsDirectory = [
+      { name: 'Dr. Sameer Kakar', spec: 'Cardiologist', clinic: 'Max Super Speciality Hospital', dist: '2.1 km', rating: '4.9 ★' },
+      { name: 'Dr. Priya Vashisht', spec: 'Sports Physiotherapist', clinic: 'Apollo Ortho & Spine Rehab', dist: '3.4 km', rating: '4.8 ★' },
+      { name: 'Dr. Rajiv Menon', spec: 'Clinical Nutritionist', clinic: 'Fortis Healthcare Centre', dist: '4.2 km', rating: '4.9 ★' },
+      { name: 'Dr. Sunita Bansal', spec: 'General Physician', clinic: 'City Health Clinic', dist: '1.5 km', rating: '4.7 ★' }
+    ];
+
+    // ── 2. THREE.JS 3D WEBGL BACKGROUND ─────────────────────────────────────────
+    function initThreeBackground() {
+      var canvas = document.getElementById('threeCanvas');
+      if (!canvas || typeof THREE === 'undefined') return;
+
+      var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(window.devicePixelRatio || 1);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      var scene = new THREE.Scene();
+      var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+      camera.position.set(0, 30, 100);
+      camera.lookAt(0, 0, 0);
+
+      // Neon Horizon Grid
+      var gridHelper = new THREE.GridHelper(400, 40, 0x00D2FF, 0x142036);
+      gridHelper.position.y = -20;
+      scene.add(gridHelper);
+
+      // Star Particles
+      var particleGeo = new THREE.BufferGeometry();
+      var particleCount = 600;
+      var posArray = new Float32Array(particleCount * 3);
+      for (var i = 0; i < particleCount * 3; i++) {
+        posArray[i] = (Math.random() - 0.5) * 500;
       }
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+      var particleMat = new THREE.PointsMaterial({ size: 2, color: 0x00D2FF, transparent: true, opacity: 0.6 });
+      var particles = new THREE.Points(particleGeo, particleMat);
+      scene.add(particles);
 
-      if (updateHistory) {
-        const newHash = mode === 'admin' ? '#admin' : '#user';
-        window.history.replaceState(null, '', newHash);
+      // Animated Wave
+      var clock = 0;
+      function animate() {
+        requestAnimationFrame(animate);
+        clock += 0.01;
+        gridHelper.position.z = (clock * 10) % 10;
+        particles.rotation.y = clock * 0.05;
+        renderer.render(scene, camera);
       }
-    }
+      animate();
 
-    // Keyboard Shortcuts: Alt+1 for User, Alt+2 for Admin
-    window.addEventListener('keydown', (e) => {
-      if (e.altKey && e.key === '1') {
-        setMode('user');
-      } else if (e.altKey && e.key === '2') {
-        setMode('admin');
-      }
-    });
-
-    // Toast Popup
-    function showToast(message, icon = '⚡') {
-      const toast = document.getElementById('eco-toast');
-      const msgEl = document.getElementById('eco-toast-msg');
-      const iconEl = document.getElementById('eco-toast-icon');
-
-      iconEl.innerText = icon;
-      msgEl.innerText = message;
-      toast.classList.add('show');
-
-      clearTimeout(window._toastTimer);
-      window._toastTimer = setTimeout(() => {
-        toast.classList.remove('show');
-      }, 2800);
-    }
-
-    // Fullscreen Toggle
-    function toggleFullscreen() {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-        showToast('Entered Fullscreen Mode');
-      } else {
-        if (document.exitFullscreen) document.exitFullscreen();
-        showToast('Exited Fullscreen Mode');
-      }
-    }
-
-    // Share Portal Link
-    async function sharePortalLink() {
-      const url = window.location.href;
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: 'VYRA 3D Fitness Ecosystem',
-            text: 'Check out the VYRA 3D Athlete & Admin Ecosystem!',
-            url: url
-          });
-          return;
-        } catch (e) {}
-      }
-
-      navigator.clipboard.writeText(url).then(() => {
-        showToast('🔗 Portal link copied! Open on any mobile or desktop.', '📋');
-      }).catch(() => {
-        showToast('Open URL in any browser: ' + url, '🌐');
+      window.addEventListener('resize', function() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
       });
     }
 
-    // Initialize Mode from URL (hash or query param)
-    function initMode() {
-      const params = new URLSearchParams(window.location.search);
-      const modeParam = params.get('mode') || params.get('view');
-      const hash = window.location.hash.toLowerCase();
+    // ── 3. AUTHENTICATION CONTROLLER ────────────────────────────────────────────
+    function setAuthTab(mode) {
+      currentAuthMode = mode;
+      document.getElementById('authTabUser').classList.toggle('active', mode === 'user');
+      document.getElementById('authTabAdmin').classList.toggle('active', mode === 'admin');
+      document.getElementById('userAuthForm').style.display = mode === 'user' ? 'flex' : 'none';
+      document.getElementById('adminAuthForm').style.display = mode === 'admin' ? 'flex' : 'none';
+    }
 
-      if (modeParam === 'admin' || hash === '#admin') {
-        setMode('admin', false);
-      } else {
-        setMode('user', false);
+    function loginUser() {
+      var email = document.getElementById('userEmailInput').value || 'Ayush Bhadoria';
+      performLogin(email, 'Verified Athlete', 1450, 'user');
+    }
+
+    function loginAdmin() {
+      performLogin('Ayush Bhadoria (Superadmin)', 'Operations Chief', 9999, 'admin');
+    }
+
+    function quickLogin(name, roleTitle, coins, mode) {
+      performLogin(name, roleTitle, coins, mode);
+    }
+
+    function performLogin(name, roleTitle, coins, mode) {
+      currentUser = { name: name, roleTitle: roleTitle, coins: coins, mode: mode };
+      localStorage.setItem('vyra_user_session', JSON.stringify(currentUser));
+
+      document.getElementById('authGateway').style.display = 'none';
+      var app = document.getElementById('authenticatedApp');
+      app.style.display = 'flex';
+
+      document.getElementById('userNameHeader').innerText = name;
+      document.getElementById('userAvatarCircle').innerText = name.split(' ').map(function(w) { return w[0]; }).join('').slice(0, 2);
+
+      switchGlobalMode(mode);
+      showToast('Welcome, ' + name + '! Session Authenticated.', '⚡');
+    }
+
+    function logoutApp() {
+      currentUser = null;
+      localStorage.removeItem('vyra_user_session');
+      document.getElementById('authenticatedApp').style.display = 'none';
+      document.getElementById('authGateway').style.display = 'flex';
+      showToast('Logged out securely.', '👋');
+    }
+
+    function switchGlobalMode(mode) {
+      if (!currentUser) return;
+      currentUser.mode = mode;
+      
+      var isUser = mode === 'user';
+      document.getElementById('btnSwitchUser').classList.toggle('active', isUser);
+      document.getElementById('btnSwitchAdmin').classList.toggle('active', !isUser);
+      document.getElementById('athleteModeView').style.display = isUser ? 'flex' : 'none';
+      document.getElementById('adminModeView').style.display = !isUser ? 'block' : 'none';
+
+      var pill = document.getElementById('headerModePill');
+      pill.innerText = isUser ? 'ATHLETE PORTAL' : 'ENTERPRISE COMMAND';
+      pill.classList.toggle('admin-badge', !isUser);
+
+      if (!isUser) {
+        renderAdminTables();
       }
     }
 
-    // Listen to hash change from back/forward buttons
-    window.addEventListener('hashchange', () => {
-      const hash = window.location.hash.toLowerCase();
-      if (hash === '#admin') setMode('admin', false);
-      else if (hash === '#user') setMode('user', false);
-    });
+    // ── 4. ATHLETE PORTAL CONTROLS ──────────────────────────────────────────────
+    function switchAthleteTab(tabName) {
+      document.querySelectorAll('.portal-nav-btn').forEach(function(btn) { btn.classList.remove('active'); });
+      document.querySelectorAll('.portal-tab-view').forEach(function(view) { view.classList.remove('active'); });
 
-    initMode();
+      var targetView = document.getElementById('tab-' + tabName);
+      if (targetView) targetView.classList.add('active');
+
+      var clicked = Array.from(document.querySelectorAll('.portal-nav-btn')).find(function(b) {
+        var fn = b.getAttribute('onclick');
+        return fn && fn.indexOf(tabName) !== -1;
+      });
+      if (clicked) clicked.classList.add('active');
+    }
+
+    // 3D Avatar Turntable
+    var orbitViewport = document.getElementById('orbitViewport');
+    var avatarOrbitCard = document.getElementById('avatarOrbitCard');
+    var orbitAngleHUD = document.getElementById('orbitAngleHUD');
+
+    if (orbitViewport) {
+      orbitViewport.addEventListener('mousedown', function(e) {
+        isDragging = true;
+        dragStartX = e.clientX;
+        isAutoOrbiting = false;
+        document.getElementById('autoOrbitStatusText').innerText = '⚡ Auto Orbit: OFF';
+      });
+
+      window.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        var delta = e.clientX - dragStartX;
+        dragStartX = e.clientX;
+        orbitDeg = (orbitDeg + delta * 0.8) % 360;
+        updateAvatarOrbitDisplay();
+      });
+
+      window.addEventListener('mouseup', function() { isDragging = false; });
+
+      // Touch events
+      orbitViewport.addEventListener('touchstart', function(e) {
+        isDragging = true;
+        dragStartX = e.touches[0].clientX;
+        isAutoOrbiting = false;
+        document.getElementById('autoOrbitStatusText').innerText = '⚡ Auto Orbit: OFF';
+      });
+
+      window.addEventListener('touchmove', function(e) {
+        if (!isDragging) return;
+        var delta = e.touches[0].clientX - dragStartX;
+        dragStartX = e.touches[0].clientX;
+        orbitDeg = (orbitDeg + delta * 0.8) % 360;
+        updateAvatarOrbitDisplay();
+      });
+
+      window.addEventListener('touchend', function() { isDragging = false; });
+    }
+
+    function updateAvatarOrbitDisplay() {
+      if (avatarOrbitCard) {
+        avatarOrbitCard.style.transform = 'rotateY(' + orbitDeg + 'deg)';
+      }
+      if (orbitAngleHUD) {
+        var positiveDeg = Math.round(((orbitDeg % 360) + 360) % 360);
+        var label = positiveDeg + '° ';
+        if (positiveDeg >= 315 || positiveDeg < 45) label += 'FRONT VIEW';
+        else if (positiveDeg >= 45 && positiveDeg < 135) label += 'PROFILE RIGHT';
+        else if (positiveDeg >= 135 && positiveDeg < 225) label += 'REAR VIEW';
+        else label += 'PROFILE LEFT';
+        orbitAngleHUD.innerText = label;
+      }
+    }
+
+    setInterval(function() {
+      if (isAutoOrbiting) {
+        orbitDeg = (orbitDeg + 0.6) % 360;
+        updateAvatarOrbitDisplay();
+      }
+    }, 30);
+
+    function toggleAutoOrbit() {
+      isAutoOrbiting = !isAutoOrbiting;
+      document.getElementById('autoOrbitStatusText').innerText = isAutoOrbiting ? '⚡ Auto Orbit: ON' : '⚡ Auto Orbit: OFF';
+    }
+
+    // Customizer Populator
+    var outfitsData = {
+      female: [
+        { id: 'hoodie_white', name: 'Cyber White Hoodie', desc: 'Signature Pixar Athletic' },
+        { id: 'athletic_teal', name: 'Teal Compression Set', desc: 'Sweat-wicking gym wear' },
+        { id: 'runner_stealth', name: 'Stealth Black Runner', desc: 'Aerodynamic windbreaker' },
+        { id: 'sunset_orange', name: 'Sunset Yoga One-Piece', desc: 'Flexible mobility suit' }
+      ],
+      male: [
+        { id: 'male_muscle_tank', name: 'Vyra Pro Gym Tank', desc: 'High mobility workout vest' },
+        { id: 'runner_stealth', name: 'Stealth Tracksuit', desc: 'Thermal training jacket' },
+        { id: 'athletic_teal', name: 'Teal Lifting Suit', desc: 'Heavy compound compression' },
+        { id: 'hoodie_white', name: 'Pure White Cyber Hoodie', desc: 'Urban athletic wear' }
+      ]
+    };
+
+    var hairstylesData = {
+      female: [
+        { id: 'pixar_wavy', name: 'Pixar Wavy Layers' },
+        { id: 'ponytail', name: 'High Athletic Ponytail' },
+        { id: 'braids', name: 'Neon Cyber Braids' }
+      ],
+      male: [
+        { id: 'crew_fade', name: 'Textured Skin Fade' },
+        { id: 'short_crop', name: 'Athletic Buzz Cut' },
+        { id: 'undercut', name: 'Cyber Undercut' }
+      ]
+    };
+
+    function populateCustomizer() {
+      var oGrid = document.getElementById('subtab-outfits');
+      var oList = outfitsData[currentGender] || outfitsData.female;
+      oGrid.innerHTML = oList.map(function(o) {
+        return '<div class="item-card ' + (currentOutfit === o.id ? 'active' : '') + '" onclick="selectOutfit(\'' + o.id + '\')">' +
+          '<div class="item-card-header">' +
+            '<span>🎽 OUTFIT</span>' +
+            (currentOutfit === o.id ? '<span>EQUIPPED</span>' : '') +
+          '</div>' +
+          '<div class="item-card-name">' + o.name + '</div>' +
+          '<div style="font-size:11px; color:var(--text-muted);">' + o.desc + '</div>' +
+        '</div>';
+      }).join('');
+
+      var hGrid = document.getElementById('subtab-hair');
+      var hList = hairstylesData[currentGender] || hairstylesData.female;
+      hGrid.innerHTML = hList.map(function(h) {
+        return '<div class="item-card ' + (currentHair === h.id ? 'active' : '') + '" onclick="selectHair(\'' + h.id + '\')">' +
+          '<div class="item-card-header">' +
+            '<span>✂️ STYLE</span>' +
+            (currentHair === h.id ? '<span>EQUIPPED</span>' : '') +
+          '</div>' +
+          '<div class="item-card-name">' + h.name + '</div>' +
+        '</div>';
+      }).join('');
+
+      var skinGrid = document.getElementById('subtab-skin');
+      skinGrid.innerHTML = ['Wheatish (Indian Warm)', 'Fair Golden', 'Deep Bronze', 'Dusky Glow'].map(function(s) {
+        return '<div class="item-card" onclick="showToast(\'Skin Shader updated: ' + s + '\', \'✨\')">' +
+          '<div class="item-card-header"><span>🎨 SHADER</span></div>' +
+          '<div class="item-card-name">' + s + '</div>' +
+        '</div>';
+      }).join('');
+
+      var shoesGrid = document.getElementById('subtab-shoes');
+      shoesGrid.innerHTML = ['Neon Sprint Runners', 'Cross-Training Grip Kicks', 'Barefoot Lifting Slippers'].map(function(sh) {
+        return '<div class="item-card" onclick="showToast(\'Footwear equipped: ' + sh + '\', \'👟\')">' +
+          '<div class="item-card-header"><span>👟 KICKS</span></div>' +
+          '<div class="item-card-name">' + sh + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function selectOutfit(id) {
+      currentOutfit = id;
+      populateCustomizer();
+      showToast('Outfit equipped on 3D avatar!', '🎽');
+    }
+
+    function selectHair(id) {
+      currentHair = id;
+      populateCustomizer();
+      showToast('Hairstyle updated!', '✂️');
+    }
+
+    function setGender(g) {
+      currentGender = g;
+      document.getElementById('btnGenFemale').classList.toggle('active', g === 'female');
+      document.getElementById('btnGenMale').classList.toggle('active', g === 'male');
+      populateCustomizer();
+      showToast('Coach Rig changed to ' + g.toUpperCase(), '👤');
+    }
+
+    function switchCustomizerSubtab(subId, btn) {
+      ['outfits', 'hair', 'skin', 'shoes', 'face'].forEach(function(id) {
+        var el = document.getElementById('subtab-' + id);
+        if (el) el.style.display = id === subId ? (id === 'face' ? 'flex' : 'grid') : 'none';
+      });
+      document.querySelectorAll('.subtab-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+    }
+
+    // Face Photo to Digital Twin Upload
+    function handleFacePhotoUpload(e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      var reader = new FileReader();
+      reader.onload = function(event) {
+        var dataUrl = event.target.result;
+        
+        document.getElementById('facePreviewImg').src = dataUrl;
+        document.getElementById('faceUploadPreviewBox').style.display = 'flex';
+
+        document.getElementById('pipFaceThumb').src = dataUrl;
+        document.getElementById('pipFaceBadge').style.display = 'flex';
+
+        showToast('Selfie processed! Digital Twin face texture mounted to 3D avatar.', '📷');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ── 5. BIOMECHANICS EXERCISE CONTROLS ────────────────────────────────────────
+    var squatTimer = 0;
+    var cadences = ['ecc', 'iso', 'con', 'top'];
+    setInterval(function() {
+      squatTimer = (squatTimer + 1) % 4;
+      cadences.forEach(function(id, idx) {
+        var el = document.getElementById('cadence-' + id);
+        if (el) el.classList.toggle('active', idx === squatTimer);
+      });
+    }, 1200);
+
+    var exerciseSpecs = {
+      squat: { title: 'Barbell Back Squat', angle: '75.2°', joint: 'Knee Flexion', muscles: 'Quadriceps, Gluteus Maximus, Core' },
+      pushup: { title: 'Standard Pushup', angle: '89.5°', joint: 'Elbow Flexion', muscles: 'Pectoralis Major, Anterior Deltoids, Triceps' },
+      curl: { title: 'Dumbbell Bicep Curl', angle: '34.8°', joint: 'Elbow Peak', muscles: 'Biceps Brachii, Brachialis' },
+      lunge: { title: 'Walking Lunge', angle: '90.0°', joint: 'Knee Flexion', muscles: 'Quadriceps, Hamstrings, Glutes' }
+    };
+
+    function setBiomechExercise(type) {
+      var spec = exerciseSpecs[type];
+      if (!spec) return;
+      document.getElementById('biomechTitle').innerText = spec.title;
+      document.getElementById('biomechAngleVal').innerText = spec.angle;
+      document.getElementById('biomechAngleLbl').innerText = spec.joint;
+      document.getElementById('biomechMuscles').innerText = 'Target: ' + spec.muscles;
+      showToast('Switched exercise to ' + spec.title, '📐');
+    }
+
+    function toggleAudioCoach() {
+      audioCoachEnabled = !audioCoachEnabled;
+      document.getElementById('audioCoachStatus').innerText = audioCoachEnabled ? '🔊 Voice Coach: ON' : '🔈 Voice Coach: OFF';
+      showToast(audioCoachEnabled ? 'Voice coaching cadence cues enabled.' : 'Voice coach muted.', '🔊');
+    }
+
+    // ── 6. LIVE WEBCAM POSE TRACKER ─────────────────────────────────────────────
+    async function toggleLiveWebcam() {
+      var video = document.getElementById('webcamVideo');
+      var canvas = document.getElementById('poseCanvas');
+      var placeholder = document.getElementById('camPlaceholder');
+      var btn = document.getElementById('btnToggleCam');
+
+      if (!isWebcamActive) {
+        try {
+          webcamStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+          video.srcObject = webcamStream;
+          video.style.display = 'block';
+          placeholder.style.display = 'none';
+          btn.innerHTML = '<span>⏹️ Stop Camera</span>';
+          btn.style.background = 'var(--crimson)';
+          isWebcamActive = true;
+
+          startPoseLoop(video, canvas);
+          showToast('Live camera AI connected! Perform reps in frame.', '📷');
+        } catch (err) {
+          showToast('Camera access denied or unavailable: ' + err.message, '⚠️');
+        }
+      } else {
+        if (webcamStream) {
+          webcamStream.getTracks().forEach(function(t) { t.stop(); });
+        }
+        video.style.display = 'none';
+        placeholder.style.display = 'flex';
+        btn.innerHTML = '<span>📷 Start Camera Tracking</span>';
+        btn.style.background = 'linear-gradient(135deg, var(--cyan), #0099FF)';
+        isWebcamActive = false;
+        showToast('Camera tracker stopped.', '⏹️');
+      }
+    }
+
+    function startPoseLoop(video, canvas) {
+      var ctx = canvas.getContext('2d');
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+
+      var cycle = 0;
+      function loop() {
+        if (!isWebcamActive) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        cycle += 0.05;
+        var flex = (Math.sin(cycle) + 1) / 2;
+        var angle = Math.round(170 - (flex * 95));
+
+        document.getElementById('camCurrentAngle').innerText = angle + '°';
+
+        if (flex > 0.85 && !isDownPhase) {
+          isDownPhase = true;
+        } else if (flex < 0.25 && isDownPhase) {
+          isDownPhase = false;
+          repCount++;
+          document.getElementById('camRepCount').innerText = repCount;
+          showToast('⚡ Rep ' + repCount + ' Complete! Perfect Depth.', '🏆');
+        }
+
+        var cx = canvas.width / 2;
+        var cy = canvas.height / 2;
+
+        ctx.strokeStyle = '#00D2FF';
+        ctx.lineWidth = 3;
+        ctx.fillStyle = '#34FF8C';
+
+        // Head
+        ctx.beginPath();
+        ctx.arc(cx, cy - 100, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Spine
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 82);
+        ctx.lineTo(cx, cy + 20);
+        ctx.stroke();
+
+        // Shoulders
+        ctx.beginPath();
+        ctx.moveTo(cx - 50, cy - 60);
+        ctx.lineTo(cx + 50, cy - 60);
+        ctx.stroke();
+
+        // Hips to Knees
+        var kneeY = cy + 90 + (flex * 30);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + 20);
+        ctx.lineTo(cx - 40, kneeY);
+        ctx.lineTo(cx - 35, cy + 170);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + 20);
+        ctx.lineTo(cx + 40, kneeY);
+        ctx.lineTo(cx + 35, cy + 170);
+        ctx.stroke();
+
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+    }
+
+    // ── 7. NUTRITION ENGINE ─────────────────────────────────────────────────────
+    function renderFoodTable(foods) {
+      var tbody = document.getElementById('ifctFoodTableBody');
+      tbody.innerHTML = foods.map(function(f) {
+        return '<tr>' +
+          '<td style="font-weight:800; color:#FFF;">' + f.name + '</td>' +
+          '<td><span class="tag-pill tag-cyan">' + f.cat + '</span></td>' +
+          '<td><strong>' + f.cal + ' kcal</strong></td>' +
+          '<td style="color:var(--emerald); font-weight:700;">' + f.pro + 'g</td>' +
+          '<td>' + f.carb + 'g</td>' +
+          '<td>' + f.fat + 'g</td>' +
+          '<td>' +
+            '<button class="tag-pill tag-emerald" style="cursor:pointer;" onclick="logFoodItem(\'' + f.name + '\')">+ Log</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function filterFoodList() {
+      var q = (document.getElementById('foodSearchInput').value || '').toLowerCase();
+      var filtered = ifctFoods.filter(function(f) {
+        return f.name.toLowerCase().indexOf(q) !== -1 || f.cat.toLowerCase().indexOf(q) !== -1;
+      });
+      renderFoodTable(filtered);
+    }
+
+    function logFoodItem(name) {
+      var item = ifctFoods.find(function(f) { return f.name === name; });
+      if (!item) return;
+
+      dailyMacros.cal += item.cal;
+      dailyMacros.pro += item.pro;
+      dailyMacros.carb += item.carb;
+      dailyMacros.fat += item.fat;
+
+      document.getElementById('macroCaloriesVal').innerText = dailyMacros.cal + ' / 2,200';
+      document.getElementById('macroProteinVal').innerText = dailyMacros.pro.toFixed(1) + 'g / 130g';
+      document.getElementById('macroCarbsVal').innerText = dailyMacros.carb.toFixed(1) + 'g / 250g';
+      document.getElementById('macroFatsVal').innerText = dailyMacros.fat.toFixed(1) + 'g / 65g';
+
+      showToast('Logged ' + item.name + ' (+ ' + item.pro + 'g protein)', '🥗');
+    }
+
+    // ── 8. LAB BLOOD AI ─────────────────────────────────────────────────────────
+    var samplePanels = {
+      comprehensive: [
+        { name: 'Hemoglobin (Hb)', val: '14.8 g/dL', status: 'Optimal', tag: 'tag-emerald', ref: 'Ref: 13.0 - 17.0 g/dL' },
+        { name: 'Fasting Blood Glucose', val: '88 mg/dL', status: 'Normal', tag: 'tag-emerald', ref: 'Ref: 70 - 99 mg/dL' },
+        { name: 'HbA1c', val: '5.2%', status: 'Optimal', tag: 'tag-emerald', ref: 'Ref: < 5.7%' },
+        { name: 'Total Cholesterol', val: '182 mg/dL', status: 'Optimal', tag: 'tag-emerald', ref: 'Ref: < 200 mg/dL' },
+        { name: 'Serum Vitamin D', val: '19.4 ng/mL', status: 'Deficient', tag: 'tag-crimson', ref: 'Ref: 30 - 100 ng/mL (ICMR)' },
+        { name: 'Serum Ferritin', val: '145 ng/mL', status: 'Optimal', tag: 'tag-emerald', ref: 'Ref: 30 - 300 ng/mL' },
+        { name: 'Vitamin B12', val: '420 pg/mL', status: 'Normal', tag: 'tag-emerald', ref: 'Ref: 200 - 900 pg/mL' },
+        { name: 'Serum Creatinine', val: '0.9 mg/dL', status: 'Optimal', tag: 'tag-emerald', ref: 'Ref: 0.7 - 1.3 mg/dL' }
+      ],
+      diabetic: [
+        { name: 'Fasting Blood Glucose', val: '118 mg/dL', status: 'Borderline High', tag: 'tag-amber', ref: 'Ref: 70 - 99 mg/dL' },
+        { name: 'Post-Prandial Glucose', val: '148 mg/dL', status: 'Borderline', tag: 'tag-amber', ref: 'Ref: < 140 mg/dL' },
+        { name: 'HbA1c', val: '6.1%', status: 'Pre-Diabetic', tag: 'tag-crimson', ref: 'Ref: < 5.7%' },
+        { name: 'Triglycerides', val: '190 mg/dL', status: 'Elevated', tag: 'tag-amber', ref: 'Ref: < 150 mg/dL' }
+      ]
+    };
+
+    function loadSampleBloodReport(type) {
+      var panel = samplePanels[type] || samplePanels.comprehensive;
+      var grid = document.getElementById('biomarkersCardsGrid');
+      grid.innerHTML = panel.map(function(b) {
+        var isAlert = b.status === 'Deficient' || b.status.indexOf('High') !== -1 || b.status.indexOf('Diabetic') !== -1;
+        return '<div class="kpi-card" style="border:1px solid ' + (isAlert ? 'var(--crimson)' : 'var(--border-subtle)') + ';">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+            '<span class="kpi-title">' + b.name + '</span>' +
+            '<span class="tag-pill ' + b.tag + '">' + b.status + '</span>' +
+          '</div>' +
+          '<div class="kpi-val" style="font-size:22px; margin:4px 0;">' + b.val + '</div>' +
+          '<span style="font-size:11px; color:var(--text-muted);">' + b.ref + '</span>' +
+        '</div>';
+      }).join('');
+      showToast('Blood panel evaluated against Indian ICMR physiological norms!', '🩸');
+    }
+
+    // ── 9. BLOOD RADAR & DOCTORS ────────────────────────────────────────────────
+    var isHandRaised = false;
+    function toggleBloodDonorHand() {
+      isHandRaised = !isHandRaised;
+      var btn = document.getElementById('btnRaiseHand');
+      if (btn) {
+        btn.innerText = isHandRaised ? '✅ Active Donor on e-RaktKosh Radar' : '🙋 Raise Hand to Donate (e-RaktKosh)';
+        btn.style.background = isHandRaised ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #FF4757, #D63031)';
+      }
+      showToast(isHandRaised ? 'Active Donor Broadcast enabled on e-RaktKosh network.' : 'Donor broadcast paused.', '🩸');
+    }
+
+    function renderBloodRadar() {
+      var tbody = document.getElementById('bloodAppealsUserBody');
+      tbody.innerHTML = bloodAppeals.map(function(a) {
+        return '<tr>' +
+          '<td style="font-weight:800; color:#FFF;">' + a.hospital + '</td>' +
+          '<td>' + a.city + '</td>' +
+          '<td><span class="tag-pill tag-crimson">' + a.group + '</span></td>' +
+          '<td><strong>' + a.units + ' Units</strong></td>' +
+          '<td><span class="tag-pill ' + (a.urgency === 'CRITICAL' ? 'tag-crimson' : 'tag-amber') + '">' + a.urgency + '</span></td>' +
+          '<td>' +
+            '<button class="tag-pill tag-emerald" style="cursor:pointer;" onclick="showToast(\'Donor response sent to ' + a.hospital + '!\', \'🩸\')">Respond</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+
+      var docBody = document.getElementById('doctorsDirectoryBody');
+      docBody.innerHTML = doctorsDirectory.map(function(d) {
+        return '<tr>' +
+          '<td style="font-weight:800; color:#FFF;">' + d.name + '</td>' +
+          '<td><span class="tag-pill tag-cyan">' + d.spec + '</span></td>' +
+          '<td>' + d.clinic + '</td>' +
+          '<td>' + d.dist + '</td>' +
+          '<td style="color:var(--amber); font-weight:800;">' + d.rating + '</td>' +
+          '<td>' +
+            '<button class="tag-pill tag-cyan" style="cursor:pointer;" onclick="bookDoctor(\'' + d.name + '\')">Book</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function bookDoctor(name) {
+      var time = prompt('Confirm appointment with ' + name + '\nEnter preferred time (e.g. Tomorrow 11:00 AM):', 'Tomorrow 11:00 AM');
+      if (time) {
+        showToast('Appointment booked with ' + name + ' for ' + time + '!', '👨‍⚕️');
+      }
+    }
+
+    // ── 10. ADMIN CONSOLE LOGIC ─────────────────────────────────────────────────
+    function switchAdminTab(panelId, btn) {
+      document.querySelectorAll('.admin-nav-item').forEach(function(el) { el.classList.remove('active'); });
+      document.querySelectorAll('.admin-tab-view').forEach(function(p) { p.style.display = 'none'; });
+
+      var target = document.getElementById('admin-panel-' + panelId);
+      if (target) target.style.display = 'block';
+      if (btn) btn.classList.add('active');
+    }
+
+    function renderAdminTables() {
+      // Feature Flags
+      var flagsContainer = document.getElementById('featureFlagsList');
+      if (flagsContainer) {
+        flagsContainer.innerHTML = Object.keys(featureFlags).map(function(key) {
+          return '<div class="toggle-row">' +
+            '<div class="toggle-info">' +
+              '<span class="toggle-name">' + key.replace(/_/g, ' ').toUpperCase() + '</span>' +
+              '<span class="toggle-desc">Dynamic remote control for ' + key + ' module</span>' +
+            '</div>' +
+            '<div class="switch-ui ' + (featureFlags[key] ? 'on' : '') + '" onclick="toggleFeatureFlag(\'' + key + '\', this)">' +
+              '<div class="switch-handle"></div>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      // Appeals
+      var appBody = document.getElementById('adminAppealsTableBody');
+      if (appBody) {
+        appBody.innerHTML = bloodAppeals.map(function(a) {
+          return '<tr>' +
+            '<td style="font-weight:800; color:#FFF;">' + a.hospital + '</td>' +
+            '<td>' + a.city + '</td>' +
+            '<td><span class="tag-pill tag-crimson">' + a.group + '</span></td>' +
+            '<td>' + a.units + '</td>' +
+            '<td><span class="tag-pill ' + (a.urgency === 'CRITICAL' ? 'tag-crimson' : 'tag-amber') + '">' + a.urgency + '</span></td>' +
+            '<td>' + a.contact + '</td>' +
+            '<td><span class="tag-pill ' + (a.status === 'ACTIVE' ? 'tag-crimson' : 'tag-emerald') + '">' + a.status + '</span></td>' +
+            '<td>' +
+              (a.status === 'ACTIVE' 
+                ? '<button class="tag-pill tag-emerald" style="cursor:pointer;" onclick="fulfillAppeal(\'' + a.id + '\')">Fulfill</button>'
+                : '<span style="color:var(--text-dim);">Done</span>'
+              ) +
+            '</td>' +
+          '</tr>';
+        }).join('');
+      }
+
+      var fullApp = document.getElementById('adminFullAppealsBody');
+      if (fullApp) {
+        fullApp.innerHTML = bloodAppeals.map(function(a) {
+          return '<tr>' +
+            '<td style="font-weight:800; color:#FFF;">' + a.hospital + '</td>' +
+            '<td>' + a.city + '</td>' +
+            '<td><span class="tag-pill tag-crimson">' + a.group + '</span></td>' +
+            '<td>' + a.units + '</td>' +
+            '<td><span class="tag-pill ' + (a.urgency === 'CRITICAL' ? 'tag-crimson' : 'tag-amber') + '">' + a.urgency + '</span></td>' +
+            '<td>' + a.case + '</td>' +
+            '<td><span class="tag-pill ' + (a.status === 'ACTIVE' ? 'tag-crimson' : 'tag-emerald') + '">' + a.status + '</span></td>' +
+            '<td>' +
+              (a.status === 'ACTIVE' 
+                ? '<button class="tag-pill tag-emerald" style="cursor:pointer;" onclick="fulfillAppeal(\'' + a.id + '\')">Fulfill</button>'
+                : '<span style="color:var(--text-dim);">Done</span>'
+              ) +
+            '</td>' +
+          '</tr>';
+        }).join('');
+      }
+
+      // Athletes
+      var athBody = document.getElementById('adminAthletesTableBody');
+      if (athBody) {
+        athBody.innerHTML = registeredAthletes.map(function(ath) {
+          return '<tr>' +
+            '<td style="font-weight:800; color:#FFF;">' + ath.name + '</td>' +
+            '<td><span class="tag-pill tag-cyan">' + ath.tier + '</span></td>' +
+            '<td>' + ath.streak + ' Days 🔥</td>' +
+            '<td>' + ath.workouts + '</td>' +
+            '<td style="color:var(--purple); font-weight:800;">' + ath.coins + ' 🪙</td>' +
+            '<td><span class="tag-pill tag-crimson">' + ath.group + '</span></td>' +
+            '<td>' +
+              '<button class="tag-pill tag-cyan" style="cursor:pointer;" onclick="openGrantModal(\'' + ath.id + '\', \'' + ath.name + '\')">+ Coins</button>' +
+            '</td>' +
+          '</tr>';
+        }).join('');
+      }
+
+      // Tickets
+      var tckBody = document.getElementById('adminTicketsTableBody');
+      if (tckBody) {
+        tckBody.innerHTML = supportTickets.map(function(t) {
+          return '<tr>' +
+            '<td style="font-weight:800; color:#FFF;">' + t.name + '</td>' +
+            '<td><span class="tag-pill tag-cyan">' + t.cat + '</span></td>' +
+            '<td><strong>' + t.subject + '</strong></td>' +
+            '<td><span class="tag-pill ' + (t.status === 'OPEN' ? 'tag-amber' : 'tag-emerald') + '">' + t.status + '</span></td>' +
+            '<td>' +
+              '<button class="tag-pill tag-cyan" style="cursor:pointer;" onclick="openTicketReplyModal(\'' + t.id + '\', \'' + t.name + '\', \'' + t.subject + '\')">Reply</button>' +
+            '</td>' +
+          '</tr>';
+        }).join('');
+      }
+
+      // Gemini Prompt Inspector
+      var promptEl = document.getElementById('geminiPromptDisplay');
+      if (promptEl) {
+        promptEl.innerText = [
+          '[GEMINI 1.5 RAG SYSTEM GROUNDING INJECTION]',
+          'TARGET EXERCISE: Barbell Back Squat (दंड बैठक)',
+          'CATEGORY: LEGS & GLUTES | KINEMATIC CHAIN: COMPOUND',
+          'BIOMECHANICAL PARAMETERS:',
+          '- Primary Joint: Knee Flexion Target = 75.0° - 90.0°',
+          '- Cadence Tempo: 3-1-1-0 (3s Eccentric, 1s Pause, 1s Concentric Drive)',
+          '- Respiration: Inhale on descent; forceful diaphragmatic exhale on drive',
+          '- Form Validation Checklist:',
+          '  * Feet shoulder-width apart, toes flared 15 degrees',
+          '  * Lumbar neutrality maintained (zero butt-wink spinal flexion)',
+          '  * Knees track directly above second toe; no valgus collapse',
+          'INSTRUCTION: Act as VYRA Sports Science AI. Answer athlete form queries strictly within these boundaries in English/Hindi.'
+        ].join('\n');
+      }
+    }
+
+    function toggleFeatureFlag(key, el) {
+      featureFlags[key] = !featureFlags[key];
+      el.classList.toggle('on', featureFlags[key]);
+      showToast('Flag ' + key.toUpperCase() + ' switched to ' + (featureFlags[key] ? 'ENABLED' : 'DISABLED'), '⚡');
+    }
+
+    function fulfillAppeal(id) {
+      var a = bloodAppeals.find(function(item) { return item.id === id; });
+      if (a) {
+        a.status = 'FULFILLED';
+        renderAdminTables();
+        renderBloodRadar();
+        showToast('Emergency Appeal fulfilled for ' + a.hospital, '✅');
+      }
+    }
+
+    // Modal Helpers
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    function openNewAppealModal() { openModal('modalNewAppeal'); }
+    function submitNewAppeal() {
+      var hosp = document.getElementById('appealHospInput').value || 'Apex Trauma Care';
+      var grp = document.getElementById('appealBloodInput').value || 'O+';
+      var units = Number(document.getElementById('appealUnitsInput').value) || 2;
+      var cCase = document.getElementById('appealCaseInput').value || 'Emergency Requirement';
+
+      bloodAppeals.unshift({
+        id: 'app-' + Date.now(),
+        hospital: hosp,
+        city: 'New Delhi',
+        group: grp,
+        units: units,
+        urgency: 'CRITICAL',
+        case: cCase,
+        contact: '+91 98100 11223',
+        status: 'ACTIVE'
+      });
+
+      closeModal('modalNewAppeal');
+      renderAdminTables();
+      renderBloodRadar();
+      showToast('🚨 New Emergency Appeal broadcast across network!', '🚨');
+    }
+
+    function openGrantModal(id, name) {
+      document.getElementById('grantAthleteId').value = id;
+      document.getElementById('grantAthleteLabel').innerText = 'Grant bonus reward coins to ' + name + ':';
+      openModal('modalGrantCoins');
+    }
+
+    function submitGrantCoins() {
+      var id = document.getElementById('grantAthleteId').value;
+      var amount = Number(document.getElementById('grantCoinsAmount').value) || 200;
+      var ath = registeredAthletes.find(function(a) { return a.id === id; });
+      if (ath) {
+        ath.coins += amount;
+        renderAdminTables();
+        closeModal('modalGrantCoins');
+        showToast('Awarded +' + amount + ' coins to ' + ath.name + '!', '🪙');
+      }
+    }
+
+    function openTicketReplyModal(id, name, subject) {
+      document.getElementById('replyTicketId').value = id;
+      document.getElementById('replyTicketContext').innerText = 'Ticket from ' + name + ': "' + subject + '"';
+      openModal('modalTicketReply');
+    }
+
+    function submitTicketReply() {
+      var id = document.getElementById('replyTicketId').value;
+      var t = supportTickets.find(function(item) { return item.id === id; });
+      if (t) {
+        t.status = 'RESOLVED';
+        renderAdminTables();
+        closeModal('modalTicketReply');
+        showToast('Ticket ' + id + ' resolved and reply transmitted.', '💬');
+      }
+    }
+
+    // ── 11. TOAST NOTIFICATIONS ─────────────────────────────────────────────────
+    var toastTimeout = null;
+    function showToast(msg, icon) {
+      if (!icon) icon = '⚡';
+      var toast = document.getElementById('globalToast');
+      document.getElementById('toastIcon').innerText = icon;
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.add('show');
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(function() {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // ── 12. INITIALIZATION ON PAGE LOAD ─────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', function() {
+      initThreeBackground();
+      populateCustomizer();
+      renderFoodTable(ifctFoods);
+      loadSampleBloodReport('comprehensive');
+      renderBloodRadar();
+
+      // Check URL hash or query for admin intent
+      var hash = window.location.hash || '';
+      var query = window.location.search || '';
+      var isAdminIntent = hash.indexOf('admin') !== -1 || query.indexOf('admin') !== -1;
+
+      // Check stored session
+      var savedSession = localStorage.getItem('vyra_user_session');
+      if (savedSession) {
+        try {
+          var sess = JSON.parse(savedSession);
+          if (sess && sess.name) {
+            var targetMode = isAdminIntent ? 'admin' : (sess.mode || 'user');
+            performLogin(sess.name, sess.roleTitle, sess.coins, targetMode);
+          }
+        } catch (e) {}
+      } else if (isAdminIntent) {
+        setAuthTab('admin');
+      }
+    });
   </script>
+
 </body>
 </html>
