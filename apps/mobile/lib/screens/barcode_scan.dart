@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
 import '../api/client.dart';
@@ -19,6 +21,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   late Animation<double> _scanLineAnimation;
+  late MobileScannerController _scannerController;
   bool _torchOn = false;
   bool _scanning = false;
   final TextEditingController _manualController = TextEditingController();
@@ -26,6 +29,11 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   @override
   void initState() {
     super.initState();
+    _scannerController = MobileScannerController(
+      detectionSpeed: DetectionSpeed.noDuplicates,
+      facing: CameraFacing.back,
+      torchEnabled: false,
+    );
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
@@ -37,6 +45,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
 
   @override
   void dispose() {
+    _scannerController.dispose();
     _animController.dispose();
     _manualController.dispose();
     super.dispose();
@@ -60,6 +69,33 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
       }
     } finally {
       if (mounted) setState(() => _scanning = false);
+    }
+  }
+
+  Future<void> _scanFromGallery() async {
+    try {
+      final picker = ImagePicker();
+      final xfile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 95);
+      if (xfile == null) return;
+      final capture = await _scannerController.analyzeImage(xfile.path);
+      if (capture != null && capture.barcodes.isNotEmpty) {
+        final val = capture.barcodes.first.rawValue;
+        if (val != null && val.trim().isNotEmpty) {
+          _handleBarcode(val.trim());
+          return;
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No barcode detected in selected photo. Try another image or enter code below.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not analyze photo: $e')),
+        );
+      }
     }
   }
 
@@ -264,10 +300,18 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
               _torchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
               color: _torchOn ? VColor.accentOrange : VColor.textMid,
             ),
-            onPressed: () {
+            onPressed: () async {
               HapticFeedback.selectionClick();
-              setState(() => _torchOn = !_torchOn);
+              try {
+                await _scannerController.toggleTorch();
+                setState(() => _torchOn = !_torchOn);
+              } catch (_) {}
             },
+          ),
+          IconButton(
+            tooltip: 'Scan Barcode from Gallery Image',
+            icon: const Icon(Icons.photo_library_rounded, color: VColor.accentGreen),
+            onPressed: _scanFromGallery,
           ),
           const SizedBox(width: 8),
         ],
@@ -277,10 +321,10 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Optical HUD Viewfinder Box (Stitch Page 33) ──
+            // ── Optical HUD Viewfinder Box (Real Camera Feed) ──
             Container(
               width: double.infinity,
-              height: 280,
+              height: 290,
               decoration: BoxDecoration(
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(VRadius.xl),
@@ -293,136 +337,207 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                   ),
                 ],
               ),
-              child: Stack(
-                children: [
-                  // Corner target brackets
-                  Positioned(
-                    top: 16,
-                    left: 16,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          top: BorderSide(color: VColor.accent, width: 3),
-                          left: BorderSide(color: VColor.accent, width: 3),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 16,
-                    right: 16,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          top: BorderSide(color: VColor.accent, width: 3),
-                          right: BorderSide(color: VColor.accent, width: 3),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 16,
-                    left: 16,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: VColor.accent, width: 3),
-                          left: BorderSide(color: VColor.accent, width: 3),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 16,
-                    right: 16,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: VColor.accent, width: 3),
-                          right: BorderSide(color: VColor.accent, width: 3),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Center Barcode Target Outline
-                  Center(
-                    child: Container(
-                      width: 200,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white24, width: 1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.qr_code_2_rounded, size: 64, color: Colors.white30),
-                      ),
-                    ),
-                  ),
-
-                  // Sweeping laser animation line
-                  AnimatedBuilder(
-                    animation: _scanLineAnimation,
-                    builder: (context, child) {
-                      return Positioned(
-                        top: 280 * _scanLineAnimation.value,
-                        left: 20,
-                        right: 20,
-                        child: Container(
-                          height: 2.5,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Colors.transparent, VColor.accent, VColor.accentGreen, Colors.transparent],
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(VRadius.xl - 1.5),
+                child: Stack(
+                  children: [
+                    // Real Camera feed from hardware sensor
+                    MobileScanner(
+                      controller: _scannerController,
+                      onDetect: (BarcodeCapture capture) {
+                        for (final b in capture.barcodes) {
+                          final val = b.rawValue;
+                          if (val != null && val.trim().isNotEmpty) {
+                            _handleBarcode(val.trim());
+                            break;
+                          }
+                        }
+                      },
+                      errorBuilder: (context, error, child) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.videocam_off_rounded,
+                                    color: Colors.orangeAccent, size: 36),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Camera Access Required',
+                                  style: TextStyle(
+                                      color: VColor.text,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Please grant camera permission to scan barcodes directly.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: VColor.textLow, fontSize: 11),
+                                ),
+                                const SizedBox(height: 10),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: VColor.accent,
+                                    foregroundColor: Colors.black,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 8),
+                                  ),
+                                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                                  label: const Text('Start Camera',
+                                      style: TextStyle(
+                                          fontSize: 12, fontWeight: FontWeight.bold)),
+                                  onPressed: () => _scannerController.start(),
+                                ),
+                              ],
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: VColor.accent.withValues(alpha: 0.8),
-                                blurRadius: 8,
-                                spreadRadius: 1,
+                          ),
+                        );
+                      },
+                    ),
+
+                    // Corner target brackets
+                    Positioned(
+                      top: 16,
+                      left: 16,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            top: BorderSide(color: VColor.accent, width: 3),
+                            left: BorderSide(color: VColor.accent, width: 3),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 16,
+                      right: 16,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            top: BorderSide(color: VColor.accent, width: 3),
+                            right: BorderSide(color: VColor.accent, width: 3),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 16,
+                      left: 16,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: VColor.accent, width: 3),
+                            left: BorderSide(color: VColor.accent, width: 3),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 16,
+                      right: 16,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: VColor.accent, width: 3),
+                            right: BorderSide(color: VColor.accent, width: 3),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Center Barcode Target Outline
+                    Center(
+                      child: Container(
+                        width: 200,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.white24, width: 1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.qr_code_2_rounded,
+                              size: 64, color: Colors.white30),
+                        ),
+                      ),
+                    ),
+
+                    // Sweeping laser animation line
+                    AnimatedBuilder(
+                      animation: _scanLineAnimation,
+                      builder: (context, child) {
+                        return Positioned(
+                          top: 290 * _scanLineAnimation.value,
+                          left: 20,
+                          right: 20,
+                          child: Container(
+                            height: 2.5,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Colors.transparent,
+                                  VColor.accent,
+                                  VColor.accentGreen,
+                                  Colors.transparent
+                                ],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: VColor.accent.withValues(alpha: 0.8),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    // Status badge top center
+                    Positioned(
+                      top: 14,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(VRadius.pill),
+                            border: Border.all(
+                                color: VColor.accentGreen.withValues(alpha: 0.4)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.fiber_manual_record,
+                                  color: VColor.accentGreen, size: 8),
+                              SizedBox(width: 6),
+                              Text(
+                                'LIVE CAMERA FEED ACTIVE',
+                                style: TextStyle(
+                                    color: VColor.accentGreen,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
                         ),
-                      );
-                    },
-                  ),
-
-                  // Status badge top center
-                  Positioned(
-                    top: 20,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black87,
-                          borderRadius: BorderRadius.circular(VRadius.pill),
-                          border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.4)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.fiber_manual_record, color: VColor.accentGreen, size: 8),
-                            SizedBox(width: 6),
-                            Text(
-                              'OPTICAL HUD READY',
-                              style: TextStyle(color: VColor.accentGreen, fontSize: 10, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: VSpace.base),

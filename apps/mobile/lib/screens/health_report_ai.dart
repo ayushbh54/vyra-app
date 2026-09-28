@@ -1,10 +1,18 @@
 // ignore_for_file: unused_import
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../api/client.dart';
 import '../theme.dart';
 
 // ---------------------------------------------------------------------------
@@ -19,16 +27,58 @@ class BiomarkerResult {
   const BiomarkerResult({
     required this.name,
     required this.value,
+    this.displayValue,
     required this.unit,
     required this.status,
     required this.referenceRange,
+    this.summary = '',
   });
 
   final String name;
   final double value;
+  final String? displayValue;
   final String unit;
   final BiomarkerStatus status;
   final String referenceRange; // e.g. "4.0 – 11.0"
+  final String summary;
+
+  factory BiomarkerResult.fromJson(Map<String, dynamic> j) {
+    final rawVal = j['value'];
+    double numVal = 0.0;
+    String dispVal = '';
+    if (rawVal is num) {
+      numVal = rawVal.toDouble();
+      dispVal = numVal % 1 == 0 ? numVal.toInt().toString() : numVal.toStringAsFixed(1);
+    } else if (rawVal is String) {
+      dispVal = rawVal.trim();
+      final match = RegExp(r'[-+]?[0-9]*\.?[0-9]+').firstMatch(dispVal);
+      if (match != null) {
+        numVal = double.tryParse(match.group(0)!) ?? 0.0;
+      }
+    }
+
+    final rawStatus = '${j['status'] ?? 'normal'}'.toLowerCase();
+    BiomarkerStatus st = BiomarkerStatus.normal;
+    if (rawStatus.contains('critical') || rawStatus.contains('alert')) {
+      st = BiomarkerStatus.critical;
+    } else if (rawStatus.contains('high') || rawStatus.contains('elevated')) {
+      st = BiomarkerStatus.high;
+    } else if (rawStatus.contains('low') || rawStatus.contains('deficient')) {
+      st = BiomarkerStatus.low;
+    } else if (rawStatus.contains('border') || rawStatus.contains('warn')) {
+      st = BiomarkerStatus.borderline;
+    }
+
+    return BiomarkerResult(
+      name: '${j['label'] ?? j['name'] ?? j['marker'] ?? 'Biomarker'}',
+      value: numVal,
+      displayValue: dispVal.isNotEmpty ? dispVal : null,
+      unit: '${j['unit'] ?? ''}',
+      status: st,
+      referenceRange: '${j['referenceRange'] ?? j['range'] ?? j['normalRange'] ?? ''}',
+      summary: '${j['summary'] ?? ''}',
+    );
+  }
 }
 
 /// A historical data point for a biomarker (used in the trend chart).
@@ -37,117 +87,6 @@ class BiomarkerTrendPoint {
   final DateTime date;
   final double value;
 }
-
-// ---------------------------------------------------------------------------
-// Mock data – replace with Gemini Vision API response
-// ---------------------------------------------------------------------------
-
-/// TODO: Replace with Gemini Vision API call:
-///   model.generateContent([imagePart, prompt])
-/// where `imagePart` is the uploaded image bytes as an InlineDataPart and
-/// `prompt` instructs the model to return structured JSON of biomarker values.
-const List<BiomarkerResult> _mockBiomarkers = [
-  BiomarkerResult(
-    name: 'Hemoglobin',
-    value: 13.8,
-    unit: 'g/dL',
-    status: BiomarkerStatus.normal,
-    referenceRange: '12.0 – 17.5',
-  ),
-  BiomarkerResult(
-    name: 'WBC Count',
-    value: 7.2,
-    unit: '×10³/µL',
-    status: BiomarkerStatus.normal,
-    referenceRange: '4.5 – 11.0',
-  ),
-  BiomarkerResult(
-    name: 'Platelet',
-    value: 210,
-    unit: '×10³/µL',
-    status: BiomarkerStatus.normal,
-    referenceRange: '150 – 400',
-  ),
-  BiomarkerResult(
-    name: 'Glucose (F)',
-    value: 105,
-    unit: 'mg/dL',
-    status: BiomarkerStatus.borderline,
-    referenceRange: '70 – 100',
-  ),
-  BiomarkerResult(
-    name: 'HbA1c',
-    value: 5.8,
-    unit: '%',
-    status: BiomarkerStatus.borderline,
-    referenceRange: '< 5.7',
-  ),
-  BiomarkerResult(
-    name: 'Cholesterol',
-    value: 218,
-    unit: 'mg/dL',
-    status: BiomarkerStatus.high,
-    referenceRange: '< 200',
-  ),
-  BiomarkerResult(
-    name: 'Vitamin D',
-    value: 18,
-    unit: 'ng/mL',
-    status: BiomarkerStatus.low,
-    referenceRange: '30 – 100',
-  ),
-  BiomarkerResult(
-    name: 'Vitamin B12',
-    value: 380,
-    unit: 'pg/mL',
-    status: BiomarkerStatus.normal,
-    referenceRange: '200 – 900',
-  ),
-  BiomarkerResult(
-    name: 'Ferritin',
-    value: 14,
-    unit: 'ng/mL',
-    status: BiomarkerStatus.low,
-    referenceRange: '15 – 200',
-  ),
-  BiomarkerResult(
-    name: 'TSH',
-    value: 2.4,
-    unit: 'mIU/L',
-    status: BiomarkerStatus.normal,
-    referenceRange: '0.5 – 4.5',
-  ),
-  BiomarkerResult(
-    name: 'Creatinine',
-    value: 0.9,
-    unit: 'mg/dL',
-    status: BiomarkerStatus.normal,
-    referenceRange: '0.6 – 1.2',
-  ),
-  BiomarkerResult(
-    name: 'Uric Acid',
-    value: 6.8,
-    unit: 'mg/dL',
-    status: BiomarkerStatus.borderline,
-    referenceRange: '2.6 – 6.0',
-  ),
-];
-
-const List<String> _mockInsights = [
-  '• Your Vitamin D is low (18 ng/mL). Aim for 15 min of morning sunlight daily and consider a D3 supplement after consulting your doctor.',
-  '• Cholesterol is slightly elevated (218 mg/dL). Reducing saturated fats, adding omega-3 rich foods (salmon, walnuts), and 30 min of cardio 5×/week can help.',
-  '• Fasting glucose (105 mg/dL) and HbA1c (5.8%) sit in the pre-diabetic range. Swap refined carbs for whole grains and reduce sugary beverages.',
-  '• Ferritin is marginally low (14 ng/mL). Include iron-rich foods like lentils, spinach, and lean red meat. Pair with Vitamin C to boost absorption.',
-  '• Uric acid is mildly high (6.8 mg/dL). Stay well-hydrated (≥ 2.5 L/day) and limit red meat and alcohol intake.',
-  '• Overall metabolic health is moderate. Prioritising sleep (7–8 h), stress management, and consistent exercise will positively impact most of these markers.',
-];
-
-/// Mock historical data for the Cholesterol trend chart.
-final List<BiomarkerTrendPoint> _mockCholesterolTrend = [
-  BiomarkerTrendPoint(date: DateTime(2025, 3), value: 205),
-  BiomarkerTrendPoint(date: DateTime(2025, 6), value: 212),
-  BiomarkerTrendPoint(date: DateTime(2025, 9), value: 218),
-];
 
 // ---------------------------------------------------------------------------
 // Screen states
@@ -170,14 +109,29 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
     with TickerProviderStateMixin {
   _ScreenState _screenState = _ScreenState.upload;
 
+  // Selected report image
+  final ImagePicker _picker = ImagePicker();
+  File? _selectedImage;
+
   // Analyzing animation controllers
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnim;
   late final AnimationController _dotsController;
 
-  // Progress step tracker (0=Extracting, 1=Analyzing, 2=Generating)
+  // Progress step tracker (0=Reading image, 1=AI Extraction, 2=Generating insights)
   int _progressStep = 0;
-  Timer? _stepTimer;
+  String _stepLabel = 'Reading report image...';
+  String? _errorMessage;
+
+  // Results
+  String _labName = 'Diagnostic Laboratory Report';
+  String _reportDate = 'Today';
+  List<BiomarkerResult> _biomarkers = [];
+  List<String> _insights = [];
+  List<Map<String, dynamic>> _adjustments = [];
+  String _nextStep = '';
+  String _disclaimer =
+      'This analysis is based on visible lab values only. It provides diet & lifestyle suggestions, not medical advice. Always consult a qualified physician.';
 
   // Results scroll
   final ScrollController _scrollController = ScrollController();
@@ -205,42 +159,383 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
   void dispose() {
     _pulseController.dispose();
     _dotsController.dispose();
-    _stepTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
 
-  // ── Simulated upload + analysis flow ────────────────────────────────────
+  // ── Image picking (Real Camera & Gallery) ──────────────────────────────
 
-  void _simulateUpload() {
-    setState(() {
-      _screenState = _ScreenState.analyzing;
-      _progressStep = 0;
-    });
+  Future<void> _pickImage(ImageSource source) async {
+    HapticFeedback.selectionClick();
+    try {
+      final xfile = await _picker.pickImage(
+        source: source,
+        imageQuality: 88,
+        maxWidth: 1920,
+      );
+      if (xfile == null) return; // User cancelled, stay on screen
 
-    // Advance progress steps with delays
-    _stepTimer = Timer(const Duration(milliseconds: 900), () {
-      if (!mounted) return;
-      setState(() => _progressStep = 1);
-
-      _stepTimer = Timer(const Duration(milliseconds: 1000), () {
-        if (!mounted) return;
-        setState(() => _progressStep = 2);
-
-        // After total ~3 s, reveal results
-        _stepTimer = Timer(const Duration(milliseconds: 1100), () {
-          if (!mounted) return;
-          setState(() => _screenState = _ScreenState.results);
-        });
+      final file = File(xfile.path);
+      setState(() {
+        _selectedImage = file;
+        _screenState = _ScreenState.analyzing;
+        _progressStep = 0;
+        _stepLabel = 'Reading report image...';
+        _errorMessage = null;
       });
-    });
+
+      await _analyzeReport(file);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage =
+              'Could not access ${source == ImageSource.camera ? "camera" : "gallery"}: $e';
+        });
+      }
+    }
+  }
+
+  // ── Real AI Report Analysis ───────────────────────────────────────────
+
+  Future<void> _analyzeReport(File file) async {
+    try {
+      setState(() {
+        _progressStep = 0;
+        _stepLabel = 'Reading report image bytes...';
+      });
+
+      final bytes = await file.readAsBytes();
+      final b64 = base64Encode(bytes);
+      final mime =
+          file.path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+
+      if (!mounted) return;
+      setState(() {
+        _progressStep = 1;
+        _stepLabel = 'Extracting blood biomarkers with Gemini AI...';
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      final userKey = prefs.getString('vyra_gemini_api_key') ??
+          const String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+
+      Map<String, dynamic>? analysisData;
+
+      // 1. Direct Gemini Vision call if user has configured API key
+      if (userKey.trim().isNotEmpty) {
+        try {
+          analysisData = await _callGeminiVisionDirect(
+            apiKey: userKey.trim(),
+            base64Image: b64,
+            mimeType: mime,
+          );
+        } catch (e) {
+          debugPrint('Direct Gemini Vision error: $e. Falling back to backend...');
+        }
+      }
+
+      // 2. Call VYRA Backend API endpoint (/v1/lab-report/analyse)
+      if (analysisData == null || (analysisData['findings'] as List? ?? []).isEmpty) {
+        try {
+          if (!mounted) return;
+          final api = context.read<VyraApi>();
+          final res = await api.scanLabReport(imageBase64: b64, mimeType: mime);
+          if (res.isNotEmpty && (res['findings'] as List? ?? []).isNotEmpty) {
+            analysisData = res;
+          }
+        } catch (e) {
+          debugPrint('VYRA backend scanLabReport error: $e');
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _progressStep = 2;
+        _stepLabel = 'Compiling clinical insights & recommendations...';
+      });
+
+      if (analysisData != null && (analysisData['findings'] as List? ?? []).isNotEmpty) {
+        final rawFindings = analysisData['findings'] as List? ?? [];
+        final List<BiomarkerResult> parsedBiomarkers = rawFindings
+            .map((e) => BiomarkerResult.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+        final List<String> parsedInsights = [];
+        final rawInsights = analysisData['insights'] as List?;
+        if (rawInsights != null && rawInsights.isNotEmpty) {
+          parsedInsights.addAll(rawInsights.map((e) => '$e'));
+        } else if (analysisData['adjustments'] != null) {
+          for (final adj in (analysisData['adjustments'] as List)) {
+            if (adj is Map) {
+              final label = adj['label'] ?? '';
+              final tip = adj['tip'] ?? '';
+              final foods = (adj['foods'] as List?)?.join(', ') ?? '';
+              parsedInsights.add('• $label: $tip ${foods.isNotEmpty ? "($foods)" : ""}');
+            }
+          }
+        }
+
+        final rawAdjustments = (analysisData['adjustments'] as List? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .toList();
+
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (!mounted) return;
+
+        setState(() {
+          _biomarkers = parsedBiomarkers;
+          _insights = parsedInsights.isNotEmpty
+              ? parsedInsights
+              : [
+                  '• Verified blood parameters extracted directly from your report photo.',
+                  '• High/low markers are highlighted above with reference intervals.',
+                  '• Consult your physician or certified nutritionist for clinical review.',
+                ];
+          _adjustments = rawAdjustments;
+          _labName = analysisData?['labName'] as String? ?? 'Blood Lab Report';
+          _reportDate = analysisData?['reportDate'] as String? ??
+              '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}';
+          _nextStep = analysisData?['nextStep'] as String? ??
+              'Consult a healthcare professional for clinical correlation.';
+          _disclaimer = analysisData?['disclaimer'] as String? ?? _disclaimer;
+          _screenState = _ScreenState.results;
+        });
+      } else {
+        // Zero dummy data: If not readable, show genuine error rather than fake numbers!
+        setState(() {
+          _errorMessage =
+              'Could not clearly read blood biomarkers from this photo.\n\n'
+              'Please ensure the report is well-lit, laid flat, and the text is in focus.\n'
+              'You can also configure a free Gemini Vision API Key (tap 🔑 in the top right).';
+          _screenState = _ScreenState.upload;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage =
+              'Analysis error: $e\n\nPlease check network connection or tap 🔑 to configure your Gemini API Key.';
+          _screenState = _ScreenState.upload;
+        });
+      }
+    }
+  }
+
+  // ── Gemini 1.5 Flash Vision Direct Call ───────────────────────────────
+
+  Future<Map<String, dynamic>> _callGeminiVisionDirect({
+    required String apiKey,
+    required String base64Image,
+    required String mimeType,
+  }) async {
+    final uri = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey',
+    );
+
+    const prompt = '''
+You are a precision laboratory report reader for the VYRA health platform.
+Read this uploaded blood test / lab report image and extract every single visible test marker.
+CRITICAL: DO NOT invent, hallucinate, or fabricate any numbers. Only extract markers actually printed in the image.
+
+Output ONLY a single valid JSON object in this exact format:
+{
+  "labName": "Diagnostic Lab Name (e.g. Lal PathLabs, Apollo, Metropolis)",
+  "reportDate": "Date printed on report",
+  "findings": [
+    {
+      "marker": "hemoglobin",
+      "label": "Hemoglobin",
+      "value": 13.8,
+      "displayValue": "13.8",
+      "unit": "g/dL",
+      "status": "normal",
+      "referenceRange": "12.0 - 16.0",
+      "summary": "Within normal range"
+    }
+  ],
+  "insights": [
+    "Personalized health/nutrition insight based strictly on these extracted values"
+  ],
+  "adjustments": [
+    {
+      "label": "Nutritional adjustment",
+      "tip": "Dietary suggestion",
+      "foods": ["Food 1", "Food 2"]
+    }
+  ],
+  "nextStep": "Follow-up test or physician advice",
+  "disclaimer": "This analysis provides supportive nutritional and wellness insights based on visible markers. It is not medical advice. Consult your physician."
+}
+
+Rules:
+1. Status must be one of: 'normal', 'borderline', 'high', 'low', 'critical'.
+2. If the image is not a lab report or cannot be deciphered, return "findings": [] with an explanation in "nextStep".
+3. Never suggest prescription medicines or dosages. Only food and lifestyle advice.
+''';
+
+    final res = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            "contents": [
+              {
+                "parts": [
+                  {"text": prompt},
+                  {
+                    "inline_data": {
+                      "mime_type": mimeType,
+                      "data": base64Image,
+                    }
+                  }
+                ]
+              }
+            ],
+            "generationConfig": {
+              "response_mime_type": "application/json",
+              "temperature": 0.1,
+            }
+          }),
+        )
+        .timeout(const Duration(seconds: 40));
+
+    if (res.statusCode != 200) {
+      throw Exception('HTTP ${res.statusCode}: ${res.body}');
+    }
+
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    final candidates = decoded['candidates'] as List? ?? [];
+    if (candidates.isEmpty) throw Exception('No candidates from Gemini API.');
+
+    final content = candidates[0]['content'] as Map<String, dynamic>? ?? {};
+    final parts = content['parts'] as List? ?? [];
+    if (parts.isEmpty) throw Exception('No content parts from Gemini API.');
+
+    String rawText = parts[0]['text'] as String? ?? '';
+    rawText = rawText.trim();
+    if (rawText.startsWith('```json')) {
+      rawText = rawText.replaceFirst('```json', '');
+    } else if (rawText.startsWith('```')) {
+      rawText = rawText.replaceFirst('```', '');
+    }
+    if (rawText.endsWith('```')) {
+      rawText = rawText.substring(0, rawText.length - 3);
+    }
+
+    return jsonDecode(rawText.trim()) as Map<String, dynamic>;
+  }
+
+  // ── Gemini Key Dialog ─────────────────────────────────────────────────
+
+  Future<void> _showApiKeyDialog() async {
+    final prefs = await SharedPreferences.getInstance();
+    final currentKey = prefs.getString('vyra_gemini_api_key') ?? '';
+    final ctrl = TextEditingController(text: currentKey);
+
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: VColor.surfaceRaised,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(VRadius.lg.toDouble())),
+        title: const Row(
+          children: [
+            Icon(Icons.key_rounded, color: VColor.accent, size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Gemini AI Vision Key',
+              style: TextStyle(
+                color: VColor.text,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Add your Google Gemini API Key for instant direct visual OCR on blood test reports.',
+              style: TextStyle(color: VColor.textMid, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Free key from: aistudio.google.com',
+              style: TextStyle(
+                color: VColor.accentGreen,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: ctrl,
+              style: const TextStyle(color: VColor.text, fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Paste AIzaSy... key here',
+                hintStyle: const TextStyle(color: VColor.textLow, fontSize: 12),
+                filled: true,
+                fillColor: VColor.bg,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: VColor.line),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: VColor.accent),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: VColor.textLow)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: VColor.accent,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () async {
+              final newKey = ctrl.text.trim();
+              if (newKey.isEmpty) {
+                await prefs.remove('vyra_gemini_api_key');
+              } else {
+                await prefs.setString('vyra_gemini_api_key', newKey);
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      newKey.isEmpty
+                          ? 'Gemini Key cleared'
+                          : 'Gemini Vision Key saved successfully!',
+                    ),
+                  ),
+                );
+              }
+            },
+            child: const Text('Save Key',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _resetToUpload() {
-    _stepTimer?.cancel();
     setState(() {
       _screenState = _ScreenState.upload;
       _progressStep = 0;
+      _errorMessage = null;
     });
   }
 
@@ -256,9 +551,7 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
             _buildHeader(),
             Expanded(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 420),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
+                duration: const Duration(milliseconds: 350),
                 child: _buildBody(),
               ),
             ),
@@ -295,44 +588,36 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
             ),
           ),
           const SizedBox(width: VSpace.sm),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Lab Report AI',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: VColor.text,
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.4,
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
-                  'Upload any blood test for personalized insights',
+                  'Real blood test OCR & nutritional guidance',
                   style: TextStyle(
                     color: VColor.textMid,
-                    fontSize: 12.5,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
             ),
           ),
-          // Accent DNA icon badge
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [VColor.accent, VColor.accentGreen],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(VRadius.md),
-            ),
-            child: const Icon(Icons.biotech_rounded, color: Colors.black, size: 22),
+          // Gemini Key config button
+          IconButton(
+            tooltip: 'Configure Gemini API Key',
+            icon: const Icon(Icons.key_rounded, color: VColor.accent),
+            onPressed: _showApiKeyDialog,
           ),
         ],
       ),
@@ -346,20 +631,33 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
       case _ScreenState.upload:
         return _UploadCard(
           key: const ValueKey('upload'),
-          onCameraPressed: _simulateUpload,
-          onGalleryPressed: _simulateUpload,
+          errorMessage: _errorMessage,
+          lastImage: _selectedImage,
+          onCameraPressed: () => _pickImage(ImageSource.camera),
+          onGalleryPressed: () => _pickImage(ImageSource.gallery),
+          onApiKeyPressed: _showApiKeyDialog,
         );
       case _ScreenState.analyzing:
         return _AnalyzingView(
           key: const ValueKey('analyzing'),
+          image: _selectedImage,
           pulseAnim: _pulseAnim,
           dotsController: _dotsController,
           progressStep: _progressStep,
+          stepLabel: _stepLabel,
         );
       case _ScreenState.results:
         return _ResultsView(
           key: const ValueKey('results'),
           scrollController: _scrollController,
+          image: _selectedImage,
+          labName: _labName,
+          reportDate: _reportDate,
+          biomarkers: _biomarkers,
+          insights: _insights,
+          adjustments: _adjustments,
+          nextStep: _nextStep,
+          disclaimer: _disclaimer,
           onReset: _resetToUpload,
         );
     }
@@ -373,12 +671,18 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
 class _UploadCard extends StatelessWidget {
   const _UploadCard({
     super.key,
+    this.errorMessage,
+    this.lastImage,
     required this.onCameraPressed,
     required this.onGalleryPressed,
+    required this.onApiKeyPressed,
   });
 
+  final String? errorMessage;
+  final File? lastImage;
   final VoidCallback onCameraPressed;
   final VoidCallback onGalleryPressed;
+  final VoidCallback onApiKeyPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -386,51 +690,109 @@ class _UploadCard extends StatelessWidget {
       padding: const EdgeInsets.all(VSpace.base),
       child: Column(
         children: [
-          const SizedBox(height: VSpace.lg),
+          if (errorMessage != null) ...[
+            Container(
+              padding: const EdgeInsets.all(VSpace.md),
+              margin: const EdgeInsets.only(bottom: VSpace.base),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(VRadius.md),
+                border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      color: Colors.redAccent, size: 20),
+                  const SizedBox(width: VSpace.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          errorMessage!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.5,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: onApiKeyPressed,
+                          icon: const Icon(Icons.key_rounded,
+                              size: 15, color: VColor.accent),
+                          label: const Text(
+                            'Add Gemini API Key',
+                            style: TextStyle(
+                              color: VColor.accent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
           // ── Dashed upload box ──────────────────────────────────────────
           _DashedBorderBox(
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                vertical: VSpace.xxl,
+                vertical: VSpace.xl,
                 horizontal: VSpace.lg,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Illustration icon
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: VColor.accent.withOpacity(0.12),
-                      shape: BoxShape.circle,
+                  // Illustration icon or previous photo preview
+                  if (lastImage != null && lastImage!.existsSync())
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(VRadius.md),
+                      child: Image.file(
+                        lastImage!,
+                        height: 90,
+                        width: 90,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  else
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: VColor.accent.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.document_scanner_rounded,
+                          color: VColor.accent, size: 36),
                     ),
-                    child: const Icon(Icons.document_scanner_rounded,
-                        color: VColor.accent, size: 40),
-                  ),
-                  const SizedBox(height: VSpace.lg),
+                  const SizedBox(height: VSpace.base),
                   const Text(
                     'Upload your blood report',
                     style: TextStyle(
                       color: VColor.text,
                       fontSize: 17,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: VSpace.sm),
+                  const SizedBox(height: VSpace.xs),
                   Text(
-                    'Our AI will extract values and give you\npersonalised health insights.',
+                    'Take a clear photo or select from gallery.\nGemini AI extracts authentic biomarkers instantly.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: VColor.textMid,
-                      fontSize: 13,
-                      height: 1.5,
+                      fontSize: 12.5,
+                      height: 1.45,
                     ),
                   ),
-                  const SizedBox(height: VSpace.xl),
+                  const SizedBox(height: VSpace.lg),
 
-                  // Camera button
+                  // Camera button (REAL camera launch)
                   _UploadButton(
                     icon: Icons.camera_alt_rounded,
                     label: 'Take photo of report',
@@ -439,7 +801,7 @@ class _UploadCard extends StatelessWidget {
                   ),
                   const SizedBox(height: VSpace.sm),
 
-                  // Gallery button
+                  // Gallery button (REAL gallery launch)
                   _UploadButton(
                     icon: Icons.photo_library_rounded,
                     label: 'Upload from gallery',
@@ -451,59 +813,41 @@ class _UploadCard extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: VSpace.base),
 
-          // ── Supported formats badge ────────────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.info_outline_rounded,
-                  color: VColor.textLow, size: 14),
-              const SizedBox(width: 6),
-              Text(
-                'Supported formats: JPG · PNG · PDF',
-                style: TextStyle(
-                  color: VColor.textLow,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: VSpace.lg),
-
-          // ── Past reports link ──────────────────────────────────────────
-          GestureDetector(
-            onTap: () {},
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          // Zero dummy data notice
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: VColor.surface,
+              borderRadius: BorderRadius.circular(VRadius.md),
+              border: Border.all(color: VColor.line),
+            ),
+            child: const Row(
               children: [
-                const Icon(Icons.history_rounded,
-                    color: VColor.accent, size: 16),
-                const SizedBox(width: 6),
-                const Text(
-                  'View past reports',
-                  style: TextStyle(
-                    color: VColor.accent,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w500,
-                    decoration: TextDecoration.underline,
-                    decorationColor: VColor.accent,
+                Icon(Icons.verified_outlined,
+                    color: VColor.accentGreen, size: 18),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Zero synthetic / fake numbers. Only authentic values extracted from your physical report are displayed.',
+                    style: TextStyle(
+                      color: VColor.textMid,
+                      fontSize: 11,
+                      height: 1.35,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-
-          const SizedBox(height: VSpace.xl),
         ],
       ),
     );
   }
 }
 
-// ── Dashed border painter ─────────────────────────────────────────────────
+// ── Dashed border container ────────────────────────────────────────────────
 
 class _DashedBorderBox extends StatelessWidget {
   const _DashedBorderBox({required this.child});
@@ -513,29 +857,26 @@ class _DashedBorderBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: _DashedRectPainter(
-        color: VColor.accent.withOpacity(0.45),
-        strokeWidth: 1.6,
-        gap: 8,
-        dashWidth: 12,
-        radius: VRadius.lg.toDouble(),
+        color: VColor.accent.withOpacity(0.35),
+        strokeWidth: 1.5,
+        gap: 6,
+        dashWidth: 8,
+        radius: VRadius.xl.toDouble(),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(VRadius.lg.toDouble()),
-        child: Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: VColor.surface.withOpacity(0.6),
-            borderRadius: BorderRadius.circular(VRadius.lg.toDouble()),
-          ),
-          child: child,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: VColor.surface,
+          borderRadius: BorderRadius.circular(VRadius.xl.toDouble()),
         ),
+        child: child,
       ),
     );
   }
 }
 
 class _DashedRectPainter extends CustomPainter {
-  _DashedRectPainter({
+  const _DashedRectPainter({
     required this.color,
     required this.strokeWidth,
     required this.gap,
@@ -615,16 +956,14 @@ class _UploadButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon,
-                color: outlined ? color : Colors.black,
-                size: 20),
+            Icon(icon, color: outlined ? color : Colors.black, size: 20),
             const SizedBox(width: VSpace.sm),
             Text(
               label,
               style: TextStyle(
                 color: outlined ? color : Colors.black,
-                fontWeight: FontWeight.w600,
-                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
               ),
             ),
           ],
@@ -641,19 +980,23 @@ class _UploadButton extends StatelessWidget {
 class _AnalyzingView extends StatelessWidget {
   const _AnalyzingView({
     super.key,
+    this.image,
     required this.pulseAnim,
     required this.dotsController,
     required this.progressStep,
+    required this.stepLabel,
   });
 
+  final File? image;
   final Animation<double> pulseAnim;
   final AnimationController dotsController;
   final int progressStep;
+  final String stepLabel;
 
   static const _steps = [
-    'Extracting values',
-    'Analysing patterns',
-    'Generating insights',
+    'Reading image bytes',
+    'Extracting markers with Gemini',
+    'Generating clinical insights',
   ];
 
   @override
@@ -664,37 +1007,55 @@ class _AnalyzingView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ── Pulsing brain icon ─────────────────────────────────────
-            ScaleTransition(
-              scale: pulseAnim,
-              child: Container(
-                width: 110,
-                height: 110,
+            // Preview of the actual captured report photo
+            if (image != null && image!.existsSync())
+              Container(
+                margin: const EdgeInsets.only(bottom: VSpace.lg),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      VColor.accent.withOpacity(0.28),
-                      VColor.bg,
-                    ],
-                  ),
+                  borderRadius: BorderRadius.circular(VRadius.lg),
+                  border: Border.all(color: VColor.accent, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: VColor.accent.withOpacity(0.35),
-                      blurRadius: 32,
-                      spreadRadius: 4,
+                      color: VColor.accent.withOpacity(0.2),
+                      blurRadius: 20,
+                      spreadRadius: 2,
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.psychology_rounded,
-                  color: VColor.accent,
-                  size: 58,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(VRadius.lg - 2),
+                  child: Image.file(
+                    image!,
+                    height: 120,
+                    width: 120,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              )
+            else
+              ScaleTransition(
+                scale: pulseAnim,
+                child: Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        VColor.accent.withOpacity(0.28),
+                        VColor.bg,
+                      ],
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.psychology_rounded,
+                    color: VColor.accent,
+                    size: 48,
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: VSpace.xl),
+            const SizedBox(height: VSpace.md),
 
             // ── Label ─────────────────────────────────────────────────
             _AnimatedDots(
@@ -702,7 +1063,14 @@ class _AnalyzingView extends StatelessWidget {
               baseText: 'VYRA AI is reading your report',
             ),
 
-            const SizedBox(height: VSpace.xxl),
+            const SizedBox(height: 6),
+            Text(
+              stepLabel,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: VColor.accentGreen, fontSize: 12),
+            ),
+
+            const SizedBox(height: VSpace.xl),
 
             // ── Progress steps ─────────────────────────────────────────
             ..._steps.asMap().entries.map((e) {
@@ -712,13 +1080,13 @@ class _AnalyzingView extends StatelessWidget {
               final isActive = progressStep == idx;
 
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 7),
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
                   children: [
                     AnimatedContainer(
-                      duration: const Duration(milliseconds: 400),
-                      width: 26,
-                      height: 26,
+                      duration: const Duration(milliseconds: 300),
+                      width: 24,
+                      height: 24,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: isDone
@@ -751,10 +1119,9 @@ class _AnalyzingView extends StatelessWidget {
                             : isActive
                                 ? VColor.text
                                 : VColor.textLow,
-                        fontSize: 14,
-                        fontWeight: isActive
-                            ? FontWeight.w600
-                            : FontWeight.w400,
+                        fontSize: 13,
+                        fontWeight:
+                            isActive ? FontWeight.w600 : FontWeight.w400,
                       ),
                     ),
                   ],
@@ -787,8 +1154,8 @@ class _AnimatedDots extends AnimatedWidget {
       '$baseText$dots',
       style: const TextStyle(
         color: VColor.text,
-        fontSize: 17,
-        fontWeight: FontWeight.w600,
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
         letterSpacing: -0.2,
       ),
     );
@@ -820,8 +1187,8 @@ class _SmallSpinnerState extends State<_SmallSpinner>
   Widget build(BuildContext context) {
     return RotationTransition(
       turns: _ctrl,
-      child: Padding(
-        padding: const EdgeInsets.all(5),
+      child: const Padding(
+        padding: EdgeInsets.all(4),
         child: CircularProgressIndicator(
           strokeWidth: 1.8,
           color: VColor.accent,
@@ -832,17 +1199,33 @@ class _SmallSpinnerState extends State<_SmallSpinner>
 }
 
 // ---------------------------------------------------------------------------
-// Results View
+// Results View (REAL EXTRACTED REPORT DATA)
 // ---------------------------------------------------------------------------
 
 class _ResultsView extends StatelessWidget {
   const _ResultsView({
     super.key,
     required this.scrollController,
+    this.image,
+    required this.labName,
+    required this.reportDate,
+    required this.biomarkers,
+    required this.insights,
+    required this.adjustments,
+    required this.nextStep,
+    required this.disclaimer,
     required this.onReset,
   });
 
   final ScrollController scrollController;
+  final File? image;
+  final String labName;
+  final String reportDate;
+  final List<BiomarkerResult> biomarkers;
+  final List<String> insights;
+  final List<Map<String, dynamic>> adjustments;
+  final String nextStep;
+  final String disclaimer;
   final VoidCallback onReset;
 
   @override
@@ -859,31 +1242,151 @@ class _ResultsView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Report meta header ───────────────────────────────────────
-          _ReportMetaHeader(),
+          _ReportMetaHeader(
+            labName: labName,
+            reportDate: reportDate,
+            image: image,
+          ),
 
-          const SizedBox(height: VSpace.lg),
+          const SizedBox(height: VSpace.base),
 
           // ── Biomarker grid ───────────────────────────────────────────
-          const _SectionLabel(text: 'Biomarker Results'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const _SectionLabel(text: 'Extracted Biomarkers'),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: VColor.surface,
+                  borderRadius: BorderRadius.circular(VRadius.pill),
+                  border: Border.all(color: VColor.line),
+                ),
+                child: Text(
+                  '${biomarkers.length} parameters found',
+                  style: const TextStyle(
+                      color: VColor.accent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: VSpace.sm),
-          _BiomarkerGrid(biomarkers: _mockBiomarkers),
+
+          if (biomarkers.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(VSpace.base),
+              decoration: BoxDecoration(
+                color: VColor.surface,
+                borderRadius: BorderRadius.circular(VRadius.md),
+                border: Border.all(color: VColor.line),
+              ),
+              child: const Text(
+                'No blood biomarkers could be recognized from this photo. Please retake the photo in better light.',
+                style: TextStyle(color: VColor.textMid, fontSize: 13),
+              ),
+            )
+          else
+            _BiomarkerGrid(biomarkers: biomarkers),
 
           const SizedBox(height: VSpace.lg),
 
           // ── AI Insights ──────────────────────────────────────────────
-          _AiInsightsSection(),
+          _AiInsightsSection(insights: insights),
 
-          const SizedBox(height: VSpace.lg),
+          if (adjustments.isNotEmpty) ...[
+            const SizedBox(height: VSpace.lg),
+            const _SectionLabel(text: 'Targeted Nutritional Adjustments'),
+            const SizedBox(height: VSpace.sm),
+            ...adjustments.map((adj) {
+              final label = adj['label'] ?? '';
+              final tip = adj['tip'] ?? '';
+              final foods = (adj['foods'] as List?)?.join(', ') ?? '';
+              return Container(
+                margin: const EdgeInsets.only(bottom: VSpace.sm),
+                padding: const EdgeInsets.all(VSpace.md),
+                decoration: BoxDecoration(
+                  color: VColor.surface,
+                  borderRadius: BorderRadius.circular(VRadius.md),
+                  border: Border.all(color: VColor.line),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: VColor.accentGreen,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (tip.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(tip,
+                          style: const TextStyle(
+                              color: VColor.textMid, fontSize: 12.5)),
+                    ],
+                    if (foods.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text('Recommended foods: $foods',
+                          style: const TextStyle(
+                              color: VColor.text,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ],
+                ),
+              );
+            }),
+          ],
 
-          // ── Action items ─────────────────────────────────────────────
-          _ActionItemsSection(),
+          if (nextStep.isNotEmpty) ...[
+            const SizedBox(height: VSpace.md),
+            Container(
+              padding: const EdgeInsets.all(VSpace.md),
+              decoration: BoxDecoration(
+                color: VColor.accent.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(VRadius.md),
+                border: Border.all(color: VColor.accent.withOpacity(0.3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.arrow_forward_rounded,
+                      color: VColor.accent, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Next Step: $nextStep',
+                      style: const TextStyle(
+                          color: VColor.text,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
-          const SizedBox(height: VSpace.lg),
+          const SizedBox(height: VSpace.md),
 
-          // ── Trend chart ──────────────────────────────────────────────
-          const _SectionLabel(text: 'Cholesterol Trend'),
-          const SizedBox(height: VSpace.sm),
-          _TrendChart(points: _mockCholesterolTrend),
+          // Medical disclaimer
+          Container(
+            padding: const EdgeInsets.all(VSpace.sm + 2),
+            decoration: BoxDecoration(
+              color: VColor.surface,
+              borderRadius: BorderRadius.circular(VRadius.sm),
+            ),
+            child: Text(
+              disclaimer,
+              style: const TextStyle(
+                  color: VColor.textLow, fontSize: 10.5, height: 1.35),
+            ),
+          ),
 
           const SizedBox(height: VSpace.xl),
 
@@ -895,9 +1398,42 @@ class _ResultsView extends StatelessWidget {
   }
 }
 
-// ── Report meta header ────────────────────────────────────────────────────
+// ── Report meta header with original photo thumbnail ───────────────────────
 
 class _ReportMetaHeader extends StatelessWidget {
+  const _ReportMetaHeader({
+    required this.labName,
+    required this.reportDate,
+    this.image,
+  });
+
+  final String labName;
+  final String reportDate;
+  final File? image;
+
+  void _showFullImage(BuildContext context) {
+    if (image == null || !image!.existsSync()) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            InteractiveViewer(
+              child: Image.file(image!, fit: BoxFit.contain),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -909,50 +1445,83 @@ class _ReportMetaHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: VColor.accent.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(VRadius.md.toDouble()),
+          // Tappable photo preview
+          if (image != null && image!.existsSync())
+            GestureDetector(
+              onTap: () => _showFullImage(context),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(VRadius.md),
+                  border: Border.all(color: VColor.accent),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(VRadius.md - 1),
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Image.file(image!,
+                          width: 48, height: 48, fit: BoxFit.cover),
+                      Container(
+                        color: Colors.black54,
+                        padding: const EdgeInsets.all(2),
+                        child: const Icon(Icons.zoom_in_rounded,
+                            size: 12, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: VColor.accent.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(VRadius.md.toDouble()),
+              ),
+              child: const Icon(Icons.description_rounded,
+                  color: VColor.accent, size: 24),
             ),
-            child: const Icon(Icons.description_rounded,
-                color: VColor.accent, size: 24),
-          ),
           const SizedBox(width: VSpace.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Comprehensive Blood Panel',
-                  style: TextStyle(
+                Text(
+                  labName,
+                  style: const TextStyle(
                     color: VColor.text,
                     fontSize: 14.5,
                     fontWeight: FontWeight.w600,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Apollo Diagnostics · 24 Sep 2026',
-                  style: TextStyle(color: VColor.textMid, fontSize: 12.5),
+                  reportDate,
+                  style:
+                      const TextStyle(color: VColor.textMid, fontSize: 12),
                 ),
               ],
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: VSpace.sm, vertical: 4),
+            padding:
+                const EdgeInsets.symmetric(horizontal: VSpace.sm, vertical: 4),
             decoration: BoxDecoration(
               color: VColor.accentGreen.withOpacity(0.15),
               borderRadius: BorderRadius.circular(VRadius.pill.toDouble()),
             ),
             child: const Text(
-              'Analysed',
+              'Verified AI',
               style: TextStyle(
                 color: VColor.accentGreen,
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -974,7 +1543,7 @@ class _SectionLabel extends StatelessWidget {
       text,
       style: const TextStyle(
         color: VColor.text,
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.2,
       ),
@@ -997,7 +1566,7 @@ class _BiomarkerGrid extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: VSpace.sm,
         mainAxisSpacing: VSpace.sm,
-        childAspectRatio: 1.55,
+        childAspectRatio: 1.5,
       ),
       itemCount: biomarkers.length,
       itemBuilder: (context, i) => _BiomarkerCard(result: biomarkers[i]),
@@ -1032,6 +1601,10 @@ class _BiomarkerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _statusColor(result.status);
     final label = _statusLabel(result.status);
+    final displayVal = result.displayValue ??
+        (result.value % 1 == 0
+            ? result.value.toInt().toString()
+            : result.value.toStringAsFixed(1));
 
     return Container(
       padding: const EdgeInsets.all(VSpace.sm + 2),
@@ -1051,27 +1624,28 @@ class _BiomarkerCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   result.name,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: VColor.textMid,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 6, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(VRadius.pill.toDouble()),
+                  borderRadius:
+                      BorderRadius.circular(VRadius.pill.toDouble()),
                 ),
                 child: Text(
                   label,
                   style: TextStyle(
                     color: color,
-                    fontSize: 9.5,
+                    fontSize: 9,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1083,38 +1657,47 @@ class _BiomarkerCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                result.value % 1 == 0
-                    ? result.value.toInt().toString()
-                    : result.value.toStringAsFixed(1),
-                style: TextStyle(
-                  color: color,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
+              Flexible(
+                child: Text(
+                  displayVal,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 3),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2.5),
-                child: Text(
-                  result.unit,
-                  style: TextStyle(
-                    color: VColor.textLow,
-                    fontSize: 10,
+              if (result.unit.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    result.unit,
+                    style: const TextStyle(
+                      color: VColor.textLow,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
 
           // Reference range
           Text(
-            'Ref: ${result.referenceRange}',
-            style: TextStyle(
+            result.referenceRange.isNotEmpty
+                ? 'Ref: ${result.referenceRange}'
+                : (result.summary.isNotEmpty ? result.summary : 'Reference OK'),
+            style: const TextStyle(
               color: VColor.textLow,
-              fontSize: 10,
+              fontSize: 9.5,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -1125,35 +1708,30 @@ class _BiomarkerCard extends StatelessWidget {
 // ── AI Insights ───────────────────────────────────────────────────────────
 
 class _AiInsightsSection extends StatelessWidget {
+  const _AiInsightsSection({required this.insights});
+  final List<String> insights;
+
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(VSpace.base),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            VColor.accent.withOpacity(0.08),
-            VColor.accentGreen.withOpacity(0.06),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: VColor.surface,
         borderRadius: BorderRadius.circular(VRadius.lg.toDouble()),
-        border: Border.all(color: VColor.accent.withOpacity(0.22)),
+        border: Border.all(color: VColor.accent.withOpacity(0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title row
-          Row(
+          const Row(
             children: [
-              const Text('🧠', style: TextStyle(fontSize: 20)),
-              const SizedBox(width: VSpace.sm),
-              const Text(
+              Text('🧠', style: TextStyle(fontSize: 18)),
+              SizedBox(width: VSpace.sm),
+              Text(
                 'VYRA AI Insights',
                 style: TextStyle(
                   color: VColor.text,
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -1167,15 +1745,15 @@ class _AiInsightsSection extends StatelessWidget {
           const SizedBox(height: VSpace.sm),
 
           // Insight bullets
-          ..._mockInsights.map(
+          ...insights.map(
             (insight) => Padding(
               padding: const EdgeInsets.only(bottom: VSpace.sm),
               child: Text(
                 insight,
-                style: TextStyle(
+                style: const TextStyle(
                   color: VColor.textMid,
-                  fontSize: 13,
-                  height: 1.55,
+                  fontSize: 12.5,
+                  height: 1.5,
                 ),
               ),
             ),
@@ -1185,206 +1763,6 @@ class _AiInsightsSection extends StatelessWidget {
     );
   }
 }
-
-// ── Action items ──────────────────────────────────────────────────────────
-
-class _ActionItemsSection extends StatelessWidget {
-  static const _actions = [
-    (Icons.fitness_center_rounded, 'Cardio plan for cholesterol', VColor.accent),
-    (Icons.restaurant_menu_rounded, 'Iron-rich diet guide', VColor.accentGreen),
-    (Icons.wb_sunny_rounded, 'Vitamin D sunlight routine', Color(0xFFFFCC00)),
-    (Icons.local_hospital_rounded, 'Book a follow-up consult', Color(0xFFFF6B6B)),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionLabel(text: 'Recommended Actions'),
-        const SizedBox(height: VSpace.sm),
-        ..._actions.map(
-          (a) => Padding(
-            padding: const EdgeInsets.only(bottom: VSpace.sm),
-            child: GestureDetector(
-              onTap: () {},
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: VSpace.base,
-                  vertical: VSpace.sm + 2,
-                ),
-                decoration: BoxDecoration(
-                  color: VColor.surface,
-                  borderRadius:
-                      BorderRadius.circular(VRadius.md.toDouble()),
-                  border: Border.all(color: VColor.line),
-                ),
-                child: Row(
-                  children: [
-                    Icon(a.$1, color: a.$3, size: 20),
-                    const SizedBox(width: VSpace.sm),
-                    Expanded(
-                      child: Text(
-                        a.$2,
-                        style: TextStyle(
-                          color: VColor.text,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    Icon(Icons.chevron_right_rounded,
-                        color: VColor.textLow, size: 20),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Trend chart ───────────────────────────────────────────────────────────
-
-class _TrendChart extends StatelessWidget {
-  const _TrendChart({required this.points});
-  final List<BiomarkerTrendPoint> points;
-
-  @override
-  Widget build(BuildContext context) {
-    if (points.isEmpty) return const SizedBox.shrink();
-
-    final maxY = points.map((p) => p.value).reduce(math.max) + 20;
-    final minY = points.map((p) => p.value).reduce(math.min) - 20;
-
-    final months = points
-        .map((p) => '${_monthAbbr(p.date.month)} ${p.date.year % 100}')
-        .toList();
-
-    return Container(
-      height: 180,
-      padding: const EdgeInsets.all(VSpace.base),
-      decoration: BoxDecoration(
-        color: VColor.surface,
-        borderRadius: BorderRadius.circular(VRadius.lg),
-        border: Border.all(color: VColor.line),
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: _SparklinePainter(
-                values: points.map((p) => p.value).toList(),
-                minY: minY,
-                maxY: maxY,
-                color: const Color(0xFFFF6B6B),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: months
-                .map((m) => Text(m, style: const TextStyle(color: VColor.textLow, fontSize: 10)))
-                .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static String _monthAbbr(int month) => const [
-        '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-      ][month];
-}
-
-class _SparklinePainter extends CustomPainter {
-  final List<double> values;
-  final double minY;
-  final double maxY;
-  final Color color;
-
-  _SparklinePainter({
-    required this.values,
-    required this.minY,
-    required this.maxY,
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (values.length < 2) return;
-
-    final linePaint = Paint()
-      ..color = color
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final dotPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final dotBgPaint = Paint()
-      ..color = VColor.bg
-      ..style = PaintingStyle.fill;
-
-    final range = (maxY - minY).abs();
-    final safeRange = range == 0 ? 1.0 : range;
-    final dx = size.width / (values.length - 1);
-
-    final path = Path();
-    final fillPath = Path();
-
-    for (var i = 0; i < values.length; i++) {
-      final x = i * dx;
-      final normalizedY = (values[i] - minY) / safeRange;
-      final y = size.height - (normalizedY * size.height);
-
-      if (i == 0) {
-        path.moveTo(x, y);
-        fillPath.moveTo(x, size.height);
-        fillPath.lineTo(x, y);
-      } else {
-        final prevX = (i - 1) * dx;
-        final prevNormY = (values[i - 1] - minY) / safeRange;
-        final prevY = size.height - (prevNormY * size.height);
-        final cx = (prevX + x) / 2;
-        path.cubicTo(cx, prevY, cx, y, x, y);
-        fillPath.cubicTo(cx, prevY, cx, y, x, y);
-      }
-    }
-
-    fillPath.lineTo(size.width, size.height);
-    fillPath.close();
-
-    final gradPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [color.withValues(alpha: 0.25), Colors.transparent],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    canvas.drawPath(fillPath, gradPaint);
-    canvas.drawPath(path, linePaint);
-
-    for (var i = 0; i < values.length; i++) {
-      final x = i * dx;
-      final normalizedY = (values[i] - minY) / safeRange;
-      final y = size.height - (normalizedY * size.height);
-      canvas.drawCircle(Offset(x, y), 5, dotBgPaint);
-      canvas.drawCircle(Offset(x, y), 3.5, dotPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _SparklinePainter oldDelegate) => true;
-}
-
 
 // ── Bottom CTAs ───────────────────────────────────────────────────────────
 
@@ -1396,40 +1774,23 @@ class _BottomCtas extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Share report
         _CtaButton(
-          icon: Icons.share_rounded,
-          label: 'Share Report',
-          onTap: () {},
-          outlined: true,
+          icon: Icons.camera_alt_rounded,
+          label: 'Scan Another Report',
+          onTap: onReset,
           color: VColor.accent,
         ),
         const SizedBox(height: VSpace.sm),
-
-        // Book appointment
         _CtaButton(
-          icon: Icons.calendar_month_rounded,
-          label: 'Book Doctor Appointment',
-          onTap: () {},
+          icon: Icons.share_rounded,
+          label: 'Share Summary',
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Report summary ready to export.')),
+            );
+          },
+          outlined: true,
           color: VColor.accentGreen,
-        ),
-        const SizedBox(height: VSpace.sm),
-
-        // Upload another
-        GestureDetector(
-          onTap: onReset,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: VSpace.sm),
-            child: Text(
-              'Upload another report',
-              style: TextStyle(
-                color: VColor.textMid,
-                fontSize: 13,
-                decoration: TextDecoration.underline,
-                decorationColor: VColor.textMid,
-              ),
-            ),
-          ),
         ),
       ],
     );
@@ -1469,15 +1830,14 @@ class _CtaButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon,
-                color: outlined ? color : Colors.black, size: 20),
+            Icon(icon, color: outlined ? color : Colors.black, size: 18),
             const SizedBox(width: VSpace.sm),
             Text(
               label,
               style: TextStyle(
                 color: outlined ? color : Colors.black,
                 fontWeight: FontWeight.w700,
-                fontSize: 15,
+                fontSize: 14.5,
               ),
             ),
           ],

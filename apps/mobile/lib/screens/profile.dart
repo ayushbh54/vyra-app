@@ -12,6 +12,7 @@ import 'edit_profile.dart';
 import 'emergency_contacts.dart';
 import 'first_aid.dart';
 import 'food.dart';
+import 'health_report_ai.dart';
 import 'health_sync.dart';
 import 'lab_report.dart';
 import 'leaderboard.dart';
@@ -280,7 +281,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   label: 'Lab Report Scan',
                   subtitle: 'AI reads blood markers, suggests diet tips',
                   onTap: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const LabReportScreen())),
+                      MaterialPageRoute(builder: (_) => const HealthReportAiScreen())),
                 ),
                 const Divider(height: 1, color: VColor.line),
                 _QuickLink(
