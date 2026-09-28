@@ -353,7 +353,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                           }
                         }
                       },
-                      errorBuilder: (context, error, child) {
+                      errorBuilder: (context, error) {
                         return Center(
                           child: Padding(
                             padding: const EdgeInsets.all(16),
