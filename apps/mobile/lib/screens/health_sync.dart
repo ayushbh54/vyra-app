@@ -29,10 +29,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
 
   final HealthSyncService _healthService = HealthSyncService();
 
-  bool _checkingStatus = true;
   bool _connected = false;
   bool _usePhoneSensors = false;
-  bool _requesting = false;
   bool _syncing = false;
   String? _error;
   DateTime? _lastSyncedAt;
@@ -50,11 +48,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
   bool _isConnecting = false;
   String _connectionStatusText = "Disconnected";
 
-  // Telemetry values
-  int _liveHeartRate = 72;
-  int _liveSpo2 = 98;
-  int _liveSystolicBp = 120;
-  int _liveDiastolicBp = 80;
+  // Telemetry values (Zero until authentic physical reading arrives)
+  int _liveHeartRate = 0;
+  int _liveSpo2 = 0;
   
   late AnimationController _heartPulseController;
 
@@ -98,12 +94,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
       setState(() {
         _usePhoneSensors = phoneSensors;
         _connected = granted || phoneSensors || _isRealBleConnected;
-        _checkingStatus = false;
       });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _checkingStatus = false);
-    }
+    } catch (_) {}
   }
 
   // ─── Real Hardware Bluetooth LE Scanning & Pairing ─────────────────────────
@@ -113,8 +105,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     final connectStatus = await Permission.bluetoothConnect.request();
     final locationStatus = await Permission.location.request();
 
-    return (scanStatus.isGranted || scanStatus.isLimited) &&
-           (connectStatus.isGranted || connectStatus.isLimited);
+    final bleGranted = (scanStatus.isGranted || scanStatus.isLimited) &&
+                       (connectStatus.isGranted || connectStatus.isLimited);
+    final locationGranted = locationStatus.isGranted || locationStatus.isLimited;
+
+    return bleGranted || locationGranted;
   }
 
   Future<void> _startRealBleScan(StateSetter setModalState) async {
@@ -259,8 +254,6 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
               setState(() {
                 if (telemetry.heartRateBpm != null) _liveHeartRate = telemetry.heartRateBpm!;
                 if (telemetry.bloodOxygenSpo2 != null) _liveSpo2 = telemetry.bloodOxygenSpo2!;
-                if (telemetry.systolicBp != null) _liveSystolicBp = telemetry.systolicBp!;
-                if (telemetry.diastolicBp != null) _liveDiastolicBp = telemetry.diastolicBp!;
                 if (telemetry.steps != null && telemetry.steps! > 0) {
                   _lastSummary['steps'] = telemetry.steps!;
                   _lastSummary['caloriesBurned'] = (telemetry.steps! * 0.04).round();
@@ -378,20 +371,19 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
               });
             }
 
-            // Filter and sort: smartwatches / HiWatch first
-            final List<ScanResult> namedDevices = _scanResults.where((r) {
-              final n = r.device.platformName.trim();
-              final advN = r.advertisementData.advName.trim();
-              return n.isNotEmpty || advN.isNotEmpty;
-            }).toList();
-
-            namedDevices.sort((a, b) {
+            // Prioritize recognized smartwatches, then named devices, then all devices
+            final List<ScanResult> allDevices = List<ScanResult>.from(_scanResults);
+            allDevices.sort((a, b) {
               final aName = (a.device.platformName.isNotEmpty ? a.device.platformName : a.advertisementData.advName).toLowerCase();
               final bName = (b.device.platformName.isNotEmpty ? b.device.platformName : b.advertisementData.advName).toLowerCase();
               final aMatch = aName.contains('hiwatch') || aName.contains('t800') || aName.contains('fitpro') || aName.contains('watch');
               final bMatch = bName.contains('hiwatch') || bName.contains('t800') || bName.contains('fitpro') || bName.contains('watch');
               if (aMatch && !bMatch) return -1;
               if (!aMatch && bMatch) return 1;
+              final aHas = aName.trim().isNotEmpty;
+              final bHas = bName.trim().isNotEmpty;
+              if (aHas && !bHas) return -1;
+              if (!aHas && bHas) return 1;
               return b.rssi.compareTo(a.rssi);
             });
 
@@ -470,7 +462,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                               const Icon(Icons.check_circle_rounded, color: VColor.accentGreen, size: 16),
                             const SizedBox(width: 8),
                             Text(
-                              "${namedDevices.length} devices found in room",
+                              "${allDevices.length} devices found in room",
                               style: const TextStyle(color: VColor.textMid, fontSize: 12, fontWeight: FontWeight.w700),
                             ),
                           ],
@@ -517,7 +509,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
 
                   // Device List
                   Expanded(
-                    child: namedDevices.isEmpty
+                    child: allDevices.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -546,15 +538,17 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                             ),
                           )
                         : ListView.separated(
-                            itemCount: namedDevices.length,
+                            itemCount: allDevices.length,
                             separatorBuilder: (_, __) => const Divider(color: VColor.lineSoft, height: 8),
                             itemBuilder: (context, index) {
-                              final item = namedDevices[index];
+                              final item = allDevices[index];
                               final rawName = item.device.platformName.isNotEmpty
                                   ? item.device.platformName
                                   : item.advertisementData.advName;
-                              final name = rawName.isNotEmpty ? rawName : "Bluetooth Device";
                               final mac = item.device.remoteId.str;
+                              final name = rawName.isNotEmpty
+                                  ? rawName
+                                  : "BLE Device (${mac.length > 8 ? mac.substring(mac.length - 8) : mac})";
                               final isHiWatch = name.toLowerCase().contains('hiwatch') ||
                                                 name.toLowerCase().contains('t800') ||
                                                 name.toLowerCase().contains('fitpro') ||
@@ -821,13 +815,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
 
   Future<void> _connectHealthPlatform() async {
     setState(() {
-      _requesting = true;
       _error = null;
     });
     final granted = await _healthService.requestPermissions();
     if (!mounted) return;
     setState(() {
-      _requesting = false;
       _connected = granted || _usePhoneSensors || _isRealBleConnected;
       if (!granted) {
         _error =
@@ -845,13 +837,13 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     try {
       Map<String, num> summary = {};
       if (_isRealBleConnected) {
+        final currentSteps = _lastSummary['steps']?.toInt() ?? 0;
+        final currentKcal = _lastSummary['caloriesBurned']?.toInt() ?? (currentSteps > 0 ? (currentSteps * 0.04).round() : 0);
         summary = {
-          'steps': _lastSummary['steps'] ?? 6420,
-          'caloriesBurned': _lastSummary['caloriesBurned'] ?? 356,
-          'heartRateBpm': _liveHeartRate,
-          'bloodOxygenSpo2': _liveSpo2,
-          'systolicBp': _liveSystolicBp,
-          'diastolicBp': _liveDiastolicBp,
+          'steps': currentSteps,
+          'caloriesBurned': currentKcal,
+          if (_liveHeartRate > 0) 'heartRateBpm': _liveHeartRate,
+          if (_liveSpo2 > 0) 'bloodOxygenSpo2': _liveSpo2,
         };
       } else if (!_usePhoneSensors) {
         summary = await _healthService.fetchTodaySummary();
@@ -1238,7 +1230,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          "$_liveHeartRate",
+                          _liveHeartRate > 0 ? "$_liveHeartRate" : "0",
                           style: const TextStyle(
                             color: VColor.text,
                             fontSize: 22,
@@ -1251,27 +1243,6 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                     const Text("HEART RATE", style: TextStyle(color: VColor.textMid, fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 ),
-                // Blood Pressure
-                Column(
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.speed_rounded, color: Colors.amberAccent, size: 18),
-                        const SizedBox(width: 4),
-                        Text(
-                          "$_liveSystolicBp/$_liveDiastolicBp",
-                          style: const TextStyle(
-                            color: VColor.text,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Text("BLOOD PRESSURE", style: TextStyle(color: VColor.textMid, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ],
-                ),
                 // SpO2
                 Column(
                   children: [
@@ -1281,7 +1252,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                         const Icon(Icons.water_drop_rounded, color: VColor.accent, size: 18),
                         const SizedBox(width: 4),
                         Text(
-                          "$_liveSpo2%",
+                          _liveSpo2 > 0 ? "$_liveSpo2%" : "0%",
                           style: const TextStyle(
                             color: VColor.text,
                             fontSize: 22,
@@ -1291,6 +1262,27 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                       ],
                     ),
                     const Text("BLOOD OXYGEN", style: TextStyle(color: VColor.textMid, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                // Watch Steps
+                Column(
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.directions_walk_rounded, color: VColor.accentOrange, size: 18),
+                        const SizedBox(width: 4),
+                        Text(
+                          "${_lastSummary['steps'] ?? 0}",
+                          style: const TextStyle(
+                            color: VColor.text,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Text("WATCH STEPS", style: TextStyle(color: VColor.textMid, fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ],
@@ -1303,14 +1295,14 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
               children: [
                 OutlinedButton.icon(
                   onPressed: () => _sendRealBleCommand(
-                    HiWatchProProtocol.buildStartBloodPressureMeasureCommand(),
-                    "Measure Blood Pressure",
+                    HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
+                    "Measure Heart Rate",
                   ),
-                  icon: const Icon(Icons.speed_rounded, size: 15),
-                  label: const Text("Measure BP", style: TextStyle(fontSize: 11)),
+                  icon: const Icon(Icons.favorite_rounded, size: 15),
+                  label: const Text("Measure HR", style: TextStyle(fontSize: 11)),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.amberAccent,
-                    side: const BorderSide(color: Colors.amberAccent),
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   ),
                 ),

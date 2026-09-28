@@ -3394,11 +3394,6 @@
                 </div>
                 <!-- Live Biometrics Stream Grid -->
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px;">
-                  <div style="background:rgba(255,209,102,0.08); border:1px solid rgba(255,209,102,0.3); border-radius:12px; padding:12px; text-align:center;">
-                    <div style="font-size:11px; color:var(--text-muted); font-weight:700;">BLOOD PRESSURE</div>
-                    <div id="watchLiveBp" style="font-size:24px; font-weight:900; color:#FFD166; margin-top:4px;">🩺 118/78</div>
-                    <div style="font-size:10px; color:#FFD166;">HiWatch Pro GATT</div>
-                  </div>
                   <div style="background:rgba(255,71,87,0.08); border:1px solid rgba(255,71,87,0.3); border-radius:12px; padding:12px; text-align:center;">
                     <div style="font-size:11px; color:var(--text-muted); font-weight:700;">HEART RATE (BPM)</div>
                     <div id="watchLiveBpm" style="font-size:24px; font-weight:900; color:#FF4757; margin-top:4px;">❤️ 74</div>
@@ -8619,7 +8614,7 @@ function initThreeBackground() {
       setTimeout(function() {
         isWatchConnected = true;
         if (btn) btn.innerHTML = '<span>🟢 Connected: HiWatch Pro / Ultra (GATT 6E40)</span>';
-        if (sub) sub.innerText = '🟢 HiWatch Pro BLE GATT Connected • Streaming Heart Rate, BP & SpO2 at 1Hz';
+        if (sub) sub.innerText = '🟢 HiWatch Pro BLE GATT Connected • Streaming Heart Rate & SpO2 at 1Hz';
         showToast('Connected to HiWatch Pro / Ultra via BLE GATT! Live biometrics streaming.', '⌚');
 
         watchHeartRateInterval = setInterval(function() {
@@ -8628,12 +8623,6 @@ function initThreeBackground() {
           if (hrEl) {
             var baseBpm = 72 + Math.floor(Math.sin(Date.now() / 4000) * 5) + Math.floor(Math.random() * 3);
             hrEl.innerText = '❤️ ' + baseBpm;
-          }
-          var bpEl = document.getElementById('watchLiveBp');
-          if (bpEl) {
-            var sys = 118 + Math.floor(Math.random() * 4);
-            var dia = 78 + Math.floor(Math.random() * 3);
-            bpEl.innerText = '🩺 ' + sys + '/' + dia;
           }
         }, 2000);
       }, 1200);

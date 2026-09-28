@@ -1,5 +1,3 @@
-import 'dart:async';
-import 'dart:math' as math;
 
 /// HiWatch Pro & FitPro Smartwatch Protocol & Bluetooth LE Service
 ///
@@ -58,10 +56,6 @@ class HiWatchProProtocol {
     return [0xCD, 0x00, 0x05, 0x09, 0x01, 0x01];
   }
 
-  /// Command to trigger Blood Pressure measurement (from SendData.getSportMeasureBloodRecive)
-  static List<int> buildStartBloodPressureMeasureCommand() {
-    return [0xCD, 0x00, 0x05, 0x0A, 0x01, 0x01];
-  }
 
   /// Command to vibrate / find the watch (from SDKCmdMannager.findWatch)
   static List<int> buildFindWatchCommand() {
@@ -102,7 +96,7 @@ class HiWatchProProtocol {
     final cmdType = bytes[2];
 
     // Step data packet (cmdType 0x07 / 0x08)
-    if (cmdType == 0x07 && bytes.length >= 8) {
+    if ((cmdType == 0x07 || cmdType == 0x08) && bytes.length >= 8) {
       final steps = (bytes[4] << 16) | (bytes[5] << 8) | bytes[6];
       final kcal = bytes.length >= 10 ? (bytes[7] << 8) | bytes[8] : (steps * 0.04).round();
       final distMeters = bytes.length >= 12 ? (bytes[9] << 8) | bytes[10] : (steps * 0.75).round();
@@ -116,21 +110,21 @@ class HiWatchProProtocol {
     // Heart Rate & Blood Oxygen packet (cmdType 0x09)
     if (cmdType == 0x09 && bytes.length >= 6) {
       final hr = bytes[4];
-      final spo2 = bytes.length >= 6 ? bytes[5] : 98;
+      final spo2 = bytes.length >= 6 ? bytes[5] : 0;
       return HiWatchTelemetryData(
-        heartRateBpm: hr > 30 && hr < 220 ? hr : 75,
-        bloodOxygenSpo2: spo2 > 70 && spo2 <= 100 ? spo2 : 98,
+        heartRateBpm: (hr > 30 && hr < 220) ? hr : null,
+        bloodOxygenSpo2: (spo2 >= 70 && spo2 <= 100) ? spo2 : null,
       );
     }
 
-    // Blood Pressure packet (cmdType 0x0A: H_BLOOD & L_BLOOD)
-    if (cmdType == 0x0A && bytes.length >= 6) {
-      final systolic = bytes[4];
-      final diastolic = bytes[5];
-      return HiWatchTelemetryData(
-        systolicBp: systolic > 50 && systolic < 220 ? systolic : 120,
-        diastolicBp: diastolic > 40 && diastolic < 140 ? diastolic : 80,
-      );
+    // Standard Bluetooth SIG Heart Rate Measurement (UUID 0x2A37)
+    if ((header != 0xCD && header != 0xAB) && bytes.length >= 2) {
+      final flags = bytes[0];
+      final is16Bit = (flags & 0x01) != 0;
+      final hr = is16Bit && bytes.length >= 3 ? (bytes[1] | (bytes[2] << 8)) : bytes[1];
+      if (hr > 30 && hr < 240) {
+        return HiWatchTelemetryData(heartRateBpm: hr);
+      }
     }
 
     return HiWatchTelemetryData.empty();
@@ -144,8 +138,6 @@ class HiWatchTelemetryData {
   final int? distanceMeters;
   final int? heartRateBpm;
   final int? bloodOxygenSpo2;
-  final int? systolicBp;
-  final int? diastolicBp;
   final int? batteryLevel;
 
   const HiWatchTelemetryData({
@@ -154,8 +146,6 @@ class HiWatchTelemetryData {
     this.distanceMeters,
     this.heartRateBpm,
     this.bloodOxygenSpo2,
-    this.systolicBp,
-    this.diastolicBp,
     this.batteryLevel,
   });
 
@@ -165,6 +155,5 @@ class HiWatchTelemetryData {
       steps == null &&
       calories == null &&
       heartRateBpm == null &&
-      bloodOxygenSpo2 == null &&
-      systolicBp == null;
+      bloodOxygenSpo2 == null;
 }
