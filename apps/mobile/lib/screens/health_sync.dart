@@ -1,96 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
-import 'dart:math' as math;
 
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../api/client.dart';
 import '../services/health_sync_service.dart';
 import '../services/hiwatch_pro_service.dart';
-
-class SmartwatchBleDevice {
-  final String id;
-  final String name;
-  final String brand;
-  final int rssi;
-  final int battery;
-  final List<String> sensors;
-  final String? gattUuid;
-  final bool isHiWatch;
-
-  const SmartwatchBleDevice({
-    required this.id,
-    required this.name,
-    required this.brand,
-    required this.rssi,
-    required this.battery,
-    required this.sensors,
-    this.gattUuid,
-    this.isHiWatch = false,
-  });
-}
-
-const List<SmartwatchBleDevice> kSupportedBleWatches = [
-  SmartwatchBleDevice(
-    id: 'hiwatch_pro_ultra',
-    name: 'HiWatch Pro / Ultra (T800 / Watch 8/9)',
-    brand: 'HiWatch Pro (FitPro GATT)',
-    rssi: -42,
-    battery: 92,
-    gattUuid: HiWatchProProtocol.serviceUuid,
-    isHiWatch: true,
-    sensors: ['Heart Rate (PPG)', 'Blood Pressure (BP)', 'SpO2', 'Real-time Steps', 'Sleep'],
-  ),
-  SmartwatchBleDevice(
-    id: 'boat_wave_47',
-    name: 'boAt Wave Pro 47',
-    brand: 'boAt',
-    rssi: -48,
-    battery: 88,
-    sensors: ['Heart Rate (PPG)', 'SpO2', 'Pedometer', 'Sleep'],
-  ),
-  SmartwatchBleDevice(
-    id: 'noise_colorfit_pulse',
-    name: 'Noise ColorFit Pulse 2',
-    brand: 'Noise',
-    rssi: -54,
-    battery: 92,
-    sensors: ['Continuous HR', 'SpO2', 'Step Tracking', 'Skin Temp'],
-  ),
-  SmartwatchBleDevice(
-    id: 'fireboltt_gladiator',
-    name: 'Fire-Boltt Gladiator 1.96"',
-    brand: 'Fire-Boltt',
-    rssi: -60,
-    battery: 79,
-    sensors: ['Optical HR', 'SpO2 Sensor', 'Bluetooth Calling'],
-  ),
-  SmartwatchBleDevice(
-    id: 'amazfit_gtr_4',
-    name: 'Amazfit GTR 4 / GTS',
-    brand: 'Amazfit (Zepp)',
-    rssi: -58,
-    battery: 85,
-    sensors: ['BioTracker 4.0 PPG', 'Dual-band GPS', 'Blood Oxygen'],
-  ),
-  SmartwatchBleDevice(
-    id: 'apple_watch_ultra',
-    name: 'Apple Watch Series 9 / Ultra',
-    brand: 'Apple',
-    rssi: -50,
-    battery: 94,
-    sensors: ['ECG', 'Heart Rate', 'Wrist Temp', 'HealthKit'],
-  ),
-  SmartwatchBleDevice(
-    id: 'galaxy_watch_6',
-    name: 'Samsung Galaxy Watch 6',
-    brand: 'Samsung / Wear OS',
-    rssi: -52,
-    battery: 81,
-    sensors: ['BioActive Sensor', 'Health Connect', 'Body Composition'],
-  ),
-];
 
 class HealthSyncScreen extends StatefulWidget {
   const HealthSyncScreen({super.key, required this.api});
@@ -120,15 +38,30 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
   DateTime? _lastSyncedAt;
   Map<String, num> _lastSummary = {};
 
-  // Direct Bluetooth LE Smartwatch Streaming State
-  SmartwatchBleDevice? _pairedWatch;
-  int _liveHeartRate = 74;
-  int _liveSpo2 = 99;
-  int _liveSystolicBp = 118;
-  int _liveDiastolicBp = 78;
-  double _liveWristTemp = 36.6;
-  Timer? _bleStreamTimer;
+  // Real Bluetooth LE Smartwatch Hardware Connection State
+  BluetoothDevice? _connectedBleDevice;
+  BluetoothCharacteristic? _writeCharacteristic;
+  BluetoothCharacteristic? _notifyCharacteristic;
+  StreamSubscription<List<int>>? _notifySubscription;
+  StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
+  
+  String? _pairedWatchName;
+  bool _isRealBleConnected = false;
+  bool _isConnecting = false;
+  String _connectionStatusText = "Disconnected";
+
+  // Telemetry values
+  int _liveHeartRate = 72;
+  int _liveSpo2 = 98;
+  int _liveSystolicBp = 120;
+  int _liveDiastolicBp = 80;
+  
   late AnimationController _heartPulseController;
+
+  // Real BLE Scanner State
+  bool _isScanning = false;
+  List<ScanResult> _scanResults = [];
+  StreamSubscription<List<ScanResult>>? _scanSubscription;
 
   @override
   void initState() {
@@ -142,7 +75,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
 
   @override
   void dispose() {
-    _bleStreamTimer?.cancel();
+    _notifySubscription?.cancel();
+    _connectionSubscription?.cancel();
+    _scanSubscription?.cancel();
     _heartPulseController.dispose();
     super.dispose();
   }
@@ -156,17 +91,13 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
       final granted = await _healthService.hasPermissions();
 
       if (savedWatchName != null) {
-        final match = kSupportedBleWatches.firstWhere(
-          (w) => w.name == savedWatchName,
-          orElse: () => kSupportedBleWatches[0],
-        );
-        _startBleLiveTelemetry(match);
+        _pairedWatchName = savedWatchName;
       }
 
       if (!mounted) return;
       setState(() {
         _usePhoneSensors = phoneSensors;
-        _connected = granted || phoneSensors || _pairedWatch != null;
+        _connected = granted || phoneSensors || _isRealBleConnected;
         _checkingStatus = false;
       });
     } catch (_) {
@@ -175,149 +106,263 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     }
   }
 
-  void _startBleLiveTelemetry(SmartwatchBleDevice watch) {
-    _bleStreamTimer?.cancel();
-    setState(() {
-      _pairedWatch = watch;
-      _connected = true;
-    });
+  // ─── Real Hardware Bluetooth LE Scanning & Pairing ─────────────────────────
 
-    _bleStreamTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
+  Future<bool> _requestBluetoothPermissions() async {
+    final scanStatus = await Permission.bluetoothScan.request();
+    final connectStatus = await Permission.bluetoothConnect.request();
+    final locationStatus = await Permission.location.request();
+
+    return (scanStatus.isGranted || scanStatus.isLimited) &&
+           (connectStatus.isGranted || connectStatus.isLimited);
+  }
+
+  Future<void> _startRealBleScan(StateSetter setModalState) async {
+    try {
+      final hasPerm = await _requestBluetoothPermissions();
+      if (!hasPerm) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Bluetooth and Location permissions are required to scan for watches.'),
+            backgroundColor: VColor.warn,
+          ),
+        );
+        return;
+      }
+
+      final isSupported = await FlutterBluePlus.isSupported;
+      if (!isSupported) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bluetooth LE is not supported on this phone.')),
+        );
+        return;
+      }
+
+      final adapterState = await FlutterBluePlus.adapterState.first;
+      if (adapterState != BluetoothAdapterState.on) {
+        try {
+          await FlutterBluePlus.turnOn();
+        } catch (_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please enable Bluetooth in your phone settings.')),
+          );
+          return;
+        }
+      }
+
+      setModalState(() {
+        _isScanning = true;
+        _scanResults.clear();
+      });
+
+      _scanSubscription?.cancel();
+      _scanSubscription = FlutterBluePlus.onScanResults.listen((results) {
+        setModalState(() {
+          _scanResults = results;
+        });
+      });
+
+      await FlutterBluePlus.startScan(
+        timeout: const Duration(seconds: 15),
+        androidUsesFineLocation: true,
+      );
+
+      // When scan ends
+      await FlutterBluePlus.isScanning.where((s) => !s).first;
+      if (mounted) {
+        setModalState(() {
+          _isScanning = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setModalState(() {
+          _isScanning = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _connectToRealWatch(BluetoothDevice device) async {
+    try {
+      setState(() {
+        _isConnecting = true;
+        _connectionStatusText = "Connecting to ${device.platformName.isNotEmpty ? device.platformName : 'Watch'}...";
+      });
+
+      await FlutterBluePlus.stopScan();
+
+      // Disconnect existing if any
+      await _connectedBleDevice?.disconnect();
+      _notifySubscription?.cancel();
+      _connectionSubscription?.cancel();
+
+      // Connect to physical hardware
+      await device.connect(
+        license: License.nonprofit,
+        timeout: const Duration(seconds: 15),
+        autoConnect: false,
+      );
+
+      _connectedBleDevice = device;
+      _pairedWatchName = device.platformName.isNotEmpty ? device.platformName : "HiWatch Pro";
+
+      // Save paired watch name
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefsBleWatchNameKey, _pairedWatchName!);
+
+      // Listen for disconnection
+      _connectionSubscription = device.connectionState.listen((state) {
+        if (state == BluetoothConnectionState.disconnected) {
+          if (mounted) {
+            setState(() {
+              _isRealBleConnected = false;
+              _connectionStatusText = "Disconnected";
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Smartwatch disconnected: $_pairedWatchName')),
+            );
+          }
+        }
+      });
+
+      // Discover GATT services & characteristics
+      final services = await device.discoverServices();
+      _writeCharacteristic = null;
+      _notifyCharacteristic = null;
+
+      for (var s in services) {
+        final sUuid = s.uuid.toString().toLowerCase();
+        // Check for HiWatch Pro custom service or standard Heart Rate
+        if (sUuid.contains('6e40ff01') || sUuid.contains('6e400001') || sUuid.contains('180d') || sUuid.contains('180a')) {
+          for (var c in s.characteristics) {
+            final cUuid = c.uuid.toString().toLowerCase();
+            // Notify Characteristic
+            if (cUuid.contains('6e40ff03') || cUuid.contains('6e400003') || cUuid.contains('2a37')) {
+              _notifyCharacteristic = c;
+            }
+            // Write Characteristic
+            if (cUuid.contains('6e40ff02') || cUuid.contains('6e400002') || c.properties.write || c.properties.writeWithoutResponse) {
+              _writeCharacteristic = c;
+            }
+          }
+        }
+      }
+
+      // Subscribe to real-time notification stream
+      if (_notifyCharacteristic != null) {
+        await _notifyCharacteristic!.setNotifyValue(true);
+        _notifySubscription = _notifyCharacteristic!.onValueReceived.listen((bytes) {
+          if (bytes.isNotEmpty) {
+            final telemetry = HiWatchProProtocol.parseNotifyPacket(bytes);
+            if (!telemetry.isEmpty) {
+              setState(() {
+                if (telemetry.heartRateBpm != null) _liveHeartRate = telemetry.heartRateBpm!;
+                if (telemetry.bloodOxygenSpo2 != null) _liveSpo2 = telemetry.bloodOxygenSpo2!;
+                if (telemetry.systolicBp != null) _liveSystolicBp = telemetry.systolicBp!;
+                if (telemetry.diastolicBp != null) _liveDiastolicBp = telemetry.diastolicBp!;
+                if (telemetry.steps != null && telemetry.steps! > 0) {
+                  _lastSummary['steps'] = telemetry.steps!;
+                  _lastSummary['caloriesBurned'] = (telemetry.steps! * 0.04).round();
+                  _lastSummary['heartRateBpm'] = _liveHeartRate;
+                }
+              });
+            }
+          }
+        });
+      }
+
+      // Send initial handshake / step stream wake command to watch
+      if (_writeCharacteristic != null) {
+        try {
+          await _writeCharacteristic!.write(
+            HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),
+            withoutResponse: true,
+          );
+        } catch (_) {}
+      }
+
       if (!mounted) return;
       setState(() {
-        // Natural physiological telemetry fluctuation
-        _liveHeartRate = 72 + math.Random().nextInt(12);
-        _liveSpo2 = 98 + math.Random().nextInt(3);
-        _liveSystolicBp = 117 + math.Random().nextInt(6);
-        _liveDiastolicBp = 77 + math.Random().nextInt(4);
-        _liveWristTemp = 36.5 + (math.Random().nextDouble() * 0.3);
-
-        final curSteps = (_lastSummary['steps']?.toInt() ?? 6240) + math.Random().nextInt(3);
-        final curKcal = (_lastSummary['caloriesBurned']?.toInt() ?? 345) + (curSteps > 6500 ? 1 : 0);
-
-        _lastSummary = {
-          'steps': curSteps,
-          'caloriesBurned': curKcal,
-          'heartRateBpm': _liveHeartRate,
-          'bloodOxygenSpo2': _liveSpo2,
-          'systolicBp': _liveSystolicBp,
-          'diastolicBp': _liveDiastolicBp,
-        };
+        _isRealBleConnected = true;
+        _isConnecting = false;
+        _connected = true;
+        _connectionStatusText = "Connected to $_pairedWatchName";
       });
-    });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('⚡ $_pairedWatchName connected! Live telemetry stream active.'),
+          backgroundColor: VColor.accentGreen,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isConnecting = false;
+        _connectionStatusText = "Connection failed. Please retry.";
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not connect: $e. Check if watch is connected to another phone.'),
+          backgroundColor: VColor.crit,
+        ),
+      );
+    }
   }
 
-  Future<void> _connectBleWatch(SmartwatchBleDevice watch) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsBleWatchNameKey, watch.name);
-    _startBleLiveTelemetry(watch);
+  Future<void> _disconnectRealWatch() async {
+    _notifySubscription?.cancel();
+    _connectionSubscription?.cancel();
+    await _connectedBleDevice?.disconnect();
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('⚡ ${watch.name} paired via Bluetooth LE! Live GATT telemetry streaming.'),
-        backgroundColor: VColor.accentGreen,
-      ),
-    );
-  }
-
-  Future<void> _disconnectBleWatch() async {
-    _bleStreamTimer?.cancel();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefsBleWatchNameKey);
 
     setState(() {
-      _pairedWatch = null;
+      _isRealBleConnected = false;
+      _connectedBleDevice = null;
+      _pairedWatchName = null;
+      _connectionStatusText = "Disconnected";
       _connected = _usePhoneSensors;
     });
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Smartwatch disconnected.'),
-        backgroundColor: VColor.warn,
-      ),
+      const SnackBar(content: Text('Smartwatch disconnected.')),
     );
   }
 
-  void _triggerHiWatchBpMeasure() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('🩺 Command sent (0xCD 0x05 0x0A): Measuring Blood Pressure... Hold still.'),
-        backgroundColor: VColor.accent,
-      ),
-    );
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      setState(() {
-        _liveSystolicBp = 120 + math.Random().nextInt(4);
-        _liveDiastolicBp = 80 + math.Random().nextInt(3);
-      });
+  Future<void> _sendRealBleCommand(List<int> cmd, String actionLabel) async {
+    if (_writeCharacteristic != null) {
+      try {
+        await _writeCharacteristic!.write(cmd, withoutResponse: true);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📡 $actionLabel command sent to $_pairedWatchName!'),
+            backgroundColor: VColor.accent,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send command: $e')),
+        );
+      }
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ BP Result: $_liveSystolicBp/$_liveDiastolicBp mmHg (Normal)'),
-          backgroundColor: VColor.accentGreen,
-        ),
+        const SnackBar(content: Text('Watch is not actively connected via GATT.')),
       );
-    });
+    }
   }
 
-  void _triggerFindWatch() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('📳 Find Watch Packet sent (0xCD 0x04 0x08 0x01). Watch is vibrating!'),
-        backgroundColor: VColor.accentOrange,
-      ),
-    );
-  }
+  // ─── Real BLE Device Discovery Modal ───────────────────────────────────────
 
-  void _showHiWatchSetupGuideDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: VColor.surfaceRaised,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VRadius.lg)),
-        title: const Row(
-          children: [
-            Icon(Icons.watch_rounded, color: VColor.accent),
-            SizedBox(width: 8),
-            Text("HiWatch Pro Setup Guide", style: TextStyle(color: VColor.text, fontSize: 16)),
-          ],
-        ),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Aapki watch ka APK ('HiWatch Pro' / 'FitPro') analyse karke VYRA me direct support add kiya gaya hai:",
-                style: TextStyle(color: VColor.textMid, fontSize: 13, height: 1.4),
-              ),
-              SizedBox(height: 12),
-              Text("🔹 Step 1: Phone Bluetooth & Location ON karein.", style: TextStyle(color: VColor.text, fontSize: 13, fontWeight: FontWeight.bold)),
-              SizedBox(height: 6),
-              Text("🔹 Step 2: 'Scan Bluetooth Smartwatch' tap karke list me sabse upar 'HiWatch Pro / Ultra' select karein.", style: TextStyle(color: VColor.text, fontSize: 13, fontWeight: FontWeight.bold)),
-              SizedBox(height: 6),
-              Text("🔹 Step 3: GATT Service (UUID: 6E40FF01) se direct connect hoga aur Heart Rate, BP, SpO2 aur Steps live screen par show honge.", style: TextStyle(color: VColor.text, fontSize: 13, fontWeight: FontWeight.bold)),
-              SizedBox(height: 6),
-              Text("🔹 Step 4: Agar watch doosre phone se binded hai toh watch settings me jaakar 'Reset' karein taaki Bluetooth discovery active ho sake.", style: TextStyle(color: VColor.textMid, fontSize: 12)),
-            ],
-          ),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            style: ElevatedButton.styleFrom(backgroundColor: VColor.accent),
-            child: const Text("Got It", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openBleWatchDiscoverySheet() {
+  void _openRealBleDiscoveryModal() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: VColor.bg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(VRadius.xl)),
@@ -326,12 +371,37 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            // Auto start scan on sheet open
+            if (!_isScanning && _scanResults.isEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _startRealBleScan(setModalState);
+              });
+            }
+
+            // Filter and sort: smartwatches / HiWatch first
+            final List<ScanResult> namedDevices = _scanResults.where((r) {
+              final n = r.device.platformName.trim();
+              final advN = r.advertisementData.advName.trim();
+              return n.isNotEmpty || advN.isNotEmpty;
+            }).toList();
+
+            namedDevices.sort((a, b) {
+              final aName = (a.device.platformName.isNotEmpty ? a.device.platformName : a.advertisementData.advName).toLowerCase();
+              final bName = (b.device.platformName.isNotEmpty ? b.device.platformName : b.advertisementData.advName).toLowerCase();
+              final aMatch = aName.contains('hiwatch') || aName.contains('t800') || aName.contains('fitpro') || aName.contains('watch');
+              final bMatch = bName.contains('hiwatch') || bName.contains('t800') || bName.contains('fitpro') || bName.contains('watch');
+              if (aMatch && !bMatch) return -1;
+              if (!aMatch && bMatch) return 1;
+              return b.rssi.compareTo(a.rssi);
+            });
+
             return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
               padding: const EdgeInsets.all(VSpace.base),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Modal Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -343,23 +413,27 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                               color: VColor.accent.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.bluetooth_searching_rounded, color: VColor.accent, size: 22),
+                            child: const Icon(Icons.bluetooth_searching_rounded, color: VColor.accent, size: 24),
                           ),
                           const SizedBox(width: 12),
-                          const Column(
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "Bluetooth Smartwatch Pairing",
+                              const Text(
+                                "Live Bluetooth Scanner",
                                 style: TextStyle(
                                   color: VColor.text,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                               Text(
-                                "Tap your smartwatch to pair instantly",
-                                style: TextStyle(color: VColor.textMid, fontSize: 12),
+                                _isScanning ? "Scanning nearby Bluetooth airwaves..." : "Scan completed",
+                                style: TextStyle(
+                                  color: _isScanning ? VColor.accent : VColor.textLow,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
@@ -372,126 +446,234 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                     ],
                   ),
                   const SizedBox(height: VSpace.base),
+
+                  // Scanner Status Bar with Rescan Button
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: VColor.surfaceRaised,
+                      borderRadius: BorderRadius.circular(VRadius.md),
+                      border: Border.all(color: VColor.lineSoft),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            if (_isScanning)
+                              const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: VColor.accent),
+                              )
+                            else
+                              const Icon(Icons.check_circle_rounded, color: VColor.accentGreen, size: 16),
+                            const SizedBox(width: 8),
+                            Text(
+                              "${namedDevices.length} devices found in room",
+                              style: const TextStyle(color: VColor.textMid, fontSize: 12, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                        TextButton.icon(
+                          onPressed: _isScanning ? null : () => _startRealBleScan(setModalState),
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: Text(_isScanning ? "Scanning..." : "Rescan"),
+                          style: TextButton.styleFrom(
+                            foregroundColor: VColor.accent,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: VSpace.sm),
+
+                  // Troubleshooting Tip Alert
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: VColor.accentOrange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(VRadius.md),
+                      border: Border.all(color: VColor.accentOrange.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline_rounded, color: VColor.accentOrange, size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "Watch screen ON rakhein. Agar watch 'HiWatch Pro' app se pehle se connected hai, toh watch settings me 'Reset' karein taaki Bluetooth airwaves me discoverable ho sake.",
+                            style: TextStyle(color: VColor.textMid, fontSize: 11.5, height: 1.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: VSpace.sm),
                   const Divider(color: VColor.line, height: 1),
                   const SizedBox(height: VSpace.sm),
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: kSupportedBleWatches.length,
-                      separatorBuilder: (_, __) => const Divider(color: VColor.lineSoft, height: 12),
-                      itemBuilder: (context, index) {
-                        final watch = kSupportedBleWatches[index];
-                        final isPaired = _pairedWatch?.id == watch.id;
-                        return InkWell(
-                          onTap: () {
-                            Navigator.of(ctx).pop();
-                            _connectBleWatch(watch);
-                          },
-                          borderRadius: BorderRadius.circular(VRadius.md),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: isPaired
-                                  ? VColor.accent.withValues(alpha: 0.12)
-                                  : (watch.isHiWatch ? VColor.accent.withValues(alpha: 0.05) : VColor.surfaceRaised),
-                              borderRadius: BorderRadius.circular(VRadius.md),
-                              border: Border.all(
-                                color: watch.isHiWatch ? VColor.accent : (isPaired ? VColor.accentGreen : VColor.lineSoft),
-                                width: watch.isHiWatch ? 1.5 : 1.0,
-                              ),
-                            ),
-                            child: Row(
+
+                  // Device List
+                  Expanded(
+                    child: namedDevices.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  Icons.watch_rounded,
-                                  color: watch.isHiWatch ? VColor.accent : (isPaired ? VColor.accentGreen : VColor.textMid),
-                                  size: 28,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                if (_isScanning) ...[
+                                  const CircularProgressIndicator(color: VColor.accent),
+                                  const SizedBox(height: 16),
+                                  const Text(
+                                    "Searching for HiWatch Pro / Bluetooth Smartwatches...",
+                                    style: TextStyle(color: VColor.textMid, fontSize: 13),
+                                  ),
+                                ] else ...[
+                                  const Icon(Icons.bluetooth_disabled_rounded, color: VColor.textLow, size: 40),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    "No Bluetooth devices found nearby.",
+                                    style: TextStyle(color: VColor.text, fontSize: 14, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    "Make sure Watch Bluetooth is on & tap 'Rescan' above.",
+                                    style: TextStyle(color: VColor.textLow, fontSize: 12),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: namedDevices.length,
+                            separatorBuilder: (_, __) => const Divider(color: VColor.lineSoft, height: 8),
+                            itemBuilder: (context, index) {
+                              final item = namedDevices[index];
+                              final rawName = item.device.platformName.isNotEmpty
+                                  ? item.device.platformName
+                                  : item.advertisementData.advName;
+                              final name = rawName.isNotEmpty ? rawName : "Bluetooth Device";
+                              final mac = item.device.remoteId.str;
+                              final isHiWatch = name.toLowerCase().contains('hiwatch') ||
+                                                name.toLowerCase().contains('t800') ||
+                                                name.toLowerCase().contains('fitpro') ||
+                                                name.toLowerCase().contains('watch');
+                              final isCurrent = _connectedBleDevice?.remoteId == item.device.remoteId;
+
+                              return InkWell(
+                                onTap: _isConnecting
+                                    ? null
+                                    : () async {
+                                        Navigator.of(ctx).pop();
+                                        await _connectToRealWatch(item.device);
+                                      },
+                                borderRadius: BorderRadius.circular(VRadius.md),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: isHiWatch
+                                        ? VColor.accent.withValues(alpha: 0.08)
+                                        : VColor.surfaceRaised,
+                                    borderRadius: BorderRadius.circular(VRadius.md),
+                                    border: Border.all(
+                                      color: isHiWatch ? VColor.accent : VColor.lineSoft,
+                                      width: isHiWatch ? 1.5 : 1.0,
+                                    ),
+                                  ),
+                                  child: Row(
                                     children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              watch.name,
-                                              style: const TextStyle(
-                                                color: VColor.text,
-                                                fontSize: 13.5,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          if (watch.isHiWatch)
-                                            Container(
-                                              margin: const EdgeInsets.only(left: 4),
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: VColor.accent.withValues(alpha: 0.2),
-                                                borderRadius: BorderRadius.circular(VRadius.pill),
-                                              ),
-                                              child: const Text(
-                                                "APK MATCH",
-                                                style: TextStyle(color: VColor.accent, fontSize: 8.5, fontWeight: FontWeight.w800),
-                                              ),
-                                            ),
-                                          if (isPaired)
-                                            Container(
-                                              margin: const EdgeInsets.only(left: 4),
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: VColor.accentGreen.withValues(alpha: 0.2),
-                                                borderRadius: BorderRadius.circular(VRadius.pill),
-                                              ),
-                                              child: const Text(
-                                                "CONNECTED",
-                                                style: TextStyle(color: VColor.accentGreen, fontSize: 8.5, fontWeight: FontWeight.w800),
-                                              ),
-                                            ),
-                                        ],
+                                      Icon(
+                                        Icons.watch_rounded,
+                                        color: isHiWatch ? VColor.accent : VColor.textMid,
+                                        size: 28,
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "${watch.brand} • ${watch.sensors.join(' • ')}",
-                                        style: const TextStyle(color: VColor.textLow, fontSize: 11),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Flexible(
+                                                  child: Text(
+                                                    name,
+                                                    style: const TextStyle(
+                                                      color: VColor.text,
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                if (isHiWatch) ...[
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: VColor.accent.withValues(alpha: 0.2),
+                                                      borderRadius: BorderRadius.circular(VRadius.pill),
+                                                    ),
+                                                    child: const Text(
+                                                      "WATCH DETECTED",
+                                                      style: TextStyle(
+                                                        color: VColor.accent,
+                                                        fontSize: 8.5,
+                                                        fontWeight: FontWeight.w800,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                                if (isCurrent) ...[
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: VColor.accentGreen.withValues(alpha: 0.2),
+                                                      borderRadius: BorderRadius.circular(VRadius.pill),
+                                                    ),
+                                                    child: const Text(
+                                                      "CONNECTED",
+                                                      style: TextStyle(
+                                                        color: VColor.accentGreen,
+                                                        fontSize: 8.5,
+                                                        fontWeight: FontWeight.w800,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              "MAC: $mac • RSSI: ${item.rssi} dBm",
+                                              style: const TextStyle(color: VColor.textLow, fontSize: 11),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: _isConnecting
+                                            ? null
+                                            : () async {
+                                                Navigator.of(ctx).pop();
+                                                await _connectToRealWatch(item.device);
+                                              },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: isHiWatch ? VColor.accent : VColor.surfaceHigh,
+                                          foregroundColor: isHiWatch ? Colors.black : VColor.text,
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                        ),
+                                        child: const Text("PAIR"),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.battery_charging_full_rounded, color: VColor.accentGreen, size: 14),
-                                        const SizedBox(width: 2),
-                                        Text(
-                                          "${watch.battery}%",
-                                          style: const TextStyle(color: VColor.textMid, fontSize: 11, fontWeight: FontWeight.bold),
-                                        ),
-                                      ],
-                                    ),
-                                    Text(
-                                      "${watch.rssi} dBm",
-                                      style: const TextStyle(color: VColor.textLow, fontSize: 10),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
-                  const SizedBox(height: VSpace.base),
                 ],
               ),
             );
@@ -501,24 +683,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     );
   }
 
-  Future<void> _enablePhoneSensors() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_prefsUsePhoneSensorsKey, true);
-    } catch (_) {}
-    if (!mounted) return;
-    setState(() {
-      _usePhoneSensors = true;
-      _connected = true;
-      _error = null;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('📱 Phone Sensors Active! Pedometer & GPS tracking enabled.'),
-        backgroundColor: VColor.accentGreen,
-      ),
-    );
-  }
+  // ─── Direct Step Calibration from Watch Screen ────────────────────────────
 
   Future<void> _calibrateStepsDialog() async {
     final currentVal = _lastSummary['steps']?.toInt() ?? 0;
@@ -533,7 +698,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             children: [
               Icon(Icons.watch_rounded, color: VColor.accent),
               SizedBox(width: 8),
-              Text('Sync Watch Screen Steps', style: TextStyle(color: VColor.text, fontSize: 16)),
+              Text('Sync Watch Dial Steps', style: TextStyle(color: VColor.text, fontSize: 16)),
             ],
           ),
           content: Column(
@@ -541,7 +706,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Enter steps shown on your HiWatch Pro / smartwatch screen:',
+                'Apni HiWatch Pro / Smartwatch screen par dikh rahe exact steps enter karein:',
                 style: TextStyle(color: VColor.textMid, fontSize: 13),
               ),
               const SizedBox(height: 12),
@@ -551,7 +716,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                 autofocus: true,
                 style: const TextStyle(color: VColor.accent, fontSize: 24, fontWeight: FontWeight.bold),
                 decoration: InputDecoration(
-                  hintText: 'e.g. 6420',
+                  hintText: 'e.g. 5420',
                   hintStyle: const TextStyle(color: VColor.textLow),
                   filled: true,
                   fillColor: VColor.surface,
@@ -574,7 +739,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                 Navigator.of(ctx).pop(parsed);
               },
               style: ElevatedButton.styleFrom(backgroundColor: VColor.accent),
-              child: const Text('Sync Steps', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              child: const Text('Save & Sync', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -588,7 +753,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
       ..._lastSummary,
       'steps': entered,
       'caloriesBurned': estimatedKcal,
-      if (!_lastSummary.containsKey('heartRateBpm')) 'heartRateBpm': 72,
+      'heartRateBpm': _liveHeartRate,
     };
 
     setState(() {
@@ -597,7 +762,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     });
 
     try {
-      await widget.api.logTracking(updatedSummary, source: 'smartwatch_direct');
+      await widget.api.logTracking(updatedSummary, source: 'hiwatch_pro_dial');
       final now = DateTime.now();
       await _persistSyncResult(now, updatedSummary);
       if (mounted) {
@@ -615,6 +780,25 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     } catch (_) {
       if (mounted) setState(() => _syncing = false);
     }
+  }
+
+  Future<void> _enablePhoneSensors() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_prefsUsePhoneSensorsKey, true);
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _usePhoneSensors = true;
+      _connected = true;
+      _error = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('📱 Phone Internal Sensors Active! Pedometer enabled.'),
+        backgroundColor: VColor.accentGreen,
+      ),
+    );
   }
 
   Future<void> _restoreLastSyncInfo() async {
@@ -635,7 +819,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     } catch (_) {}
   }
 
-  Future<void> _connect() async {
+  Future<void> _connectHealthPlatform() async {
     setState(() {
       _requesting = true;
       _error = null;
@@ -644,10 +828,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     if (!mounted) return;
     setState(() {
       _requesting = false;
-      _connected = granted || _usePhoneSensors || _pairedWatch != null;
+      _connected = granted || _usePhoneSensors || _isRealBleConnected;
       if (!granted) {
         _error =
-            'Health Connect permission nahi mili. Aap neeche "Scan & Connect Smartwatch (Bluetooth LE)" ya "Use Smartphone Sensors" se directly sync kar sakte hain.';
+            'Health Connect permission nahi mili. Aap "Scan Nearby Smartwatch (BLE)" se direct watch connect kar sakte hain.';
       }
     });
   }
@@ -660,7 +844,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
 
     try {
       Map<String, num> summary = {};
-      if (_pairedWatch != null) {
+      if (_isRealBleConnected) {
         summary = {
           'steps': _lastSummary['steps'] ?? 6420,
           'caloriesBurned': _lastSummary['caloriesBurned'] ?? 356,
@@ -686,9 +870,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
         return;
       }
 
-      final sourceTag = _pairedWatch != null
-          ? (_pairedWatch!.isHiWatch ? 'hiwatch_pro_gatt' : 'ble_${_pairedWatch!.brand.toLowerCase()}')
-          : (_usePhoneSensors ? 'phone_sensors' : 'health_connect');
+      final sourceTag = _isRealBleConnected ? 'hiwatch_pro_ble_gatt' : (_usePhoneSensors ? 'phone_sensors' : 'health_connect');
 
       final apiError = await widget.api.logTracking(summary, source: sourceTag);
       final now = DateTime.now();
@@ -745,6 +927,54 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     return '${dt.day}/${dt.month} $h:$m';
   }
 
+  void _showHiWatchSetupHelp() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: VColor.surfaceRaised,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VRadius.lg)),
+        title: const Row(
+          children: [
+            Icon(Icons.watch_rounded, color: VColor.accent),
+            SizedBox(width: 8),
+            Text("HiWatch Pro Connect Guide", style: TextStyle(color: VColor.text, fontSize: 16)),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Physical Smartwatch ko connect karne ke steps:",
+                style: TextStyle(color: VColor.textMid, fontSize: 13, height: 1.4),
+              ),
+              SizedBox(height: 12),
+              Text("1. Phone ka Bluetooth & GPS ON karein.", style: TextStyle(color: VColor.text, fontSize: 13, fontWeight: FontWeight.bold)),
+              SizedBox(height: 6),
+              Text("2. Watch screen ko tap karke ON rakhein (agar screen band hoti hai toh watch advertise karna band kar sakti hai).", style: TextStyle(color: VColor.textMid, fontSize: 12)),
+              SizedBox(height: 6),
+              Text("3. ⚠️ IMPORTANT: Agar watch pehle se doosre phone ya 'HiWatch Pro' app se connected hai, toh watch settings me 'Reset' karein taaki Bluetooth unpair ho sake.", style: TextStyle(color: Colors.amberAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+              SizedBox(height: 6),
+              Text("4. Niche 'Scan Nearby Smartwatch (BLE)' tap karein, jab aapki watch ka naam list me aaye toh 'PAIR' tap karein.", style: TextStyle(color: VColor.text, fontSize: 13, fontWeight: FontWeight.bold)),
+              SizedBox(height: 6),
+              Text("5. Agar Bluetooth me delay ho toh aap 'Enter Steps from Watch Screen' se direct real steps 1 second me save kar sakte hain.", style: TextStyle(color: VColor.accentGreen, fontSize: 12)),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: ElevatedButton.styleFrom(backgroundColor: VColor.accent),
+            child: const Text("Samajh Gaya", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Build UI ──────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -758,9 +988,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             _buildHeroCard(),
             const SizedBox(height: VSpace.md),
             _buildStatusCard(),
-            if (_pairedWatch != null) ...[
+            if (_isRealBleConnected) ...[
               const SizedBox(height: VSpace.md),
-              _buildLiveBleCard(),
+              _buildLiveGattCard(),
             ],
             const SizedBox(height: VSpace.md),
             _buildDevicesCard(),
@@ -800,7 +1030,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
               VLabel('DEVICE & WEARABLE HUB'),
               SizedBox(height: 4),
               Text(
-                'Connect Smartwatch & Devices',
+                'HiWatch Pro & Wearable Sync',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: VColor.text,
@@ -813,7 +1043,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
         ),
         IconButton(
           icon: const Icon(Icons.help_outline_rounded, color: VColor.accent),
-          onPressed: _showHiWatchSetupGuideDialog,
+          onPressed: _showHiWatchSetupHelp,
         ),
       ],
     );
@@ -835,7 +1065,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                 const Icon(Icons.favorite, color: VColor.accentOrange, size: 24),
                 const Spacer(),
                 InkWell(
-                  onTap: _showHiWatchSetupGuideDialog,
+                  onTap: _showHiWatchSetupHelp,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -844,7 +1074,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                       border: Border.all(color: VColor.accent.withValues(alpha: 0.5)),
                     ),
                     child: const Text(
-                      "HiWatch Setup ℹ️",
+                      "Setup Guide ℹ️",
                       style: TextStyle(color: VColor.accent, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -853,7 +1083,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             ),
             const SizedBox(height: VSpace.md),
             const Text(
-              'HiWatch Pro & Wearable Sync',
+              'Real Hardware Smartwatch Sync',
               style: TextStyle(
                 color: VColor.text,
                 fontSize: 20,
@@ -862,8 +1092,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             ),
             const SizedBox(height: VSpace.xs),
             const Text(
-              'HiWatch Pro, T800 Ultra, boAt, Noise, ya Galaxy Watch ko direct Bluetooth LE '
-              'se connect karein. Live BPM, Blood Pressure, SpO2 aur daily steps automatically sync honge.',
+              'Apni physical HiWatch Pro (T800 / Watch 8/9 / FitPro) ko phone ke Bluetooth LE se direct scan aur pair karein.',
               style: TextStyle(color: VColor.textMid, fontSize: 13, height: 1.45),
             ),
           ],
@@ -873,14 +1102,14 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
   }
 
   Widget _buildStatusCard() {
-    final dotColor = _connected ? VColor.accentGreen : VColor.textLow;
-    final statusText = _checkingStatus
-        ? 'Checking…'
-        : (_pairedWatch != null
-            ? 'Bluetooth LE Live: ${_pairedWatch!.name}'
+    final dotColor = _isRealBleConnected ? VColor.accentGreen : (_connected ? VColor.accent : VColor.textLow);
+    final statusText = _isConnecting
+        ? _connectionStatusText
+        : (_isRealBleConnected
+            ? 'Connected: $_pairedWatchName'
             : (_usePhoneSensors
                 ? 'Smartphone Sensors Active'
-                : (_connected ? 'Connected to Health Connect' : 'Not connected')));
+                : (_connected ? 'Connected to Health Connect' : 'No watch connected')));
 
     return VCard(
       child: Padding(
@@ -916,11 +1145,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                 ],
               ),
             ),
-            if (_checkingStatus)
+            if (_isConnecting)
               const SizedBox(
                 width: 16,
                 height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(strokeWidth: 2, color: VColor.accent),
               ),
           ],
         ),
@@ -928,9 +1157,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     );
   }
 
-  /// Live Bluetooth LE Streaming Card (When watch is connected)
-  Widget _buildLiveBleCard() {
-    final isHiWatch = _pairedWatch?.isHiWatch == true;
+  /// Live Real Hardware GATT Biometrics Card
+  Widget _buildLiveGattCard() {
     return VCard(
       child: Container(
         padding: const EdgeInsets.all(VSpace.md),
@@ -942,7 +1170,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
               VColor.accentGreen.withValues(alpha: 0.05),
             ],
           ),
-          border: Border.all(color: VColor.accent.withValues(alpha: 0.5)),
+          border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.6)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -955,7 +1183,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                     const Icon(Icons.bluetooth_connected_rounded, color: VColor.accentGreen, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      _pairedWatch!.name,
+                      _pairedWatchName ?? "HiWatch Pro",
                       style: const TextStyle(
                         color: VColor.text,
                         fontSize: 15,
@@ -988,7 +1216,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                       icon: const Icon(Icons.close, color: VColor.textLow, size: 18),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
-                      onPressed: _disconnectBleWatch,
+                      onPressed: _disconnectRealWatch,
                     ),
                   ],
                 ),
@@ -1023,7 +1251,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                     const Text("HEART RATE", style: TextStyle(color: VColor.textMid, fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 ),
-                // Blood Pressure (HiWatch Specific Feature)
+                // Blood Pressure
                 Column(
                   children: [
                     Row(
@@ -1067,46 +1295,50 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                 ),
               ],
             ),
-            if (isHiWatch) ...[
-              const SizedBox(height: 12),
-              const Divider(color: VColor.lineSoft, height: 1),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _triggerHiWatchBpMeasure,
-                    icon: const Icon(Icons.speed_rounded, size: 15),
-                    label: const Text("Measure BP", style: TextStyle(fontSize: 11)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.amberAccent,
-                      side: const BorderSide(color: Colors.amberAccent),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    ),
+            const SizedBox(height: 12),
+            const Divider(color: VColor.lineSoft, height: 1),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _sendRealBleCommand(
+                    HiWatchProProtocol.buildStartBloodPressureMeasureCommand(),
+                    "Measure Blood Pressure",
                   ),
-                  OutlinedButton.icon(
-                    onPressed: _triggerFindWatch,
-                    icon: const Icon(Icons.vibration_rounded, size: 15),
-                    label: const Text("Find Watch", style: TextStyle(fontSize: 11)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: VColor.accentOrange,
-                      side: const BorderSide(color: VColor.accentOrange),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    ),
+                  icon: const Icon(Icons.speed_rounded, size: 15),
+                  label: const Text("Measure BP", style: TextStyle(fontSize: 11)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.amberAccent,
+                    side: const BorderSide(color: Colors.amberAccent),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: _syncNow,
-                    icon: const Icon(Icons.cloud_upload_rounded, size: 15),
-                    label: const Text("Sync Now", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: VColor.accentGreen,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _sendRealBleCommand(
+                    HiWatchProProtocol.buildFindWatchCommand(),
+                    "Vibrate Watch",
                   ),
-                ],
-              ),
-            ],
+                  icon: const Icon(Icons.vibration_rounded, size: 15),
+                  label: const Text("Vibrate Watch", style: TextStyle(fontSize: 11)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: VColor.accentOrange,
+                    side: const BorderSide(color: VColor.accentOrange),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _syncNow,
+                  icon: const Icon(Icons.cloud_upload_rounded, size: 15),
+                  label: const Text("Sync Cloud", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: VColor.accentGreen,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -1123,11 +1355,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const VLabel('DETECTED & SUPPORTED HARDWARE'),
+                const VLabel('HARDWARE CONNECTIONS'),
                 InkWell(
-                  onTap: _openBleWatchDiscoverySheet,
+                  onTap: _openRealBleDiscoveryModal,
                   child: const Text(
-                    "+ PAIR BLE WATCH",
+                    "+ SCAN BLUETOOTH",
                     style: TextStyle(color: VColor.accent, fontSize: 11, fontWeight: FontWeight.w800),
                   ),
                 ),
@@ -1136,24 +1368,24 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             const SizedBox(height: VSpace.md),
             _deviceRow(
               icon: Icons.watch_rounded,
-              name: _pairedWatch != null ? _pairedWatch!.name : 'HiWatch Pro / Bluetooth Watch',
-              detail: _pairedWatch != null ? '${_pairedWatch!.brand} • BLE GATT Active' : 'HiWatch Pro, T800, boAt, Noise, Apple Watch',
-              active: _pairedWatch != null,
-              onTap: _openBleWatchDiscoverySheet,
+              name: _isRealBleConnected ? _pairedWatchName! : 'HiWatch Pro / Bluetooth Watch',
+              detail: _isRealBleConnected ? 'Real BLE GATT Active' : 'Tap to scan nearby physical Bluetooth watches',
+              active: _isRealBleConnected,
+              onTap: _openRealBleDiscoveryModal,
             ),
             const Divider(color: VColor.line, height: 24),
             _deviceRow(
               icon: Icons.health_and_safety_rounded,
               name: 'Health Connect / Apple Health',
               detail: 'Wear OS, Galaxy Watch, Google Pixel Watch',
-              active: _connected && _pairedWatch == null && !_usePhoneSensors,
-              onTap: _connect,
+              active: _connected && !_isRealBleConnected && !_usePhoneSensors,
+              onTap: _connectHealthPlatform,
             ),
             const Divider(color: VColor.line, height: 24),
             _deviceRow(
               icon: Icons.phone_android_rounded,
               name: 'Smartphone Internal Sensors',
-              detail: 'Pedometer, Accelerometer & GPS',
+              detail: 'Pedometer & Accelerometer',
               active: _usePhoneSensors,
               onTap: _enablePhoneSensors,
             ),
@@ -1241,7 +1473,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                     Icon(Icons.edit_note_rounded, size: 18, color: VColor.accent),
                     SizedBox(width: 6),
                     Text(
-                      'Enter / Calibrate Steps from Watch Screen',
+                      'Enter Steps from Watch Screen (1-Tap Sync)',
                       style: TextStyle(color: VColor.accent, fontSize: 12.5, fontWeight: FontWeight.w700),
                     ),
                   ],
@@ -1270,7 +1502,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
   Widget _buildPrimaryActions() {
     return Column(
       children: [
-        // 1. Direct Bluetooth LE Smartwatch Pairing Button (HiWatch Pro Highlighted)
+        // 1. Direct Real Hardware Bluetooth Scan Button
         SizedBox(
           width: double.infinity,
           height: 52,
@@ -1285,7 +1517,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(VRadius.md),
-                onTap: _openBleWatchDiscoverySheet,
+                onTap: _openRealBleDiscoveryModal,
                 child: const Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1293,7 +1525,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                       Icon(Icons.bluetooth_searching_rounded, color: Colors.black, size: 22),
                       SizedBox(width: 8),
                       Text(
-                        'Scan & Connect Smartwatch (HiWatch Pro / BLE)',
+                        'Scan Nearby Smartwatch (Real BLE)',
                         style: TextStyle(
                           color: Colors.black,
                           fontWeight: FontWeight.w800,
@@ -1309,25 +1541,21 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
         ),
         const SizedBox(height: VSpace.sm),
 
-        // 2. Health Connect / Wearable Connect
+        // 2. Direct Watch Dial Steps Fallback Button
         SizedBox(
           width: double.infinity,
           height: 50,
           child: OutlinedButton.icon(
-            onPressed: _requesting ? null : _connect,
-            icon: const Icon(Icons.health_and_safety_rounded, size: 20),
-            label: _requesting
-                ? const VLoading()
-                : Text(
-                    _connected && !_usePhoneSensors && _pairedWatch == null
-                        ? 'Reconnect Health Connect / Apple Health'
-                        : 'Connect via Google Health Connect / Apple Health',
-                    style: const TextStyle(
-                      color: VColor.text,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13.5,
-                    ),
-                  ),
+            onPressed: _calibrateStepsDialog,
+            icon: const Icon(Icons.edit_note_rounded, size: 20),
+            label: const Text(
+              'Enter Steps from Watch Screen',
+              style: TextStyle(
+                color: VColor.text,
+                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
+              ),
+            ),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: VColor.line),
               shape: RoundedRectangleBorder(
@@ -1338,17 +1566,17 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
         ),
         const SizedBox(height: VSpace.sm),
 
-        // 3. Direct Phone Sensors Fallback Button
+        // 3. Phone Internal Sensors Fallback Button
         SizedBox(
           width: double.infinity,
-          height: 50,
+          height: 48,
           child: OutlinedButton.icon(
             onPressed: _enablePhoneSensors,
             icon: const Icon(Icons.phone_android_rounded, size: 18),
             label: Text(
               _usePhoneSensors
-                  ? 'Smartphone Sensors Active ✓'
-                  : 'Use Smartphone Sensors (No Watch Needed)',
+                  ? 'Phone Sensors Active ✓'
+                  : 'Use Phone Sensors (No Watch Needed)',
               style: TextStyle(
                 color: _usePhoneSensors ? VColor.accentGreen : VColor.textMid,
                 fontWeight: FontWeight.w600,

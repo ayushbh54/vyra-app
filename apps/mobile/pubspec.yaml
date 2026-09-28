@@ -50,6 +50,7 @@ dependencies:
 
   # ── Timezone Support (notification scheduling) ─────────────────────────────
   timezone: ^0.9.4
+  flutter_blue_plus: ^2.3.13
 
 dev_dependencies:
   flutter_test:
