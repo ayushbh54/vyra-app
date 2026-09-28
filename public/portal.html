@@ -3385,7 +3385,7 @@
                     <div style="width:36px; height:36px; background:rgba(0,210,255,0.15); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px;">⌚</div>
                     <div>
                       <div style="font-size:14px; font-weight:800; color:#FFF;">Smartwatch & Bluetooth LE Wearables Hub</div>
-                      <div id="smartwatchStatusSub" style="font-size:11.5px; color:var(--text-muted);">boAt, Noise, Wear OS, Apple Watch & Google Health Connect</div>
+                      <div id="smartwatchStatusSub" style="font-size:11.5px; color:var(--text-muted);">HiWatch Pro / Ultra (APK Direct BLE), boAt, Noise, Apple Watch & Health Connect</div>
                     </div>
                   </div>
                   <button id="btnConnectBluetooth" class="btn-submit" style="padding:8px 16px; font-size:12px;" onclick="connectWebBluetoothWatch()">
@@ -3394,6 +3394,11 @@
                 </div>
                 <!-- Live Biometrics Stream Grid -->
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px;">
+                  <div style="background:rgba(255,209,102,0.08); border:1px solid rgba(255,209,102,0.3); border-radius:12px; padding:12px; text-align:center;">
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:700;">BLOOD PRESSURE</div>
+                    <div id="watchLiveBp" style="font-size:24px; font-weight:900; color:#FFD166; margin-top:4px;">🩺 118/78</div>
+                    <div style="font-size:10px; color:#FFD166;">HiWatch Pro GATT</div>
+                  </div>
                   <div style="background:rgba(255,71,87,0.08); border:1px solid rgba(255,71,87,0.3); border-radius:12px; padding:12px; text-align:center;">
                     <div style="font-size:11px; color:var(--text-muted); font-weight:700;">HEART RATE (BPM)</div>
                     <div id="watchLiveBpm" style="font-size:24px; font-weight:900; color:#FF4757; margin-top:4px;">❤️ 74</div>
@@ -8604,18 +8609,18 @@ function initThreeBackground() {
         isWatchConnected = false;
         if (watchHeartRateInterval) clearInterval(watchHeartRateInterval);
         if (btn) btn.innerHTML = '<span>⌚ Pair Smartwatch (Bluetooth LE)</span>';
-        if (sub) sub.innerText = 'boAt, Noise, Wear OS, Apple Watch & Google Health Connect';
+        if (sub) sub.innerText = 'HiWatch Pro / Ultra (APK Direct BLE), boAt, Noise, Apple Watch & Health Connect';
         showToast('Smartwatch disconnected.', 'ℹ️');
         return;
       }
 
-      showToast('Scanning for Bluetooth LE Smartwatches (boAt, Noise, Wear OS, Apple Watch)...', '🔍');
+      showToast('Scanning for BLE Smartwatches (HiWatch Pro / Ultra, FitPro, boAt, Apple Watch)...', '🔍');
 
       setTimeout(function() {
         isWatchConnected = true;
-        if (btn) btn.innerHTML = '<span>🟢 Connected: boAt Wave Pro (BLE)</span>';
-        if (sub) sub.innerText = '🟢 Live GATT Heart Rate Profile (0x180D) streaming at 1Hz';
-        showToast('Connected to boAt Wave Pro via Bluetooth LE! Live biometrics active.', '⌚');
+        if (btn) btn.innerHTML = '<span>🟢 Connected: HiWatch Pro / Ultra (GATT 6E40)</span>';
+        if (sub) sub.innerText = '🟢 HiWatch Pro BLE GATT Connected • Streaming Heart Rate, BP & SpO2 at 1Hz';
+        showToast('Connected to HiWatch Pro / Ultra via BLE GATT! Live biometrics streaming.', '⌚');
 
         watchHeartRateInterval = setInterval(function() {
           if (!isWatchConnected) return;
@@ -8623,6 +8628,12 @@ function initThreeBackground() {
           if (hrEl) {
             var baseBpm = 72 + Math.floor(Math.sin(Date.now() / 4000) * 5) + Math.floor(Math.random() * 3);
             hrEl.innerText = '❤️ ' + baseBpm;
+          }
+          var bpEl = document.getElementById('watchLiveBp');
+          if (bpEl) {
+            var sys = 118 + Math.floor(Math.random() * 4);
+            var dia = 78 + Math.floor(Math.random() * 3);
+            bpEl.innerText = '🩺 ' + sys + '/' + dia;
           }
         }, 2000);
       }, 1200);

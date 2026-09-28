@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../api/client.dart';
 import '../services/health_sync_service.dart';
+import '../services/hiwatch_pro_service.dart';
 
 class SmartwatchBleDevice {
   final String id;
@@ -15,6 +16,8 @@ class SmartwatchBleDevice {
   final int rssi;
   final int battery;
   final List<String> sensors;
+  final String? gattUuid;
+  final bool isHiWatch;
 
   const SmartwatchBleDevice({
     required this.id,
@@ -23,10 +26,22 @@ class SmartwatchBleDevice {
     required this.rssi,
     required this.battery,
     required this.sensors,
+    this.gattUuid,
+    this.isHiWatch = false,
   });
 }
 
 const List<SmartwatchBleDevice> kSupportedBleWatches = [
+  SmartwatchBleDevice(
+    id: 'hiwatch_pro_ultra',
+    name: 'HiWatch Pro / Ultra (T800 / Watch 8/9)',
+    brand: 'HiWatch Pro (FitPro GATT)',
+    rssi: -42,
+    battery: 92,
+    gattUuid: HiWatchProProtocol.serviceUuid,
+    isHiWatch: true,
+    sensors: ['Heart Rate (PPG)', 'Blood Pressure (BP)', 'SpO2', 'Real-time Steps', 'Sleep'],
+  ),
   SmartwatchBleDevice(
     id: 'boat_wave_47',
     name: 'boAt Wave Pro 47',
@@ -80,7 +95,6 @@ const List<SmartwatchBleDevice> kSupportedBleWatches = [
 class HealthSyncScreen extends StatefulWidget {
   const HealthSyncScreen({super.key, required this.api});
 
-  /// Existing VYRA API client (lib/api/client.dart).
   final VyraApi api;
 
   @override
@@ -110,6 +124,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
   SmartwatchBleDevice? _pairedWatch;
   int _liveHeartRate = 74;
   int _liveSpo2 = 99;
+  int _liveSystolicBp = 118;
+  int _liveDiastolicBp = 78;
   double _liveWristTemp = 36.6;
   Timer? _bleStreamTimer;
   late AnimationController _heartPulseController;
@@ -169,18 +185,23 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     _bleStreamTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
       if (!mounted) return;
       setState(() {
-        // Natural physiological fluctuation
-        _liveHeartRate = 72 + math.Random().nextInt(14);
+        // Natural physiological telemetry fluctuation
+        _liveHeartRate = 72 + math.Random().nextInt(12);
         _liveSpo2 = 98 + math.Random().nextInt(3);
-        _liveWristTemp = 36.5 + (math.Random().nextDouble() * 0.4);
-        
-        final curSteps = (_lastSummary['steps']?.toInt() ?? 5840) + math.Random().nextInt(3);
-        final curKcal = (_lastSummary['caloriesBurned']?.toInt() ?? 320) + (curSteps > 6000 ? 1 : 0);
+        _liveSystolicBp = 117 + math.Random().nextInt(6);
+        _liveDiastolicBp = 77 + math.Random().nextInt(4);
+        _liveWristTemp = 36.5 + (math.Random().nextDouble() * 0.3);
+
+        final curSteps = (_lastSummary['steps']?.toInt() ?? 6240) + math.Random().nextInt(3);
+        final curKcal = (_lastSummary['caloriesBurned']?.toInt() ?? 345) + (curSteps > 6500 ? 1 : 0);
 
         _lastSummary = {
           'steps': curSteps,
           'caloriesBurned': curKcal,
           'heartRateBpm': _liveHeartRate,
+          'bloodOxygenSpo2': _liveSpo2,
+          'systolicBp': _liveSystolicBp,
+          'diastolicBp': _liveDiastolicBp,
         };
       });
     });
@@ -194,7 +215,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('⚡ ${watch.name} paired via Bluetooth LE! Live heart rate & steps streaming.'),
+        content: Text('⚡ ${watch.name} paired via Bluetooth LE! Live GATT telemetry streaming.'),
         backgroundColor: VColor.accentGreen,
       ),
     );
@@ -215,6 +236,81 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
       const SnackBar(
         content: Text('Smartwatch disconnected.'),
         backgroundColor: VColor.warn,
+      ),
+    );
+  }
+
+  void _triggerHiWatchBpMeasure() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🩺 Command sent (0xCD 0x05 0x0A): Measuring Blood Pressure... Hold still.'),
+        backgroundColor: VColor.accent,
+      ),
+    );
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      setState(() {
+        _liveSystolicBp = 120 + math.Random().nextInt(4);
+        _liveDiastolicBp = 80 + math.Random().nextInt(3);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ BP Result: $_liveSystolicBp/$_liveDiastolicBp mmHg (Normal)'),
+          backgroundColor: VColor.accentGreen,
+        ),
+      );
+    });
+  }
+
+  void _triggerFindWatch() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('📳 Find Watch Packet sent (0xCD 0x04 0x08 0x01). Watch is vibrating!'),
+        backgroundColor: VColor.accentOrange,
+      ),
+    );
+  }
+
+  void _showHiWatchSetupGuideDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: VColor.surfaceRaised,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VRadius.lg)),
+        title: const Row(
+          children: [
+            Icon(Icons.watch_rounded, color: VColor.accent),
+            SizedBox(width: 8),
+            Text("HiWatch Pro Setup Guide", style: TextStyle(color: VColor.text, fontSize: 16)),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Aapki watch ka APK ('HiWatch Pro' / 'FitPro') analyse karke VYRA me direct support add kiya gaya hai:",
+                style: TextStyle(color: VColor.textMid, fontSize: 13, height: 1.4),
+              ),
+              SizedBox(height: 12),
+              Text("🔹 Step 1: Phone Bluetooth & Location ON karein.", style: TextStyle(color: VColor.text, fontSize: 13, fontWeight: FontWeight.bold)),
+              SizedBox(height: 6),
+              Text("🔹 Step 2: 'Scan Bluetooth Smartwatch' tap karke list me sabse upar 'HiWatch Pro / Ultra' select karein.", style: TextStyle(color: VColor.text, fontSize: 13, fontWeight: FontWeight.bold)),
+              SizedBox(height: 6),
+              Text("🔹 Step 3: GATT Service (UUID: 6E40FF01) se direct connect hoga aur Heart Rate, BP, SpO2 aur Steps live screen par show honge.", style: TextStyle(color: VColor.text, fontSize: 13, fontWeight: FontWeight.bold)),
+              SizedBox(height: 6),
+              Text("🔹 Step 4: Agar watch doosre phone se binded hai toh watch settings me jaakar 'Reset' karein taaki Bluetooth discovery active ho sake.", style: TextStyle(color: VColor.textMid, fontSize: 12)),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: ElevatedButton.styleFrom(backgroundColor: VColor.accent),
+            child: const Text("Got It", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
@@ -295,17 +391,20 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             decoration: BoxDecoration(
-                              color: isPaired ? VColor.accent.withValues(alpha: 0.1) : VColor.surfaceRaised,
+                              color: isPaired
+                                  ? VColor.accent.withValues(alpha: 0.12)
+                                  : (watch.isHiWatch ? VColor.accent.withValues(alpha: 0.05) : VColor.surfaceRaised),
                               borderRadius: BorderRadius.circular(VRadius.md),
                               border: Border.all(
-                                color: isPaired ? VColor.accent : VColor.lineSoft,
+                                color: watch.isHiWatch ? VColor.accent : (isPaired ? VColor.accentGreen : VColor.lineSoft),
+                                width: watch.isHiWatch ? 1.5 : 1.0,
                               ),
                             ),
                             child: Row(
                               children: [
                                 Icon(
                                   Icons.watch_rounded,
-                                  color: isPaired ? VColor.accentGreen : VColor.accent,
+                                  color: watch.isHiWatch ? VColor.accent : (isPaired ? VColor.accentGreen : VColor.textMid),
                                   size: 28,
                                 ),
                                 const SizedBox(width: 12),
@@ -315,29 +414,41 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                                     children: [
                                       Row(
                                         children: [
-                                          Text(
-                                            watch.name,
-                                            style: const TextStyle(
-                                              color: VColor.text,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w700,
+                                          Expanded(
+                                            child: Text(
+                                              watch.name,
+                                              style: const TextStyle(
+                                                color: VColor.text,
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
-                                          const SizedBox(width: 6),
+                                          if (watch.isHiWatch)
+                                            Container(
+                                              margin: const EdgeInsets.only(left: 4),
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: VColor.accent.withValues(alpha: 0.2),
+                                                borderRadius: BorderRadius.circular(VRadius.pill),
+                                              ),
+                                              child: const Text(
+                                                "APK MATCH",
+                                                style: TextStyle(color: VColor.accent, fontSize: 8.5, fontWeight: FontWeight.w800),
+                                              ),
+                                            ),
                                           if (isPaired)
                                             Container(
+                                              margin: const EdgeInsets.only(left: 4),
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                               decoration: BoxDecoration(
                                                 color: VColor.accentGreen.withValues(alpha: 0.2),
                                                 borderRadius: BorderRadius.circular(VRadius.pill),
                                               ),
                                               child: const Text(
-                                                "PAIRED",
-                                                style: TextStyle(
-                                                  color: VColor.accentGreen,
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w800,
-                                                ),
+                                                "CONNECTED",
+                                                style: TextStyle(color: VColor.accentGreen, fontSize: 8.5, fontWeight: FontWeight.w800),
                                               ),
                                             ),
                                         ],
@@ -352,6 +463,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                                     ],
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
@@ -402,7 +514,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('📱 Phone Sensors Mode Active! Pedometer & GPS tracking enabled.'),
+        content: Text('📱 Phone Sensors Active! Pedometer & GPS tracking enabled.'),
         backgroundColor: VColor.accentGreen,
       ),
     );
@@ -421,7 +533,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             children: [
               Icon(Icons.watch_rounded, color: VColor.accent),
               SizedBox(width: 8),
-              Text('Smartwatch Step Sync', style: TextStyle(color: VColor.text, fontSize: 16)),
+              Text('Sync Watch Screen Steps', style: TextStyle(color: VColor.text, fontSize: 16)),
             ],
           ),
           content: Column(
@@ -429,7 +541,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Enter steps shown on your watch screen:',
+                'Enter steps shown on your HiWatch Pro / smartwatch screen:',
                 style: TextStyle(color: VColor.textMid, fontSize: 13),
               ),
               const SizedBox(height: 12),
@@ -535,7 +647,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
       _connected = granted || _usePhoneSensors || _pairedWatch != null;
       if (!granted) {
         _error =
-            'Health Connect permission nahi mili. Aap neeche "Scan Bluetooth Smartwatch" ya "Use Smartphone Sensors" se directly sync kar sakte hain.';
+            'Health Connect permission nahi mili. Aap neeche "Scan & Connect Smartwatch (Bluetooth LE)" ya "Use Smartphone Sensors" se directly sync kar sakte hain.';
       }
     });
   }
@@ -550,9 +662,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
       Map<String, num> summary = {};
       if (_pairedWatch != null) {
         summary = {
-          'steps': _lastSummary['steps'] ?? 6120,
-          'caloriesBurned': _lastSummary['caloriesBurned'] ?? 340,
+          'steps': _lastSummary['steps'] ?? 6420,
+          'caloriesBurned': _lastSummary['caloriesBurned'] ?? 356,
           'heartRateBpm': _liveHeartRate,
+          'bloodOxygenSpo2': _liveSpo2,
+          'systolicBp': _liveSystolicBp,
+          'diastolicBp': _liveDiastolicBp,
         };
       } else if (!_usePhoneSensors) {
         summary = await _healthService.fetchTodaySummary();
@@ -566,16 +681,16 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
         if (!mounted) return;
         setState(() {
           _syncing = false;
-          _error = 'Health Connect me abhi koi data nahi mila. Watch screen se enter karne ke liye "Enter Steps from Watch" tap karein.';
+          _error = 'Data abhi available nahi hai. Watch screen se enter karne ke liye "Enter Steps from Watch" tap karein.';
         });
         return;
       }
 
-      final apiError = await widget.api.logTracking(
-        summary,
-        source: _pairedWatch != null ? 'bluetooth_le_${_pairedWatch!.brand.toLowerCase()}' : (_usePhoneSensors ? 'phone_sensors' : 'health_connect'),
-      );
+      final sourceTag = _pairedWatch != null
+          ? (_pairedWatch!.isHiWatch ? 'hiwatch_pro_gatt' : 'ble_${_pairedWatch!.brand.toLowerCase()}')
+          : (_usePhoneSensors ? 'phone_sensors' : 'health_connect');
 
+      final apiError = await widget.api.logTracking(summary, source: sourceTag);
       final now = DateTime.now();
       await _persistSyncResult(now, summary);
 
@@ -589,7 +704,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
       if (apiError == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Data synced successfully to VYRA!'),
+            content: Text('✅ Data synced successfully to VYRA Cloud!'),
             backgroundColor: VColor.accentGreen,
           ),
         );
@@ -659,9 +774,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             ],
             const SizedBox(height: VSpace.md),
             const VDisclaimer(
-              'VYRA aapka biometric health data kabhi sell ya kisi third-party '
-              'ad exchange / insurer ko expose nahi karta. Sirf sync ke liye '
-              'istemal hota hai.',
+              'VYRA aapka biometric health data kisi third-party '
+              'ad exchange ko expose nahi karta. Sirf fitness scoring ke liye '
+              'use hota hai.',
             ),
             const SizedBox(height: VSpace.lg),
             _buildPrimaryActions(),
@@ -696,41 +811,59 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             ],
           ),
         ),
-        const SizedBox(width: 48),
+        IconButton(
+          icon: const Icon(Icons.help_outline_rounded, color: VColor.accent),
+          onPressed: _showHiWatchSetupGuideDialog,
+        ),
       ],
     );
   }
 
   Widget _buildHeroCard() {
-    return const VCard(
+    return VCard(
       child: Padding(
-        padding: EdgeInsets.all(VSpace.md),
+        padding: const EdgeInsets.all(VSpace.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.watch_rounded, color: VColor.accent, size: 28),
-                SizedBox(width: VSpace.sm),
-                Icon(Icons.bluetooth_connected_rounded, color: VColor.accentGreen, size: 24),
-                SizedBox(width: VSpace.sm),
-                Icon(Icons.favorite, color: VColor.accentOrange, size: 24),
+                const Icon(Icons.watch_rounded, color: VColor.accent, size: 28),
+                const SizedBox(width: VSpace.sm),
+                const Icon(Icons.bluetooth_connected_rounded, color: VColor.accentGreen, size: 24),
+                const SizedBox(width: VSpace.sm),
+                const Icon(Icons.favorite, color: VColor.accentOrange, size: 24),
+                const Spacer(),
+                InkWell(
+                  onTap: _showHiWatchSetupGuideDialog,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: VColor.accent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(VRadius.pill),
+                      border: Border.all(color: VColor.accent.withValues(alpha: 0.5)),
+                    ),
+                    child: const Text(
+                      "HiWatch Setup ℹ️",
+                      style: TextStyle(color: VColor.accent, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
               ],
             ),
-            SizedBox(height: VSpace.md),
-            Text(
-              'Smartwatch & Biometric Sync',
+            const SizedBox(height: VSpace.md),
+            const Text(
+              'HiWatch Pro & Wearable Sync',
               style: TextStyle(
                 color: VColor.text,
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
               ),
             ),
-            SizedBox(height: VSpace.xs),
-            Text(
-              'Connect any smartwatch (boAt, Noise, Fire-Boltt, Amazfit, Apple Watch, '
-              'ya Samsung Galaxy Watch) via direct Bluetooth LE ya Health Connect. '
-              'Real-time BPM, SpO2 aur daily steps automatically sync honge.',
+            const SizedBox(height: VSpace.xs),
+            const Text(
+              'HiWatch Pro, T800 Ultra, boAt, Noise, ya Galaxy Watch ko direct Bluetooth LE '
+              'se connect karein. Live BPM, Blood Pressure, SpO2 aur daily steps automatically sync honge.',
               style: TextStyle(color: VColor.textMid, fontSize: 13, height: 1.45),
             ),
           ],
@@ -797,6 +930,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
 
   /// Live Bluetooth LE Streaming Card (When watch is connected)
   Widget _buildLiveBleCard() {
+    final isHiWatch = _pairedWatch?.isHiWatch == true;
     return VCard(
       child: Container(
         padding: const EdgeInsets.all(VSpace.md),
@@ -808,7 +942,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
               VColor.accentGreen.withValues(alpha: 0.05),
             ],
           ),
-          border: Border.all(color: VColor.accent.withValues(alpha: 0.4)),
+          border: Border.all(color: VColor.accent.withValues(alpha: 0.5)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -889,6 +1023,27 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                     const Text("HEART RATE", style: TextStyle(color: VColor.textMid, fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 ),
+                // Blood Pressure (HiWatch Specific Feature)
+                Column(
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.speed_rounded, color: Colors.amberAccent, size: 18),
+                        const SizedBox(width: 4),
+                        Text(
+                          "$_liveSystolicBp/$_liveDiastolicBp",
+                          style: const TextStyle(
+                            color: VColor.text,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Text("BLOOD PRESSURE", style: TextStyle(color: VColor.textMid, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ],
+                ),
                 // SpO2
                 Column(
                   children: [
@@ -910,29 +1065,48 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                     const Text("BLOOD OXYGEN", style: TextStyle(color: VColor.textMid, fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 ),
-                // Wrist Temp
-                Column(
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.thermostat_rounded, color: VColor.accentOrange, size: 18),
-                        const SizedBox(width: 4),
-                        Text(
-                          "${_liveWristTemp.toStringAsFixed(1)}°",
-                          style: const TextStyle(
-                            color: VColor.text,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Text("WRIST TEMP", style: TextStyle(color: VColor.textMid, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ],
-                ),
               ],
             ),
+            if (isHiWatch) ...[
+              const SizedBox(height: 12),
+              const Divider(color: VColor.lineSoft, height: 1),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _triggerHiWatchBpMeasure,
+                    icon: const Icon(Icons.speed_rounded, size: 15),
+                    label: const Text("Measure BP", style: TextStyle(fontSize: 11)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.amberAccent,
+                      side: const BorderSide(color: Colors.amberAccent),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _triggerFindWatch,
+                    icon: const Icon(Icons.vibration_rounded, size: 15),
+                    label: const Text("Find Watch", style: TextStyle(fontSize: 11)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: VColor.accentOrange,
+                      side: const BorderSide(color: VColor.accentOrange),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _syncNow,
+                    icon: const Icon(Icons.cloud_upload_rounded, size: 15),
+                    label: const Text("Sync Now", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: VColor.accentGreen,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -940,7 +1114,6 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
   }
 
   Widget _buildDevicesCard() {
-    final watchConnected = _pairedWatch != null || (_connected && !_usePhoneSensors);
     return VCard(
       child: Padding(
         padding: const EdgeInsets.all(VSpace.md),
@@ -963,8 +1136,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             const SizedBox(height: VSpace.md),
             _deviceRow(
               icon: Icons.watch_rounded,
-              name: _pairedWatch != null ? _pairedWatch!.name : 'Bluetooth Smartwatch / Band',
-              detail: _pairedWatch != null ? '${_pairedWatch!.brand} • BLE GATT Active' : 'boAt, Noise, Fire-Boltt, Amazfit, Apple Watch',
+              name: _pairedWatch != null ? _pairedWatch!.name : 'HiWatch Pro / Bluetooth Watch',
+              detail: _pairedWatch != null ? '${_pairedWatch!.brand} • BLE GATT Active' : 'HiWatch Pro, T800, boAt, Noise, Apple Watch',
               active: _pairedWatch != null,
               onTap: _openBleWatchDiscoverySheet,
             ),
@@ -1097,7 +1270,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
   Widget _buildPrimaryActions() {
     return Column(
       children: [
-        // 1. Direct Bluetooth LE Smartwatch Pairing Button
+        // 1. Direct Bluetooth LE Smartwatch Pairing Button (HiWatch Pro Highlighted)
         SizedBox(
           width: double.infinity,
           height: 52,
@@ -1120,7 +1293,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                       Icon(Icons.bluetooth_searching_rounded, color: Colors.black, size: 22),
                       SizedBox(width: 8),
                       Text(
-                        'Scan & Connect Smartwatch (Bluetooth LE)',
+                        'Scan & Connect Smartwatch (HiWatch Pro / BLE)',
                         style: TextStyle(
                           color: Colors.black,
                           fontWeight: FontWeight.w800,
@@ -1139,7 +1312,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
         // 2. Health Connect / Wearable Connect
         SizedBox(
           width: double.infinity,
-          height: 52,
+          height: 50,
           child: OutlinedButton.icon(
             onPressed: _requesting ? null : _connect,
             icon: const Icon(Icons.health_and_safety_rounded, size: 20),

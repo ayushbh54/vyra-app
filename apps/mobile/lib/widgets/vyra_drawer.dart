@@ -610,7 +610,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.watch_rounded,
                         iconBgColor: const Color(0xFF10B981), // Emerald
-                        title: 'Health Platform Sync',
+                        title: 'Smartwatch Sync (HiWatch Pro)',
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.of(context).push(
