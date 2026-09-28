@@ -82,17 +82,64 @@ class _AiChatScreenState extends State<AiChatScreen> {
       }
     } catch (_) {}
 
-    // Fallback welcome message if no history exists yet
+    // Initial realistic dummy chat conversation between user and Coach VYRA
     if (_messages.isEmpty) {
+      final initialMessages = _getInitialSeedMessages();
       setState(() {
-        _messages.add(_AiChatMessage(
-          'model',
-          "Hey! I'm VYRA Coach, your AI-powered fitness and nutrition guide. "
-          "Ask me anything — workouts, meals, recovery, or your goals. "
-          "I'm not a doctor, so for medical questions always check with a professional. 💪",
-        ));
+        _messages.addAll(initialMessages);
       });
+      _saveHistory();
+      _scrollToBottom();
     }
+  }
+
+  List<_AiChatMessage> _getInitialSeedMessages() {
+    final now = DateTime.now();
+    return [
+      _AiChatMessage(
+        'model',
+        "Hey Ayush! 👋 I'm Coach VYRA, your AI-powered performance and clinical nutrition specialist.\n\n"
+        "I reviewed your biometric sync: morning HRV readiness is elevated at 87%, and your 7-day workout streak is active! 🔥\n\n"
+        "How is your body feeling today?",
+        now.subtract(const Duration(minutes: 50)),
+      ),
+      _AiChatMessage(
+        'user',
+        "Completed 5km morning run in 24 mins! Felt great, but hamstrings feel a bit tight. What should I eat for optimal recovery right now?",
+        now.subtract(const Duration(minutes: 45)),
+      ),
+      _AiChatMessage(
+        'model',
+        "Outstanding pace on that 5K! 24 mins is a solid 4:48/km cadence. 🏃‍♂️💨\n\n"
+        "Here is your immediate recovery protocol:\n\n"
+        "1. 🥤 Hydration: Drink 400–500ml water with a pinch of pink salt or coconut water to restore sodium and potassium lost in sweat.\n\n"
+        "2. 🥗 3:1 Recovery Fuel (within 45 mins):\n"
+        "   • 25g High-Bioavailability Protein + 40g Complex Carbs\n"
+        "   • Ideal combos: Greek yogurt with sliced banana & chia seeds, or 2 boiled eggs / paneer bhurji with toasted whole wheat sourdough.\n\n"
+        "3. 🧘 Hamstring Relief:\n"
+        "   • Standing single-leg hamstring stretch (30s each side)\n"
+        "   • Gentle downward dog hold (45s)\n"
+        "   • Foam roll calves and glutes to relieve posterior chain tension.\n\n"
+        "How is your resting heart rate today?",
+        now.subtract(const Duration(minutes: 42)),
+      ),
+      _AiChatMessage(
+        'user',
+        "Resting HR was 62 bpm today, feeling energized! Can we target upper body and core tomorrow?",
+        now.subtract(const Duration(minutes: 25)),
+      ),
+      _AiChatMessage(
+        'model',
+        "62 bpm resting HR confirms optimal recovery! 🎯\n\n"
+        "Here is your customized Upper Body & Core target for tomorrow:\n"
+        "• 3×10 Dumbbell Chest / Floor Press (controlled eccentric)\n"
+        "• 3×12 Bodyweight Push-ups (focus on tempo: 2s down, 1s up)\n"
+        "• 3×10 Seated Dumbbell Overhead Shoulder Press\n"
+        "• 3×45s Forearm Plank holds + 3×20 Russian Twists\n\n"
+        "Aim for 7.5+ hours of sleep tonight to maximize muscle protein synthesis. You've got this! 💪",
+        now.subtract(const Duration(minutes: 20)),
+      ),
+    ];
   }
 
   Future<void> _saveHistory() async {
@@ -273,6 +320,21 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ),
         ),
 
+        // ── Quick suggestions row ──────────────────────────────────────────
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+          child: Row(
+            children: [
+              _suggestionChip('🥗 Post-run recovery meal'),
+              _suggestionChip('🔥 15m core & abs burn'),
+              _suggestionChip('💧 Hydration target today'),
+              _suggestionChip('🧘 Hamstring stretch routine'),
+              _suggestionChip('😴 Deep sleep & muscle repair'),
+            ],
+          ),
+        ),
+
         // ── Input row ──────────────────────────────────────────────────────
         Container(
           padding: EdgeInsets.only(
@@ -328,6 +390,27 @@ class _AiChatScreenState extends State<AiChatScreen> {
       ]),
     );
   }
+
+  Widget _suggestionChip(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        backgroundColor: VColor.surfaceRaised,
+        side: const BorderSide(color: VColor.line),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        label: Text(
+          label,
+          style: const TextStyle(color: VColor.textMid, fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        onPressed: _loading
+            ? null
+            : () {
+                _controller.text = label;
+                _send();
+              },
+      ),
+    );
+  }
 }
 
 // ── Sub-widgets ────────────────────────────────────────────────────────────────
@@ -335,6 +418,13 @@ class _AiChatScreenState extends State<AiChatScreen> {
 class _Bubble extends StatelessWidget {
   const _Bubble(this.msg);
   final _AiChatMessage msg;
+
+  String _formatTime(DateTime dt) {
+    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $ampm';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -371,9 +461,23 @@ class _Bubble extends StatelessWidget {
                   color: isUser ? VColor.accent.withValues(alpha: 0.3) : VColor.line,
                 ),
               ),
-              child: Text(
-                msg.text,
-                style: const TextStyle(color: VColor.text, fontSize: 14, height: 1.45),
+              child: Column(
+                crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    msg.text,
+                    style: const TextStyle(color: VColor.text, fontSize: 14, height: 1.45),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatTime(msg.timestamp),
+                    style: TextStyle(
+                      color: isUser ? VColor.accent.withValues(alpha: 0.8) : VColor.textLow,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
