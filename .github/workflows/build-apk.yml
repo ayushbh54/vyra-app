@@ -123,6 +123,29 @@ jobs:
           path: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 2
 
+      - name: Publish GitHub Release (Direct APK Download)
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: v1.0.0-build-${{ github.run_number }}
+          name: "VYRA Android App (Build #${{ github.run_number }})"
+          draft: false
+          prerelease: false
+          files: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
+          body: |
+            ### 🚀 VYRA AI Athletic Ecosystem - Android Release
+            
+            **Direct Download:**
+            👉 [Download app-release.apk](https://github.com/${{ github.repository }}/releases/download/v1.0.0-build-${{ github.run_number }}/app-release.apk)
+            
+            **What's New in this Build:**
+            - ⌚ **HiWatch Pro Smartwatch Support**: Reverse-engineered GATT BLE protocol (`6e40ff01`), Blood Pressure (BP), SpO2, and continuous step streaming.
+            - 🏃 **Real Human Muscular Avatar**: Anatomical athletic curves, compression shorts, and running sneakers.
+            - 🤖 **Floating AI Voice Coach**: All-time floating robot at bottom-right with Web Speech voice recognition and spoken responses.
+            - 📷 **Pose Tracking Fix**: Removed blind auto-timer, added exercise carousel & 1-tap rep recorder.
+            - 🩸 **e-RaktKosh Map Fix**: Switched to OpenStreetMap tiles (no API key needed).
+            - 🌐 **Full Web & Mobile Parity**: Hydration tracker, AI Food Scanner, Beacon SOS, Leaderboard Podium.
+
       - name: Upload Build Log on Failure
         if: failure()
         uses: actions/upload-artifact@v4
