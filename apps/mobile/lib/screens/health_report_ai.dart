@@ -9,9 +9,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/client.dart';
 import '../theme.dart';
+import 'diet_chart.dart';
 
 // ---------------------------------------------------------------------------
 // Data models
@@ -1515,6 +1517,43 @@ class _BottomCtas extends StatelessWidget {
     return Column(
       children: [
         _CtaButton(
+          icon: Icons.restaurant_menu_rounded,
+          label: 'Apply to My Diet & Workout Plan',
+          color: VColor.accentGreen,
+          onTap: () async {
+            HapticFeedback.heavyImpact();
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(
+              'clinical_nutrition_focus',
+              'Prioritizing Vitamin D, iron-rich lentils, spinach & heart-healthy soluble fiber based on your blood report.',
+            );
+            await prefs.setBool('has_clinical_diet_recommendation', true);
+
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  backgroundColor: VColor.accentGreen,
+                  duration: const Duration(seconds: 5),
+                  content: const Text(
+                    '✅ Personal Diet & Workout adapted! Routine has been aligned with your biomarker report.',
+                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                  ),
+                  action: SnackBarAction(
+                    label: 'View Diet',
+                    textColor: Colors.black,
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const DietChartScreen()),
+                      );
+                    },
+                  ),
+                ),
+              );
+            }
+          },
+        ),
+        const SizedBox(height: VSpace.sm),
+        _CtaButton(
           icon: Icons.camera_alt_rounded,
           label: 'Scan Another Report',
           onTap: onReset,
@@ -1530,7 +1569,7 @@ class _BottomCtas extends StatelessWidget {
             );
           },
           outlined: true,
-          color: VColor.accentGreen,
+          color: VColor.accent,
         ),
       ],
     );

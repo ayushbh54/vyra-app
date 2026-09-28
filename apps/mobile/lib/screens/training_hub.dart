@@ -11,12 +11,14 @@ import '../widgets/common.dart';
 import '../widgets/daily_slogan_banner.dart';
 import '../widgets/notifications_sheet.dart';
 import '../widgets/screen_scaffold.dart';
+import 'ai_chat.dart';
 import 'barcode_scan.dart';
 import 'blood_donation.dart';
 import 'challenges_hub.dart';
 import 'exercise_detail.dart';
 import 'face_hair_yoga.dart';
 import 'food_scan.dart';
+import 'friends_leaderboard.dart';
 import 'health_report_ai.dart';
 import 'health_sync.dart';
 import 'library.dart';
@@ -467,6 +469,9 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
 
               // 2. 3-Column Metric Highlights Card
               _build3ColumnMetricCard(context, plan),
+
+              // 2b. VYRA Gemini Daily Readiness Briefing Card
+              _buildGeminiDailyBriefingCard(context),
               const SizedBox(height: 20),
 
               // 3. Today's Routine Section with Hero & Up-Next Cards
@@ -874,6 +879,262 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2b. VYRA GEMINI DAILY READINESS BRIEFING CARD
+  // ---------------------------------------------------------------------------
+  Widget _buildGeminiDailyBriefingCard(BuildContext context) {
+    final isDark = ThemeManager.instance.isDark;
+    final isHi = LanguageService.instance.locale.languageCode == 'hi';
+
+    final heading = isHi ? 'VYRA GEMINI दैनिक स्वास्थ्य विश्लेषण' : 'VYRA GEMINI DAILY READINESS BRIEFING';
+    final briefingText = isHi
+        ? 'सुप्रभात आयुष! आपकी रिकवरी स्कोर 89% (उत्कृष्ट) है। कल रात की गहरी नींद 1 घंटा 48 मिनट रही और रेस्टिंग हार्ट रेट 64 bpm स्थिर है। आज अपर बॉडी और कोर ट्रेनिंग के लिए दिन बिल्कुल सही है। 3.2L पानी का लक्ष्य रखें।'
+        : 'Good morning Ayush! Recovery score is 89% (Optimal). Resting HR is steady at 64 bpm and deep sleep reached 1h 48m. Today\'s metabolic window is ideal for your Upper Body & Core session. Hydration goal: 3.2L.';
+
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131B2E) : const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF0284C7).withValues(alpha: isDark ? 0.35 : 0.25),
+          width: 1.3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0284C7).withValues(alpha: isDark ? 0.15 : 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF00D2FF), size: 16),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  heading,
+                  style: const TextStyle(
+                    color: Color(0xFF00D2FF),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF059669).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.4)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle, color: Color(0xFF10B981), size: 6),
+                    SizedBox(width: 4),
+                    Text(
+                      'AI SYNCED',
+                      style: TextStyle(
+                        color: Color(0xFF10B981),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            briefingText,
+            style: TextStyle(
+              color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+              fontSize: 13,
+              height: 1.45,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    pushScreen(context, 'Coach VYRA', const AiChatScreen());
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0284C7).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.mic_rounded, color: Color(0xFF00D2FF), size: 15),
+                        SizedBox(width: 6),
+                        Text(
+                          'Ask Coach VYRA',
+                          style: TextStyle(
+                            color: Color(0xFF00D2FF),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  onTap: () => _showIntensityModifier(context),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.tune_rounded, color: Color(0xFF10B981), size: 15),
+                        const SizedBox(width: 6),
+                        Text(
+                          isHi ? 'वर्कआउट ट्यून करें' : 'Tune Intensity',
+                          style: TextStyle(
+                            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showIntensityModifier(BuildContext context) {
+    HapticFeedback.selectionClick();
+    final isDark = ThemeManager.instance.isDark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF171C25) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.tune_rounded, color: Color(0xFF10B981), size: 22),
+                    SizedBox(width: 10),
+                    Text(
+                      'AI Workout Intensity Tuner',
+                      style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Feeling sore or energized? Gemini AI dynamically re-scales sets and rest timers for today:',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  tileColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  leading: const Icon(Icons.spa_rounded, color: Color(0xFF10B981)),
+                  title: const Text('Light Active Recovery (-30% volume)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                  subtitle: const Text('Reduces heavy sets, extends rest intervals to 90s', style: TextStyle(fontSize: 11)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('🌿 Scaled to Active Recovery! Reduced set volume applied.'),
+                        backgroundColor: Color(0xFF10B981),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  tileColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  leading: const Icon(Icons.fitness_center_rounded, color: Color(0xFF0284C7)),
+                  title: const Text('Standard Progressive (Optimal Target)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                  subtitle: const Text('Matches today\'s scheduled biometric progression', style: TextStyle(fontSize: 11)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('🎯 Optimal Progressive Overload locked in.')),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  tileColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  leading: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFF97316)),
+                  title: const Text('Peak Intensity (+20% volume & dropsets)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                  subtitle: const Text('Adds high-output finishers and dropsets for max burn', style: TextStyle(fontSize: 11)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('🔥 Peak Intensity enabled! Drop sets added to today\'s session.'),
+                        backgroundColor: Color(0xFFF97316),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

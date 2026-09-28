@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/client.dart';
 import '../models/models.dart';
@@ -34,6 +37,40 @@ class _FoodScreenState extends State<FoodScreen> {
 
   SugarResult? _sugar;
   bool _loggingSugar = false;
+
+  int _consumedCal = 1380;
+  double _consumedProtein = 95.0;
+  double _consumedCarbs = 145.0;
+  double _consumedFat = 42.0;
+  String? _clinicalNutritionFocus;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLoggedNutrition();
+  }
+
+  Future<void> _loadLoggedNutrition() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dateKey = DateTime.now().toIso8601String().substring(0, 10);
+      final addCal = prefs.getInt('logged_cal_$dateKey') ?? 0;
+      final addProtein = prefs.getDouble('logged_protein_$dateKey') ?? 0.0;
+      final addCarbs = prefs.getDouble('logged_carbs_$dateKey') ?? 0.0;
+      final addFat = prefs.getDouble('logged_fat_$dateKey') ?? 0.0;
+      final focus = prefs.getString('clinical_nutrition_focus');
+
+      if (mounted) {
+        setState(() {
+          _consumedCal = 1380 + addCal;
+          _consumedProtein = 95.0 + addProtein;
+          _consumedCarbs = 145.0 + addCarbs;
+          _consumedFat = 42.0 + addFat;
+          _clinicalNutritionFocus = focus;
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -176,6 +213,52 @@ class _FoodScreenState extends State<FoodScreen> {
           ),
           const SizedBox(height: VSpace.base),
 
+          // ── Clinical Lab Recommendation Banner (if report applied) ─────
+          if (_clinicalNutritionFocus != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: VSpace.base),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0284C7).withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.medical_services_rounded, color: Color(0xFF00D2FF), size: 16),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'CLINICAL LAB ADAPTATION ACTIVE',
+                          style: TextStyle(
+                            color: Color(0xFF00D2FF),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _clinicalNutritionFocus!,
+                          style: const TextStyle(color: VColor.text, fontSize: 11.5, height: 1.35),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // ── Caloric Budget & Macronutrient Telemetry Card ───────────────
           Container(
             padding: const EdgeInsets.all(VSpace.base),
@@ -190,21 +273,21 @@ class _FoodScreenState extends State<FoodScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('REMAINING BUDGET', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
-                        SizedBox(height: 2),
+                        const Text('REMAINING BUDGET', style: TextStyle(color: VColor.textLow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                        const SizedBox(height: 2),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.baseline,
                           textBaseline: TextBaseline.alphabetic,
                           children: [
                             Text(
-                              '820',
-                              style: TextStyle(color: VColor.text, fontSize: 32, fontWeight: FontWeight.w800),
+                              '${math.max(0, 2200 - _consumedCal)}',
+                              style: const TextStyle(color: VColor.text, fontSize: 32, fontWeight: FontWeight.w800),
                             ),
-                            SizedBox(width: 4),
-                            Text('kcal left', style: TextStyle(color: VColor.textMid, fontSize: 13, fontWeight: FontWeight.w600)),
+                            const SizedBox(width: 4),
+                            const Text('kcal left', style: TextStyle(color: VColor.textMid, fontSize: 13, fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ],
@@ -227,17 +310,22 @@ class _FoodScreenState extends State<FoodScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('PROTEIN', style: TextStyle(color: VColor.accent, fontSize: 10, fontWeight: FontWeight.bold)),
-                              Text('145g / 180g', style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                              const Text('PROTEIN', style: TextStyle(color: VColor.accent, fontSize: 10, fontWeight: FontWeight.bold)),
+                              Text('${_consumedProtein.toStringAsFixed(0)}g / 180g', style: const TextStyle(color: VColor.textLow, fontSize: 10)),
                             ],
                           ),
                           const SizedBox(height: 4),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
-                            child: const LinearProgressIndicator(value: 0.80, minHeight: 6, color: VColor.accent, backgroundColor: VColor.bg),
+                            child: LinearProgressIndicator(
+                              value: (_consumedProtein / 180).clamp(0.0, 1.0),
+                              minHeight: 6,
+                              color: VColor.accent,
+                              backgroundColor: VColor.bg,
+                            ),
                           ),
                         ],
                       ),
@@ -247,17 +335,22 @@ class _FoodScreenState extends State<FoodScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('CARBS', style: TextStyle(color: VColor.accentGreen, fontSize: 10, fontWeight: FontWeight.bold)),
-                              Text('160g / 220g', style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                              const Text('CARBS', style: TextStyle(color: VColor.accentGreen, fontSize: 10, fontWeight: FontWeight.bold)),
+                              Text('${_consumedCarbs.toStringAsFixed(0)}g / 220g', style: const TextStyle(color: VColor.textLow, fontSize: 10)),
                             ],
                           ),
                           const SizedBox(height: 4),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
-                            child: const LinearProgressIndicator(value: 0.72, minHeight: 6, color: VColor.accentGreen, backgroundColor: VColor.bg),
+                            child: LinearProgressIndicator(
+                              value: (_consumedCarbs / 220).clamp(0.0, 1.0),
+                              minHeight: 6,
+                              color: VColor.accentGreen,
+                              backgroundColor: VColor.bg,
+                            ),
                           ),
                         ],
                       ),
@@ -267,17 +360,22 @@ class _FoodScreenState extends State<FoodScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('FATS', style: TextStyle(color: VColor.accentOrange, fontSize: 10, fontWeight: FontWeight.bold)),
-                              Text('48g / 65g', style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                              const Text('FATS', style: TextStyle(color: VColor.accentOrange, fontSize: 10, fontWeight: FontWeight.bold)),
+                              Text('${_consumedFat.toStringAsFixed(0)}g / 65g', style: const TextStyle(color: VColor.textLow, fontSize: 10)),
                             ],
                           ),
                           const SizedBox(height: 4),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
-                            child: const LinearProgressIndicator(value: 0.73, minHeight: 6, color: VColor.accentOrange, backgroundColor: VColor.bg),
+                            child: LinearProgressIndicator(
+                              value: (_consumedFat / 65).clamp(0.0, 1.0),
+                              minHeight: 6,
+                              color: VColor.accentOrange,
+                              backgroundColor: VColor.bg,
+                            ),
                           ),
                         ],
                       ),
@@ -298,10 +396,11 @@ class _FoodScreenState extends State<FoodScreen> {
                     side: const BorderSide(color: VColor.accent),
                     backgroundColor: VColor.accent.withValues(alpha: 0.08),
                   ),
-                  onPressed: () {
-                    Navigator.of(context).push(
+                  onPressed: () async {
+                    final res = await Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const FoodScanScreen()),
                     );
+                    if (res == true) _loadLoggedNutrition();
                   },
                   icon: const Icon(Icons.camera_alt_rounded, size: 18, color: VColor.accent),
                   label: const Text('Scan Food AI', style: TextStyle(color: VColor.text, fontWeight: FontWeight.w700)),
