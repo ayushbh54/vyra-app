@@ -7,10 +7,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/client.dart';
 import '../theme.dart';
@@ -212,40 +210,21 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
       if (!mounted) return;
       setState(() {
         _progressStep = 1;
-        _stepLabel = 'Extracting blood biomarkers with Gemini AI...';
+        _stepLabel = 'Analyzing blood biomarkers with VYRA AI...';
       });
-
-      final prefs = await SharedPreferences.getInstance();
-      final userKey = prefs.getString('vyra_gemini_api_key') ??
-          const String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
 
       Map<String, dynamic>? analysisData;
 
-      // 1. Direct Gemini Vision call if user has configured API key
-      if (userKey.trim().isNotEmpty) {
-        try {
-          analysisData = await _callGeminiVisionDirect(
-            apiKey: userKey.trim(),
-            base64Image: b64,
-            mimeType: mime,
-          );
-        } catch (e) {
-          debugPrint('Direct Gemini Vision error: $e. Falling back to backend...');
+      // Call VYRA Backend API endpoint (/v1/lab-report/analyse)
+      // The backend securely has all Gemini API keys configured.
+      try {
+        final api = context.read<VyraApi>();
+        final res = await api.scanLabReport(imageBase64: b64, mimeType: mime);
+        if (res.isNotEmpty && (res['findings'] as List? ?? []).isNotEmpty) {
+          analysisData = res;
         }
-      }
-
-      // 2. Call VYRA Backend API endpoint (/v1/lab-report/analyse)
-      if (analysisData == null || (analysisData['findings'] as List? ?? []).isEmpty) {
-        try {
-          if (!mounted) return;
-          final api = context.read<VyraApi>();
-          final res = await api.scanLabReport(imageBase64: b64, mimeType: mime);
-          if (res.isNotEmpty && (res['findings'] as List? ?? []).isNotEmpty) {
-            analysisData = res;
-          }
-        } catch (e) {
-          debugPrint('VYRA backend scanLabReport error: $e');
-        }
+      } catch (e) {
+        debugPrint('VYRA backend scanLabReport error: $e');
       }
 
       if (!mounted) return;
@@ -301,12 +280,11 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
           _screenState = _ScreenState.results;
         });
       } else {
-        // Zero dummy data: If not readable, show genuine error rather than fake numbers!
+        // Zero dummy data: If not readable, show clear medical guidance
         setState(() {
           _errorMessage =
-              'Could not clearly read blood biomarkers from this photo.\n\n'
-              'Please ensure the report is well-lit, laid flat, and the text is in focus.\n'
-              'You can also configure a free Gemini Vision API Key (tap 🔑 in the top right).';
+              'Could not read blood biomarkers clearly from this photo.\n\n'
+              'Please ensure the report is well-lit, laid flat, and the printed text is sharp and in focus.';
           _screenState = _ScreenState.upload;
         });
       }
@@ -314,221 +292,11 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
       if (mounted) {
         setState(() {
           _errorMessage =
-              'Analysis error: $e\n\nPlease check network connection or tap 🔑 to configure your Gemini API Key.';
+              'Analysis could not be completed. Please check your internet connection and try again.';
           _screenState = _ScreenState.upload;
         });
       }
     }
-  }
-
-  // ── Gemini 1.5 Flash Vision Direct Call ───────────────────────────────
-
-  Future<Map<String, dynamic>> _callGeminiVisionDirect({
-    required String apiKey,
-    required String base64Image,
-    required String mimeType,
-  }) async {
-    final uri = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey',
-    );
-
-    const prompt = '''
-You are a precision laboratory report reader for the VYRA health platform.
-Read this uploaded blood test / lab report image and extract every single visible test marker.
-CRITICAL: DO NOT invent, hallucinate, or fabricate any numbers. Only extract markers actually printed in the image.
-
-Output ONLY a single valid JSON object in this exact format:
-{
-  "labName": "Diagnostic Lab Name (e.g. Lal PathLabs, Apollo, Metropolis)",
-  "reportDate": "Date printed on report",
-  "findings": [
-    {
-      "marker": "hemoglobin",
-      "label": "Hemoglobin",
-      "value": 13.8,
-      "displayValue": "13.8",
-      "unit": "g/dL",
-      "status": "normal",
-      "referenceRange": "12.0 - 16.0",
-      "summary": "Within normal range"
-    }
-  ],
-  "insights": [
-    "Personalized health/nutrition insight based strictly on these extracted values"
-  ],
-  "adjustments": [
-    {
-      "label": "Nutritional adjustment",
-      "tip": "Dietary suggestion",
-      "foods": ["Food 1", "Food 2"]
-    }
-  ],
-  "nextStep": "Follow-up test or physician advice",
-  "disclaimer": "This analysis provides supportive nutritional and wellness insights based on visible markers. It is not medical advice. Consult your physician."
-}
-
-Rules:
-1. Status must be one of: 'normal', 'borderline', 'high', 'low', 'critical'.
-2. If the image is not a lab report or cannot be deciphered, return "findings": [] with an explanation in "nextStep".
-3. Never suggest prescription medicines or dosages. Only food and lifestyle advice.
-''';
-
-    final res = await http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            "contents": [
-              {
-                "parts": [
-                  {"text": prompt},
-                  {
-                    "inline_data": {
-                      "mime_type": mimeType,
-                      "data": base64Image,
-                    }
-                  }
-                ]
-              }
-            ],
-            "generationConfig": {
-              "response_mime_type": "application/json",
-              "temperature": 0.1,
-            }
-          }),
-        )
-        .timeout(const Duration(seconds: 40));
-
-    if (res.statusCode != 200) {
-      throw Exception('HTTP ${res.statusCode}: ${res.body}');
-    }
-
-    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-    final candidates = decoded['candidates'] as List? ?? [];
-    if (candidates.isEmpty) throw Exception('No candidates from Gemini API.');
-
-    final content = candidates[0]['content'] as Map<String, dynamic>? ?? {};
-    final parts = content['parts'] as List? ?? [];
-    if (parts.isEmpty) throw Exception('No content parts from Gemini API.');
-
-    String rawText = parts[0]['text'] as String? ?? '';
-    rawText = rawText.trim();
-    if (rawText.startsWith('```json')) {
-      rawText = rawText.replaceFirst('```json', '');
-    } else if (rawText.startsWith('```')) {
-      rawText = rawText.replaceFirst('```', '');
-    }
-    if (rawText.endsWith('```')) {
-      rawText = rawText.substring(0, rawText.length - 3);
-    }
-
-    return jsonDecode(rawText.trim()) as Map<String, dynamic>;
-  }
-
-  // ── Gemini Key Dialog ─────────────────────────────────────────────────
-
-  Future<void> _showApiKeyDialog() async {
-    final prefs = await SharedPreferences.getInstance();
-    final currentKey = prefs.getString('vyra_gemini_api_key') ?? '';
-    final ctrl = TextEditingController(text: currentKey);
-
-    if (!mounted) return;
-    await showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: VColor.surfaceRaised,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(VRadius.lg.toDouble())),
-        title: const Row(
-          children: [
-            Icon(Icons.key_rounded, color: VColor.accent, size: 22),
-            SizedBox(width: 8),
-            Text(
-              'Gemini AI Vision Key',
-              style: TextStyle(
-                color: VColor.text,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Add your Google Gemini API Key for instant direct visual OCR on blood test reports.',
-              style: TextStyle(color: VColor.textMid, fontSize: 13, height: 1.4),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Free key from: aistudio.google.com',
-              style: TextStyle(
-                color: VColor.accentGreen,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: ctrl,
-              style: const TextStyle(color: VColor.text, fontSize: 13),
-              decoration: InputDecoration(
-                hintText: 'Paste AIzaSy... key here',
-                hintStyle: const TextStyle(color: VColor.textLow, fontSize: 12),
-                filled: true,
-                fillColor: VColor.bg,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: VColor.line),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: VColor.accent),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: VColor.textLow)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: VColor.accent,
-              foregroundColor: Colors.black,
-            ),
-            onPressed: () async {
-              final newKey = ctrl.text.trim();
-              if (newKey.isEmpty) {
-                await prefs.remove('vyra_gemini_api_key');
-              } else {
-                await prefs.setString('vyra_gemini_api_key', newKey);
-              }
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      newKey.isEmpty
-                          ? 'Gemini Key cleared'
-                          : 'Gemini Vision Key saved successfully!',
-                    ),
-                  ),
-                );
-              }
-            },
-            child: const Text('Save Key',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
   }
 
   void _resetToUpload() {
@@ -613,12 +381,6 @@ Rules:
               ],
             ),
           ),
-          // Gemini Key config button
-          IconButton(
-            tooltip: 'Configure Gemini API Key',
-            icon: const Icon(Icons.key_rounded, color: VColor.accent),
-            onPressed: _showApiKeyDialog,
-          ),
         ],
       ),
     );
@@ -635,7 +397,6 @@ Rules:
           lastImage: _selectedImage,
           onCameraPressed: () => _pickImage(ImageSource.camera),
           onGalleryPressed: () => _pickImage(ImageSource.gallery),
-          onApiKeyPressed: _showApiKeyDialog,
         );
       case _ScreenState.analyzing:
         return _AnalyzingView(
@@ -675,14 +436,12 @@ class _UploadCard extends StatelessWidget {
     this.lastImage,
     required this.onCameraPressed,
     required this.onGalleryPressed,
-    required this.onApiKeyPressed,
   });
 
   final String? errorMessage;
   final File? lastImage;
   final VoidCallback onCameraPressed;
   final VoidCallback onGalleryPressed;
-  final VoidCallback onApiKeyPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -706,32 +465,13 @@ class _UploadCard extends StatelessWidget {
                       color: Colors.redAccent, size: 20),
                   const SizedBox(width: VSpace.sm),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          errorMessage!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12.5,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton.icon(
-                          onPressed: onApiKeyPressed,
-                          icon: const Icon(Icons.key_rounded,
-                              size: 15, color: VColor.accent),
-                          label: const Text(
-                            'Add Gemini API Key',
-                            style: TextStyle(
-                              color: VColor.accent,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      errorMessage!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12.5,
+                        height: 1.4,
+                      ),
                     ),
                   ),
                 ],
