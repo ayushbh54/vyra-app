@@ -1,4 +1,3 @@
-
 /// HiWatch Pro & FitPro Smartwatch Protocol & Bluetooth LE Service
 ///
 /// Reverse-engineered directly from `hiwatch pro/base.apk` (com.legend.hiwatchpro.app / xfkj.fitpro)
@@ -44,11 +43,16 @@ class HiWatchProProtocol {
     "Watch9",
   ];
 
-  // ─── Command Packet Builders (Header 0xCD 0x00 / 0xAB) ─────────────────────
+  // ─── Command Packet Builders (Header 0xCD 0x00 / 0xAB / 0xAA) ──────────────
   
   /// Command to turn on real-time continuous step streaming (from SendData.getTurnOnRealTimeStep)
   static List<int> buildTurnOnRealTimeStepCommand() {
     return [0xCD, 0x00, 0x07, 0x07, 0x01, 0x00, 0x00, 0x00, 0x00];
+  }
+
+  /// Command to request current total step and calorie count immediately
+  static List<int> buildRequestLiveMetricsCommand() {
+    return [0xCD, 0x00, 0x04, 0x07, 0x01];
   }
 
   /// Command to trigger real-time Heart Rate & SpO2 measurement (from SendData.getSportMeasureHeartRecive)
@@ -56,6 +60,15 @@ class HiWatchProProtocol {
     return [0xCD, 0x00, 0x05, 0x09, 0x01, 0x01];
   }
 
+  /// Universal query command for DaFit / HryFine clone chipsets
+  static List<int> buildDaFitStepQueryCommand() {
+    return [0xAB, 0x00, 0x04, 0xFF, 0x31];
+  }
+
+  /// Periodic Heartbeat keep-alive command to prevent watch from closing GATT notify stream
+  static List<int> buildUniversalHeartbeatCommand() {
+    return [0xCD, 0x00, 0x03, 0x01];
+  }
 
   /// Command to vibrate / find the watch (from SDKCmdMannager.findWatch)
   static List<int> buildFindWatchCommand() {
@@ -81,57 +94,78 @@ class HiWatchProProtocol {
 
   // ─── Packet Parsers ────────────────────────────────────────────────────────
   
-  /// Parses raw byte packets received on notify characteristic (6e40ff03)
+  /// Parses raw byte packets received on notify characteristic
   static HiWatchTelemetryData parseNotifyPacket(List<int> bytes) {
-    if (bytes.length < 4) {
+    if (bytes.length < 2) {
       return HiWatchTelemetryData.empty();
     }
 
     final header = bytes[0];
-    // Standard Bluetooth SIG Heart Rate Measurement (UUID 0x2A37)
-    if ((header != 0xCD && header != 0xAB) && bytes.length >= 2) {
+
+    // 1. Standard Bluetooth SIG Heart Rate Measurement (UUID 0x2A37)
+    if (header != 0xCD && header != 0xAB && header != 0xAA && bytes.length >= 2) {
       final flags = bytes[0];
       final is16Bit = (flags & 0x01) != 0;
       final hr = is16Bit && bytes.length >= 3 ? (bytes[1] | (bytes[2] << 8)) : bytes[1];
-      if (hr > 30 && hr < 240) {
+      if (hr > 35 && hr < 235) {
         return HiWatchTelemetryData(heartRateBpm: hr);
       }
     }
 
-    // Check packet header
-    if (header != 0xCD && header != 0xAB) {
-      return HiWatchTelemetryData.empty();
+    // 2. HiWatch / FitPro protocol (0xCD 0x00 ...)
+    if (header == 0xCD && bytes.length >= 4) {
+      final cmdType = bytes[2];
+
+      // Step data packet (cmdType 0x07 / 0x08)
+      if ((cmdType == 0x07 || cmdType == 0x08) && bytes.length >= 7) {
+        final steps = (bytes[4] << 16) | (bytes[5] << 8) | bytes[6];
+        final kcal = bytes.length >= 9 ? (bytes[7] << 8) | bytes[8] : (steps * 0.04).round();
+        final distMeters = bytes.length >= 11 ? (bytes[9] << 8) | bytes[10] : (steps * 0.75).round();
+        return HiWatchTelemetryData(
+          steps: steps,
+          calories: kcal,
+          distanceMeters: distMeters,
+        );
+      }
+
+      // Heart Rate & Blood Oxygen packet (cmdType 0x09)
+      if (cmdType == 0x09 && bytes.length >= 5) {
+        final hr = bytes[4];
+        final spo2 = bytes.length >= 6 ? bytes[5] : null;
+        return HiWatchTelemetryData(
+          heartRateBpm: (hr > 35 && hr < 225) ? hr : null,
+          bloodOxygenSpo2: (spo2 != null && spo2 >= 75 && spo2 <= 100) ? spo2 : null,
+        );
+      }
     }
 
-    final cmdType = bytes[2];
-
-    // Step data packet (cmdType 0x07 / 0x08)
-    if ((cmdType == 0x07 || cmdType == 0x08) && bytes.length >= 8) {
-      final steps = (bytes[4] << 16) | (bytes[5] << 8) | bytes[6];
-      final kcal = bytes.length >= 10 ? (bytes[7] << 8) | bytes[8] : (steps * 0.04).round();
-      final distMeters = bytes.length >= 12 ? (bytes[9] << 8) | bytes[10] : (steps * 0.75).round();
-      return HiWatchTelemetryData(
-        steps: steps,
-        calories: kcal,
-        distanceMeters: distMeters,
-      );
-    }
-
-    // Heart Rate & Blood Oxygen packet (cmdType 0x09)
-    if (cmdType == 0x09 && bytes.length >= 6) {
-      final hr = bytes[4];
-      final spo2 = bytes.length >= 6 ? bytes[5] : 0;
-      return HiWatchTelemetryData(
-        heartRateBpm: (hr > 30 && hr < 220) ? hr : null,
-        bloodOxygenSpo2: (spo2 >= 70 && spo2 <= 100) ? spo2 : null,
-      );
+    // 3. DaFit / Shenzhen protocol (0xAB or 0xAA)
+    if ((header == 0xAB || header == 0xAA) && bytes.length >= 6) {
+      final cmd = bytes[1];
+      if (cmd == 0x51 || cmd == 0x07 || cmd == 0x08) {
+        // Steps packet
+        final steps = (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
+        final kcal = bytes.length >= 7 ? (bytes[5] << 8) | bytes[6] : (steps * 0.04).round();
+        return HiWatchTelemetryData(
+          steps: steps > 0 ? steps : null,
+          calories: kcal > 0 ? kcal : null,
+        );
+      } else if (cmd == 0x09 || cmd == 0x31) {
+        // HR packet
+        final hr = bytes[2];
+        final spo2 = bytes.length >= 4 ? bytes[3] : null;
+        return HiWatchTelemetryData(
+          heartRateBpm: (hr > 35 && hr < 225) ? hr : null,
+          bloodOxygenSpo2: (spo2 != null && spo2 >= 75 && spo2 <= 100) ? spo2 : null,
+        );
+      }
     }
 
     return HiWatchTelemetryData.empty();
   }
 }
 
-/// Structured Telemetry Data from HiWatch Pro
+/// Structured Telemetry Data from HiWatch Pro / Bluetooth LE Smartwatches
 class HiWatchTelemetryData {
   final int? steps;
   final int? calories;

@@ -124,10 +124,27 @@ class _BootstrapState extends State<_Bootstrap> {
         _onboardingDone = ((me['onboardingStep'] as num?)?.toInt() ?? 0) >= 9;
         _checking = false;
       });
-    } on ApiException {
-      // Expired/invalid token — the client already cleared it on a 401.
+    } on ApiException catch (e) {
       if (!mounted) return;
-      setState(() { _signedIn = false; _checking = false; });
+      // Only reset session if token was rejected by server with 401 Unauthorized.
+      // If there's network lag or Render backend is waking up (status 0, 502, 503),
+      // persist the authenticated state so user never has to log in repeatedly!
+      if (e.status == 401) {
+        setState(() { _signedIn = false; _checking = false; });
+      } else {
+        setState(() {
+          _signedIn = true;
+          _onboardingDone = true;
+          _checking = false;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _signedIn = true;
+        _onboardingDone = true;
+        _checking = false;
+      });
     }
   }
 
@@ -413,7 +430,7 @@ class _HomeShellState extends State<HomeShell> {
               icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
-      floatingActionButton: const _FloatingAnimatedCoachBot(),
+      floatingActionButton: _index == 0 ? const _FloatingAnimatedCoachBot() : null,
     );
   }
 }

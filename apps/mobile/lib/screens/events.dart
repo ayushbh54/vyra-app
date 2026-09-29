@@ -121,7 +121,7 @@ class _EventsScreenState extends State<EventsScreen> {
                   ),
                   OutlinedButton(
                     onPressed: () => _toggleRegister(event),
-                    child: Text(event.registered ? 'Going' : 'Join'),
+                    child: Text(event.registered ? 'Joined' : 'JOIN EVENT'),
                   ),
                 ],
               ),

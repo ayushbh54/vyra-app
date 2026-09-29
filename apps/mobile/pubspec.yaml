@@ -52,6 +52,9 @@ dependencies:
   timezone: ^0.9.4
   flutter_blue_plus: ^2.3.13
   mobile_scanner: ^7.4.2
+  camera: ^0.12.1
+  speech_to_text: ^7.5.0
+  share_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:

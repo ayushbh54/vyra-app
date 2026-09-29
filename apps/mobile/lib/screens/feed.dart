@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../api/client.dart';
 import '../models/models.dart';
@@ -253,6 +254,32 @@ class _ActivityCard extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text('${item.commentCount}',
                     style: const TextStyle(color: VColor.textMid, fontSize: 12)),
+                const Spacer(),
+                InkWell(
+                  onTap: () {
+                    final shareText = '''🏃 VYRA ATHLETE ACTIVITY 🏃
+📌 ${item.title}
+⚡ Type: ${item.type.toUpperCase()}
+📍 Distance: ${item.distanceKm.toStringAsFixed(2)} km
+⏱️ Time: ${item.durationLabel}
+🔥 Pace: ${item.pacePerKm} /km
+
+Tracked on VYRA — Next-Gen AI Biometric Fitness Platform! #StravaStyle #VYRA''';
+                    // ignore: deprecated_member_use
+                    Share.share(shareText, subject: item.title);
+                  },
+                  borderRadius: BorderRadius.circular(VRadius.pill),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: VSpace.sm, vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(Icons.share_outlined, size: 15, color: VColor.accent),
+                        SizedBox(width: 4),
+                        Text('Share', style: TextStyle(color: VColor.accent, fontSize: 12, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

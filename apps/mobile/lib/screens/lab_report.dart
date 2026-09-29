@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../api/client.dart';
+import '../services/report_history_service.dart';
 import '../theme.dart';
 
 /// LAB REPORT SCAN — upload a blood test / lab report image.
@@ -78,7 +79,34 @@ class _LabReportScreenState extends State<LabReportScreen> {
       final b64    = base64Encode(bytes);
       final mime   = file.path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
       final result = await context.read<VyraApi>().scanLabReport(imageBase64: b64, mimeType: mime);
-      if (mounted) setState(() => _result = result);
+      if (mounted) {
+        setState(() => _result = result);
+        if (result.isNotEmpty) {
+          final findings = (result['findings'] as List? ?? []).whereType<Map<String, dynamic>>().toList();
+          final adjustments = (result['adjustments'] as List? ?? []).whereType<Map<String, dynamic>>().toList();
+          ReportHistoryService.instance.saveReport(
+            SavedReportEntry(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              timestamp: DateTime.now(),
+              labName: result['labName'] as String? ?? 'Lab Report Scan',
+              reportDate: result['reportDate'] as String? ?? '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+              imagePath: file.path,
+              biomarkers: findings.map((f) => {
+                'name': f['label'] ?? f['marker'] ?? 'Biomarker',
+                'value': 0.0,
+                'unit': '',
+                'status': f['status'] ?? 'normal',
+                'referenceRange': '',
+                'summary': f['summary'] ?? '',
+              }).toList(),
+              insights: adjustments.map((a) => '${a['label'] ?? ''}: ${a['tip'] ?? ''}').toList(),
+              adjustments: adjustments,
+              urgentReferral: false,
+              nextStep: result['nextStep'] as String? ?? 'Consult your doctor.',
+            ),
+          );
+        }
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {

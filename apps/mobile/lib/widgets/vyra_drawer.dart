@@ -7,7 +7,6 @@ import '../screens/avatar_studio.dart';
 import '../screens/beacon.dart';
 import '../screens/blood_donation.dart';
 import '../screens/emergency_contacts.dart';
-import '../screens/friends_leaderboard.dart';
 import '../screens/health_report_ai.dart';
 import '../screens/health_sync.dart';
 import '../screens/leaderboard.dart';
@@ -586,6 +585,15 @@ class _VyraDrawerState extends State<VyraDrawer> {
                         },
                       ),
                       _DrawerMenuItem(
+                        icon: Icons.near_me_rounded,
+                        iconBgColor: const Color(0xFF0284C7), // Sky Blue
+                        title: 'Direct Messages & Athlete Chat',
+                        onTap: () {
+                          Navigator.pop(context);
+                          pushScreen(context, 'Messages Inbox', const MessagesInboxScreen());
+                        },
+                      ),
+                      _DrawerMenuItem(
                         icon: Icons.lock_rounded,
                         iconBgColor: const Color(0xFF6366F1), // Indigo
                         title: 'Change password / Security',
@@ -656,7 +664,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.document_scanner_rounded,
                         iconBgColor: const Color(0xFF10B981), // Emerald
-                        title: 'AI Blood Report Lab Analysis',
+                        title: 'AI Report Analysis',
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.of(context).push(
@@ -676,18 +684,6 @@ class _VyraDrawerState extends State<VyraDrawer> {
                         },
                       ),
                       _DrawerMenuItem(
-                        icon: Icons.group_add_rounded,
-                        iconBgColor: const Color(0xFF8B5CF6), // Purple
-                        title: 'Friends & Family Social Leaderboard',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const FriendsLeaderboardScreen()),
-                          );
-                        },
-                      ),
-
-                      _DrawerMenuItem(
                         icon: Icons.security_rounded,
                         iconBgColor: const Color(0xFFEF4444), // Red
                         title: 'Safety & Emergency Contacts',
@@ -703,15 +699,6 @@ class _VyraDrawerState extends State<VyraDrawer> {
                         onTap: () {
                           Navigator.pop(context);
                           pushScreen(context, 'Beacon SOS & Live Location', const BeaconScreen());
-                        },
-                      ),
-                      _DrawerMenuItem(
-                        icon: Icons.near_me_rounded,
-                        iconBgColor: const Color(0xFF0284C7), // Sky Blue
-                        title: 'Direct Messages & Athlete Chat',
-                        onTap: () {
-                          Navigator.pop(context);
-                          pushScreen(context, 'Messages Inbox', const MessagesInboxScreen());
                         },
                       ),
                       _DrawerMenuItem(

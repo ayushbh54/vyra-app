@@ -70,6 +70,134 @@ class _FriendsScreenState extends State<FriendsScreen> {
     }
   }
 
+  void _showUserProfileSheet(SearchUser user) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: VColor.surfaceRaised,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(VRadius.xl)),
+        side: BorderSide(color: VColor.line),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(VSpace.base, VSpace.base, VSpace.base, VSpace.xxl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: VColor.line,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: VSpace.base),
+              CircleAvatar(
+                radius: 36,
+                backgroundColor: VColor.accentGlow,
+                child: Text(
+                  user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                  style: const TextStyle(
+                    color: VColor.accent,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: VSpace.sm),
+              Text(
+                user.name,
+                style: const TextStyle(
+                  color: VColor.text,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                '@${user.handle}',
+                style: const TextStyle(
+                  color: VColor.textMid,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: VSpace.base),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: VColor.surface,
+                  borderRadius: BorderRadius.circular(VRadius.md),
+                  border: Border.all(color: VColor.line),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatCol('Status', user.following ? 'Following' : 'Athlete'),
+                    Container(width: 1, height: 28, color: VColor.line),
+                    _buildStatCol('Network', 'VYRA Global'),
+                    Container(width: 1, height: 28, color: VColor.line),
+                    _buildStatCol('Chat', 'Active'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: VSpace.lg),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                  label: const Text('Send Direct Message', style: TextStyle(fontWeight: FontWeight.w700)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: VColor.accent,
+                    foregroundColor: VColor.textOnAccent,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AthleteChatScreen(
+                          athleteId: user.id,
+                          athleteName: user.name,
+                          athleteHandle: user.handle,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: VSpace.sm),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: const BorderSide(color: VColor.line),
+                  ),
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    await _toggleFollow(user);
+                  },
+                  child: Text(user.following ? 'Unfollow Athlete' : 'Follow Athlete'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatCol(String label, String value) {
+    return Column(
+      children: [
+        Text(value, style: const TextStyle(color: VColor.accent, fontSize: 13, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(color: VColor.textLow, fontSize: 11)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -105,47 +233,54 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   final user = _results![i];
                   return VCard(
                     tone: CardTone.raised,
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: VColor.accentGlow,
-                          child: Text(
-                            user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                            style: const TextStyle(color: VColor.accent, fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        const SizedBox(width: VSpace.sm),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(user.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                              Text('@${user.handle}',
-                                  style: const TextStyle(color: VColor.textLow, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Direct Message',
-                          icon: const Icon(Icons.chat_bubble_outline_rounded, color: VColor.accent, size: 20),
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => AthleteChatScreen(
-                                  athleteId: user.id,
-                                  athleteName: user.name,
-                                  athleteHandle: user.handle,
-                                ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(VRadius.md),
+                      onTap: () => _showUserProfileSheet(user),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: VColor.accentGlow,
+                              child: Text(
+                                user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                                style: const TextStyle(color: VColor.accent, fontWeight: FontWeight.w700),
                               ),
-                            );
-                          },
+                            ),
+                            const SizedBox(width: VSpace.sm),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(user.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  Text('@${user.handle}',
+                                      style: const TextStyle(color: VColor.textLow, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Direct Message',
+                              icon: const Icon(Icons.chat_bubble_outline_rounded, color: VColor.accent, size: 20),
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => AthleteChatScreen(
+                                      athleteId: user.id,
+                                      athleteName: user.name,
+                                      athleteHandle: user.handle,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            OutlinedButton(
+                              onPressed: () => _toggleFollow(user),
+                              child: Text(user.following ? 'Following' : 'Follow'),
+                            ),
+                          ],
                         ),
-                        OutlinedButton(
-                          onPressed: () => _toggleFollow(user),
-                          child: Text(user.following ? 'Following' : 'Follow'),
-                        ),
-                      ],
+                      ),
                     ),
                   );
                 },

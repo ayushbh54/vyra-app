@@ -27,6 +27,8 @@ class ApiException implements Exception {
 
   const ApiException(this.code, this.message, this.status);
 
+  int get statusCode => status;
+
   /// True when retrying might genuinely help — decides whether the UI offers
   /// a retry button or just explains what happened.
   bool get isRetryable => status == 0 || status >= 500 || code == 'RATE_LIMITED';
@@ -323,6 +325,12 @@ class VyraApi {
     return MetricSeries.fromJson(
       await _request('GET', '/v1/tracking/series?metric=$metric', cacheKey: 'series.$metric'),
     );
+  }
+
+  Future<Map<String, dynamic>> todayTracking({String? date}) async {
+    final query = date != null ? '?date=$date' : '';
+    final res = await _request('GET', '/v1/tracking/today$query');
+    return (res as Map).cast<String, dynamic>();
   }
 
   Future<SugarResult> logSugar(double grams) async {

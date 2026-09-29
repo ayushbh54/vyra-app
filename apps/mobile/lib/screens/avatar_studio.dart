@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,9 +17,11 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
     with SingleTickerProviderStateMixin {
   late AvatarFaceProfile _profile;
   double _rotationAngle = 0.0;
-  String _activeTab = 'outfits'; // 'outfits', 'hairstyles', 'colors', 'shoes', 'face'
+  bool _isAutoTurntable = true;
+  String _activeTab = 'outfits'; // 'outfits', 'shoes', 'caps', 'watches', 'accessories', 'face_tone'
   final ImagePicker _picker = ImagePicker();
   bool _isSaving = false;
+  bool _isAnalyzingPhoto = false;
 
   late AnimationController _idleAnimCtrl;
 
@@ -30,8 +31,18 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
     _profile = AvatarCustomizationService.instance.profile;
     _idleAnimCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 4),
-    )..repeat(reverse: true);
+      duration: const Duration(seconds: 8),
+    )..addListener(() {
+        if (_isAutoTurntable) {
+          setState(() {
+            _rotationAngle += 0.008;
+            if (_rotationAngle > math.pi * 2) {
+              _rotationAngle -= math.pi * 2;
+            }
+          });
+        }
+      })
+      ..repeat();
   }
 
   @override
@@ -49,6 +60,7 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
 
   Future<void> _pickFacePhoto(ImageSource source) async {
     try {
+      setState(() => _isAnalyzingPhoto = true);
       final xfile = await _picker.pickImage(
         source: source,
         maxWidth: 720,
@@ -56,25 +68,24 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
         imageQuality: 88,
       );
       if (xfile != null) {
-        final updated = _profile.copyWith(
-          photoPath: xfile.path,
-          usePhotoFace: true,
-          useUserLikeness: true,
-        );
-        _updateProfile(updated);
-
+        final updated = await AvatarCustomizationService.instance.scanAndExtractFromPhoto(xfile.path);
         if (mounted) {
+          setState(() {
+            _profile = updated;
+            _isAnalyzingPhoto = false;
+          });
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: const Color(0xFF102A43),
-              content: const Row(
+              content: Row(
                 children: [
-                  Icon(Icons.check_circle_rounded, color: Color(0xFF34FF8C)),
-                  SizedBox(width: 10),
+                  const Icon(Icons.check_circle_rounded, color: Color(0xFF34FF8C)),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Face photo mapped to 3D Avatar successfully!',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      'Matched tone to selfie! Tone: ${_profile.skinTone.toUpperCase()}',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -84,11 +95,14 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
             ),
           );
         }
+      } else {
+        if (mounted) setState(() => _isAnalyzingPhoto = false);
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _isAnalyzingPhoto = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick photo: $e')),
+          SnackBar(content: Text('Failed to match selfie: $e')),
         );
       }
     }
@@ -116,28 +130,43 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
         ),
         centerTitle: true,
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFF00D2FF).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF00D2FF).withValues(alpha: 0.3)),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.sync_rounded, color: Color(0xFF00D2FF), size: 14),
-                SizedBox(width: 4),
-                Text(
-                  '360°',
-                  style: TextStyle(
-                    color: Color(0xFF00D2FF),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                  ),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isAutoTurntable = !_isAutoTurntable;
+              });
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: _isAutoTurntable
+                    ? const Color(0xFF00D2FF).withValues(alpha: 0.15)
+                    : const Color(0xFF141C2B),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _isAutoTurntable ? const Color(0xFF00D2FF) : Colors.white24,
                 ),
-              ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.sync_rounded,
+                    color: _isAutoTurntable ? const Color(0xFF00D2FF) : Colors.white54,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _isAutoTurntable ? 'TURNTABLE' : 'MANUAL',
+                    style: TextStyle(
+                      color: _isAutoTurntable ? const Color(0xFF00D2FF) : Colors.white54,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -145,10 +174,13 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // ── TOP 3D AVATAR VIEWPORT (Interactive 360° Studio Podium) ──
+            // ── TOP 3D AVATAR VIEWPORT (Only 3D avatar in turntable motion, no photo clutter) ──
             Expanded(
               flex: 5,
               child: GestureDetector(
+                onHorizontalDragStart: (_) {
+                  setState(() => _isAutoTurntable = false);
+                },
                 onHorizontalDragUpdate: (details) {
                   setState(() {
                     _rotationAngle += details.primaryDelta! * 0.02;
@@ -157,7 +189,7 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Studio Ambient Background
+                    // Studio Ambient Background with Subtle Podium Glow
                     Container(
                       decoration: const BoxDecoration(
                         gradient: RadialGradient(
@@ -172,86 +204,42 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
                       ),
                     ),
 
-                    // 3D Pixar Stylized Character Stage with Interactive 3D Perspective Rotation
-                    AnimatedBuilder(
-                      animation: _idleAnimCtrl,
-                      builder: (context, _) {
-                        return Transform(
-                          alignment: Alignment.center,
-                          transform: Matrix4.identity()
-                            ..setEntry(3, 2, 0.001) // 3D Perspective
-                            ..rotateY(_rotationAngle),
-                          child: Image.asset(
-                            'assets/images/coach_avatar_studio.png',
-                            fit: BoxFit.contain,
-                            alignment: Alignment.topCenter,
-                            errorBuilder: (_, __, ___) => RepaintBoundary(
-                              child: CustomPaint(
-                                size: const Size(double.infinity, double.infinity),
-                                painter: _StudioAvatar3DPainter(
-                                  rotationAngle: _rotationAngle,
-                                  idleProgress: _idleAnimCtrl.value,
-                                  profile: _profile,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    // User's Real Face Photo Picture-in-Picture Badge (if uploaded)
-                    if (_profile.photoPath != null && _profile.usePhotoFace)
-                      Positioned(
-                        top: 14,
-                        right: 16,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0B1320).withValues(alpha: 0.9),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFF00D2FF), width: 1.5),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF00D2FF).withValues(alpha: 0.25),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.file(
-                                  File(_profile.photoPath!),
-                                  width: 48,
-                                  height: 48,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              const Text(
-                                'My Face',
-                                style: TextStyle(
-                                  color: Color(0xFF00D2FF),
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
+                    // 3D Procedural Vector Stylized Avatar in smooth motion
+                    RepaintBoundary(
+                      child: CustomPaint(
+                        size: const Size(double.infinity, double.infinity),
+                        painter: _StudioAvatar3DPainter(
+                          rotationAngle: _rotationAngle,
+                          idleProgress: _idleAnimCtrl.value,
+                          profile: _profile,
                         ),
                       ),
+                    ),
 
-                    // 360° Drag Hint Pill
+                    // Quick Angle Preset Chips
+                    Positioned(
+                      top: 10,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildAnglePresetPill('Front', 0.0),
+                          const SizedBox(width: 8),
+                          _buildAnglePresetPill('Side', math.pi / 2),
+                          const SizedBox(width: 8),
+                          _buildAnglePresetPill('Back', math.pi),
+                        ],
+                      ),
+                    ),
+
+                    // Interactive touch drag prompt
                     Positioned(
                       bottom: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.7),
+                          color: Colors.black.withValues(alpha: 0.65),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
@@ -266,40 +254,12 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
                         ),
                       ),
                     ),
-
-                    // Camera / Selfie Quick Action
-                    Positioned(
-                      top: 14,
-                      left: 16,
-                      child: GestureDetector(
-                        onTap: () => _showPhotoSourceDialog(),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF00D2FF).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFF00D2FF).withValues(alpha: 0.4)),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.camera_alt_rounded, color: Color(0xFF00D2FF), size: 16),
-                              SizedBox(width: 5),
-                              Text(
-                                'Set Face Photo',
-                                style: TextStyle(color: Color(0xFF00D2FF), fontSize: 11, fontWeight: FontWeight.w800),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
             ),
 
-            // ── BOTTOM CUSTOMIZATION CONTROLS PANEL ──
+            // ── BOTTOM SNAPCHAT-STYLE CUSTOMIZATION CONTROLS PANEL ──
             Expanded(
               flex: 4,
               child: Container(
@@ -312,18 +272,18 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
                 ),
                 child: Column(
                   children: [
-                    // Tab Bar: Outfits, Hairstyles, Colors, Shoes, Face
+                    // Tab Bar: Outfits, Shoes, Caps, Watches, Accessories, Face & Tone
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       child: Row(
                         children: [
                           _buildTabButton('outfits', 'Outfits', Icons.checkroom_rounded),
-                          _buildTabButton('hairstyles', 'Hairstyles', Icons.face_retouching_natural_rounded),
-                          _buildTabButton('colors', 'Colors', Icons.palette_rounded),
-                          _buildTabButton('body', 'Body & Gender', Icons.wc_rounded),
-                          _buildTabButton('shoes', 'Shoes', Icons.skateboarding_rounded),
-                          _buildTabButton('face', 'Face Photo', Icons.camera_alt_rounded),
+                          _buildTabButton('shoes', 'Shoes', Icons.sports_kabaddi_rounded),
+                          _buildTabButton('caps', 'Caps & Hats', Icons.sports_score_rounded),
+                          _buildTabButton('watches', 'Watches', Icons.watch_rounded),
+                          _buildTabButton('accessories', 'Accessories', Icons.headphones_rounded),
+                          _buildTabButton('face_tone', 'Tone & Hair', Icons.face_retouching_natural_rounded),
                         ],
                       ),
                     ),
@@ -358,7 +318,7 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
                                     const SnackBar(
                                       backgroundColor: Color(0xFF00D2FF),
                                       content: Text(
-                                        '3D Avatar Profile Saved Successfully!',
+                                        '3D Avatar Customized & Saved Successfully!',
                                         style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
                                       ),
                                       behavior: SnackBarBehavior.floating,
@@ -372,7 +332,11 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
                             elevation: 4,
                           ),
                           child: _isSaving
-                              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2.5))
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2.5),
+                                )
                               : const Text(
                                   'Save Avatar Profile',
                                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
@@ -385,6 +349,29 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnglePresetPill(String label, double rad) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isAutoTurntable = false;
+          _rotationAngle = rad;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -430,120 +417,19 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
     switch (_activeTab) {
       case 'outfits':
         return _buildOutfitsGrid();
-      case 'hairstyles':
-        return _buildHairstylesGrid();
-      case 'colors':
-        return _buildSkinToneSelector();
-      case 'body':
-        return _buildBodyGenderControls();
       case 'shoes':
         return _buildShoesSelector();
-      case 'face':
-        return _buildFaceModeControls();
+      case 'caps':
+        return _buildCapsSelector();
+      case 'watches':
+        return _buildWatchesSelector();
+      case 'accessories':
+        return _buildAccessoriesSelector();
+      case 'face_tone':
+        return _buildFaceToneAndHair();
       default:
         return const SizedBox.shrink();
     }
-  }
-
-  Widget _buildBodyGenderControls() {
-    final isMale = _profile.avatarGender == 'male';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Avatar Archetype & Gender',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  _updateProfile(_profile.copyWith(
-                    avatarGender: 'female',
-                    hairStyle: 'pixar_wavy',
-                    outfitStyle: 'athletic_teal',
-                  ));
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: !isMale ? const Color(0xFF00D2FF).withValues(alpha: 0.15) : const Color(0xFF141C2B),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: !isMale ? const Color(0xFF00D2FF) : const Color(0xFF243B53),
-                      width: !isMale ? 2 : 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(Icons.female_rounded, color: !isMale ? const Color(0xFF00D2FF) : const Color(0xFF8896AB), size: 34),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Female Athlete ♀',
-                        style: TextStyle(
-                          color: !isMale ? Colors.white : const Color(0xFF8896AB),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Pixar Stylized Silhouette',
-                        style: TextStyle(color: Color(0xFF8896AB), fontSize: 10),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  _updateProfile(_profile.copyWith(
-                    avatarGender: 'male',
-                    hairStyle: 'crew_fade',
-                    outfitStyle: 'runner_stealth',
-                  ));
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: isMale ? const Color(0xFF00D2FF).withValues(alpha: 0.15) : const Color(0xFF141C2B),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isMale ? const Color(0xFF00D2FF) : const Color(0xFF243B53),
-                      width: isMale ? 2 : 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(Icons.male_rounded, color: isMale ? const Color(0xFF00D2FF) : const Color(0xFF8896AB), size: 34),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Male Athlete ♂',
-                        style: TextStyle(
-                          color: isMale ? Colors.white : const Color(0xFF8896AB),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Broad Athletic V-Taper',
-                        style: TextStyle(color: Color(0xFF8896AB), fontSize: 10),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
   }
 
   Widget _buildOutfitsGrid() {
@@ -572,95 +458,49 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
           ],
         ),
         const SizedBox(height: 12),
-        if (!isMale) ...[
-          Row(
-            children: [
-              Expanded(
-                child: _buildOutfitCard(
-                  'athletic_teal',
-                  'Athletic Gym Set',
-                  'Teal Sports Top + Grey Tights',
-                  const Color(0xFF00D2FF),
-                ),
+        Row(
+          children: [
+            Expanded(
+              child: _buildOutfitCard(
+                'hoodie_white',
+                'White Heather Hoodie',
+                'Pro Hoodie, Orange Belt & Dark Chinos',
+                const Color(0xFFFF9F4A),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildOutfitCard(
-                  'hoodie_white',
-                  'Classic Hoodie',
-                  'White Hoodie, Orange Belt & Jeans',
-                  const Color(0xFFFF9F4A),
-                ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildOutfitCard(
+                'athletic_teal',
+                'Electric Teal Gym Set',
+                'Teal Performance Top + Tights',
+                const Color(0xFF00D2FF),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildOutfitCard(
-                  'runner_stealth',
-                  'Aero Stealth',
-                  'Matte Black Pro Runner',
-                  const Color(0xFF829AB1),
-                ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildOutfitCard(
+                'runner_stealth',
+                'Matte Carbon Stealth',
+                'Carbon Fitted Compression Tracksuit',
+                const Color(0xFF829AB1),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildOutfitCard(
-                  'sunset_orange',
-                  'Sunset Energy',
-                  'Coral Top + Performance Shorts',
-                  const Color(0xFFFF6B6B),
-                ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildOutfitCard(
+                'sunset_orange',
+                'Sunset High-Energy',
+                'Coral Amber Performance Gear',
+                const Color(0xFFFF6B6B),
               ),
-            ],
-          ),
-        ] else ...[
-          Row(
-            children: [
-              Expanded(
-                child: _buildOutfitCard(
-                  'male_muscle_tank',
-                  'Athletic Muscle Tank',
-                  'Cyan Gym Tank + Heavy Joggers',
-                  const Color(0xFF00D2FF),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildOutfitCard(
-                  'runner_stealth',
-                  'Stealth Compression Tee',
-                  'Matte Black Carbon Tee & Pants',
-                  const Color(0xFF829AB1),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildOutfitCard(
-                  'hoodie_white',
-                  'Sleeveless Gym Hoodie',
-                  'White Heather Hoodie + Shorts',
-                  const Color(0xFFFF9F4A),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildOutfitCard(
-                  'sunset_orange',
-                  'Warmup Tracksuit',
-                  'Amber & Navy Performance Set',
-                  const Color(0xFFFF6B6B),
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -707,40 +547,86 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
     );
   }
 
-  Widget _buildHairstylesGrid() {
-    final isMale = _profile.avatarGender == 'male';
-    final hairstyles = isMale
-        ? [
-            {'id': 'crew_fade', 'name': 'Athletic Fade', 'desc': 'Sharp taper fade'},
-            {'id': 'short_crop', 'name': 'Textured Crop', 'desc': 'Modern textured gym cut'},
-            {'id': 'slick_back', 'name': 'Slick Back', 'desc': 'Clean classic pompadour'},
-            {'id': 'buzz_cut', 'name': 'Military Buzz', 'desc': 'Ultra clean high buzz'},
-          ]
-        : [
-            {'id': 'pixar_wavy', 'name': 'Wavy Brown (Reference)', 'desc': 'Flowing stylized waves'},
-            {'id': 'ponytail', 'name': 'Sporty Ponytail', 'desc': 'High bounce active pony'},
-            {'id': 'high_bun', 'name': 'Topknot Bun', 'desc': 'Athletic studio bun'},
-            {'id': 'short_crop', 'name': 'Modern Bob', 'desc': 'Shoulder length active bob'},
-          ];
+  Widget _buildShoesSelector() {
+    final shoes = [
+      {'id': 'orange', 'name': 'Heat Orange', 'color': const Color(0xFFFF9F4A)},
+      {'id': 'cyan', 'name': 'Cyber Cyan', 'color': const Color(0xFF00D2FF)},
+      {'id': 'white', 'name': 'Pure White', 'color': Colors.white},
+      {'id': 'stealth', 'name': 'Onyx Stealth', 'color': const Color(0xFF243B53)},
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Select Hairstyle',
+          'Athletic Sneakers',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: hairstyles.map((h) {
-            final isSelected = _profile.hairStyle == h['id'];
+          spacing: 10,
+          runSpacing: 10,
+          children: shoes.map((s) {
+            final isSelected = _profile.shoeColor == s['id'];
+            return GestureDetector(
+              onTap: () => _updateProfile(_profile.copyWith(shoeColor: s['id'] as String)),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? (s['color'] as Color).withValues(alpha: 0.2) : const Color(0xFF141C2B),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected ? (s['color'] as Color) : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(width: 14, height: 14, decoration: BoxDecoration(color: s['color'] as Color, shape: BoxShape.circle)),
+                    const SizedBox(width: 8),
+                    Text(
+                      s['name'] as String,
+                      style: TextStyle(color: Colors.white, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCapsSelector() {
+    final caps = [
+      {'id': 'none', 'name': 'No Headwear', 'icon': Icons.block_rounded},
+      {'id': 'snapback_black', 'name': 'Athletic Cap', 'icon': Icons.sports_baseball_rounded},
+      {'id': 'visor_neon', 'name': 'Neon Visor', 'icon': Icons.sports_tennis_rounded},
+      {'id': 'beanie_gray', 'name': 'Urban Beanie', 'icon': Icons.ac_unit_rounded},
+      {'id': 'backward_cap', 'name': 'Backward Cap', 'icon': Icons.skateboarding_rounded},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Caps & Headwear',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: caps.map((c) {
+            final isSelected = _profile.capStyle == c['id'];
             return ChoiceChip(
-              label: Text(h['name']!),
+              avatar: Icon(c['icon'] as IconData, size: 16, color: isSelected ? Colors.black : const Color(0xFF00D2FF)),
+              label: Text(c['name'] as String),
               selected: isSelected,
               onSelected: (val) {
-                if (val) _updateProfile(_profile.copyWith(hairStyle: h['id']));
+                if (val) _updateProfile(_profile.copyWith(capStyle: c['id'] as String));
               },
               selectedColor: const Color(0xFF00D2FF),
               backgroundColor: const Color(0xFF141C2B),
@@ -756,7 +642,90 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
     );
   }
 
-  Widget _buildSkinToneSelector() {
+  Widget _buildWatchesSelector() {
+    final watches = [
+      {'id': 'none', 'name': 'None', 'color': Colors.transparent},
+      {'id': 'vyra_smartwatch_cyan', 'name': 'VYRA Cyber Watch', 'color': const Color(0xFF00D2FF)},
+      {'id': 'sport_band_orange', 'name': 'Neon Sport Band', 'color': const Color(0xFFFF9F4A)},
+      {'id': 'gold_chrono', 'name': 'Gold Chrono Pro', 'color': const Color(0xFFFFD700)},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Smartwatches & Bands',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: watches.map((w) {
+            final isSelected = _profile.watchStyle == w['id'];
+            return ChoiceChip(
+              label: Text(w['name'] as String),
+              selected: isSelected,
+              onSelected: (val) {
+                if (val) _updateProfile(_profile.copyWith(watchStyle: w['id'] as String));
+              },
+              selectedColor: const Color(0xFF00D2FF),
+              backgroundColor: const Color(0xFF141C2B),
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.black : Colors.white,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                fontSize: 12,
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAccessoriesSelector() {
+    final items = [
+      {'id': 'none', 'name': 'None', 'icon': Icons.block_rounded},
+      {'id': 'headphones_silver', 'name': 'Pro Wireless Headphones', 'icon': Icons.headphones_rounded},
+      {'id': 'sweatband_red', 'name': 'Athletic Head Sweatband', 'icon': Icons.sports_gymnastics_rounded},
+      {'id': 'sunglasses_stealth', 'name': 'Stealth Sport Shades', 'icon': Icons.remove_red_eye_rounded},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Athletic Accessories',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: items.map((item) {
+            final isSelected = _profile.accessoryStyle == item['id'];
+            return ChoiceChip(
+              avatar: Icon(item['icon'] as IconData, size: 16, color: isSelected ? Colors.black : const Color(0xFF00D2FF)),
+              label: Text(item['name'] as String),
+              selected: isSelected,
+              onSelected: (val) {
+                if (val) _updateProfile(_profile.copyWith(accessoryStyle: item['id'] as String));
+              },
+              selectedColor: const Color(0xFF00D2FF),
+              backgroundColor: const Color(0xFF141C2B),
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.black : Colors.white,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                fontSize: 12,
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFaceToneAndHair() {
     final tones = [
       {'id': 'fair', 'name': 'Fair Ivory', 'color': const Color(0xFFF7D5BA)},
       {'id': 'wheatish', 'name': 'Wheatish Natural', 'color': const Color(0xFFE4AE84)},
@@ -764,14 +733,80 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
       {'id': 'dusky', 'name': 'Dusky Deep', 'color': const Color(0xFF87522E)},
     ];
 
+    final isMale = _profile.avatarGender == 'male';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Selfie Scan Button to Auto-Resonate Tone & Hair
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF00D2FF).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF00D2FF).withValues(alpha: 0.35)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.auto_awesome_rounded, color: Color(0xFF00D2FF), size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'AI Selfie Tone Resonance',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Upload a selfie to instantly match skin tone, hair tint, and likeness.',
+                style: TextStyle(color: Color(0xFF8896AB), fontSize: 11),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _isAnalyzingPhoto ? null : () => _pickFacePhoto(ImageSource.camera),
+                      icon: const Icon(Icons.camera_alt_rounded, size: 16),
+                      label: const Text('Take Selfie'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF00D2FF),
+                        side: const BorderSide(color: Color(0xFF00D2FF)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _isAnalyzingPhoto ? null : () => _pickFacePhoto(ImageSource.gallery),
+                      icon: const Icon(Icons.photo_library_rounded, size: 16),
+                      label: const Text('From Gallery'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF34FF8C),
+                        side: const BorderSide(color: Color(0xFF34FF8C)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 18),
+
+        // Skin Tone Selector
         const Text(
           'Skin Tone Pigment',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: tones.map((t) {
@@ -781,8 +816,8 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
               child: Column(
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
                       color: t['color'] as Color,
                       shape: BoxShape.circle,
@@ -801,7 +836,7 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
                     t['name'] as String,
                     style: TextStyle(
                       color: isSelected ? const Color(0xFF00D2FF) : const Color(0xFF8896AB),
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
@@ -810,144 +845,106 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
             );
           }).toList(),
         ),
-      ],
-    );
-  }
 
-  Widget _buildShoesSelector() {
-    final shoes = [
-      {'id': 'orange', 'name': 'Retro Orange (Reference)', 'color': const Color(0xFFFF9F4A)},
-      {'id': 'cyan', 'name': 'Electric Cyan', 'color': const Color(0xFF00D2FF)},
-      {'id': 'white', 'name': 'Clean White', 'color': Colors.white},
-      {'id': 'stealth', 'name': 'Stealth Shadow', 'color': const Color(0xFF243B53)},
-    ];
+        const SizedBox(height: 18),
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+        // Gender Toggle
         const Text(
-          'Athletic Sneakers',
+          'Silhouette & Gender',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: shoes.map((s) {
-            final isSelected = _profile.shoeColor == s['id'];
-            return GestureDetector(
-              onTap: () => _updateProfile(_profile.copyWith(shoeColor: s['id'] as String)),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? (s['color'] as Color).withValues(alpha: 0.2) : const Color(0xFF141C2B),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isSelected ? (s['color'] as Color) : Colors.transparent,
-                    width: 2,
-                  ),
+          children: [
+            Expanded(
+              child: ChoiceChip(
+                label: const Text('Female Athlete ♀'),
+                selected: !isMale,
+                onSelected: (val) {
+                  if (val) {
+                    _updateProfile(_profile.copyWith(
+                      avatarGender: 'female',
+                      hairStyle: 'pixar_wavy',
+                      outfitStyle: 'athletic_teal',
+                    ));
+                  }
+                },
+                selectedColor: const Color(0xFF00D2FF),
+                backgroundColor: const Color(0xFF141C2B),
+                labelStyle: TextStyle(
+                  color: !isMale ? Colors.black : Colors.white,
+                  fontWeight: !isMale ? FontWeight.w800 : FontWeight.w500,
+                  fontSize: 12,
                 ),
-                child: Row(
-                  children: [
-                    Container(width: 14, height: 14, decoration: BoxDecoration(color: s['color'] as Color, shape: BoxShape.circle)),
-                    const SizedBox(width: 8),
-                    Text(
-                      s['name'] as String,
-                      style: TextStyle(color: Colors.white, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600, fontSize: 11),
-                    ),
-                  ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ChoiceChip(
+                label: const Text('Male Athlete ♂'),
+                selected: isMale,
+                onSelected: (val) {
+                  if (val) {
+                    _updateProfile(_profile.copyWith(
+                      avatarGender: 'male',
+                      hairStyle: 'crew_fade',
+                      outfitStyle: 'hoodie_white',
+                    ));
+                  }
+                },
+                selectedColor: const Color(0xFF00D2FF),
+                backgroundColor: const Color(0xFF141C2B),
+                labelStyle: TextStyle(
+                  color: isMale ? Colors.black : Colors.white,
+                  fontWeight: isMale ? FontWeight.w800 : FontWeight.w500,
+                  fontSize: 12,
                 ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 18),
+
+        // Hair Styles
+        Text(
+          isMale ? 'Male Hair Cuts' : 'Female Hairstyles',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: (isMale
+                  ? [
+                      {'id': 'crew_fade', 'name': 'Athletic Fade'},
+                      {'id': 'short_crop', 'name': 'Textured Crop'},
+                      {'id': 'buzz_cut', 'name': 'Military Buzz'},
+                    ]
+                  : [
+                      {'id': 'pixar_wavy', 'name': 'Wavy Curls'},
+                      {'id': 'ponytail', 'name': 'Sporty Ponytail'},
+                      {'id': 'high_bun', 'name': 'Topknot Bun'},
+                    ])
+              .map((h) {
+            final isSelected = _profile.hairStyle == h['id'];
+            return ChoiceChip(
+              label: Text(h['name']!),
+              selected: isSelected,
+              onSelected: (val) {
+                if (val) _updateProfile(_profile.copyWith(hairStyle: h['id']));
+              },
+              selectedColor: const Color(0xFF00D2FF),
+              backgroundColor: const Color(0xFF141C2B),
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.black : Colors.white,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                fontSize: 11,
               ),
             );
           }).toList(),
         ),
       ],
-    );
-  }
-
-  Widget _buildFaceModeControls() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Face Setup Mode',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        const SizedBox(height: 10),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Use My Real Face Photo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          subtitle: const Text('Display your real selfie on the 3D avatar head', style: TextStyle(color: Color(0xFF8896AB), fontSize: 12)),
-          value: _profile.usePhotoFace,
-          activeThumbColor: const Color(0xFF00D2FF),
-          onChanged: (val) => _updateProfile(_profile.copyWith(usePhotoFace: val)),
-        ),
-        const SizedBox(height: 10),
-        ElevatedButton.icon(
-          onPressed: () => _showPhotoSourceDialog(),
-          icon: const Icon(Icons.camera_alt_rounded),
-          label: Text(_profile.photoPath == null ? 'Take Selfie / Upload Face Photo' : 'Update Face Photo'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF14243B),
-            foregroundColor: const Color(0xFF00D2FF),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF00D2FF))),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showPhotoSourceDialog() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0E1626),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Set Your Face on 3D Avatar',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Take a quick selfie or choose a photo from your gallery.',
-                  style: TextStyle(color: Color(0xFF8896AB), fontSize: 13),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: const Color(0xFF00D2FF).withValues(alpha: 0.15), shape: BoxShape.circle),
-                    child: const Icon(Icons.camera_alt_rounded, color: Color(0xFF00D2FF)),
-                  ),
-                  title: const Text('Take Selfie (Camera)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pickFacePhoto(ImageSource.camera);
-                  },
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: const Color(0xFF34FF8C).withValues(alpha: 0.15), shape: BoxShape.circle),
-                    child: const Icon(Icons.photo_library_rounded, color: Color(0xFF34FF8C)),
-                  ),
-                  title: const Text('Choose from Gallery', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pickFacePhoto(ImageSource.gallery);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }
@@ -975,7 +972,7 @@ class _StudioAvatar3DPainter extends CustomPainter {
     _drawPodium(canvas, cx, size.height * 0.82);
 
     // Idle breathing offset
-    final breathe = math.sin(idleProgress * math.pi) * 3.0;
+    final breathe = math.sin(idleProgress * math.pi * 2) * 2.5;
 
     // Orbit angle shift
     final cosRot = math.cos(rotationAngle);
@@ -991,32 +988,26 @@ class _StudioAvatar3DPainter extends CustomPainter {
     );
 
     // 3. Body Landmarks in 3D Space
-    // Feet
     final footL = Offset(cx - 24 * cosRot, size.height * 0.80);
     final footR = Offset(cx + 24 * cosRot, size.height * 0.80);
 
-    // Knees
     final kneeL = Offset(cx - 20 * cosRot, cy + 85);
     final kneeR = Offset(cx + 20 * cosRot, cy + 85);
 
     final isMale = profile.avatarGender == 'male';
 
-    // Hips / Pelvis
     final pelvis = Offset(cx, cy + 25 - (breathe * 0.2));
 
-    // Shoulders (Male: broad 48px span, Female: 38px span)
     final shoulderSpan = isMale ? 48.0 : 38.0;
     final shoulderL = Offset(cx - shoulderSpan * cosRot, cy - (isMale ? 47 : 45) - breathe);
     final shoulderR = Offset(cx + shoulderSpan * cosRot, cy - (isMale ? 47 : 45) - breathe);
 
-    // Elbows & Hands (Hands in pockets / on hips like reference image!)
     final elbowSpan = isMale ? 58.0 : 52.0;
     final elbowL = Offset(cx - elbowSpan * cosRot - (sinRot * 10), cy - 10 - breathe);
     final elbowR = Offset(cx + elbowSpan * cosRot + (sinRot * 10), cy - 10 - breathe);
     final handL = Offset(cx - (isMale ? 26 : 22) * cosRot, cy + 28 - breathe);
     final handR = Offset(cx + (isMale ? 26 : 22) * cosRot, cy + 28 - breathe);
 
-    // Head & Neck
     final neck = Offset(cx, cy - 65 - breathe);
     final head = Offset(cx, cy - 105 - breathe);
 
@@ -1027,7 +1018,6 @@ class _StudioAvatar3DPainter extends CustomPainter {
     Color beltColor = const Color(0xFFFF9F4A);
 
     if (profile.outfitStyle == 'hoodie_white') {
-      // EXACT REFERENCE STYLE: White hoodie, orange belt, dark grey pants
       topPrimary = const Color(0xFFE8EEF5);
       topSecondary = const Color(0xFFCAD5E2);
       pantsColor = const Color(0xFF3E4C5E);
@@ -1044,31 +1034,34 @@ class _StudioAvatar3DPainter extends CustomPainter {
       beltColor = const Color(0xFFFFE66D);
     }
 
-    // 4. Draw Legs (Pants / Leggings)
+    // 4. Draw Legs
     final legPaint = Paint()
       ..color = pantsColor
       ..strokeWidth = isMale ? 28 : 24
       ..strokeCap = StrokeCap.round;
 
-    // Left Leg
     canvas.drawLine(pelvis, kneeL, legPaint);
     canvas.drawLine(kneeL, footL, legPaint);
-
-    // Right Leg
     canvas.drawLine(pelvis, kneeR, legPaint);
     canvas.drawLine(kneeR, footR, legPaint);
 
     // 5. Draw Sneakers
-    Color shoeColor = const Color(0xFFFF9F4A); // Orange like reference!
+    Color shoeColor = const Color(0xFFFF9F4A);
     if (profile.shoeColor == 'cyan') shoeColor = const Color(0xFF00D2FF);
     if (profile.shoeColor == 'white') shoeColor = Colors.white;
     if (profile.shoeColor == 'stealth') shoeColor = const Color(0xFF1E2838);
 
     final shoePaint = Paint()..color = shoeColor..style = PaintingStyle.fill;
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: footL, width: isMale ? 32 : 28, height: isMale ? 18 : 16), const Radius.circular(8)), shoePaint);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: footR, width: isMale ? 32 : 28, height: isMale ? 18 : 16), const Radius.circular(8)), shoePaint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromCenter(center: footL, width: isMale ? 32 : 28, height: isMale ? 18 : 16), const Radius.circular(8)),
+      shoePaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromCenter(center: footR, width: isMale ? 32 : 28, height: isMale ? 18 : 16), const Radius.circular(8)),
+      shoePaint,
+    );
 
-    // 6. Draw Torso (Top / Hoodie / Tank)
+    // 6. Draw Torso
     final waistWidth = (isMale ? 22.0 : 18.0) * cosRot;
     final torsoPath = Path()
       ..moveTo(shoulderL.dx, shoulderL.dy)
@@ -1078,13 +1071,12 @@ class _StudioAvatar3DPainter extends CustomPainter {
       ..close();
     canvas.drawPath(torsoPath, Paint()..color = topPrimary..style = PaintingStyle.fill);
 
-    // Orange Waist Belt (like reference!)
+    // Waist Belt
     final beltRect = Rect.fromCenter(center: pelvis, width: (isMale ? 50 : 44) * cosRot.abs() + 10, height: 8);
     canvas.drawRRect(RRect.fromRectAndRadius(beltRect, const Radius.circular(4)), Paint()..color = beltColor);
-    // Belt Buckle
     canvas.drawCircle(pelvis, 5, Paint()..color = const Color(0xFFDFE2F0));
 
-    // 7. Draw Arms (Sleeves + Hands)
+    // 7. Draw Arms
     final armPaint = Paint()
       ..color = topSecondary
       ..strokeWidth = isMale ? 18 : 14
@@ -1092,20 +1084,46 @@ class _StudioAvatar3DPainter extends CustomPainter {
 
     canvas.drawLine(shoulderL, elbowL, armPaint);
     canvas.drawLine(elbowL, handL, armPaint);
-
     canvas.drawLine(shoulderR, elbowR, armPaint);
     canvas.drawLine(elbowR, handR, armPaint);
+
+    // 7b. Draw Smartwatch if selected
+    if (profile.watchStyle != 'none') {
+      Color watchColor = const Color(0xFF00D2FF);
+      if (profile.watchStyle == 'sport_band_orange') watchColor = const Color(0xFFFF9F4A);
+      if (profile.watchStyle == 'gold_chrono') watchColor = const Color(0xFFFFD700);
+
+      final wrist = Offset((elbowL.dx + handL.dx) / 2, (elbowL.dy + handL.dy) / 2);
+      canvas.drawCircle(wrist, 6, Paint()..color = Colors.black);
+      canvas.drawCircle(wrist, 4, Paint()..color = watchColor);
+    }
 
     // 8. Draw Neck
     final skinColors = profile.skinGradientColors;
     canvas.drawRect(Rect.fromCenter(center: neck, width: 14, height: 18), Paint()..color = skinColors[1]);
 
-    // 9. Draw Head (Pixar Stylized Face)
+    // 8b. Draw Headphones if selected
+    if (profile.accessoryStyle == 'headphones_silver') {
+      final headphonePaint = Paint()
+        ..color = const Color(0xFFDFE2F0)
+        ..strokeWidth = 6
+        ..style = PaintingStyle.stroke;
+      canvas.drawArc(
+        Rect.fromCenter(center: neck, width: 44, height: 26),
+        0,
+        math.pi,
+        false,
+        headphonePaint,
+      );
+      canvas.drawCircle(Offset(neck.dx - 20, neck.dy + 8), 7, Paint()..color = const Color(0xFF00D2FF));
+      canvas.drawCircle(Offset(neck.dx + 20, neck.dy + 8), 7, Paint()..color = const Color(0xFF00D2FF));
+    }
+
+    // 9. Draw Head
     _drawPixarFace(canvas, head, cosRot, sinRot);
   }
 
   void _drawPodium(Canvas canvas, double cx, double cy) {
-    // Outer cybernetic ring
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy + 6), width: 260, height: 50),
       Paint()
@@ -1114,7 +1132,6 @@ class _StudioAvatar3DPainter extends CustomPainter {
         ..strokeWidth = 3,
     );
 
-    // Glowing Neon Cyan Center Stage
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy), width: 220, height: 42),
       Paint()
@@ -1131,7 +1148,6 @@ class _StudioAvatar3DPainter extends CustomPainter {
         ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 4),
     );
 
-    // Inner bright ring
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy - 2), width: 180, height: 34),
       Paint()
@@ -1144,7 +1160,6 @@ class _StudioAvatar3DPainter extends CustomPainter {
   void _drawPixarFace(Canvas canvas, Offset head, double cosRot, double sinRot) {
     const headRadius = 32.0;
 
-    // Head base with skin tone gradient
     final skinColors = profile.skinGradientColors;
     final skinGrad = RadialGradient(
       center: Alignment(0.2 * cosRot, -0.3),
@@ -1163,15 +1178,13 @@ class _StudioAvatar3DPainter extends CustomPainter {
     final isMale = profile.avatarGender == 'male';
     final hairPaint = Paint()..color = profile.hairColor..style = PaintingStyle.fill;
 
+    // Draw Hair
     if (!isMale) {
-      // ── FEMALE HAIRSTYLE (Flowing rich waves like reference image!) ──
-      // Left & Right flowing curls
       canvas.drawCircle(Offset(head.dx - 26, head.dy - 10), 18, hairPaint);
       canvas.drawCircle(Offset(head.dx + 26, head.dy - 10), 18, hairPaint);
       canvas.drawCircle(Offset(head.dx - 28, head.dy + 12), 16, hairPaint);
       canvas.drawCircle(Offset(head.dx + 28, head.dy + 12), 16, hairPaint);
 
-      // Top hair volume
       final topHairPath = Path()
         ..moveTo(head.dx - 32, head.dy - 12)
         ..quadraticBezierTo(head.dx, head.dy - 48, head.dx + 32, head.dy - 12)
@@ -1179,7 +1192,6 @@ class _StudioAvatar3DPainter extends CustomPainter {
         ..close();
       canvas.drawPath(topHairPath, hairPaint);
     } else {
-      // ── MALE HAIRSTYLE (Athletic taper fade / textured modern crop) ──
       final maleTopHair = Path()
         ..moveTo(head.dx - 32, head.dy - 8)
         ..quadraticBezierTo(head.dx, head.dy - 44, head.dx + 32, head.dy - 8)
@@ -1187,43 +1199,73 @@ class _StudioAvatar3DPainter extends CustomPainter {
         ..close();
       canvas.drawPath(maleTopHair, hairPaint);
 
-      // Clean side tapers
       canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(head.dx - 30, head.dy - 2), width: 6, height: 22),
-          const Radius.circular(3),
-        ),
+        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(head.dx - 30, head.dy - 2), width: 6, height: 22), const Radius.circular(3)),
         hairPaint,
       );
       canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(head.dx + 30, head.dy - 2), width: 6, height: 22),
-          const Radius.circular(3),
-        ),
+        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(head.dx + 30, head.dy - 2), width: 6, height: 22), const Radius.circular(3)),
         hairPaint,
       );
     }
 
-    // Face features (Eyes, eyebrows, smile)
+    // Caps / Headwear
+    if (profile.capStyle != 'none') {
+      Color capColor = const Color(0xFF1E2838);
+      if (profile.capStyle == 'visor_neon') capColor = const Color(0xFF00D2FF);
+      if (profile.capStyle == 'beanie_gray') capColor = const Color(0xFF829AB1);
+
+      final capPath = Path()
+        ..moveTo(head.dx - 34, head.dy - 14)
+        ..quadraticBezierTo(head.dx, head.dy - 46, head.dx + 34, head.dy - 14)
+        ..close();
+      canvas.drawPath(capPath, Paint()..color = capColor);
+
+      // Visor brim
+      if (profile.capStyle == 'snapback_black' || profile.capStyle == 'visor_neon') {
+        canvas.drawOval(
+          Rect.fromCenter(center: Offset(head.dx, head.dy - 14), width: 56, height: 10),
+          Paint()..color = capColor,
+        );
+      }
+    }
+
+    // Sweatband accessory
+    if (profile.accessoryStyle == 'sweatband_red') {
+      canvas.drawRect(
+        Rect.fromCenter(center: Offset(head.dx, head.dy - 18), width: 58, height: 8),
+        Paint()..color = const Color(0xFFFF4136),
+      );
+    }
+
+    // Eyes
     final eyeShiftX = 10 * cosRot;
     final eyeL = Offset(head.dx - 11 + (eyeShiftX * 0.4), head.dy - 4);
     final eyeR = Offset(head.dx + 11 + (eyeShiftX * 0.4), head.dy - 4);
 
-    // Eye whites
-    canvas.drawOval(Rect.fromCenter(center: eyeL, width: 13, height: 16), Paint()..color = Colors.white);
-    canvas.drawOval(Rect.fromCenter(center: eyeR, width: 13, height: 16), Paint()..color = Colors.white);
+    if (profile.accessoryStyle == 'sunglasses_stealth') {
+      // Draw sunglasses
+      final shadesPaint = Paint()..color = const Color(0xFF101622);
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: eyeL, width: 22, height: 16), const Radius.circular(6)), shadesPaint);
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: eyeR, width: 22, height: 16), const Radius.circular(6)), shadesPaint);
+      canvas.drawLine(eyeL, eyeR, Paint()..color = Colors.black..strokeWidth = 3);
+    } else {
+      // Eye whites
+      canvas.drawOval(Rect.fromCenter(center: eyeL, width: 13, height: 16), Paint()..color = Colors.white);
+      canvas.drawOval(Rect.fromCenter(center: eyeR, width: 13, height: 16), Paint()..color = Colors.white);
 
-    // Big expressive brown irises
-    canvas.drawCircle(eyeL, 5.5, Paint()..color = const Color(0xFF5C3317));
-    canvas.drawCircle(eyeR, 5.5, Paint()..color = const Color(0xFF5C3317));
+      // Irises
+      canvas.drawCircle(eyeL, 5.5, Paint()..color = const Color(0xFF5C3317));
+      canvas.drawCircle(eyeR, 5.5, Paint()..color = const Color(0xFF5C3317));
 
-    // Pupils & catchlights
-    canvas.drawCircle(eyeL, 3, Paint()..color = Colors.black);
-    canvas.drawCircle(eyeR, 3, Paint()..color = Colors.black);
-    canvas.drawCircle(Offset(eyeL.dx - 1.5, eyeL.dy - 1.5), 1.5, Paint()..color = Colors.white);
-    canvas.drawCircle(Offset(eyeR.dx - 1.5, eyeR.dy - 1.5), 1.5, Paint()..color = Colors.white);
+      // Pupils & catchlights
+      canvas.drawCircle(eyeL, 3, Paint()..color = Colors.black);
+      canvas.drawCircle(eyeR, 3, Paint()..color = Colors.black);
+      canvas.drawCircle(Offset(eyeL.dx - 1.5, eyeL.dy - 1.5), 1.5, Paint()..color = Colors.white);
+      canvas.drawCircle(Offset(eyeR.dx - 1.5, eyeR.dy - 1.5), 1.5, Paint()..color = Colors.white);
+    }
 
-    // Eyebrows (Masculine thicker, Female groomed)
+    // Eyebrows
     final browPaint = Paint()
       ..color = profile.hairColor
       ..strokeWidth = isMale ? 3.4 : 2.5
@@ -1232,7 +1274,7 @@ class _StudioAvatar3DPainter extends CustomPainter {
     canvas.drawLine(Offset(eyeL.dx - 6, eyeL.dy - 11), Offset(eyeL.dx + 6, eyeL.dy - 10), browPaint);
     canvas.drawLine(Offset(eyeR.dx - 6, eyeR.dy - 10), Offset(eyeR.dx + 6, eyeR.dy - 11), browPaint);
 
-    // Stubble / Facial Hair if Male
+    // Stubble
     if (isMale && profile.facialHair != 'clean') {
       final stubblePaint = Paint()
         ..color = profile.hairColor.withValues(alpha: 0.45)
@@ -1245,10 +1287,10 @@ class _StudioAvatar3DPainter extends CustomPainter {
       canvas.drawPath(stubblePath, stubblePaint);
     }
 
-    // Cute nose button
+    // Nose button
     canvas.drawCircle(Offset(head.dx + (eyeShiftX * 0.3), head.dy + 7), 2.2, Paint()..color = skinColors[2]);
 
-    // Friendly Pixar Smile
+    // Smile
     final smilePath = Path()
       ..moveTo(head.dx - 8 + (eyeShiftX * 0.3), head.dy + 15)
       ..quadraticBezierTo(head.dx + (eyeShiftX * 0.3), head.dy + 22, head.dx + 10 + (eyeShiftX * 0.3), head.dy + 16);

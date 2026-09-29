@@ -16,9 +16,12 @@ import 'health_report_ai.dart';
 import 'health_sync.dart';
 import 'leaderboard.dart';
 import 'settings.dart';
-import 'training_hub.dart';
 import 'trophy_case.dart';
 import 'user_follow_list.dart';
+import '../services/readings_history_service.dart';
+import '../services/report_history_service.dart';
+import 'avatar_studio.dart';
+import 'training_hub.dart';
 
 /// TAB 5 — PROFILE, HEALTH & PRIVACY
 ///
@@ -67,6 +70,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadProfile();
+    ReadingsHistoryService.instance.init();
+    ReportHistoryService.instance.init();
   }
 
   Future<void> _loadProfile() async {
@@ -74,40 +79,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final p = await context.read<VyraApi>().getProfile();
       if (mounted) setState(() => _profile = p);
     } catch (_) {}
-  }
-
-  Future<void> _confirmLogout() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: VColor.surface,
-        title: const Text('Log Out of VYRA?', style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold)),
-        content: const Text(
-          'Your workouts, streaks, and health data remain safely synced to your account.',
-          style: TextStyle(color: VColor.textMid),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: VColor.textMid)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: VColor.warn),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Log Out'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      final api = context.read<VyraApi>();
-      await api.logout();
-      if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-      }
-    }
-
   }
 
   @override
@@ -137,10 +108,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
+    final stepsVal = int.tryParse(_controllers['steps']?.text.trim() ?? '') ?? 0;
+    final waterVal = int.tryParse(_controllers['water']?.text.trim() ?? '') ?? 0;
+    final hrVal = int.tryParse(_controllers['heart_rate']?.text.trim() ?? '') ?? 0;
+    final wtVal = double.tryParse(_controllers['weight_kg']?.text.trim() ?? '') ?? 0.0;
+
     setState(() => _savingMetrics = true);
     try {
       final message = await context.read<VyraApi>().logTracking(values);
       if (!mounted) return;
+
+      if (stepsVal > 0 || waterVal > 0 || hrVal > 0 || wtVal > 0) {
+        final now = DateTime.now();
+        final dtStr = '${now.day}/${now.month}/${now.year}, ${now.hour}:${now.minute.toString().padLeft(2, '0')}';
+        ReadingsHistoryService.instance.saveEntry(
+          SavedReadingEntry(
+            id: now.millisecondsSinceEpoch.toString(),
+            timestamp: now,
+            formattedDateTime: dtStr,
+            steps: stepsVal,
+            waterMl: waterVal,
+            heartRateBpm: hrVal,
+            weightKg: wtVal,
+          ),
+        );
+      }
+
       for (final c in _controllers.values) {
         c.clear();
       }
@@ -154,6 +147,278 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } finally {
       if (mounted) setState(() => _savingMetrics = false);
     }
+  }
+
+  void _showReadingsHistorySheet() {
+    final entries = ReadingsHistoryService.instance.entries;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: VColor.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(VRadius.xl)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65,
+          maxChildSize: 0.9,
+          minChildSize: 0.4,
+          expand: false,
+          builder: (_, scrollCtrl) {
+            return Padding(
+              padding: const EdgeInsets.all(VSpace.base),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: VSpace.base),
+                      decoration: BoxDecoration(
+                        color: VColor.line,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Readings History',
+                        style: TextStyle(
+                          color: VColor.text,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${entries.length} logged',
+                        style: const TextStyle(color: VColor.textMid, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: VSpace.md),
+                  if (entries.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Text(
+                          'No saved readings yet.\nEnter your vitals above and tap "Save readings" to start tracking.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: VColor.textMid, height: 1.4),
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.separated(
+                        controller: scrollCtrl,
+                        itemCount: entries.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: VSpace.sm),
+                        itemBuilder: (_, i) {
+                          final item = entries[i];
+                          return Container(
+                            padding: const EdgeInsets.all(VSpace.base),
+                            decoration: BoxDecoration(
+                              color: VColor.surfaceRaised,
+                              borderRadius: BorderRadius.circular(VRadius.md),
+                              border: Border.all(color: VColor.line),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.access_time_rounded, size: 14, color: VColor.textDim),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          item.formattedDateTime,
+                                          style: const TextStyle(color: VColor.textDim, fontSize: 12),
+                                        ),
+                                      ],
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, size: 16, color: VColor.textDim),
+                                      onPressed: () {
+                                        ReadingsHistoryService.instance.deleteEntry(item.id);
+                                        Navigator.pop(ctx);
+                                        _showReadingsHistorySheet();
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: VSpace.xs),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  children: [
+                                    if (item.steps > 0)
+                                      _vitalBadge('👟 ${item.steps} steps', const Color(0xFF00D2FF)),
+                                    if (item.waterMl > 0)
+                                      _vitalBadge('💧 ${item.waterMl} mL', const Color(0xFF38BDF8)),
+                                    if (item.heartRateBpm > 0)
+                                      _vitalBadge('❤️ ${item.heartRateBpm} bpm', const Color(0xFFEF4444)),
+                                    if (item.weightKg > 0)
+                                      _vitalBadge('⚖️ ${item.weightKg} kg', const Color(0xFF10B981)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _vitalBadge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  void _showBloodReportHistorySheet() {
+    final reports = ReportHistoryService.instance.reports;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: VColor.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(VRadius.xl)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          maxChildSize: 0.95,
+          minChildSize: 0.4,
+          expand: false,
+          builder: (_, scrollCtrl) {
+            return Padding(
+              padding: const EdgeInsets.all(VSpace.base),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: VSpace.base),
+                      decoration: BoxDecoration(
+                        color: VColor.line,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Report Analysis History',
+                        style: TextStyle(
+                          color: VColor.text,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${reports.length} saved',
+                        style: const TextStyle(color: VColor.textMid, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: VSpace.md),
+                  if (reports.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Text(
+                          'No saved report analyses yet.\nUpload a test report via "AI Report Analysis" to keep a permanent history.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: VColor.textMid, height: 1.4),
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.separated(
+                        controller: scrollCtrl,
+                        itemCount: reports.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: VSpace.sm),
+                        itemBuilder: (_, i) {
+                          final r = reports[i];
+                          return Container(
+                            padding: const EdgeInsets.all(VSpace.base),
+                            decoration: BoxDecoration(
+                              color: VColor.surfaceRaised,
+                              borderRadius: BorderRadius.circular(VRadius.md),
+                              border: Border.all(color: VColor.line),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        r.labName,
+                                        style: const TextStyle(
+                                          color: VColor.text,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      r.formattedDateTime,
+                                      style: const TextStyle(color: VColor.textDim, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '${r.biomarkers.length} Biomarkers Analyzed • Date: ${r.reportDate}',
+                                  style: const TextStyle(color: VColor.accentGreen, fontSize: 12, fontWeight: FontWeight.w600),
+                                ),
+                                if (r.insights.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    r.insights.first,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: VColor.textMid, fontSize: 11.5),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _analyse() async {
@@ -196,20 +461,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('You', style: Theme.of(context).textTheme.headlineMedium),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.logout_rounded, color: VColor.warn, size: 22),
-                    tooltip: 'Log Out',
-                    onPressed: () => _confirmLogout(),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.settings_outlined, color: VColor.textMid, size: 24),
-                    tooltip: 'Settings & Preferences',
-                    onPressed: () => pushScreen(context, 'Settings', const SettingsScreen()),
-                  ),
-                ],
+              IconButton(
+                icon: const Icon(Icons.settings_outlined, color: VColor.textMid, size: 24),
+                tooltip: 'Settings & Preferences',
+                onPressed: () => pushScreen(context, 'Settings', const SettingsScreen()),
               ),
             ],
           ),
@@ -346,15 +601,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   subtitle: 'Activity milestones',
                   onTap: () => pushScreen(context, 'Trophy Case', const TrophyCaseScreen()),
                 ),
-                const Divider(height: 1, color: VColor.line),
-                _QuickLink(
-                  icon: Icons.logout_rounded,
-                  iconColor: VColor.warn,
-                  textColor: VColor.warn,
-                  label: 'Log Out',
-                  subtitle: 'Sign out of your VYRA account safely',
-                  onTap: () => _confirmLogout(),
-                ),
               ],
             ),
           ),
@@ -411,6 +657,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: const Text('Save readings'),
                   ),
                 ),
+                const SizedBox(height: VSpace.sm),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.history_rounded, size: 18),
+                    label: const Text('Readings History'),
+                    onPressed: _showReadingsHistorySheet,
+                  ),
+                ),
               ],
             ),
           ),
@@ -449,6 +704,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: VColor.textOnAccent))
                         : const Text('Read my report'),
+                  ),
+                ),
+                const SizedBox(height: VSpace.sm),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _showBloodReportHistorySheet,
+                    icon: const Icon(Icons.history_rounded, size: 18, color: VColor.accent),
+                    label: const Text('Blood Report History', style: TextStyle(color: VColor.accent, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -512,21 +776,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: VSpace.xl),
-
-          // ── Explicit Log Out Button ──
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _confirmLogout(),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: VColor.warn,
-                side: const BorderSide(color: VColor.warn, width: 1.2),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              icon: const Icon(Icons.logout_rounded, size: 20),
-              label: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-            ),
-          ),
         ],
       ),
     );
@@ -804,6 +1053,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
+
+          const SizedBox(height: VSpace.md),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    await pushScreen(context, 'Edit Profile', const EditProfileScreen());
+                    if (mounted) _loadProfile();
+                  },
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Edit Profile', style: TextStyle(fontSize: 13)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    side: const BorderSide(color: VColor.line),
+                  ),
+                ),
+              ),
+              const SizedBox(width: VSpace.sm),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AvatarStudioScreen()),
+                  ),
+                  icon: const Icon(Icons.face_rounded, size: 16, color: VColor.textOnAccent),
+                  label: const Text('Customize Avatar', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: VColor.accent,
+                    foregroundColor: VColor.textOnAccent,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -947,16 +1232,12 @@ class _QuickLink extends StatelessWidget {
     required this.label,
     required this.subtitle,
     required this.onTap,
-    this.iconColor,
-    this.textColor,
   });
 
   final IconData icon;
   final String label;
   final String subtitle;
   final VoidCallback onTap;
-  final Color? iconColor;
-  final Color? textColor;
 
   @override
   Widget build(BuildContext context) {
@@ -966,7 +1247,7 @@ class _QuickLink extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: VSpace.base, vertical: VSpace.md),
         child: Row(
           children: [
-            Icon(icon, color: iconColor ?? VColor.accent, size: 22),
+            Icon(icon, color: VColor.accent, size: 22),
             const SizedBox(width: VSpace.base),
             Expanded(
               child: Column(
@@ -974,9 +1255,9 @@ class _QuickLink extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: textColor ?? VColor.text,
+                      color: VColor.text,
                     ),
                   ),
                   Text(subtitle, style: const TextStyle(color: VColor.textLow, fontSize: 12)),

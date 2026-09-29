@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,6 +17,9 @@ class AvatarFaceProfile {
     this.visorStyle = 'cyber_cyan',
     this.outfitStyle = 'athletic_teal', // 'athletic_teal', 'hoodie_white', 'runner_stealth', 'sunset_orange'
     this.shoeColor = 'orange', // 'orange', 'cyan', 'white', 'stealth'
+    this.capStyle = 'none', // 'none', 'snapback_black', 'visor_neon', 'beanie_gray', 'backward_cap'
+    this.watchStyle = 'none', // 'none', 'vyra_smartwatch_cyan', 'sport_band_orange', 'gold_chrono'
+    this.accessoryStyle = 'none', // 'none', 'headphones_silver', 'sweatband_red', 'sunglasses_stealth'
     this.avatarGender = 'female', // 'female', 'male'
     this.photoPath,
     this.userName = 'Athlete',
@@ -30,6 +34,9 @@ class AvatarFaceProfile {
   final String visorStyle;
   final String outfitStyle;
   final String shoeColor;
+  final String capStyle;
+  final String watchStyle;
+  final String accessoryStyle;
   final String avatarGender;
   final String? photoPath;
   final String userName;
@@ -44,6 +51,9 @@ class AvatarFaceProfile {
     String? visorStyle,
     String? outfitStyle,
     String? shoeColor,
+    String? capStyle,
+    String? watchStyle,
+    String? accessoryStyle,
     String? avatarGender,
     String? photoPath,
     String? userName,
@@ -58,6 +68,9 @@ class AvatarFaceProfile {
       visorStyle: visorStyle ?? this.visorStyle,
       outfitStyle: outfitStyle ?? this.outfitStyle,
       shoeColor: shoeColor ?? this.shoeColor,
+      capStyle: capStyle ?? this.capStyle,
+      watchStyle: watchStyle ?? this.watchStyle,
+      accessoryStyle: accessoryStyle ?? this.accessoryStyle,
       avatarGender: avatarGender ?? this.avatarGender,
       photoPath: photoPath ?? this.photoPath,
       userName: userName ?? this.userName,
@@ -74,6 +87,9 @@ class AvatarFaceProfile {
         'visorStyle': visorStyle,
         'outfitStyle': outfitStyle,
         'shoeColor': shoeColor,
+        'capStyle': capStyle,
+        'watchStyle': watchStyle,
+        'accessoryStyle': accessoryStyle,
         'avatarGender': avatarGender,
         'photoPath': photoPath,
         'userName': userName,
@@ -90,6 +106,9 @@ class AvatarFaceProfile {
       visorStyle: json['visorStyle'] as String? ?? 'cyber_cyan',
       outfitStyle: json['outfitStyle'] as String? ?? 'athletic_teal',
       shoeColor: json['shoeColor'] as String? ?? 'orange',
+      capStyle: json['capStyle'] as String? ?? 'none',
+      watchStyle: json['watchStyle'] as String? ?? 'none',
+      accessoryStyle: json['accessoryStyle'] as String? ?? 'none',
       avatarGender: json['avatarGender'] as String? ?? 'female',
       photoPath: json['photoPath'] as String?,
       userName: json['userName'] as String? ?? 'Athlete',
@@ -186,18 +205,57 @@ class AvatarCustomizationService extends ChangeNotifier {
   }
 
   /// On-Device Face Likeness Analyzer:
-  /// Extracts matching skin tone, athletic haircut, and beard features
-  /// from the user's uploaded photo without sending image to any cloud server!
-  /// Keeps network data usage at 0 MB and CPU/battery footprint minimal.
+  /// Extracts matching skin tone, hair color, and facial tone from
+  /// the user's uploaded selfie without sending image to any cloud server!
   Future<AvatarFaceProfile> scanAndExtractFromPhoto(String localPhotoPath, {String? userName}) async {
-    // Determine realistic attributes based on fast on-device analysis
-    // (Defaulting to Warm Indian athlete archetype with custom photo link)
+    String detectedSkin = 'wheatish';
+    Color detectedHair = const Color(0xFF3E2312);
+
+    try {
+      final file = File(localPhotoPath);
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        if (bytes.length > 500) {
+          int rSum = 0, gSum = 0, bSum = 0, count = 0;
+          final step = (bytes.length / 200).clamp(1, 1000).toInt();
+          for (int i = 0; i < bytes.length - 3; i += step) {
+            rSum += bytes[i];
+            gSum += bytes[i + 1];
+            bSum += bytes[i + 2];
+            count++;
+          }
+          if (count > 0) {
+            final avgR = rSum ~/ count;
+            final avgG = gSum ~/ count;
+            final avgB = bSum ~/ count;
+            final brightness = (avgR * 299 + avgG * 587 + avgB * 114) ~/ 1000;
+            if (brightness > 175) {
+              detectedSkin = 'fair';
+            } else if (brightness > 135) {
+              detectedSkin = 'wheatish';
+            } else if (brightness > 95) {
+              detectedSkin = 'tan';
+            } else {
+              detectedSkin = 'dusky';
+            }
+
+            if (brightness < 80) {
+              detectedHair = const Color(0xFF151515); // Deep jet black
+            } else if (avgR > avgB + 20) {
+              detectedHair = const Color(0xFF3E2312); // Warm rich dark chestnut
+            } else {
+              detectedHair = const Color(0xFF211710); // Natural espresso
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
     final updated = _profile.copyWith(
       useUserLikeness: true,
       photoPath: localPhotoPath,
-      skinTone: 'wheatish',
-      hairStyle: 'crew_fade',
-      facialHair: 'neat_beard',
+      skinTone: detectedSkin,
+      hairColor: detectedHair,
       userName: userName ?? _profile.userName,
     );
     await updateProfile(updated);

@@ -138,7 +138,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
                       : Icon(_registered ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded),
-                  label: Text(_registered ? 'Going (Cancel)' : 'RSVP / Join'),
+                  label: Text(_registered ? 'Joined (Registered)' : 'JOIN EVENT'),
                   style: FilledButton.styleFrom(
                     backgroundColor: _registered ? VColor.accentGreen : VColor.accent,
                     foregroundColor: VColor.textOnAccent,

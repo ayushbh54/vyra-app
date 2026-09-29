@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../api/client.dart';
 import '../theme.dart';
@@ -54,6 +55,24 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     }
   }
 
+  void _shareToInstagramStory(String scope) {
+    final data = _data[scope];
+    final rankText = data?.self?.rank != null ? '#${data!.self!.rank}' : 'Top Athlete';
+    final tier = data?.self?.tier.toUpperCase() ?? 'WARRIOR';
+    final pts = data?.self?.activityPoints ?? 1250;
+    final scopeLabel = scope == 'friends' ? 'Friends Leaderboard' : 'Global Leaderboard';
+    final shareMsg = '''🔥 VYRA ATHLETE RANKING 🔥
+🏆 Rank: $rankText
+⚡ Tier: $tier
+📊 Activity Score: $pts pts
+🌐 Scope: $scopeLabel
+
+Think you can beat my score? Challenge me on VYRA — the AI-Powered Biometric Fitness Network!
+#VYRA #Fitness #Athlete''';
+    // ignore: deprecated_member_use
+    Share.share(shareMsg, subject: 'My VYRA Athlete Ranking');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -63,6 +82,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         leading: const BackButton(color: VColor.text),
         title: const Text('Leaderboard',
             style: TextStyle(color: VColor.text, fontWeight: FontWeight.w700)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share_rounded, color: VColor.accent),
+            tooltip: 'Share to Instagram Story',
+            onPressed: () => _shareToInstagramStory(_scopes[_tabs.index]),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabs,
           indicatorColor: VColor.accent,
@@ -176,7 +202,7 @@ class _BoardTab extends StatelessWidget {
     return CustomScrollView(slivers: [
       // ── Self card ────────────────────────────────────────────────────────
       if (d.self != null)
-        SliverToBoxAdapter(child: _SelfCard(d.self!)),
+        SliverToBoxAdapter(child: _SelfCard(d.self!, scope: scope)),
 
       // ── Top 3 podium ─────────────────────────────────────────────────────
       if (d.rows.length >= 3)
@@ -201,8 +227,9 @@ class _BoardTab extends StatelessWidget {
 // ── Self card ──────────────────────────────────────────────────────────────────
 
 class _SelfCard extends StatelessWidget {
-  const _SelfCard(this.self);
+  const _SelfCard(this.self, {required this.scope});
   final _SelfRow self;
+  final String scope;
 
   @override
   Widget build(BuildContext context) {
@@ -251,6 +278,47 @@ class _SelfCard extends StatelessWidget {
             ),
           ),
         ],
+        const SizedBox(height: 14),
+        InkWell(
+          onTap: () {
+            final rankText = self.rank != null ? '#${self.rank}' : 'Ranked Athlete';
+            final tier = self.tier.toUpperCase();
+            final scopeLabel = scope == 'friends' ? 'Friends Leaderboard' : 'Global Leaderboard';
+            final shareMsg = '''🔥 VYRA ATHLETE RANKING 🔥
+🏆 Rank: $rankText
+⚡ Tier: $tier
+📊 Activity Score: ${self.activityPoints} pts
+🌐 Scope: $scopeLabel
+
+Think you can beat my score? Challenge me on VYRA — the AI-Powered Biometric Fitness Network!
+#VYRA #Fitness #Athlete''';
+            // ignore: deprecated_member_use
+    Share.share(shareMsg, subject: 'My VYRA Athlete Ranking');
+          },
+          borderRadius: BorderRadius.circular(VRadius.md),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFFCB045)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(VRadius.md),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.camera_alt_rounded, color: Colors.white, size: 16),
+                SizedBox(width: 8),
+                Text(
+                  'Share Rank to Instagram Story',
+                  style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ),
       ]),
     );
   }

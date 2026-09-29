@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../api/client.dart';
 import '../theme.dart';
@@ -52,12 +53,16 @@ class _AiChatScreenState extends State<AiChatScreen> {
   bool _loading = false;
   String? _error;
 
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+
   // Conversation ID returned by the backend, used for threading.
   String? _convId;
 
   @override
   void initState() {
     super.initState();
+    _speech = stt.SpeechToText();
     _loadHistory();
   }
 
@@ -82,7 +87,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
       }
     } catch (_) {}
 
-    // Initial realistic dummy chat conversation between user and Coach VYRA
     if (_messages.isEmpty) {
       final initialMessages = _getInitialSeedMessages();
       setState(() {
@@ -98,46 +102,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
     return [
       _AiChatMessage(
         'model',
-        "Hey Ayush! 👋 I'm Coach VYRA, your AI-powered performance and clinical nutrition specialist.\n\n"
-        "I reviewed your biometric sync: morning HRV readiness is elevated at 87%, and your 7-day workout streak is active! 🔥\n\n"
-        "How is your body feeling today?",
-        now.subtract(const Duration(minutes: 50)),
-      ),
-      _AiChatMessage(
-        'user',
-        "Completed 5km morning run in 24 mins! Felt great, but hamstrings feel a bit tight. What should I eat for optimal recovery right now?",
-        now.subtract(const Duration(minutes: 45)),
-      ),
-      _AiChatMessage(
-        'model',
-        "Outstanding pace on that 5K! 24 mins is a solid 4:48/km cadence. 🏃‍♂️💨\n\n"
-        "Here is your immediate recovery protocol:\n\n"
-        "1. 🥤 Hydration: Drink 400–500ml water with a pinch of pink salt or coconut water to restore sodium and potassium lost in sweat.\n\n"
-        "2. 🥗 3:1 Recovery Fuel (within 45 mins):\n"
-        "   • 25g High-Bioavailability Protein + 40g Complex Carbs\n"
-        "   • Ideal combos: Greek yogurt with sliced banana & chia seeds, or 2 boiled eggs / paneer bhurji with toasted whole wheat sourdough.\n\n"
-        "3. 🧘 Hamstring Relief:\n"
-        "   • Standing single-leg hamstring stretch (30s each side)\n"
-        "   • Gentle downward dog hold (45s)\n"
-        "   • Foam roll calves and glutes to relieve posterior chain tension.\n\n"
-        "How is your resting heart rate today?",
-        now.subtract(const Duration(minutes: 42)),
-      ),
-      _AiChatMessage(
-        'user',
-        "Resting HR was 62 bpm today, feeling energized! Can we target upper body and core tomorrow?",
-        now.subtract(const Duration(minutes: 25)),
-      ),
-      _AiChatMessage(
-        'model',
-        "62 bpm resting HR confirms optimal recovery! 🎯\n\n"
-        "Here is your customized Upper Body & Core target for tomorrow:\n"
-        "• 3×10 Dumbbell Chest / Floor Press (controlled eccentric)\n"
-        "• 3×12 Bodyweight Push-ups (focus on tempo: 2s down, 1s up)\n"
-        "• 3×10 Seated Dumbbell Overhead Shoulder Press\n"
-        "• 3×45s Forearm Plank holds + 3×20 Russian Twists\n\n"
-        "Aim for 7.5+ hours of sleep tonight to maximize muscle protein synthesis. You've got this! 💪",
-        now.subtract(const Duration(minutes: 20)),
+        "Hey Athlete! 👋 I'm Coach VYRA, your AI-powered performance and clinical nutrition specialist.\n\n"
+        "How is your body feeling today? Ask me anything about your training, diet, recovery, or medical wellness.",
+        now.subtract(const Duration(minutes: 5)),
       ),
     ];
   }
@@ -160,43 +127,108 @@ class _AiChatScreenState extends State<AiChatScreen> {
         backgroundColor: VColor.surface,
         title: const Text('Clear Chat History?', style: TextStyle(color: VColor.text)),
         content: const Text(
-          'Are you sure you want to reset your conversation with VYRA Coach?',
-          style: TextStyle(color: VColor.textMuted),
+          'This will delete all messages in this conversation. This cannot be undone.',
+          style: TextStyle(color: VColor.textMid),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: VColor.textMuted)),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: VColor.textLow)),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: VColor.warn),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Clear'),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Clear', style: TextStyle(color: VColor.warn)),
           ),
         ],
       ),
     );
 
-    if (confirmed == true && mounted) {
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove(_storageKey);
-        await prefs.remove(_convStorageKey);
-      } catch (_) {}
+    if (confirmed == true) {
       setState(() {
-        _convId = null;
         _messages.clear();
-        _messages.add(_AiChatMessage(
-          'model',
-          "Chat reset! What would you like to focus on now? 🌟",
-        ));
+        _error = null;
+        _convId = null;
       });
-      _saveHistory();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_storageKey);
+      await prefs.remove(_convStorageKey);
     }
+  }
+
+  Future<void> _listen() async {
+    if (!_isListening) {
+      try {
+        final available = await _speech.initialize(
+          onError: (_) {
+            if (mounted) setState(() => _isListening = false);
+          },
+          onStatus: (val) {
+            if (val == 'done' || val == 'notListening') {
+              if (mounted) setState(() => _isListening = false);
+            }
+          },
+        );
+        if (available) {
+          setState(() => _isListening = true);
+          _speech.listen(
+            onResult: (val) {
+              if (mounted) {
+                setState(() {
+                  _controller.text = val.recognizedWords;
+                });
+              }
+            },
+          );
+        }
+      } catch (_) {
+        if (mounted) setState(() => _isListening = false);
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
+  }
+
+  bool _isOutOfField(String query) {
+    final q = query.toLowerCase().trim();
+    final allowedSmallTalk = [
+      'hi', 'hello', 'hey', 'good morning', 'good evening', 'who are you',
+      'help', 'what can you do', 'thank you', 'thanks', 'bye'
+    ];
+    if (allowedSmallTalk.contains(q)) return false;
+
+    final nonFitnessKeywords = [
+      'python', 'javascript', 'coding', 'code', 'bug', 'github', 'java', 'c++', 'html',
+      'president', 'election', 'movie', 'film', 'song', 'crypto', 'stock market', 'bitcoin',
+      'weather forecast', 'translate', 'essay', 'homework', 'capital of'
+    ];
+
+    if (nonFitnessKeywords.any((kw) => q.contains(kw))) {
+      return true;
+    }
+
+    final healthKeywords = [
+      'health', 'fitness', 'sport', 'run', 'workout', 'diet', 'food', 'calorie', 'protein',
+      'carb', 'fat', 'exercise', 'gym', 'muscle', 'recovery', 'sleep', 'water', 'hydrate',
+      'hydration', 'heart', 'hrv', 'bpm', 'blood', 'report', 'lab', 'doctor', 'pain',
+      'stretch', 'yoga', 'squat', 'pushup', 'curl', 'walk', 'step', 'weight', 'fat loss',
+      'gain', 'bmi', 'sugar', 'glucose', 'cholesterol', 'vitamin', 'injury', 'cardio',
+      'endurance', 'stamina', 'routine', 'plan', 'eat', 'meal', 'nutrition', 'sore',
+      'chest', 'back', 'leg', 'arm', 'hamstring', 'glute', 'abs', 'core', 'training',
+      'athlet', 'medical', 'fever', 'cough', 'energy', 'supplement', 'creatine'
+    ];
+
+    final hasHealthContext = healthKeywords.any((kw) => q.contains(kw));
+    // If it mentions neither fitness nor allowed small talk, and has more than 3 words, guardrail it
+    if (!hasHealthContext && q.split(' ').length > 2) {
+      return true;
+    }
+    return false;
   }
 
   @override
   void dispose() {
+    _speech.stop();
     _controller.dispose();
     _scrollCtrl.dispose();
     super.dispose();
@@ -207,6 +239,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
     if (text.isEmpty || _loading) return;
     _controller.clear();
 
+    if (_isListening) {
+      _speech.stop();
+      setState(() => _isListening = false);
+    }
+
     setState(() {
       _messages.add(_AiChatMessage('user', text));
       _loading = true;
@@ -215,17 +252,56 @@ class _AiChatScreenState extends State<AiChatScreen> {
     _saveHistory();
     _scrollToBottom();
 
+    // Out-of-field check
+    if (_isOutOfField(text)) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _messages.add(
+          _AiChatMessage(
+            'model',
+            "THE QUESTION ASKED IS OUT OF MY FIELD, KINDLY ASK ME QUESTIONS RELATED TO HEALTH , FITNESS , SPORTS AND MEDICAL QUERIES. THANK YOU !",
+          ),
+        );
+      });
+      _saveHistory();
+      _scrollToBottom();
+      return;
+    }
+
     try {
       final api = context.read<VyraApi>();
       final resp = await api.chatMessage(text, conversationId: _convId);
       _convId = resp['conversationId'] as String?;
       final reply = resp['reply'] as String? ?? '...';
-      setState(() => _messages.add(_AiChatMessage('model', reply)));
+      if (mounted) {
+        setState(() => _messages.add(_AiChatMessage('model', reply)));
+      }
       _saveHistory();
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) {
+        if (e.statusCode == 429) {
+          setState(() {
+            _messages.add(
+              _AiChatMessage(
+                'model',
+                "⚡ Coach VYRA is momentarily catching her breath! Please wait 15 seconds before asking your next question.",
+              ),
+            );
+          });
+        } else {
+          setState(() => _error = e.message);
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = "Network connection issue. Please check your internet.");
+      }
     } finally {
-      setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
       _saveHistory();
       _scrollToBottom();
     }
@@ -265,7 +341,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('VYRA Coach', style: TextStyle(color: VColor.text, fontSize: 15, fontWeight: FontWeight.w600)),
-              Text('AI · Powered by Gemini', style: TextStyle(color: VColor.textLow, fontSize: 11)),
+              Text('AI · Health & Fitness Specialist', style: TextStyle(color: VColor.textLow, fontSize: 11)),
             ],
           ),
         ]),
@@ -296,7 +372,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           color: VColor.warnSoft,
           child: const Text(
-            '⚠️  AI coach is not a medical professional. For health concerns, consult your doctor.',
+            '⚠️  AI coach is not a medical professional. For clinical emergencies, consult a doctor immediately.',
             style: TextStyle(color: VColor.warn, fontSize: 11),
             textAlign: TextAlign.center,
           ),
@@ -320,17 +396,35 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ),
         ),
 
+        // ── Voice Listening Indicator ──────────────────────────────────────
+        if (_isListening)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: const Color(0xFF00D2FF).withValues(alpha: 0.15),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.mic_rounded, color: Color(0xFF00D2FF), size: 18),
+                SizedBox(width: 8),
+                Text(
+                  "Listening... Speak your fitness or nutrition question",
+                  style: TextStyle(color: Color(0xFF00D2FF), fontWeight: FontWeight.w600, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+
         // ── Quick suggestions row ──────────────────────────────────────────
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
           child: Row(
             children: [
-              _suggestionChip('🥗 Post-run recovery meal'),
+              _suggestionChip('🥗 Post-workout recovery meal'),
               _suggestionChip('🔥 15m core & abs burn'),
               _suggestionChip('💧 Hydration target today'),
               _suggestionChip('🧘 Hamstring stretch routine'),
-              _suggestionChip('😴 Deep sleep & muscle repair'),
+              _suggestionChip('😴 Sleep for muscle repair'),
             ],
           ),
         ),
@@ -354,7 +448,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 minLines: 1,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  hintText: 'Ask your coach anything…',
+                  hintText: _isListening ? 'Listening...' : 'Ask your coach anything…',
                   hintStyle: const TextStyle(color: VColor.textLow, fontSize: 14),
                   filled: true,
                   fillColor: VColor.surfaceRaised,
@@ -367,7 +461,32 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 onSubmitted: (_) => _send(),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
+
+            // Microphone speech-to-text button
+            GestureDetector(
+              onTap: _listen,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isListening ? Colors.redAccent : VColor.surfaceRaised,
+                  border: Border.all(
+                    color: _isListening ? Colors.red : const Color(0xFF00D2FF).withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Icon(
+                  _isListening ? Icons.mic_off_rounded : Icons.mic_rounded,
+                  color: _isListening ? Colors.white : const Color(0xFF00D2FF),
+                  size: 20,
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 6),
+
+            // Send button
             GestureDetector(
               onTap: _send,
               child: AnimatedContainer(
@@ -419,72 +538,57 @@ class _Bubble extends StatelessWidget {
   const _Bubble(this.msg);
   final _AiChatMessage msg;
 
-  String _formatTime(DateTime dt) {
-    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
-    return '$hour:$minute $ampm';
-  }
-
   @override
   Widget build(BuildContext context) {
     final isUser = msg.role == 'user';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          if (!isUser) ...[
-            Container(
-              width: 30, height: 30,
-              margin: const EdgeInsets.only(right: 8, top: 2),
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: VColor.accentGlow,
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isUser ? VColor.accent : VColor.surfaceRaised,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isUser ? 16 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 16),
+          ),
+          border: Border.all(color: isUser ? VColor.accent : VColor.line),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SelectableText(
+              msg.text,
+              style: TextStyle(
+                color: isUser ? VColor.textOnAccent : VColor.text,
+                fontSize: 13.5,
+                height: 1.45,
               ),
-              child: const Icon(Icons.auto_awesome, color: VColor.accentGreen, size: 16),
+            ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: Text(
+                _formatTime(msg.timestamp),
+                style: TextStyle(
+                  color: isUser ? VColor.textOnAccent.withValues(alpha: 0.7) : VColor.textLow,
+                  fontSize: 10,
+                ),
+              ),
             ),
           ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: isUser ? VColor.accent.withValues(alpha: 0.15) : VColor.surfaceRaised,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isUser ? 18 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 18),
-                ),
-                border: Border.all(
-                  color: isUser ? VColor.accent.withValues(alpha: 0.3) : VColor.line,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    msg.text,
-                    style: const TextStyle(color: VColor.text, fontSize: 14, height: 1.45),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _formatTime(msg.timestamp),
-                    style: TextStyle(
-                      color: isUser ? VColor.accent.withValues(alpha: 0.8) : VColor.textLow,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (isUser) const SizedBox(width: 38),
-        ],
+        ),
       ),
     );
+  }
+
+  String _formatTime(DateTime dt) {
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 }
 
@@ -493,87 +597,53 @@ class _TypingBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(children: [
-        Container(
-          width: 30, height: 30,
-          margin: const EdgeInsets.only(right: 8),
-          decoration: const BoxDecoration(shape: BoxShape.circle, color: VColor.accentGlow),
-          child: const Icon(Icons.auto_awesome, color: VColor.accentGreen, size: 16),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: VColor.surfaceRaised,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: VColor.line),
-          ),
-          child: const Row(mainAxisSize: MainAxisSize.min, children: [
-            _Dot(delay: 0),
-            SizedBox(width: 4),
-            _Dot(delay: 200),
-            SizedBox(width: 4),
-            _Dot(delay: 400),
-          ]),
-        ),
-      ]),
-    );
-  }
-}
-
-class _Dot extends StatefulWidget {
-  const _Dot({required this.delay});
-  final int delay;
-
-  @override
-  State<_Dot> createState() => _DotState();
-}
-
-class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    Future.delayed(Duration(milliseconds: widget.delay), () {
-      if (mounted) _ctrl.repeat(reverse: true);
-    });
-    _anim = Tween(begin: 0.3, end: 1.0).animate(_ctrl);
-  }
-
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _anim,
+    return Align(
+      alignment: Alignment.centerLeft,
       child: Container(
-        width: 6, height: 6,
-        decoration: const BoxDecoration(shape: BoxShape.circle, color: VColor.accentGreen),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: VColor.surfaceRaised,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: VColor.line),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 14, height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2, color: VColor.accentGreen),
+            ),
+            SizedBox(width: 10),
+            Text('Coach is thinking…', style: TextStyle(color: VColor.textMid, fontSize: 13)),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _ErrorBubble extends StatelessWidget {
-  const _ErrorBubble(this.message);
-  final String message;
+  const _ErrorBubble(this.error);
+  final String error;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: VColor.critSoft,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: VColor.crit.withValues(alpha: 0.3)),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: VColor.warnSoft,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: VColor.warn),
+        ),
+        child: Text(
+          'Error: $error',
+          style: const TextStyle(color: VColor.warn, fontSize: 13),
+        ),
       ),
-      child: Text(message, style: const TextStyle(color: VColor.crit, fontSize: 13)),
     );
   }
 }

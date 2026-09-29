@@ -20,6 +20,7 @@
 
     <!-- ── Camera + Gallery (Food Scan + profile photo) ── -->
     <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <!-- Legacy storage for Android ≤ 12 -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
@@ -112,6 +113,10 @@
         <!-- TextToSpeech Engine visibility for Android 11+ (Audio Coach) -->
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE"/>
+        </intent>
+        <!-- Speech to Text Recognition service -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 </manifest>

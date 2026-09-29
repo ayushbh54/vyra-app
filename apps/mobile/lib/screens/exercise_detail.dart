@@ -418,19 +418,13 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
   late AnimationController _animCtrl;
   bool _isPlaying = true;
   double _speedMultiplier = 1.0;
-  double _orbitAngle = 0.0; // In radians: -pi/2 (-90°) to +pi/2 (+90°)
-  bool _isAutoOrbit = false;
+  double _orbitAngle = 0.0; // In radians: -pi/2 (-90°) to +pi/2 (+90°), defaults to 0.0 Front View
   final _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    final s = widget.item.slug.toLowerCase().replaceAll('_', '-');
-    if (s.contains('bicep') || s.contains('shoulder') || s.contains('press') || s.contains('curl')) {
-      _orbitAngle = 0.0; // Front view by default for upper body frontal movements
-    } else {
-      _orbitAngle = math.pi / 4; // 45° diagonal by default for full 3D body depth
-    }
+    _orbitAngle = 0.0; // Default front view when not touched
 
     _animCtrl = AnimationController(
       vsync: this,
@@ -486,15 +480,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
   void _setPresetAngle(double angle) {
     HapticFeedback.selectionClick();
     setState(() {
-      _isAutoOrbit = false;
       _orbitAngle = angle;
-    });
-  }
-
-  void _toggleAutoOrbit() {
-    HapticFeedback.selectionClick();
-    setState(() {
-      _isAutoOrbit = !_isAutoOrbit;
     });
   }
 
@@ -700,28 +686,28 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
               child: Row(
                 children: [
                   _buildAnglePill(
-                    label: '0° Front',
+                    label: 'Front View',
                     icon: Icons.accessibility_new_rounded,
-                    isSelected: !_isAutoOrbit && (_orbitAngle.abs() < 0.15),
+                    isSelected: _orbitAngle.abs() < 0.15,
                     onTap: () => _setPresetAngle(0.0),
                   ),
                   _buildAnglePill(
-                    label: '45° Diag',
-                    icon: Icons.view_in_ar_rounded,
-                    isSelected: !_isAutoOrbit && ((_orbitAngle - math.pi / 4).abs() < 0.15),
-                    onTap: () => _setPresetAngle(math.pi / 4),
-                  ),
-                  _buildAnglePill(
-                    label: '90° Side',
+                    label: 'Side View',
                     icon: Icons.view_sidebar_rounded,
-                    isSelected: !_isAutoOrbit && ((_orbitAngle - math.pi / 2).abs() < 0.15),
+                    isSelected: (_orbitAngle - math.pi / 2).abs() < 0.15,
                     onTap: () => _setPresetAngle(math.pi / 2),
                   ),
                   _buildAnglePill(
-                    label: '🔄 180° Orbit',
-                    icon: Icons.sync_rounded,
-                    isSelected: _isAutoOrbit,
-                    onTap: _toggleAutoOrbit,
+                    label: '45° Angle',
+                    icon: Icons.view_in_ar_rounded,
+                    isSelected: (_orbitAngle - math.pi / 4).abs() < 0.15,
+                    onTap: () => _setPresetAngle(math.pi / 4),
+                  ),
+                  _buildAnglePill(
+                    label: 'Left Side',
+                    icon: Icons.view_sidebar_outlined,
+                    isSelected: (_orbitAngle + math.pi / 2).abs() < 0.15,
+                    onTap: () => _setPresetAngle(-math.pi / 2),
                   ),
                 ],
               ),
@@ -735,17 +721,13 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
             child: AnimatedBuilder(
               animation: _animCtrl,
               builder: (context, _) {
-                // Compute current active orbit angle
-                final activeOrbit = _isAutoOrbit
-                    ? math.sin(_animCtrl.value * 2 * math.pi) * (math.pi / 2.1)
-                    : _orbitAngle;
-
+                // User touch-controlled horizontal angle
+                final activeOrbit = _orbitAngle;
                 final currentDeg = (activeOrbit * 180 / math.pi).round();
 
                 return GestureDetector(
                   onHorizontalDragUpdate: (details) {
                     setState(() {
-                      _isAutoOrbit = false;
                       _orbitAngle = (_orbitAngle + details.primaryDelta! * 0.016)
                           .clamp(-math.pi / 2, math.pi / 2);
                     });

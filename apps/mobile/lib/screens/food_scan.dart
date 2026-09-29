@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../api/client.dart';
 import '../theme.dart';
@@ -66,16 +67,82 @@ class _FoodScanItem {
 class _FoodScanScreenState extends State<FoodScanScreen> {
   final _picker = ImagePicker();
   final _voiceInputController = TextEditingController();
+  final stt.SpeechToText _speech = stt.SpeechToText();
 
   File? _image;
   bool _scanning = false;
   bool _logging = false;
+  bool _speechEnabled = false;
+  bool _isListening = false;
   String? _error;
   List<_FoodScanItem>? _items;
   String? _disclaimer;
 
   @override
+  void initState() {
+    super.initState();
+    _initSpeech();
+  }
+
+  void _initSpeech() async {
+    try {
+      _speechEnabled = await _speech.initialize(
+        onError: (e) {
+          if (mounted) setState(() => _isListening = false);
+        },
+        onStatus: (status) {
+          if (status == 'done' || status == 'notListening') {
+            if (mounted) setState(() => _isListening = false);
+          }
+        },
+      );
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  void _toggleListening() async {
+    if (_isListening) {
+      await _speech.stop();
+      if (mounted) setState(() => _isListening = false);
+    } else {
+      HapticFeedback.mediumImpact();
+      final available = _speechEnabled || await _speech.initialize();
+      if (!available) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Microphone permission required for voice food input.')),
+          );
+        }
+        return;
+      }
+      setState(() {
+        _isListening = true;
+        _error = null;
+      });
+      await _speech.listen(
+        onResult: (result) {
+          if (mounted) {
+            setState(() {
+              _voiceInputController.text = result.recognizedWords;
+            });
+            if (result.finalResult && result.recognizedWords.trim().isNotEmpty) {
+              _speech.stop();
+              setState(() => _isListening = false);
+              _parseNaturalLanguageMeal(result.recognizedWords);
+            }
+          }
+        },
+        listenOptions: stt.SpeechListenOptions(
+          listenMode: stt.ListenMode.confirmation,
+          cancelOnError: true,
+        ),
+      );
+    }
+  }
+
+  @override
   void dispose() {
+    _speech.stop();
     _voiceInputController.dispose();
     super.dispose();
   }
@@ -108,47 +175,7 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
       final mime = file.path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
       final api = context.read<VyraApi>();
 
-      Map<String, dynamic> result = {};
-      try {
-        result = await api.scanFood(imageBase64: b64, mimeType: mime);
-      } catch (_) {
-        // Resilient intelligent fallback for Indian plate detection
-        result = {
-          'items': [
-            {
-              'name': 'Paneer Bhurji / Palak Dish',
-              'portion': '1 medium bowl (150g)',
-              'calories': 240,
-              'proteinG': 18.0,
-              'carbsG': 8.0,
-              'fatG': 16.0,
-              'fiberG': 3.5,
-              'confidence': 'high',
-            },
-            {
-              'name': 'Multigrain / Wheat Roti',
-              'portion': '2 rotis',
-              'calories': 180,
-              'proteinG': 6.0,
-              'carbsG': 36.0,
-              'fatG': 2.0,
-              'fiberG': 4.0,
-              'confidence': 'high',
-            },
-            {
-              'name': 'Green Cucumber & Tomato Salad',
-              'portion': '1 small plate',
-              'calories': 35,
-              'proteinG': 1.2,
-              'carbsG': 7.0,
-              'fatG': 0.3,
-              'fiberG': 2.5,
-              'confidence': 'high',
-            },
-          ],
-          'disclaimer': 'Visual estimates provided by VYRA Gemini Vision Engine.',
-        };
-      }
+      final result = await api.scanFood(imageBase64: b64, mimeType: mime);
 
       final rawItems = result['items'] as List? ?? [];
       List<_FoodScanItem> parsed = [];
@@ -158,14 +185,20 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
         parsed = [_FoodScanItem.fromJson(result)];
       }
 
+      if (parsed.isEmpty) {
+        throw Exception('No recognizable food items found in this photo.');
+      }
+
       setState(() {
         _items = parsed;
         _disclaimer = result['disclaimer'] as String? ?? 'Visual estimates provided by VYRA Gemini Vision Engine.';
       });
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      setState(() => _error = 'Could not analyze photo. Please try again with good lighting.');
+      if (mounted) {
+        setState(() => _error = 'Could not detect food items in photo. Please ensure the meal is clearly visible and well-lit.');
+      }
     } finally {
       if (mounted) setState(() => _scanning = false);
     }
@@ -462,21 +495,37 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
                         borderSide: const BorderSide(color: VColor.line),
                       ),
                       suffixIcon: IconButton(
-                        icon: const Icon(Icons.mic_rounded, color: VColor.accent),
-                        onPressed: () {
-                          HapticFeedback.selectionClick();
-                          _voiceInputController.text = '2 roti, 1 bowl dal tadka and 1 katori dahi';
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('🎙️ Voice captured: "2 roti, 1 bowl dal tadka and 1 katori dahi"'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        },
+                        icon: Icon(
+                          _isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
+                          color: _isListening ? Colors.redAccent : VColor.accent,
+                        ),
+                        tooltip: _isListening ? 'Listening... Tap to finish' : 'Tap to speak meal',
+                        onPressed: _toggleListening,
                       ),
                     ),
                     onSubmitted: (val) => _parseNaturalLanguageMeal(val),
                   ),
+                  if (_isListening)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.redAccent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Listening... Speak dishes like "2 roti, dal and salad"',
+                            style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,

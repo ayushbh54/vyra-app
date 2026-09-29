@@ -34,10 +34,10 @@ const _medicalConditionOptions = [
 /// tailors both workouts and diet recommendations accordingly.
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({
-    required this.initialName,
-    required this.initialCity,
-    required this.initialPrimarySport,
-    required this.initialWeightKg,
+    this.initialName = '',
+    this.initialCity = '',
+    this.initialPrimarySport = 'run',
+    this.initialWeightKg = 70.0,
     this.initialDisabilityFlag = false,
     this.initialDisabilityType = 'none',
     this.initialMedicalConditions = const [],

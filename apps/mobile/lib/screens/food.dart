@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -37,6 +38,8 @@ class _FoodScreenState extends State<FoodScreen> {
 
   SugarResult? _sugar;
   bool _loggingSugar = false;
+  int _zeroSugarStreak = 3;
+  Map<String, double> _sugarHistory = {};
 
   int _consumedCal = 1380;
   double _consumedProtein = 95.0;
@@ -59,6 +62,13 @@ class _FoodScreenState extends State<FoodScreen> {
       final addCarbs = prefs.getDouble('logged_carbs_$dateKey') ?? 0.0;
       final addFat = prefs.getDouble('logged_fat_$dateKey') ?? 0.0;
       final focus = prefs.getString('clinical_nutrition_focus');
+      final streak = prefs.getInt('zero_sugar_streak') ?? 3;
+      final rawHist = prefs.getString('zero_sugar_history');
+      Map<String, double> hist = {};
+      if (rawHist != null) {
+        final decoded = jsonDecode(rawHist) as Map<String, dynamic>;
+        hist = decoded.map((k, v) => MapEntry(k, (v as num).toDouble()));
+      }
 
       if (mounted) {
         setState(() {
@@ -67,6 +77,8 @@ class _FoodScreenState extends State<FoodScreen> {
           _consumedCarbs = 145.0 + addCarbs;
           _consumedFat = 42.0 + addFat;
           _clinicalNutritionFocus = focus;
+          _zeroSugarStreak = streak;
+          _sugarHistory = hist;
         });
       }
     } catch (_) {}
@@ -94,13 +106,39 @@ class _FoodScreenState extends State<FoodScreen> {
       _generating = true;
       _recipeError = null;
     });
-    try {
-      final recipe = await context.read<VyraApi>().generateRecipe(_ingredients);
-      if (mounted) setState(() => _recipe = recipe);
-    } on ApiException catch (e) {
-      if (mounted) setState(() => _recipeError = e.message);
-    } finally {
-      if (mounted) setState(() => _generating = false);
+
+    Recipe? res;
+    String? err;
+    final api = context.read<VyraApi>();
+
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (attempt > 0) {
+          await Future.delayed(const Duration(milliseconds: 1500));
+        }
+        res = await api.generateRecipe(_ingredients);
+        err = null;
+        break;
+      } on ApiException catch (e) {
+        if (e.status == 429) {
+          if (attempt == 0) continue;
+          err = 'Recipe AI is currently cooling down. Please wait a few moments and try again.';
+        } else {
+          err = e.message;
+          break;
+        }
+      } catch (_) {
+        err = 'Could not generate recipe right now. Please check your network connection.';
+        break;
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _recipe = res;
+        _recipeError = err;
+        _generating = false;
+      });
     }
   }
 
@@ -125,6 +163,17 @@ class _FoodScreenState extends State<FoodScreen> {
     setState(() => _loggingSugar = true);
     try {
       final result = await context.read<VyraApi>().logSugar(grams);
+      final prefs = await SharedPreferences.getInstance();
+      final todayKey = DateTime.now().toIso8601String().substring(0, 10);
+      _sugarHistory[todayKey] = grams;
+      if (grams == 0) {
+        _zeroSugarStreak = (_zeroSugarStreak <= 0 ? 1 : _zeroSugarStreak + 1);
+      } else {
+        _zeroSugarStreak = 0;
+      }
+      await prefs.setInt('zero_sugar_streak', _zeroSugarStreak);
+      await prefs.setString('zero_sugar_history', jsonEncode(_sugarHistory));
+
       if (mounted) {
         setState(() {
           _sugar = result;
@@ -132,9 +181,9 @@ class _FoodScreenState extends State<FoodScreen> {
         });
         if (grams == 0) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               backgroundColor: VColor.accentGreen,
-              content: Text('🎉 Zero Added Sugar logged today! Streak maintained! 🏆'),
+              content: Text('🎉 Zero Added Sugar logged today! $_zeroSugarStreak day streak maintained! 🏆'),
             ),
           );
         } else {
@@ -534,13 +583,41 @@ class _FoodScreenState extends State<FoodScreen> {
 
           const SizedBox(height: VSpace.xl),
 
-          // ── Zero sugar ───────────────────────────────────────────
           // ── Zero sugar tracker ──────────────────────────────────
           const VSectionHeader('Zero Sugar Tracker'),
           VCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: VColor.accentOrangeGlow,
+                        borderRadius: BorderRadius.circular(VRadius.sm),
+                        border: Border.all(color: VColor.accentOrange.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.local_fire_department_rounded, color: VColor.accentOrange, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$_zeroSugarStreak Day Clean Streak',
+                            style: const TextStyle(color: VColor.accentOrange, fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${_sugarHistory.values.where((g) => g == 0).length} Clean Days',
+                      style: const TextStyle(color: VColor.textMid, fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: VSpace.md),
                 const Text(
                   'Log your added sugar today. Tap "0g (Zero Added Sugar)" or leave the input empty to record a clean Zero Sugar day and protect your streak!',
                   style: TextStyle(color: VColor.textMid, fontSize: 13.5, height: 1.45),

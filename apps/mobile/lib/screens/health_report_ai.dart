@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api/client.dart';
 import '../theme.dart';
 import 'diet_chart.dart';
+import '../services/report_history_service.dart';
 
 // ---------------------------------------------------------------------------
 // Data models
@@ -139,6 +140,7 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
   @override
   void initState() {
     super.initState();
+    ReportHistoryService.instance.init();
 
     _pulseController = AnimationController(
       vsync: this,
@@ -281,6 +283,30 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
           _disclaimer = analysisData?['disclaimer'] as String? ?? _disclaimer;
           _screenState = _ScreenState.results;
         });
+
+        ReportHistoryService.instance.saveReport(
+          SavedReportEntry(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            timestamp: DateTime.now(),
+            labName: analysisData['labName'] as String? ?? 'Lab Report',
+            reportDate: analysisData['reportDate'] as String? ??
+                '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+            imagePath: _selectedImage?.path ?? '',
+            biomarkers: parsedBiomarkers.map((b) => {
+              'name': b.name,
+              'value': b.value,
+              'unit': b.unit,
+              'status': b.status.name,
+              'referenceRange': b.referenceRange,
+              'summary': b.summary,
+            }).toList(),
+            insights: parsedInsights,
+            adjustments: rawAdjustments,
+            urgentReferral: false,
+            nextStep: analysisData['nextStep'] as String? ??
+                'Consult a healthcare professional for clinical correlation.',
+          ),
+        );
       } else {
         // Zero dummy data: If not readable, show clear medical guidance
         setState(() {
@@ -299,6 +325,190 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
         });
       }
     }
+  }
+
+  Future<void> _showReportHistorySheet() async {
+    final reports = await ReportHistoryService.instance.getReports();
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: VColor.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(VRadius.lg)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, scrollCtrl) => Padding(
+          padding: const EdgeInsets.all(VSpace.base),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: VSpace.base),
+                  decoration: BoxDecoration(
+                    color: VColor.line,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Report History',
+                    style: TextStyle(
+                      color: VColor.text,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '${reports.length} saved',
+                    style: const TextStyle(color: VColor.textMid, fontSize: 13),
+                  ),
+                ],
+              ),
+              const SizedBox(height: VSpace.md),
+              if (reports.isEmpty)
+                const Expanded(
+                  child: Center(
+                    child: Text(
+                      'No saved report analyses yet.\nUpload any lab report to analyze and save its history.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: VColor.textMid, height: 1.4),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    controller: scrollCtrl,
+                    itemCount: reports.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: VSpace.sm),
+                    itemBuilder: (_, i) {
+                      final r = reports[i];
+                      return Container(
+                        padding: const EdgeInsets.all(VSpace.base),
+                        decoration: BoxDecoration(
+                          color: VColor.surfaceRaised,
+                          borderRadius: BorderRadius.circular(VRadius.md),
+                          border: Border.all(color: VColor.line),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    r.labName,
+                                    style: const TextStyle(
+                                      color: VColor.text,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  r.formattedDateTime,
+                                  style: const TextStyle(color: VColor.textDim, fontSize: 11),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${r.biomarkers.length} Biomarkers Analyzed • Date: ${r.reportDate}',
+                              style: const TextStyle(color: VColor.accent, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      _loadReportFromHistory(r);
+                                    },
+                                    icon: const Icon(Icons.visibility_rounded, size: 16),
+                                    label: const Text('View Full Analysis'),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline_rounded, color: VColor.crit, size: 20),
+                                  onPressed: () async {
+                                    await ReportHistoryService.instance.deleteReport(r.id);
+                                    if (ctx.mounted) Navigator.pop(ctx);
+                                    if (mounted) _showReportHistorySheet();
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _loadReportFromHistory(SavedReportEntry entry) {
+    final parsedBiomarkers = entry.biomarkers.map((b) {
+      BiomarkerStatus st = BiomarkerStatus.normal;
+      final stStr = (b['status'] ?? 'normal').toString().toLowerCase();
+      if (stStr.contains('crit')) {
+        st = BiomarkerStatus.critical;
+      } else if (stStr.contains('high')) {
+        st = BiomarkerStatus.high;
+      } else if (stStr.contains('low')) {
+        st = BiomarkerStatus.low;
+      } else if (stStr.contains('border')) {
+        st = BiomarkerStatus.borderline;
+      }
+
+      return BiomarkerResult(
+        name: b['name']?.toString() ?? 'Biomarker',
+        value: (b['value'] as num?)?.toDouble() ?? 0.0,
+        unit: b['unit']?.toString() ?? '',
+        status: st,
+        referenceRange: b['referenceRange']?.toString() ?? '',
+        summary: b['summary']?.toString() ?? '',
+      );
+    }).toList();
+
+    File? imgFile;
+    if (entry.imagePath != null && entry.imagePath!.isNotEmpty) {
+      final f = File(entry.imagePath!);
+      if (f.existsSync()) imgFile = f;
+    }
+
+    setState(() {
+      _biomarkers = parsedBiomarkers;
+      _insights = entry.insights;
+      _adjustments = entry.adjustments;
+      _labName = entry.labName;
+      _reportDate = entry.reportDate;
+      _nextStep = entry.nextStep;
+      _selectedImage = imgFile;
+      _screenState = _ScreenState.results;
+    });
   }
 
   void _resetToUpload() {
@@ -383,6 +593,11 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
               ],
             ),
           ),
+          IconButton(
+            icon: const Icon(Icons.history_rounded, color: VColor.accent, size: 24),
+            tooltip: 'Report History',
+            onPressed: _showReportHistorySheet,
+          ),
         ],
       ),
     );
@@ -399,6 +614,7 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
           lastImage: _selectedImage,
           onCameraPressed: () => _pickImage(ImageSource.camera),
           onGalleryPressed: () => _pickImage(ImageSource.gallery),
+          onHistoryPressed: _showReportHistorySheet,
         );
       case _ScreenState.analyzing:
         return _AnalyzingView(
@@ -438,12 +654,14 @@ class _UploadCard extends StatelessWidget {
     this.lastImage,
     required this.onCameraPressed,
     required this.onGalleryPressed,
+    required this.onHistoryPressed,
   });
 
   final String? errorMessage;
   final File? lastImage;
   final VoidCallback onCameraPressed;
   final VoidCallback onGalleryPressed;
+  final VoidCallback onHistoryPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -515,7 +733,7 @@ class _UploadCard extends StatelessWidget {
                     ),
                   const SizedBox(height: VSpace.base),
                   const Text(
-                    'Upload your blood report',
+                    'Upload your report',
                     style: TextStyle(
                       color: VColor.text,
                       fontSize: 17,
@@ -549,6 +767,16 @@ class _UploadCard extends StatelessWidget {
                     label: 'Upload from gallery',
                     color: VColor.accentGreen,
                     onTap: onGalleryPressed,
+                    outlined: true,
+                  ),
+                  const SizedBox(height: VSpace.sm),
+
+                  // Report History button
+                  _UploadButton(
+                    icon: Icons.history_rounded,
+                    label: 'REPORT HISTORY',
+                    color: VColor.accentOrange,
+                    onTap: onHistoryPressed,
                     outlined: true,
                   ),
                 ],

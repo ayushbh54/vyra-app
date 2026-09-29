@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../api/client.dart';
@@ -174,22 +176,11 @@ class _PostCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: VSpace.base),
             child: Text(item.body, style: const TextStyle(color: VColor.text, fontSize: 14.5, height: 1.4)),
           ),
-          if (item.imageUrl != null) ...[
+          if (item.imageUrl != null && item.imageUrl!.trim().isNotEmpty) ...[
             const SizedBox(height: VSpace.base),
             ClipRRect(
-              child: Image.network(
-                item.imageUrl!,
-                width: double.infinity,
-                height: 200,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  height: 120,
-                  color: VColor.surface,
-                  alignment: Alignment.center,
-                  child: const Text('Image failed to load',
-                      style: TextStyle(color: VColor.textLow, fontSize: 12)),
-                ),
-              ),
+              borderRadius: BorderRadius.circular(VRadius.md),
+              child: _buildPostImage(item.imageUrl!.trim()),
             ),
           ],
           Padding(
@@ -234,6 +225,45 @@ class _PostCard extends StatelessWidget {
       child: card,
     );
   }
+
+  Widget _buildPostImage(String url) {
+    final isLocal = !url.startsWith('http://') && !url.startsWith('https://');
+    if (isLocal) {
+      final file = File(url);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          width: double.infinity,
+          height: 220,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _imageErrorPlaceholder(),
+        );
+      }
+    }
+    return Image.network(
+      url,
+      width: double.infinity,
+      height: 220,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _imageErrorPlaceholder(),
+    );
+  }
+
+  Widget _imageErrorPlaceholder() {
+    return Container(
+      height: 120,
+      color: VColor.surface,
+      alignment: Alignment.center,
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.broken_image_outlined, color: VColor.textLow, size: 20),
+          SizedBox(width: 8),
+          Text('Image unavailable', style: TextStyle(color: VColor.textLow, fontSize: 12)),
+        ],
+      ),
+    );
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -258,12 +288,57 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   late String _visibility = widget.editing?.visibility ?? 'public';
   bool _saving = false;
   String? _error;
+  File? _selectedImage;
+  String _selectedFilter = 'Normal';
+  bool _showUrlField = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void dispose() {
     _body.dispose();
     _imageUrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picked = await _picker.pickImage(source: source, imageQuality: 85);
+      if (picked != null && mounted) {
+        setState(() {
+          _selectedImage = File(picked.path);
+          _imageUrl.clear();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick photo: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _applyFilterToImage(Widget imageWidget, String filter) {
+    if (filter == 'High Contrast') {
+      return ColorFiltered(
+        colorFilter: const ColorFilter.matrix([
+          1.3, 0, 0, 0, -20,
+          0, 1.3, 0, 0, -20,
+          0, 0, 1.3, 0, -20,
+          0, 0, 0, 1, 0,
+        ]),
+        child: imageWidget,
+      );
+    } else if (filter == 'Cyberpunk Glow') {
+      return ColorFiltered(
+        colorFilter: const ColorFilter.mode(
+          Color(0x3300D2FF),
+          BlendMode.screen,
+        ),
+        child: imageWidget,
+      );
+    }
+    return imageWidget;
   }
 
   Future<void> _submit() async {
@@ -275,12 +350,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     setState(() { _saving = true; _error = null; });
     try {
       final api = context.read<VyraApi>();
+      final finalImage = _selectedImage != null
+          ? _selectedImage!.path
+          : (_imageUrl.text.trim().isEmpty ? null : _imageUrl.text.trim());
+
       if (widget.editing != null) {
         await api.updatePost(widget.editing!.id, body: text, visibility: _visibility);
       } else {
         await api.createPost(
           body: text,
-          imageUrl: _imageUrl.text.trim().isEmpty ? null : _imageUrl.text.trim(),
+          imageUrl: finalImage,
           visibility: _visibility,
         );
       }
@@ -313,15 +392,114 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ),
           const SizedBox(height: VSpace.base),
           if (!isEditing) ...[
-            // Image upload isn't built yet — a URL field is the stand-in until
-            // real upload support lands.
-            const VLabel('Image URL (optional)'),
+            const VLabel('Attach Photo / Workout Proof'),
             const SizedBox(height: VSpace.xs),
-            TextField(
-              controller: _imageUrl,
-              style: const TextStyle(color: VColor.text),
-              decoration: const InputDecoration(hintText: 'https://...'),
-            ),
+            if (_selectedImage != null) ...[
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(VRadius.md),
+                    child: _applyFilterToImage(
+                      Image.file(
+                        _selectedImage!,
+                        width: double.infinity,
+                        height: 220,
+                        fit: BoxFit.cover,
+                      ),
+                      _selectedFilter,
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: InkWell(
+                      onTap: () => setState(() => _selectedImage = null),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Colors.black87,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: VSpace.sm),
+              const Text('Photo Filter', style: TextStyle(color: VColor.textMid, fontSize: 12, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final f in ['Normal', 'High Contrast', 'Cyberpunk Glow']) ...[
+                      ChoiceChip(
+                        label: Text(f),
+                        selected: _selectedFilter == f,
+                        onSelected: (_) => setState(() => _selectedFilter = f),
+                        selectedColor: VColor.accentGlow,
+                        labelStyle: TextStyle(
+                          color: _selectedFilter == f ? VColor.accent : VColor.textMid,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        backgroundColor: VColor.surface,
+                        side: const BorderSide(color: VColor.line),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ],
+                ),
+              ),
+            ] else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickImage(ImageSource.camera),
+                      icon: const Icon(Icons.camera_alt_outlined, color: VColor.accent, size: 18),
+                      label: const Text('Take Photo', style: TextStyle(color: VColor.text, fontSize: 13)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: VColor.line),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: VColor.surface,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: VSpace.sm),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickImage(ImageSource.gallery),
+                      icon: const Icon(Icons.photo_library_outlined, color: VColor.accentGreen, size: 18),
+                      label: const Text('From Gallery', style: TextStyle(color: VColor.text, fontSize: 13)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: VColor.line),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: VColor.surface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: VSpace.xs),
+              if (_showUrlField) ...[
+                TextField(
+                  controller: _imageUrl,
+                  style: const TextStyle(color: VColor.text),
+                  decoration: const InputDecoration(hintText: 'https://... (or web image link)'),
+                ),
+              ] else ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => setState(() => _showUrlField = true),
+                    icon: const Icon(Icons.link_rounded, size: 16, color: VColor.textLow),
+                    label: const Text('Paste image link instead', style: TextStyle(color: VColor.textLow, fontSize: 12)),
+                  ),
+                ),
+              ],
+            ],
             const SizedBox(height: VSpace.base),
           ],
           const VLabel('Who can see this'),

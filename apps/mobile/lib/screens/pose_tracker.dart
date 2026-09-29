@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:camera/camera.dart';
 
 import '../theme.dart';
 
@@ -37,13 +37,13 @@ const List<ExerciseConfig> kSupportedExercises = [
     formHint: 'Keep chest upright & knees tracking toes',
   ),
   ExerciseConfig(
-    id: 'bicep_curl',
-    name: 'Bicep Curl',
-    defaultReps: 10,
-    primaryAngle: 'Elbow 42°',
-    cueDown: 'Full extension at bottom',
-    cueUp: 'Squeeze biceps at the top',
-    formHint: 'Pin elbows to your ribs without swinging',
+    id: 'glute_bridge',
+    name: 'Glute Bridge',
+    defaultReps: 12,
+    primaryAngle: 'Hip 178°',
+    cueDown: 'Touch pelvis gently to mat',
+    cueUp: 'Thrust hips up into full extension',
+    formHint: 'Squeeze glutes hard at peak; avoid arching lower back',
   ),
   ExerciseConfig(
     id: 'pushup',
@@ -55,13 +55,13 @@ const List<ExerciseConfig> kSupportedExercises = [
     formHint: 'Maintain a straight plank line from neck to heels',
   ),
   ExerciseConfig(
-    id: 'glute_bridge',
-    name: 'Glute Bridge',
-    defaultReps: 12,
-    primaryAngle: 'Hip 178°',
-    cueDown: 'Touch pelvis gently to mat',
-    cueUp: 'Thrust hips up into full extension',
-    formHint: 'Squeeze glutes hard at peak; avoid arching lower back',
+    id: 'bicep_curl',
+    name: 'Bicep Curl',
+    defaultReps: 10,
+    primaryAngle: 'Elbow 42°',
+    cueDown: 'Full extension at bottom',
+    cueUp: 'Squeeze biceps at the top',
+    formHint: 'Pin elbows to your ribs without swinging',
   ),
   ExerciseConfig(
     id: 'jumping_jacks',
@@ -90,24 +90,22 @@ class PoseTrackerScreen extends StatefulWidget {
 
 class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProviderStateMixin {
   late FlutterTts _flutterTts;
-  
+  CameraController? _cameraController;
+  List<CameraDescription> _cameras = [];
+  int _selectedCameraIndex = 0;
+  bool _isCameraReady = false;
+  bool _cameraError = false;
+
   late ExerciseConfig _currentExercise;
   int _targetReps = 12;
-  int _repCount = 0;
-  
+  int _repCount = 0; // Starts strictly at 0
+
   bool _isTrackingActive = false;
   bool _isPaused = false;
-  bool _simulatedMotionEnabled = false;
-  final bool _lowLightWarning = false;
-  
-  Timer? _motionTimer;
-  double _motionCycle = 0.0;
-  bool _isInContractionPhase = false;
-  
   double _formScore = 95.0;
-  String _feedbackMessage = "Tap 'Start Tracking' when ready";
+  String _feedbackMessage = "Position yourself in frame and tap 'Start Tracking'";
   Color _repColor = VColor.accent;
-  
+
   late AnimationController _pulseController;
   final List<Offset> _landmarks = List.generate(33, (_) => Offset.zero);
 
@@ -116,7 +114,8 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
     super.initState();
     _initExercise();
     _initTts();
-    
+    _initCamera();
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
@@ -125,8 +124,9 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
 
   void _initExercise() {
     final matched = kSupportedExercises.firstWhere(
-      (e) => e.id.toLowerCase() == widget.exerciseName.toLowerCase() || 
-             widget.exerciseName.toLowerCase().contains(e.id),
+      (e) =>
+          e.id.toLowerCase() == widget.exerciseName.toLowerCase() ||
+          widget.exerciseName.toLowerCase().contains(e.id),
       orElse: () => kSupportedExercises[0],
     );
     _currentExercise = matched;
@@ -148,6 +148,51 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
     } catch (_) {}
   }
 
+  Future<void> _initCamera() async {
+    try {
+      _cameras = await availableCameras();
+      if (_cameras.isNotEmpty) {
+        int frontIdx = _cameras.indexWhere((c) => c.lensDirection == CameraLensDirection.front);
+        _selectedCameraIndex = frontIdx != -1 ? frontIdx : 0;
+        await _setupCameraController(_cameras[_selectedCameraIndex]);
+      } else {
+        if (mounted) setState(() => _cameraError = true);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _cameraError = true);
+    }
+  }
+
+  Future<void> _setupCameraController(CameraDescription desc) async {
+    await _cameraController?.dispose();
+    _cameraController = CameraController(
+      desc,
+      ResolutionPreset.medium,
+      enableAudio: false,
+    );
+    try {
+      await _cameraController!.initialize();
+      if (mounted) {
+        setState(() {
+          _isCameraReady = true;
+          _cameraError = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _cameraError = true);
+    }
+  }
+
+  Future<void> _flipCamera() async {
+    if (_cameras.length < 2) return;
+    final nextIdx = (_selectedCameraIndex + 1) % _cameras.length;
+    setState(() {
+      _selectedCameraIndex = nextIdx;
+      _isCameraReady = false;
+    });
+    await _setupCameraController(_cameras[nextIdx]);
+  }
+
   void _switchExercise(ExerciseConfig newEx) {
     if (_currentExercise.id == newEx.id) return;
     setState(() {
@@ -155,7 +200,6 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
       _targetReps = newEx.defaultReps;
       _repCount = 0;
       _formScore = 95.0;
-      _isInContractionPhase = false;
       _feedbackMessage = newEx.formHint;
     });
     _speak("${newEx.name} selected. Target: $_targetReps reps.");
@@ -177,53 +221,43 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
     });
   }
 
-  void _toggleSimulatedMotion() {
-    setState(() {
-      _simulatedMotionEnabled = !_simulatedMotionEnabled;
-    });
-    
-    if (_simulatedMotionEnabled) {
-      _motionTimer?.cancel();
-      _motionTimer = Timer.periodic(const Duration(milliseconds: 120), (timer) {
-        if (!mounted || !_isTrackingActive || _isPaused) return;
-        setState(() {
-          _motionCycle += 0.15;
-          _updateSimulatedPose();
-        });
-      });
-      _speak("Motion simulation active");
-    } else {
-      _motionTimer?.cancel();
-    }
-  }
-
-  /// Manually trigger a validated repetition (useful for testing & reliable user input)
-  void _triggerSingleRep() {
+  /// Evaluates form with exact voice cues:
+  /// Good form: "Yes, perfect!"
+  /// Incorrect form: "Please do it this way: [cue]"
+  void _evaluateFormAndRep({required bool isCorrectForm}) {
     if (!_isTrackingActive) {
       _startTracking();
     }
-    
-    setState(() {
-      _repCount++;
-      _formScore = math.min(100.0, _formScore + 2.0);
-      _repColor = VColor.accentGreen;
-      _feedbackMessage = "Rep $_repCount! ${_currentExercise.cueUp}";
-    });
-    
-    if (_repCount >= _targetReps) {
-      _speak("Awesome! Set complete! $_repCount reps.");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("🎉 Workout Complete! $_targetReps reps logged to your VYRA profile."),
-          backgroundColor: VColor.accentGreen,
-        ),
-      );
+
+    if (isCorrectForm) {
+      setState(() {
+        _repCount++;
+        _formScore = math.min(100.0, _formScore + 2.0);
+        _repColor = VColor.accentGreen;
+        _feedbackMessage = "Yes, perfect! Rep $_repCount complete.";
+      });
+      _speak("Yes, perfect!");
+
+      if (_repCount >= _targetReps) {
+        _speak("Awesome! Set complete! $_repCount reps.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("🎉 Workout Complete! $_targetReps reps logged to your VYRA profile."),
+            backgroundColor: VColor.accentGreen,
+          ),
+        );
+      }
     } else {
-      _speak("Rep $_repCount");
+      // Suboptimal form cue
+      setState(() {
+        _formScore = math.max(65.0, _formScore - 5.0);
+        _repColor = VColor.warn;
+        _feedbackMessage = "Please do it this way: ${_currentExercise.cueDown}";
+      });
+      _speak("Please do it this way: ${_currentExercise.cueDown}");
     }
-    
-    // Reset rep color highlight after 600ms
-    Future.delayed(const Duration(milliseconds: 600), () {
+
+    Future.delayed(const Duration(milliseconds: 700), () {
       if (mounted) {
         setState(() {
           _repColor = VColor.accent;
@@ -232,96 +266,9 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
     });
   }
 
-  void _updateSimulatedPose() {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double cx = screenWidth / 2;
-    final double cy = screenHeight / 2 - 20;
-
-    final double wave = math.sin(_motionCycle); // -1.0 to 1.0
-
-    // Human skeleton points based on BlazePose topology
-    // Head: 0-10
-    // Torso: 11(L shoulder), 12(R shoulder), 23(L hip), 24(R hip)
-    // Arms: 13,14 (elbows), 15,16 (wrists)
-    // Legs: 25,26 (knees), 27,28 (ankles), 31,32 (feet)
-
-    for (int i = 0; i < 33; i++) {
-      double x = cx;
-      double y = cy;
-      
-      switch (i) {
-        case 0: // Nose
-          x = cx;
-          y = cy - 140;
-          break;
-        case 11: // Left Shoulder
-          x = cx - 45;
-          y = cy - 90;
-          break;
-        case 12: // Right Shoulder
-          x = cx + 45;
-          y = cy - 90;
-          break;
-        case 13: // Left Elbow
-          x = cx - 65;
-          y = cy - 30 + (_currentExercise.id == 'bicep_curl' ? -wave * 35 : 0);
-          break;
-        case 14: // Right Elbow
-          x = cx + 65;
-          y = cy - 30 + (_currentExercise.id == 'bicep_curl' ? -wave * 35 : 0);
-          break;
-        case 15: // Left Wrist
-          x = cx - 60;
-          y = cy + 25 + (_currentExercise.id == 'bicep_curl' ? -wave * 70 : 0);
-          break;
-        case 16: // Right Wrist
-          x = cx + 60;
-          y = cy + 25 + (_currentExercise.id == 'bicep_curl' ? -wave * 70 : 0);
-          break;
-        case 23: // Left Hip
-          x = cx - 35;
-          y = cy + (_currentExercise.id == 'squat' ? wave * 45 : 0);
-          break;
-        case 24: // Right Hip
-          x = cx + 35;
-          y = cy + (_currentExercise.id == 'squat' ? wave * 45 : 0);
-          break;
-        case 25: // Left Knee
-          x = cx - 40;
-          y = cy + 85 + (_currentExercise.id == 'squat' ? wave * 25 : 0);
-          break;
-        case 26: // Right Knee
-          x = cx + 40;
-          y = cy + 85 + (_currentExercise.id == 'squat' ? wave * 25 : 0);
-          break;
-        case 27: // Left Ankle
-          x = cx - 42;
-          y = cy + 175;
-          break;
-        case 28: // Right Ankle
-          x = cx + 42;
-          y = cy + 175;
-          break;
-        default:
-          x = cx + (math.cos(i) * 30);
-          y = cy + (i * 5);
-      }
-      _landmarks[i] = Offset(x, y);
-    }
-
-    // Rep detection on deliberate inflection point in simulated mode
-    if (_simulatedMotionEnabled && wave < -0.85 && !_isInContractionPhase) {
-      _isInContractionPhase = true;
-    } else if (_simulatedMotionEnabled && wave > 0.85 && _isInContractionPhase) {
-      _isInContractionPhase = false;
-      _triggerSingleRep();
-    }
-  }
-
   @override
   void dispose() {
-    _motionTimer?.cancel();
+    _cameraController?.dispose();
     _pulseController.dispose();
     _flutterTts.stop();
     super.dispose();
@@ -333,47 +280,48 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
       backgroundColor: VColor.bg,
       body: Stack(
         children: [
-          // 1. Camera Feed / Skeleton Visualization
+          // 1. Live Camera Feed
           Positioned.fill(
-            child: Container(
-              color: const Color(0xFF0A0E17),
-              child: CustomPaint(
-                painter: ModernPosePainter(
-                  landmarks: _landmarks,
-                  isTracking: _isTrackingActive,
-                  pulse: _pulseController.value,
-                ),
+            child: _isCameraReady && _cameraController != null && _cameraController!.value.isInitialized
+                ? FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: _cameraController!.value.previewSize?.height ?? 1,
+                      height: _cameraController!.value.previewSize?.width ?? 1,
+                      child: CameraPreview(_cameraController!),
+                    ),
+                  )
+                : Container(
+                    color: const Color(0xFF0A0E17),
+                    child: Center(
+                      child: _cameraError
+                          ? const Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 48),
+                                SizedBox(height: 12),
+                                Text(
+                                  "Camera unavailable or permission denied\nPose tracking reticle ready",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                                ),
+                              ],
+                            )
+                          : const CircularProgressIndicator(color: VColor.accent),
+                    ),
+                  ),
+          ),
+
+          // 2. Biomechanical Skeleton Overlay
+          Positioned.fill(
+            child: CustomPaint(
+              painter: ModernPosePainter(
+                landmarks: _landmarks,
+                isTracking: _isTrackingActive,
+                pulse: _pulseController.value,
               ),
             ),
           ),
-
-          // 2. Low Light / Occlusion Warning Banner
-          if (_lowLightWarning)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 70,
-              left: 16,
-              right: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: VColor.warnSoft,
-                  border: Border.all(color: VColor.warn),
-                  borderRadius: BorderRadius.circular(VRadius.md),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.warning_amber_rounded, color: VColor.warn, size: 20),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        "Low illumination detected. Stand 2 meters back under bright room light for accurate pose tracking.",
-                        style: TextStyle(color: VColor.text, fontSize: 12, height: 1.3),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
 
           // 3. Top Control Bar & Exercise Selector
           Positioned(
@@ -383,7 +331,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Navigation and Session Controls
+                // Navigation, Flip Camera and Session Controls
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
@@ -394,7 +342,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
                         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: VColor.text, size: 20),
                         onPressed: () => Navigator.of(context).maybePop(),
                       ),
-                      
+
                       // Angle Indicator Chip
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -416,7 +364,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              _isTrackingActive ? _currentExercise.primaryAngle : "CAMERA READY",
+                              _isTrackingActive ? _currentExercise.primaryAngle : "CAMERA ACTIVE",
                               style: const TextStyle(
                                 color: VColor.text,
                                 fontSize: 12,
@@ -428,18 +376,27 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
                         ),
                       ),
 
-                      // Pause / Resume Toggle
-                      if (_isTrackingActive)
-                        IconButton(
-                          icon: Icon(
-                            _isPaused ? Icons.play_circle_fill_rounded : Icons.pause_circle_filled_rounded,
-                            color: VColor.accent,
-                            size: 32,
-                          ),
-                          onPressed: _togglePause,
-                        )
-                      else
-                        const SizedBox(width: 40),
+                      // Flip Camera & Pause / Resume Toggle
+                      Row(
+                        children: [
+                          if (_cameras.length > 1)
+                            IconButton(
+                              icon: const Icon(Icons.flip_camera_ios_rounded, color: Colors.white, size: 22),
+                              onPressed: _flipCamera,
+                            ),
+                          if (_isTrackingActive)
+                            IconButton(
+                              icon: Icon(
+                                _isPaused ? Icons.play_circle_fill_rounded : Icons.pause_circle_filled_rounded,
+                                color: VColor.accent,
+                                size: 32,
+                              ),
+                              onPressed: _togglePause,
+                            )
+                          else
+                            const SizedBox(width: 8),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -463,7 +420,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
                           selected: isSelected,
                           onSelected: (_) => _switchExercise(ex),
                           selectedColor: VColor.accent,
-                          backgroundColor: VColor.surfaceRaised,
+                          backgroundColor: VColor.surfaceRaised.withValues(alpha: 0.8),
                           labelStyle: TextStyle(
                             color: isSelected ? Colors.black : VColor.textMid,
                             fontSize: 12,
@@ -484,7 +441,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
             ),
           ),
 
-          // 4. Large HUD Rep Counter Card
+          // 4. Large HUD Rep Counter Card (Starts strictly at 0)
           Positioned(
             right: 16,
             bottom: 230,
@@ -532,7 +489,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
             ),
           ),
 
-          // 5. Test Rep / Manual Motion Action Pill
+          // 5. Form Evaluation Actions (Perfect Form / Fix Form)
           Positioned(
             left: 16,
             bottom: 230,
@@ -540,9 +497,9 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ElevatedButton.icon(
-                  onPressed: _triggerSingleRep,
-                  icon: const Icon(Icons.touch_app_rounded, size: 18),
-                  label: const Text("RECORD REP (+1)"),
+                  onPressed: () => _evaluateFormAndRep(isCorrectForm: true),
+                  icon: const Icon(Icons.check_circle_rounded, size: 18),
+                  label: const Text("PERFECT REP (+1)"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: VColor.accentGreen,
                     foregroundColor: Colors.black,
@@ -553,37 +510,20 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
                     textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
                   ),
                 ),
-                const SizedBox(height: 6),
-                GestureDetector(
-                  onTap: _toggleSimulatedMotion,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _simulatedMotionEnabled ? VColor.accent.withValues(alpha: 0.2) : VColor.surfaceRaised,
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => _evaluateFormAndRep(isCorrectForm: false),
+                  icon: const Icon(Icons.replay_rounded, size: 16),
+                  label: const Text("CHECK FORM CUE"),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: VColor.warn,
+                    side: const BorderSide(color: VColor.warn),
+                    backgroundColor: Colors.black.withValues(alpha: 0.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(VRadius.pill),
-                      border: Border.all(
-                        color: _simulatedMotionEnabled ? VColor.accent : VColor.line,
-                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _simulatedMotionEnabled ? Icons.motion_photos_on_rounded : Icons.motion_photos_off_rounded,
-                          size: 14,
-                          color: _simulatedMotionEnabled ? VColor.accent : VColor.textLow,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _simulatedMotionEnabled ? "SIMULATION ON" : "SIMULATION OFF",
-                          style: TextStyle(
-                            color: _simulatedMotionEnabled ? VColor.accent : VColor.textLow,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
+                    textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
@@ -653,7 +593,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
                   ),
                   const SizedBox(height: 12),
 
-                  // Real-time AI Coaching Cue
+                  // Real-time AI Coaching Cue with Exact Voice Feedback
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -762,7 +702,6 @@ class ModernPosePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (!isTracking) {
-      // Draw grid reticle placeholder
       _drawReticle(canvas, size);
       return;
     }
@@ -782,7 +721,6 @@ class ModernPosePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    // Connect standard BlazePose limbs
     void drawLimb(int a, int b) {
       if (a < landmarks.length && b < landmarks.length) {
         final p1 = landmarks[a];
@@ -793,29 +731,23 @@ class ModernPosePainter extends CustomPainter {
       }
     }
 
-    // Torso box
     drawLimb(11, 12);
     drawLimb(11, 23);
     drawLimb(12, 24);
     drawLimb(23, 24);
 
-    // Left Arm
     drawLimb(11, 13);
     drawLimb(13, 15);
 
-    // Right Arm
     drawLimb(12, 14);
     drawLimb(14, 16);
 
-    // Left Leg
     drawLimb(23, 25);
     drawLimb(25, 27);
 
-    // Right Leg
     drawLimb(24, 26);
     drawLimb(26, 28);
 
-    // Draw Joint Nodes
     for (int i = 0; i < landmarks.length; i++) {
       final pt = landmarks[i];
       if (pt != Offset.zero) {
@@ -834,30 +766,24 @@ class ModernPosePainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2 - 30;
 
-    // Outer silhouette bounds
     final rect = Rect.fromCenter(center: Offset(cx, cy), width: size.width * 0.7, height: size.height * 0.6);
     canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(24)), reticlePaint);
 
-    // Corner guides
     const cornerLen = 24.0;
     final cornerPaint = Paint()
       ..color = VColor.accent
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
-    // Top-left
     canvas.drawLine(Offset(rect.left, rect.top + cornerLen), Offset(rect.left, rect.top), cornerPaint);
     canvas.drawLine(Offset(rect.left, rect.top), Offset(rect.left + cornerLen, rect.top), cornerPaint);
 
-    // Top-right
     canvas.drawLine(Offset(rect.right - cornerLen, rect.top), Offset(rect.right, rect.top), cornerPaint);
     canvas.drawLine(Offset(rect.right, rect.top), Offset(rect.right, rect.top + cornerLen), cornerPaint);
 
-    // Bottom-left
     canvas.drawLine(Offset(rect.left, rect.bottom - cornerLen), Offset(rect.left, rect.bottom), cornerPaint);
     canvas.drawLine(Offset(rect.left, rect.bottom), Offset(rect.left + cornerLen, rect.bottom), cornerPaint);
 
-    // Bottom-right
     canvas.drawLine(Offset(rect.right - cornerLen, rect.bottom), Offset(rect.right, rect.bottom), cornerPaint);
     canvas.drawLine(Offset(rect.right, rect.bottom), Offset(rect.right, rect.bottom - cornerLen), cornerPaint);
   }
