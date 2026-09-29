@@ -140,9 +140,9 @@ class HiWatchProProtocol {
     }
 
     // 3. DaFit / Shenzhen protocol (0xAB or 0xAA)
-    if ((header == 0xAB || header == 0xAA) && bytes.length >= 6) {
+    if ((header == 0xAB || header == 0xAA) && bytes.length >= 4) {
       final cmd = bytes[1];
-      if (cmd == 0x51 || cmd == 0x07 || cmd == 0x08) {
+      if ((cmd == 0x51 || cmd == 0x07 || cmd == 0x08) && bytes.length >= 5) {
         // Steps packet
         final steps = (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
         final kcal = bytes.length >= 7 ? (bytes[5] << 8) | bytes[6] : (steps * 0.04).round();
