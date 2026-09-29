@@ -143,6 +143,7 @@ class _RecordScreenState extends State<RecordScreen> {
     setState(() => _locationError = null);
 
     final serviceOn = await Geolocator.isLocationServiceEnabled();
+    if (!mounted) return false;
     if (!serviceOn) {
       setState(() => _locationError =
           'Enable Location Services in Settings to record your route.');
@@ -150,8 +151,10 @@ class _RecordScreenState extends State<RecordScreen> {
     }
 
     var perm = await Geolocator.checkPermission();
+    if (!mounted) return false;
     if (perm == LocationPermission.denied) {
       perm = await Geolocator.requestPermission();
+      if (!mounted) return false;
     }
     if (perm == LocationPermission.denied ||
         perm == LocationPermission.deniedForever) {

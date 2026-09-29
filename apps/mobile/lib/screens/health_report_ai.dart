@@ -175,7 +175,7 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
         imageQuality: 88,
         maxWidth: 1920,
       );
-      if (xfile == null) return; // User cancelled, stay on screen
+      if (xfile == null || !mounted) return; // User cancelled, stay on screen
 
       final file = File(xfile.path);
       setState(() {

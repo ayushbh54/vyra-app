@@ -77,6 +77,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
             .map((e) => _AiChatMessage.fromJson(e as Map<String, dynamic>))
             .toList();
         if (list.isNotEmpty) {
+          if (!mounted) return;
           setState(() {
             _messages.clear();
             _messages.addAll(list);
@@ -89,6 +90,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
     if (_messages.isEmpty) {
       final initialMessages = _getInitialSeedMessages();
+      if (!mounted) return;
       setState(() {
         _messages.addAll(initialMessages);
       });
@@ -144,6 +146,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
     );
 
     if (confirmed == true) {
+      if (!mounted) return;
       setState(() {
         _messages.clear();
         _error = null;

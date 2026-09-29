@@ -104,7 +104,6 @@ class _BootstrapState extends State<_Bootstrap> {
 
   Future<void> _restore() async {
     final api = context.read<VyraApi>();
-    setState(() => _checking = true);
     await api.loadToken();
     if (!mounted) return;
 
@@ -113,39 +112,29 @@ class _BootstrapState extends State<_Bootstrap> {
       return;
     }
 
-    // A saved token exists — confirm it still works and find out whether
-    // onboarding was ever finished, so a returning athlete resumes exactly
-    // where they left off instead of re-doing signup.
-    try {
-      final me = await api.me();
+    // INSTANT FAST-BOOT: Token is already cached on device!
+    // Immediately unlock the app in Frame 1 without blocking on cold cloud networks.
+    setState(() {
+      _signedIn = true;
+      _onboardingDone = true;
+      _checking = false;
+    });
+
+    // Revalidate session & onboarding status in the background silently
+    api.me().then((me) {
       if (!mounted) return;
-      setState(() {
-        _signedIn = true;
-        _onboardingDone = ((me['onboardingStep'] as num?)?.toInt() ?? 0) >= 9;
-        _checking = false;
-      });
-    } on ApiException catch (e) {
+      final step = ((me['onboardingStep'] as num?)?.toInt() ?? 0);
+      if (step < 9) {
+        setState(() => _onboardingDone = false);
+      }
+    }).catchError((e) {
       if (!mounted) return;
-      // Only reset session if token was rejected by server with 401 Unauthorized.
-      // If there's network lag or Render backend is waking up (status 0, 502, 503),
-      // persist the authenticated state so user never has to log in repeatedly!
-      if (e.status == 401) {
-        setState(() { _signedIn = false; _checking = false; });
-      } else {
+      if (e is ApiException && e.status == 401) {
         setState(() {
-          _signedIn = true;
-          _onboardingDone = true;
-          _checking = false;
+          _signedIn = false;
         });
       }
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _signedIn = true;
-        _onboardingDone = true;
-        _checking = false;
-      });
-    }
+    });
   }
 
   Future<void> _start(String preset) async {

@@ -255,16 +255,33 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
         }
       });
 
-      // Discover GATT services & characteristics across ALL vendor & standard profiles
+      // Discover GATT services & characteristics across vendor & standard profiles
       final services = await device.discoverServices();
 
+      // Isolate vendor command characteristics to prevent writing invalid packets to system services
       for (var s in services) {
+        final sUuid = s.uuid.toString().toLowerCase();
+        final isSystemGatt = sUuid.startsWith('00001800') ||
+            sUuid.startsWith('00001801') ||
+            sUuid.startsWith('0000180a') ||
+            sUuid.startsWith('0000180f');
+
         for (var c in s.characteristics) {
-          // Collect all writable characteristics (supports HiWatch, FitPro, DaFit, HryFine, Nordic)
-          if (c.properties.write || c.properties.writeWithoutResponse) {
+          final cUuid = c.uuid.toString().toLowerCase();
+          final isVendorChar = cUuid.contains('6e40') ||
+              cUuid.contains('ff01') ||
+              cUuid.contains('ff02') ||
+              cUuid.contains('fee7') ||
+              cUuid.contains('fff2') ||
+              cUuid.contains('ae01') ||
+              !isSystemGatt;
+
+          // Collect dedicated writable command characteristics (avoid system service overwrites)
+          if ((c.properties.write || c.properties.writeWithoutResponse) && isVendorChar) {
             _writeCharacteristics.add(c);
           }
-          // Collect and subscribe to ALL notifiable/indicatable characteristics
+
+          // Subscribe to notify/indicate telemetry characteristics
           if (c.properties.notify || c.properties.indicate) {
             _notifyCharacteristics.add(c);
             try {
@@ -278,16 +295,23 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
         }
       }
 
-      // Initial wake-up broadcast across all writable characteristics
+      // Sort write characteristics so primary vendor UUIDs (ff02, 6e40) are first
+      _writeCharacteristics.sort((a, b) {
+        final aU = a.uuid.toString().toLowerCase();
+        final bU = b.uuid.toString().toLowerCase();
+        if (aU.contains('ff02') || aU.contains('6e40')) return -1;
+        if (bU.contains('ff02') || bU.contains('6e40')) return 1;
+        return 0;
+      });
+
+      // Initial gentle handshake with paced 150ms delays to prevent MCU buffer overrun
       await _broadcastWatchCommands([
+        HiWatchProProtocol.buildSyncTimeCommand(),
         HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),
         HiWatchProProtocol.buildRequestLiveMetricsCommand(),
-        HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
-        HiWatchProProtocol.buildUniversalHeartbeatCommand(),
-        HiWatchProProtocol.buildSyncTimeCommand(),
       ]);
 
-      // Start continuous real-time live telemetry polling stream (every 2 seconds)
+      // Start continuous real-time live telemetry polling stream (paced, cycling 1 command per tick)
       _startContinuousLiveTelemetryStream();
 
       // Start continuous database & local storage auto-persist (every 6 seconds - zero data loss)
@@ -322,20 +346,24 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     }
   }
 
+  int _telemetryTick = 0;
+
   void _startContinuousLiveTelemetryStream() {
     _livePollingTimer?.cancel();
-    _livePollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+    _livePollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
       if (!_isRealBleConnected) {
         timer.cancel();
         return;
       }
-      _broadcastWatchCommands([
-        HiWatchProProtocol.buildRequestLiveMetricsCommand(),
-        HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),
-        HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
-        HiWatchProProtocol.buildDaFitStepQueryCommand(),
-        HiWatchProProtocol.buildUniversalHeartbeatCommand(),
-      ]);
+      _telemetryTick++;
+      // Rotate query commands one at a time to keep MCU buffer stable and prevent watchdog reboots
+      if (_telemetryTick % 3 == 0) {
+        await _broadcastWatchCommands([HiWatchProProtocol.buildUniversalHeartbeatCommand()]);
+      } else if (_telemetryTick % 3 == 1) {
+        await _broadcastWatchCommands([HiWatchProProtocol.buildRequestLiveMetricsCommand()]);
+      } else {
+        await _broadcastWatchCommands([HiWatchProProtocol.buildDaFitStepQueryCommand()]);
+      }
     });
   }
 
@@ -443,16 +471,23 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
   }
 
   Future<void> _broadcastWatchCommands(List<List<int>> commandList) async {
-    for (var c in _writeCharacteristics) {
-      for (var cmd in commandList) {
-        try {
-          await c.write(cmd, withoutResponse: true);
-        } catch (_) {
-          try {
-            await c.write(cmd, withoutResponse: false);
-          } catch (_) {}
+    if (_writeCharacteristics.isEmpty) return;
+    // Target the primary vendor command characteristic (first in sorted list)
+    final targetChar = _writeCharacteristics.first;
+    for (var cmd in commandList) {
+      try {
+        if (targetChar.properties.writeWithoutResponse) {
+          await targetChar.write(cmd, withoutResponse: true);
+        } else {
+          await targetChar.write(cmd, withoutResponse: false);
         }
+      } catch (_) {
+        try {
+          await targetChar.write(cmd, withoutResponse: false);
+        } catch (_) {}
       }
+      // Pacing interval: 150ms ensures low-cost watch MCU buffers never overflow
+      await Future.delayed(const Duration(milliseconds: 150));
     }
   }
 
@@ -468,6 +503,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefsBleWatchNameKey);
+
+    if (!mounted) return;
 
     setState(() {
       _isRealBleConnected = false;
@@ -488,14 +525,17 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
   Future<void> _sendRealBleCommand(List<int> cmd, String actionLabel) async {
     if (_writeCharacteristics.isNotEmpty) {
       try {
-        for (var c in _writeCharacteristics) {
-          try {
+        final c = _writeCharacteristics.first;
+        try {
+          if (c.properties.writeWithoutResponse) {
             await c.write(cmd, withoutResponse: true);
-          } catch (_) {
-            try {
-              await c.write(cmd, withoutResponse: false);
-            } catch (_) {}
+          } else {
+            await c.write(cmd, withoutResponse: false);
           }
+        } catch (_) {
+          try {
+            await c.write(cmd, withoutResponse: false);
+          } catch (_) {}
         }
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -969,6 +1009,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
       final steps = prefs.getInt(_prefsStepsKey);
       final calories = prefs.getInt(_prefsCaloriesKey);
       final hr = prefs.getInt(_prefsHeartRateKey);
+      if (!mounted) return;
       setState(() {
         _lastSyncedAt = iso != null ? DateTime.tryParse(iso) : null;
         _lastSummary = {

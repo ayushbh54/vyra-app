@@ -59,7 +59,20 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
   @override
   void initState() {
     super.initState();
+    _loadCacheFirst();
     _load();
+  }
+
+  Future<void> _loadCacheFirst() async {
+    try {
+      final api = context.read<VyraApi>();
+      final cached = await api.getCachedToday();
+      if (cached != null && mounted && _data == null) {
+        setState(() {
+          _data = cached;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _load() async {

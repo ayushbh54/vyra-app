@@ -150,7 +150,7 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
   Future<void> _pick(ImageSource source) async {
     try {
       final xfile = await _picker.pickImage(source: source, imageQuality: 80, maxWidth: 1280);
-      if (xfile == null) return;
+      if (xfile == null || !mounted) return;
       setState(() {
         _image = File(xfile.path);
         _items = null;

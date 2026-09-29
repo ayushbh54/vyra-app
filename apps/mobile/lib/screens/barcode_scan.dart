@@ -304,6 +304,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
               HapticFeedback.selectionClick();
               try {
                 await _scannerController.toggleTorch();
+                if (!mounted) return;
                 setState(() => _torchOn = !_torchOn);
               } catch (_) {}
             },

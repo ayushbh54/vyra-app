@@ -69,6 +69,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     // Apply selected language to the app immediately when leaving step 0.
     if (_step == 0 && _selectedLanguage != null) {
       await LanguageService.instance.setLanguage(_selectedLanguage!);
+      if (!mounted) return;
     }
     if (_step < _totalSteps - 1) {
       setState(() => _step++);
