@@ -2039,50 +2039,6 @@ export function buildRouter(deps: ServerDeps): Router {
     return { items };
   });
 
-  // ---------------------------------------------------------------------------
-  // Leaderboard — tier-based rankings (global or friends)
-  // ---------------------------------------------------------------------------
-
-  router.get('/v1/leaderboard', async (ctx) => {
-    const user   = await requireUser(ctx);
-    const period = ctx.query.get('period') ?? 'alltime';
-    const limit  = Math.min(Number(ctx.query.get('limit') ?? 50), 100);
-
-    const entries = await store.leaderboard(period, limit);
-
-    const tierFor = (pts: number) => {
-      if (pts >= 10_000) return 'diamond';
-      if (pts >= 5_000)  return 'platinum';
-      if (pts >= 2_000)  return 'gold';
-      if (pts >= 500)    return 'silver';
-      return 'bronze';
-    };
-    const nextTierThreshold = (pts: number) => {
-      if (pts >= 10_000) return 0;
-      if (pts >= 5_000)  return 10_000 - pts;
-      if (pts >= 2_000)  return 5_000  - pts;
-      if (pts >= 500)    return 2_000  - pts;
-      return 500 - pts;
-    };
-
-    const selfEntry = entries.find(e => e.userId === user.id) ?? null;
-
-    return {
-      rows: entries.map((e, i) => ({
-        rank:           i + 1,
-        label:          e.handle,
-        activityPoints: e.points,
-        tier:           tierFor(e.points),
-        isSelf:         e.userId === user.id,
-      })),
-      self: selfEntry ? {
-        rank:             entries.findIndex(e => e.userId === user.id) + 1,
-        activityPoints:   selfEntry.points,
-        tier:             tierFor(selfEntry.points),
-        pointsToNextTier: nextTierThreshold(selfEntry.points),
-      } : null,
-    };
-  });
 
   // ---------------------------------------------------------------------------
   // Lab Report Image Scan — Gemini vision reads blood markers

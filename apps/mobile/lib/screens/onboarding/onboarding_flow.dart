@@ -419,7 +419,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 firstDate: DateTime(1940),
                 lastDate: DateTime.now(),
               );
-              if (picked != null) setState(() => _dob = picked);
+              if (picked != null && mounted) setState(() => _dob = picked);
             },
             child: Container(
               padding: const EdgeInsets.all(VSpace.base),

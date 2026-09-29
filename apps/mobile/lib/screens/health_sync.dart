@@ -957,6 +957,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
       'heartRateBpm': _liveHeartRate,
     };
 
+    if (!mounted) return;
     setState(() {
       _lastSummary = updatedSummary;
       _syncing = true;
