@@ -33,6 +33,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   final _heightController = TextEditingController(text: '170');
   final _weightController = TextEditingController(text: '65');
   String? _disabilityAnswer; // 'no' | 'yes' | 'other'
+  final _physicalConsiderationsController = TextEditingController();
   String? _fitnessGoal;
   String? _dietPreference;
   bool _dietToggle = true;
@@ -47,6 +48,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     _cityController.dispose();
     _heightController.dispose();
     _weightController.dispose();
+    _physicalConsiderationsController.dispose();
     super.dispose();
   }
 
@@ -98,6 +100,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         dietPreference: _dietPreference,
         city: _cityController.text.trim().isEmpty ? null : _cityController.text.trim(),
         primarySport: _primarySport,
+        hasPhysicalConsideration: _disabilityAnswer == 'yes',
+        physicalConsiderationDetails: _disabilityAnswer == 'yes' && _physicalConsiderationsController.text.trim().isNotEmpty
+            ? _physicalConsiderationsController.text.trim()
+            : null,
       );
       if (!mounted) return;
       widget.onComplete();
@@ -482,16 +488,64 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Widget _stepAccessibility() {
     return _stepShell(
-      title: 'Any physical considerations?',
-      subtitle: 'So we can route you to seated or low-impact routines where it helps.',
+      title: 'Any physical considerations or injuries?',
+      subtitle: 'VYRA AI will adapt your daily workout routines and strictly avoid contraindicated exercises.',
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _choiceCard(label: 'No', icon: Icons.check,
+          _choiceCard(label: 'No, full mobility', icon: Icons.check_circle_outline,
               selected: _disabilityAnswer == 'no', onTap: () => setState(() => _disabilityAnswer = 'no')),
-          _choiceCard(label: 'Yes', icon: Icons.accessible,
+          _choiceCard(label: 'Yes, I have an injury or physical condition', icon: Icons.accessible_forward_rounded,
               selected: _disabilityAnswer == 'yes', onTap: () => setState(() => _disabilityAnswer = 'yes')),
           _choiceCard(label: 'Prefer not to say', icon: Icons.remove_red_eye_outlined,
               selected: _disabilityAnswer == 'other', onTap: () => setState(() => _disabilityAnswer = 'other')),
+          if (_disabilityAnswer == 'yes') ...[
+            const SizedBox(height: VSpace.sm),
+            Container(
+              padding: const EdgeInsets.all(VSpace.base),
+              decoration: BoxDecoration(
+                color: VColor.surface,
+                borderRadius: BorderRadius.circular(VRadius.lg),
+                border: Border.all(color: VColor.accent.withValues(alpha: 0.5)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.healing_rounded, color: VColor.accent, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Describe your physical condition or injury',
+                        style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'e.g. Knee pain, ACL recovery, lower back disc issue, rotator cuff strain, asthma. AI will filter out contraindicated movements and prescribe safe alternatives.',
+                    style: TextStyle(color: VColor.textLow, fontSize: 12),
+                  ),
+                  const SizedBox(height: VSpace.sm),
+                  TextField(
+                    controller: _physicalConsiderationsController,
+                    maxLines: 3,
+                    style: const TextStyle(color: VColor.text, fontSize: 13.5),
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Left knee meniscus injury, avoid deep squats or jumping...',
+                      hintStyle: const TextStyle(color: VColor.textLow, fontSize: 12.5),
+                      filled: true,
+                      fillColor: VColor.surfaceRaised,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(VRadius.md),
+                        borderSide: const BorderSide(color: VColor.line),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

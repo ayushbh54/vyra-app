@@ -40,6 +40,8 @@ class EditProfileScreen extends StatefulWidget {
     this.initialWeightKg = 70.0,
     this.initialDisabilityFlag = false,
     this.initialDisabilityType = 'none',
+    this.initialHasPhysicalConsideration = false,
+    this.initialPhysicalConsiderationDetails = '',
     this.initialMedicalConditions = const [],
     super.key,
   });
@@ -50,6 +52,8 @@ class EditProfileScreen extends StatefulWidget {
   final double initialWeightKg;
   final bool initialDisabilityFlag;
   final String initialDisabilityType;
+  final bool initialHasPhysicalConsideration;
+  final String initialPhysicalConsiderationDetails;
   final List<String> initialMedicalConditions;
 
   @override
@@ -68,6 +72,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       widget.initialDisabilityFlag || (widget.initialDisabilityType.isNotEmpty && widget.initialDisabilityType != 'none');
   late String _disabilityType =
       widget.initialDisabilityType.isNotEmpty ? widget.initialDisabilityType : 'none';
+  late bool _hasPhysicalConsideration = widget.initialHasPhysicalConsideration;
+  late final _physicalConsiderationDetailsController =
+      TextEditingController(text: widget.initialPhysicalConsiderationDetails);
   late final Set<String> _medicalConditions = Set<String>.from(widget.initialMedicalConditions);
 
   bool _saving = false;
@@ -77,6 +84,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController.dispose();
     _cityController.dispose();
     _weightController.dispose();
+    _physicalConsiderationDetailsController.dispose();
     super.dispose();
   }
 
@@ -103,6 +111,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             accessibilityMode: isAdaptive,
             disabilityType: isAdaptive ? _disabilityType : 'none',
             medicalConditions: _medicalConditions.toList(),
+            hasPhysicalConsideration: _hasPhysicalConsideration,
+            physicalConsiderationDetails: _hasPhysicalConsideration
+                ? _physicalConsiderationDetailsController.text.trim()
+                : null,
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -251,6 +263,52 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
                     ),
                   ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: VSpace.lg),
+
+        // ── Physical Considerations & Injuries ──────────────────────────────
+        const VSectionHeader('Physical Considerations & Injuries'),
+        VCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _hasPhysicalConsideration,
+                activeThumbColor: VColor.accent,
+                title: const Text(
+                  'Injuries or Joint Limitations',
+                  style: TextStyle(color: VColor.text, fontWeight: FontWeight.w600, fontSize: 14.5),
+                ),
+                subtitle: const Text(
+                  'e.g. Knee pain, lumbar disc issue, rotator cuff strain. AI filters out contraindicated exercises and tailors 5-15 safe daily movements for your aim.',
+                  style: TextStyle(color: VColor.textMid, fontSize: 12.5),
+                ),
+                onChanged: (val) => setState(() => _hasPhysicalConsideration = val),
+              ),
+              if (_hasPhysicalConsideration) ...[
+                const Divider(color: VColor.line, height: 24),
+                const Text(
+                  'Describe your injury or physical condition:',
+                  style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold, fontSize: 13.5),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Mention body parts and movements to avoid (10-100 words):',
+                  style: TextStyle(color: VColor.textDim, fontSize: 12),
+                ),
+                const SizedBox(height: VSpace.sm),
+                TextField(
+                  controller: _physicalConsiderationDetailsController,
+                  maxLines: 3,
+                  style: const TextStyle(color: VColor.text, fontSize: 13.5),
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. Left knee meniscus injury, avoid deep squats and heavy lunges...',
+                  ),
+                ),
               ],
             ],
           ),

@@ -580,6 +580,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           initialWeightKg: p.weightKg > 0 ? p.weightKg : 60,
                           initialDisabilityFlag: p.disabilityFlag,
                           initialDisabilityType: p.disabilityType,
+                          initialHasPhysicalConsideration: p.hasPhysicalConsideration,
+                          initialPhysicalConsiderationDetails: p.physicalConsiderationDetails,
                           initialMedicalConditions: p.medicalConditions,
                         ),
                       );

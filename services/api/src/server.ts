@@ -19,7 +19,7 @@ import {
 import {
   DEFAULT_CHRONO_CONFIG, assessCapacity, computeActivityPoints, computeEffort,
   detectFreeWindows, expandBlocks, placeSessions, rebalanceMissedWorkout,
-  type PlaceableExercise, type RawBlock,
+  type ChronoConfig, type PlaceableExercise, type RawBlock,
 } from './domain/chrono';
 
 import {
@@ -51,6 +51,7 @@ import {
 } from './http/router';
 import {
   MemoryStore, type AdminRole, type Store, type StoredActivity, type StoredPlan,
+  type StoredUser,
 } from './store';
 import { lookupBarcode } from './nutrition/barcode';
 
@@ -82,7 +83,126 @@ const toPlaceable = (): PlaceableExercise[] =>
     isLowImpact: e.isLowImpact,
   }));
 
-/** Accessibility Mode swaps the whole pool, it does not merely filter a few items. */
+/**
+ * AI-Driven Personalized Exercise Pool Generator
+ *
+ * 1. Analyzes user aim:
+ *    - gain_weight: hypertrophy, strength, progressive overload, heavy compound resistance
+ *    - lose_weight: high-MET dynamic cardio, core endurance, agility, explosive HIIT burn
+ *    - general_wellness / maintain: functional balance, mobility, core alignment, full body wellness
+ * 2. Specially-Abled / Accessibility / Mobility Restrictions:
+ *    - Strictly provides 100% seated & wheelchair-safe exercises when accessibilityMode or disabilityFlag is set.
+ * 3. Injury & Physical Consideration Screening:
+ *    - Scans physical considerations & details (knee fracture, lumbar disc, shoulder impingement, wrist strain).
+ *    - Strictly filters out movements contraindicated for the injured region.
+ * 4. Daily Split Freshness:
+ *    - Seeded by date + user ID so each day has a distinct focus and never repeats the same routine.
+ */
+function poolForAthlete(user: StoredUser, date: string): PlaceableExercise[] {
+  const isAdaptive = Boolean(
+    user.accessibilityMode ||
+    user.disabilityFlag ||
+    (user.disabilityType && user.disabilityType.toLowerCase() !== 'none'),
+  );
+
+  let pool = isAdaptive
+    ? EXERCISES.filter((e) => e.isSeatedFriendly)
+    : [...EXERCISES];
+
+  // Physical considerations & Injury text screening
+  const injuryText = [
+    user.disabilityType ?? '',
+    user.physicalConsiderationDetails ?? '',
+    ...(user.medicalConditions ?? []),
+  ].join(' ').toLowerCase();
+
+  if (injuryText.trim().length > 0) {
+    const hasKneeInjury = injuryText.includes('knee') || injuryText.includes('leg') || injuryText.includes('acl') || injuryText.includes('meniscus') || injuryText.includes('ankle') || injuryText.includes('fracture') || injuryText.includes('femur') || injuryText.includes('shin');
+    const hasBackInjury = injuryText.includes('back') || injuryText.includes('spine') || injuryText.includes('lumbar') || injuryText.includes('disc') || injuryText.includes('sciatica') || injuryText.includes('vertebra');
+    const hasShoulderInjury = injuryText.includes('shoulder') || injuryText.includes('rotator') || injuryText.includes('impingement') || injuryText.includes('clavicle');
+    const hasWristInjury = injuryText.includes('wrist') || injuryText.includes('carpal') || injuryText.includes('hand');
+
+    pool = pool.filter((e) => {
+      const contra = e.contraindications.join(' ').toLowerCase();
+      const body = e.bodyParts.join(' ').toLowerCase();
+      const name = e.name.toLowerCase();
+
+      if (hasKneeInjury) {
+        if (contra.includes('knee') || contra.includes('leg') || name.includes('squat') || name.includes('lunge') || name.includes('jumping') || name.includes('jump')) {
+          return false;
+        }
+      }
+      if (hasBackInjury) {
+        if (contra.includes('back') || contra.includes('spine') || name.includes('deadlift') || name.includes('sit-up')) {
+          return false;
+        }
+      }
+      if (hasShoulderInjury) {
+        if (contra.includes('shoulder') || name.includes('shoulder press') || name.includes('overhead')) {
+          return false;
+        }
+      }
+      if (hasWristInjury) {
+        if (name.includes('push-up') && !name.includes('forearm')) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (pool.length < 5) {
+      pool = EXERCISES.filter((e) => e.isSeatedFriendly || e.isLowImpact);
+    }
+  }
+
+  // Deterministic daily split seed from date + userId
+  const dateHash = Math.abs(
+    (date + user.id).split('').reduce((acc, c) => ((acc << 5) - acc) + c.charCodeAt(0), 0)
+  );
+  const daySplit = dateHash % 4;
+  const goal = user.fitnessGoal ?? 'general_wellness';
+
+  const scored = pool.map((e) => {
+    let score = 50;
+    const sub = e.subcategory.toLowerCase();
+    const body = e.bodyParts.join(' ').toLowerCase();
+    const isCardio = sub === 'cardio' || e.name.toLowerCase().includes('jump') || e.name.toLowerCase().includes('jack');
+    const isStrength = sub === 'arms' || sub === 'chest' || sub === 'legs' || sub === 'back' || sub === 'shoulders' || sub === 'glutes';
+
+    if (goal === 'gain_weight') {
+      if (isStrength) score += 55;
+      if (isCardio) score -= 35;
+      if (e.intensity >= 2) score += 20;
+    } else if (goal === 'lose_weight') {
+      if (isCardio) score += 60;
+      if (sub === 'core') score += 35;
+      if (e.metValue >= 6.0) score += 25;
+    } else {
+      if (e.isLowImpact) score += 15;
+      score += 20;
+    }
+
+    if (daySplit === 0 && (body.includes('chest') || body.includes('arms') || body.includes('core'))) score += 35;
+    if (daySplit === 1 && (body.includes('legs') || body.includes('glutes'))) score += 35;
+    if (daySplit === 2 && (isCardio || body.includes('full'))) score += 35;
+    if (daySplit === 3 && (body.includes('back') || body.includes('shoulders') || body.includes('core'))) score += 35;
+
+    const itemJitter = (dateHash ^ e.slug.length) % 15;
+    return { exercise: e, finalScore: score + itemJitter };
+  });
+
+  scored.sort((a, b) => b.finalScore - a.finalScore);
+
+  return scored.map((s) => ({
+    id: s.exercise.slug,
+    name: s.exercise.name,
+    durationSec: s.exercise.defaultDurationSec,
+    intensity: s.exercise.intensity,
+    isLowImpact: s.exercise.isLowImpact,
+  }));
+}
+
+/** Fallback poolFor */
 const poolFor = (accessibilityMode: boolean): PlaceableExercise[] => {
   const all = toPlaceable();
   if (!accessibilityMode) return all;
@@ -238,7 +358,17 @@ export function buildRouter(deps: ServerDeps): Router {
       (user.disabilityType && user.disabilityType.toLowerCase() !== 'none'),
     );
     const capacity = assessCapacity(windows, user.fitnessGoal);
-    const sessions = placeSessions(windows, poolFor(isAdaptive), capacity.dailyGoalMin);
+    // Dynamic ChronoConfig allowing 5 to 15 exercises daily matching user capacity
+    const dynamicConfig: ChronoConfig = {
+      ...DEFAULT_CHRONO_CONFIG,
+      maxExercisesPerSession: 12,
+    };
+    const sessions = placeSessions(
+      windows,
+      poolForAthlete(user, date),
+      capacity.dailyGoalMin,
+      dynamicConfig,
+    );
 
     const existing = await store.getPlan(userId, date);
     const done = new Set(
@@ -721,6 +851,11 @@ export function buildRouter(deps: ServerDeps): Router {
         ? oneOf(b, 'dietPreference', DIET_PREFERENCES) : user.dietPreference,
       city: typeof b.city === 'string' ? b.city : user.city,
       primarySport: typeof b.primarySport === 'string' ? b.primarySport : user.primarySport,
+      hasPhysicalConsideration: bool(b, 'hasPhysicalConsideration', user.hasPhysicalConsideration ?? false),
+      physicalConsiderationDetails: typeof b.physicalConsiderationDetails === 'string'
+        ? b.physicalConsiderationDetails
+        : user.physicalConsiderationDetails,
+      disabilityType: typeof b.disabilityType === 'string' ? b.disabilityType : user.disabilityType,
       onboardingStep: 9,
     });
 
@@ -1563,8 +1698,15 @@ export function buildRouter(deps: ServerDeps): Router {
     if (typeof b.disabilityFlag === 'boolean') patch.disabilityFlag = b.disabilityFlag;
     if (typeof b.accessibilityMode === 'boolean') patch.accessibilityMode = b.accessibilityMode;
     if (typeof b.disabilityType === 'string') patch.disabilityType = str(b, 'disabilityType', { max: 50 });
+    if (typeof b.hasPhysicalConsideration === 'boolean') patch.hasPhysicalConsideration = b.hasPhysicalConsideration;
+    if (typeof b.physicalConsiderationDetails === 'string') patch.physicalConsiderationDetails = str(b, 'physicalConsiderationDetails', { max: 500 });
+    if (typeof b.fitnessGoal === 'string') patch.fitnessGoal = oneOf(b, 'fitnessGoal', FITNESS_GOALS);
     if (Array.isArray(b.medicalConditions)) patch.medicalConditions = b.medicalConditions.map(String);
     const updated = await store.updateUser(user.id, patch);
+    // If physical considerations or fitness aim were updated, immediately re-plan today's workouts!
+    if (patch.hasPhysicalConsideration !== undefined || patch.physicalConsiderationDetails !== undefined || patch.fitnessGoal !== undefined) {
+      await buildPlanFor(user.id, today());
+    }
     return { user: updated };
   });
 

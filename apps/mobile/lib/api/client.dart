@@ -279,6 +279,8 @@ class VyraApi {
     String? dietPreference,
     String? city,
     String? primarySport,
+    bool? hasPhysicalConsideration,
+    String? physicalConsiderationDetails,
   }) async {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
@@ -293,7 +295,19 @@ class VyraApi {
     if (dietPreference != null) body['dietPreference'] = dietPreference;
     if (city != null) body['city'] = city;
     if (primarySport != null) body['primarySport'] = primarySport;
+    if (hasPhysicalConsideration != null) body['hasPhysicalConsideration'] = hasPhysicalConsideration;
+    if (physicalConsiderationDetails != null) body['physicalConsiderationDetails'] = physicalConsiderationDetails;
     await _request('POST', '/v1/onboarding/complete', body: body);
+  }
+
+  Future<TodayData?> getCachedToday() async {
+    final cached = await _readCache('today');
+    if (cached != null) {
+      try {
+        return TodayData.fromJson(cached);
+      } catch (_) {}
+    }
+    return null;
   }
 
   Future<TodayData> today() async {
@@ -541,6 +555,8 @@ class VyraApi {
     bool? accessibilityMode,
     String? disabilityType,
     List<String>? medicalConditions,
+    bool? hasPhysicalConsideration,
+    String? physicalConsiderationDetails,
   }) async {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
@@ -551,6 +567,8 @@ class VyraApi {
     if (accessibilityMode != null) body['accessibilityMode'] = accessibilityMode;
     if (disabilityType != null) body['disabilityType'] = disabilityType;
     if (medicalConditions != null) body['medicalConditions'] = medicalConditions;
+    if (hasPhysicalConsideration != null) body['hasPhysicalConsideration'] = hasPhysicalConsideration;
+    if (physicalConsiderationDetails != null) body['physicalConsiderationDetails'] = physicalConsiderationDetails;
     await _request('PATCH', '/v1/me', body: body);
   }
 

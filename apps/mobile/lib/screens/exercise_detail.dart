@@ -714,7 +714,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
             ),
           ),
 
-          // ── 3D Robot Simulation Canvas (Touch Drag & Battery Shield Enabled) ──
+          // ── 3D Human Coach Avatar (Touch Drag & 180° Orbit Viewport) ──
           SizedBox(
             height: 250,
             width: double.infinity,
@@ -1897,10 +1897,12 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // 3D RENDERING SUBROUTINES (CYBERNETIC ANATOMY & PHOTO LIKENESS SHADING)
+  // ───────────────────────────────────────────────────────────────────────────
+  // 3D RENDERING SUBROUTINES (FITNESS GYM STUDIO & REAL HUMAN SHADING)
   // ───────────────────────────────────────────────────────────────────────────
 
   void _drawPerspectiveFloorGrid(Canvas canvas, Size size, double cx, double groundY, double orbitAngle) {
+    // Fitness Gym Studio Hardwood Planks & Perspective Radial Lines
     for (int i = 1; i <= 3; i++) {
       final rx = 65.0 * i;
       final ry = rx * 0.28;
@@ -2010,28 +2012,32 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     canvas.drawPath(path, limbPaint);
 
-    // If Thigh: Upper 60% wears athletic compression performance shorts
-    if (isThigh) {
-      final shortsEnd = Offset(p1.dx + (p2.dx - p1.dx) * 0.62, p1.dy + (p2.dy - p1.dy) * 0.62);
-      final shortsPath = Path()
-        ..moveTo(p1.dx + nx * (r1 + 0.6), p1.dy + ny * (r1 + 0.6))
-        ..lineTo(shortsEnd.dx + nx * (rMid * 0.95), shortsEnd.dy + ny * (rMid * 0.95))
-        ..lineTo(shortsEnd.dx - nx * (rMid * 0.95), shortsEnd.dy - nx * (rMid * 0.95))
-        ..lineTo(p1.dx - nx * (r1 + 0.6), p1.dy - ny * (r1 + 0.6))
-        ..close();
+    // If Leg (Thigh or Calf): Full Athletic Charcoal Compression Gym Leggings (Matching Coach in uuunuh.zip)
+    if (isThigh || !isArm) {
+      const leggingsGradient = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF263345),
+          Color(0xFF161F2C),
+          Color(0xFF0F1722),
+        ],
+      );
 
-      final shortsPaint = Paint()..color = const Color(0xFF1E293B)..style = PaintingStyle.fill;
-      canvas.drawPath(shortsPath, shortsPaint);
+      final leggingsPaint = Paint()
+        ..shader = leggingsGradient.createShader(Rect.fromPoints(p1, p2))
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(path, leggingsPaint);
 
-      // Cyber-cyan athletic shorts seam piping
-      final trimPaint = Paint()
-        ..color = const Color(0xFF00D2FF).withValues(alpha: 0.7)
-        ..strokeWidth = 1.4
+      // Cyan Athletic Compression Muscle Seam Contour
+      final seamPaint = Paint()
+        ..color = const Color(0xFF00D2FF).withValues(alpha: 0.75)
+        ..strokeWidth = 1.6
         ..style = PaintingStyle.stroke;
       canvas.drawLine(
-        Offset(shortsEnd.dx - nx * (rMid * 0.95), shortsEnd.dy - nx * (rMid * 0.95)),
-        Offset(shortsEnd.dx + nx * (rMid * 0.95), shortsEnd.dy + ny * (rMid * 0.95)),
-        trimPaint,
+        Offset(p1.dx + nx * (r1 * 0.75), p1.dy + ny * (r1 * 0.75)),
+        Offset(p2.dx + nx * (r2 * 0.75), p2.dy + ny * (r2 * 0.75)),
+        seamPaint,
       );
     }
 
@@ -2125,7 +2131,7 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
     }
   }
 
-  /// Draw Realistic Human Muscular Torso & Athletic Gym Compression Top
+  /// Draw Realistic Human Muscular Torso & Athletic Female Gym Outfit (Matching Coach in uuunuh.zip)
   void _drawTorsoAndHead(
     Canvas canvas,
     Offset head,
@@ -2139,7 +2145,9 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
     double orbitAngle,
     bool coreFlexed,
   ) {
-    // Athletic Muscular Torso Path (Broad shoulders, tapered waist, muscular contours)
+    final skinColors = faceProfile.skinGradientColors;
+
+    // 1. Natural Athletic Female Torso Skin Base
     final midLeftX = (sL.dx + hipL.dx) / 2 + (math.sin(orbitAngle) * 2.0);
     final midLeftY = (sL.dy + hipL.dy) / 2;
     final midRightX = (sR.dx + hipR.dx) / 2 + (math.sin(orbitAngle) * 2.0);
@@ -2153,140 +2161,218 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
       ..quadraticBezierTo(midLeftX, midLeftY, sL.dx, sL.dy)
       ..close();
 
-    // Compression Athletic Top Gradient (Obsidian to Navy Graphite)
-    const compressionGradient = LinearGradient(
+    // Natural skin gradient for bare midriff & shoulders
+    final skinGradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: skinColors,
+    );
+    canvas.drawPath(torsoPath, Paint()..shader = skinGradient.createShader(Rect.fromPoints(sL, hipR)));
+
+    // 2. Cyan Athletic Performance Sports Bra (From shoulders/bust down to ribcage)
+    final braBottomY = chest.dy + (pelvis.dy - chest.dy) * 0.44;
+    final braPath = Path()
+      ..moveTo(sL.dx, sL.dy)
+      ..lineTo(sR.dx, sR.dy)
+      ..lineTo(sR.dx + (hipR.dx - sR.dx) * 0.45, braBottomY)
+      ..quadraticBezierTo(chest.dx, braBottomY + 4, sL.dx + (hipL.dx - sL.dx) * 0.45, braBottomY)
+      ..close();
+
+    const braGradient = LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: [
-        Color(0xFF0F172A),
-        Color(0xFF1E293B),
-        Color(0xFF0F172A),
+        Color(0xFF00E5FF),
+        Color(0xFF00B4D8),
+        Color(0xFF0077B6),
       ],
     );
-
     canvas.drawPath(
-      torsoPath,
+      braPath,
       Paint()
-        ..shader = compressionGradient.createShader(Rect.fromPoints(sL, hipR))
+        ..shader = braGradient.createShader(Rect.fromPoints(sL, Offset(sR.dx, braBottomY)))
         ..style = PaintingStyle.fill,
     );
 
-    // Athletic Piping Seams on Gym Top
-    final seamPaint = Paint()
-      ..color = const Color(0xFF00D2FF).withValues(alpha: 0.45)
-      ..strokeWidth = 1.4
+    // Charcoal Elastic Underbust Band
+    final bandPaint = Paint()
+      ..color = const Color(0xFF0F172A)
+      ..strokeWidth = 3.5
       ..style = PaintingStyle.stroke;
-    canvas.drawPath(torsoPath, seamPaint);
+    canvas.drawLine(
+      Offset(sL.dx + (hipL.dx - sL.dx) * 0.45, braBottomY),
+      Offset(sR.dx + (hipR.dx - sR.dx) * 0.45, braBottomY),
+      bandPaint,
+    );
 
-    // Defined Muscular Pectorals & Clavicles
-    final chestLinePaint = Paint()
-      ..color = const Color(0xFF334155)
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(sL.dx + 4, chest.dy), Offset(chest.dx - 2, chest.dy + 4), chestLinePaint);
-    canvas.drawLine(Offset(sR.dx - 4, chest.dy), Offset(chest.dx + 2, chest.dy + 4), chestLinePaint);
+    // Cyan Racerback Shoulder Straps
+    final strapPaint = Paint()
+      ..color = const Color(0xFF00D2FF)
+      ..strokeWidth = 2.2
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(Offset(sL.dx + 4, sL.dy), Offset(chest.dx - 4, chest.dy), strapPaint);
+    canvas.drawLine(Offset(sR.dx - 4, sR.dy), Offset(chest.dx + 4, chest.dy), strapPaint);
 
-    // Athletic Abdominal Core Shading (Subtle 6-Pack Definition)
+    // 3. High-Waisted Compression Leggings Waistband (From navel down to hips)
+    final waistY = chest.dy + (pelvis.dy - chest.dy) * 0.72;
+    final leggingsTopPath = Path()
+      ..moveTo(sL.dx + (hipL.dx - sL.dx) * 0.72, waistY)
+      ..lineTo(sR.dx + (hipR.dx - sR.dx) * 0.72, waistY)
+      ..lineTo(hipR.dx, hipR.dy)
+      ..lineTo(hipL.dx, hipL.dy)
+      ..close();
+
+    const leggingsWaistGradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        Color(0xFF263345),
+        Color(0xFF161F2C),
+      ],
+    );
+    canvas.drawPath(
+      leggingsTopPath,
+      Paint()
+        ..shader = leggingsWaistGradient.createShader(Rect.fromPoints(hipL, hipR))
+        ..style = PaintingStyle.fill,
+    );
+
+    // 4. Bare Midriff Toned Abdominal Muscles & Obliques
     final absPaint = Paint()
-      ..color = coreFlexed ? const Color(0xFF34FF8C).withValues(alpha: 0.5) : const Color(0xFF00D2FF).withValues(alpha: 0.25)
-      ..strokeWidth = 1.2
+      ..color = coreFlexed ? const Color(0xFF34FF8C).withValues(alpha: 0.4) : skinColors[2].withValues(alpha: 0.35)
+      ..strokeWidth = 1.3
       ..style = PaintingStyle.stroke;
 
-    final spineY1 = chest.dy + 14;
-    final spineY2 = pelvis.dy - 4;
+    final spineY1 = braBottomY + 3;
+    final spineY2 = waistY - 2;
     final midX = (chest.dx + pelvis.dx) / 2;
-
     canvas.drawLine(Offset(midX, spineY1), Offset(midX, spineY2), absPaint);
-    for (double f = 0.28; f <= 0.82; f += 0.28) {
-      final y = spineY1 + (spineY2 - spineY1) * f;
-      final halfW = 11.0 * (1.0 - (f * 0.2));
-      canvas.drawLine(Offset(midX - halfW, y), Offset(midX + halfW, y), absPaint);
-    }
+    // Navel Piercing / Toned Ab Center
+    canvas.drawCircle(Offset(midX, waistY - 5), 1.2, Paint()..color = skinColors[2].withValues(alpha: 0.6));
 
-    // Natural Human Neck (Skin Tone, connecting to jawline)
-    final skinColors = faceProfile.skinGradientColors;
+    // Natural Human Neck (Skin Tone)
     final neckPaint = Paint()
       ..color = skinColors[1]
       ..style = PaintingStyle.fill;
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: neck, width: 12, height: 14), const Radius.circular(4)), neckPaint);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: neck, width: 11, height: 14), const Radius.circular(4)), neckPaint);
 
-    // ── Head & Realistic Human Likeness ──
+    // ── Head & Realistic Female Coach Likeness ──
     _drawPersonalizedHumanHead(canvas, head, neck, orbitAngle);
   }
 
-  /// Draw Realistic Human Athlete Head (Indian Complexion, Styled Haircut, Expressive Eyes & Smile)
+  /// Draw Realistic Human Athlete Head with Wavy Brunette Hair (Free Fire / uuunuh.zip Style)
   void _drawPersonalizedHumanHead(Canvas canvas, Offset head, Offset neck, double orbitAngle) {
-    const headRadius = 15.5;
-
-    // 1. Natural Human Skin Gradient
+    const headRadius = 15.0;
     final skinColors = faceProfile.skinGradientColors;
+
+    // 1. Cascading Back Hair Layers (Behind the face and neck)
+    const hairColor = Color(0xFF3A2114);
+    const hairHighlight = Color(0xFF5D3823);
+    final backHairPaint = Paint()..color = hairColor..style = PaintingStyle.fill;
+
+    final backHairPath = Path()
+      ..moveTo(head.dx - headRadius - 3, head.dy)
+      ..quadraticBezierTo(head.dx - headRadius - 8, head.dy + 18, head.dx - headRadius - 4, head.dy + 34)
+      ..quadraticBezierTo(head.dx - headRadius, head.dy + 38, head.dx - headRadius + 4, head.dy + 32)
+      ..quadraticBezierTo(head.dx - headRadius + 2, head.dy + 16, head.dx - headRadius + 1, head.dy + 4)
+      ..close();
+    canvas.drawPath(backHairPath, backHairPaint);
+
+    final backHairRight = Path()
+      ..moveTo(head.dx + headRadius + 3, head.dy)
+      ..quadraticBezierTo(head.dx + headRadius + 8, head.dy + 18, head.dx + headRadius + 4, head.dy + 34)
+      ..quadraticBezierTo(head.dx + headRadius, head.dy + 38, head.dx + headRadius - 4, head.dy + 32)
+      ..quadraticBezierTo(head.dx + headRadius - 2, head.dy + 16, head.dx + headRadius - 1, head.dy + 4)
+      ..close();
+    canvas.drawPath(backHairRight, backHairPaint);
+
+    // 2. Natural Feminine Face & Jawline
     final skinGradient = RadialGradient(
       center: const Alignment(-0.25, -0.25),
       radius: 0.95,
       colors: skinColors,
     );
 
-    canvas.drawCircle(
-      head,
-      headRadius,
-      Paint()
-        ..shader = skinGradient.createShader(Rect.fromCircle(center: head, radius: headRadius))
-        ..style = PaintingStyle.fill,
-    );
-
-    // 2. User Haircut Silhouette
-    final hairPaint = Paint()..color = faceProfile.hairColor..style = PaintingStyle.fill;
-    final hairPath = Path()
-      ..moveTo(head.dx - headRadius - 1, head.dy - 2)
-      ..quadraticBezierTo(head.dx, head.dy - headRadius - 6, head.dx + headRadius + 1, head.dy - 2)
-      ..quadraticBezierTo(head.dx, head.dy - headRadius + 3, head.dx - headRadius - 1, head.dy - 2)
+    final facePath = Path()
+      ..moveTo(head.dx - headRadius, head.dy - 4)
+      ..cubicTo(head.dx - headRadius, head.dy + 10, head.dx - 8, head.dy + headRadius + 2, head.dx, head.dy + headRadius + 3)
+      ..cubicTo(head.dx + 8, head.dy + headRadius + 2, head.dx + headRadius, head.dy + 10, head.dx + headRadius, head.dy - 4)
       ..close();
-    canvas.drawPath(hairPath, hairPaint);
+    canvas.drawPath(facePath, Paint()..shader = skinGradient.createShader(Rect.fromCircle(center: head, radius: headRadius)));
 
-    // Hair volume on top
+    // 3. Styled Top & Front Wavy Brunette Hair (Volume on crown, side-parted bangs)
+    final frontHairPaint = Paint()..color = hairColor..style = PaintingStyle.fill;
+    final topHair = Path()
+      ..moveTo(head.dx - headRadius - 2, head.dy - 2)
+      ..quadraticBezierTo(head.dx, head.dy - headRadius - 8, head.dx + headRadius + 2, head.dy - 2)
+      ..quadraticBezierTo(head.dx + 4, head.dy - headRadius + 2, head.dx - headRadius - 2, head.dy - 2)
+      ..close();
+    canvas.drawPath(topHair, frontHairPaint);
+
+    // Volumetric crown
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(head.dx, head.dy - headRadius + 1), width: headRadius * 2.1, height: 9),
-      hairPaint,
+      Rect.fromCenter(center: Offset(head.dx, head.dy - headRadius - 1), width: headRadius * 2.2, height: 11),
+      Paint()..color = hairHighlight,
     );
 
-    // 3. Expressive Human Eyes & Smile
-    final eyeShiftX = math.sin(orbitAngle) * 5.0;
-    final eyeL = Offset(head.dx - 5.0 + (eyeShiftX * 0.4), head.dy - 1.0);
-    final eyeR = Offset(head.dx + 5.0 + (eyeShiftX * 0.4), head.dy - 1.0);
+    // Wavy Bangs framing forehead
+    final bangPath = Path()
+      ..moveTo(head.dx - headRadius - 1, head.dy - 4)
+      ..quadraticBezierTo(head.dx - 4, head.dy - headRadius + 1, head.dx + 2, head.dy - 2)
+      ..quadraticBezierTo(head.dx - 6, head.dy - 6, head.dx - headRadius - 1, head.dy - 4)
+      ..close();
+    canvas.drawPath(bangPath, frontHairPaint);
+
+    // 4. Expressive Eyes & Smile
+    final eyeShiftX = math.sin(orbitAngle) * 4.0;
+    final eyeL = Offset(head.dx - 5.0 + (eyeShiftX * 0.4), head.dy);
+    final eyeR = Offset(head.dx + 5.0 + (eyeShiftX * 0.4), head.dy);
 
     // Eyebrows
     final browPaint = Paint()
-      ..color = faceProfile.hairColor
-      ..strokeWidth = 1.8
+      ..color = hairColor
+      ..strokeWidth = 1.6
       ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(eyeL.dx - 4, eyeL.dy - 5), Offset(eyeL.dx + 3, eyeL.dy - 4), browPaint);
-    canvas.drawLine(Offset(eyeR.dx - 3, eyeR.dy - 4), Offset(eyeR.dx + 4, eyeR.dy - 5), browPaint);
+    canvas.drawLine(Offset(eyeL.dx - 4, eyeL.dy - 4.5), Offset(eyeL.dx + 3, eyeL.dy - 3.5), browPaint);
+    canvas.drawLine(Offset(eyeR.dx - 3, eyeR.dy - 3.5), Offset(eyeR.dx + 4, eyeR.dy - 4.5), browPaint);
 
-    // Eye whites & pupils
-    canvas.drawOval(Rect.fromCenter(center: eyeL, width: 6.0, height: 7.5), Paint()..color = Colors.white);
-    canvas.drawOval(Rect.fromCenter(center: eyeR, width: 6.0, height: 7.5), Paint()..color = Colors.white);
+    // Eye whites & brown pupils
+    canvas.drawOval(Rect.fromCenter(center: eyeL, width: 6.0, height: 5.5), Paint()..color = Colors.white);
+    canvas.drawOval(Rect.fromCenter(center: eyeR, width: 6.0, height: 5.5), Paint()..color = Colors.white);
 
-    canvas.drawCircle(eyeL, 2.6, Paint()..color = const Color(0xFF4A2511)); // Brown iris
-    canvas.drawCircle(eyeR, 2.6, Paint()..color = const Color(0xFF4A2511));
-    canvas.drawCircle(Offset(eyeL.dx - 0.8, eyeL.dy - 0.8), 0.9, Paint()..color = Colors.white); // Reflection
-    canvas.drawCircle(Offset(eyeR.dx - 0.8, eyeR.dy - 0.8), 0.9, Paint()..color = Colors.white);
+    canvas.drawCircle(eyeL, 2.3, Paint()..color = const Color(0xFF4A2511));
+    canvas.drawCircle(eyeR, 2.3, Paint()..color = const Color(0xFF4A2511));
+    canvas.drawCircle(Offset(eyeL.dx - 0.7, eyeL.dy - 0.7), 0.8, Paint()..color = Colors.white);
+    canvas.drawCircle(Offset(eyeR.dx - 0.7, eyeR.dy - 0.7), 0.8, Paint()..color = Colors.white);
 
-    // Nose bridge hint
+    // Eyelashes hint
+    final lashPaint = Paint()..color = Colors.black..strokeWidth = 1.0;
+    canvas.drawLine(Offset(eyeL.dx - 3.5, eyeL.dy - 2.5), Offset(eyeL.dx + 3.5, eyeL.dy - 2.5), lashPaint);
+    canvas.drawLine(Offset(eyeR.dx - 3.5, eyeR.dy - 2.5), Offset(eyeR.dx + 3.5, eyeR.dy - 2.5), lashPaint);
+
+    // Soft Blush on Cheeks
+    final blushPaint = Paint()
+      ..color = const Color(0xFFFF6B6B).withValues(alpha: 0.3)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    canvas.drawCircle(Offset(head.dx - 7, head.dy + 4), 3.0, blushPaint);
+    canvas.drawCircle(Offset(head.dx + 7, head.dy + 4), 3.0, blushPaint);
+
+    // Nose Bridge
     final nosePaint = Paint()
-      ..color = skinColors[2].withValues(alpha: 0.5)
+      ..color = const Color(0xFFC07050)
       ..strokeWidth = 1.3
       ..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(head.dx + (eyeShiftX * 0.3), head.dy + 1), Offset(head.dx + (eyeShiftX * 0.3), head.dy + 4.5), nosePaint);
 
-    // Athletic confident smile
+    // Athletic Confident Smile
     final smile = Path()
       ..moveTo(head.dx - 4.5 + (eyeShiftX * 0.3), head.dy + 7.5)
       ..quadraticBezierTo(head.dx + (eyeShiftX * 0.3), head.dy + 10.5, head.dx + 4.5 + (eyeShiftX * 0.3), head.dy + 7.5);
     canvas.drawPath(
       smile,
       Paint()
-        ..color = const Color(0xFF9E4747)
-        ..strokeWidth = 1.4
+        ..color = const Color(0xFFD9485C)
+        ..strokeWidth = 1.5
         ..strokeCap = StrokeCap.round
         ..style = PaintingStyle.stroke,
     );

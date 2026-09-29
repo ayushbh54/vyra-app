@@ -1354,6 +1354,8 @@ class UserProfile {
   final bool disabilityFlag;
   final bool accessibilityMode;
   final String disabilityType;
+  final bool hasPhysicalConsideration;
+  final String physicalConsiderationDetails;
   final List<String> medicalConditions;
   final int onboardingStep;
   final int followersCount;
@@ -1373,6 +1375,8 @@ class UserProfile {
     required this.disabilityFlag,
     required this.accessibilityMode,
     required this.disabilityType,
+    this.hasPhysicalConsideration = false,
+    this.physicalConsiderationDetails = '',
     required this.medicalConditions,
     required this.onboardingStep,
     this.followersCount = 0,
@@ -1393,6 +1397,8 @@ class UserProfile {
         disabilityFlag: _b(j['disabilityFlag']),
         accessibilityMode: _b(j['accessibilityMode']),
         disabilityType: _s(j['disabilityType'], 'none'),
+        hasPhysicalConsideration: _b(j['hasPhysicalConsideration']),
+        physicalConsiderationDetails: _s(j['physicalConsiderationDetails']),
         medicalConditions:
             (j['medicalConditions'] as List? ?? []).map((e) => e.toString()).toList(),
         onboardingStep: _i(j['onboardingStep']),
@@ -1414,6 +1420,8 @@ class UserProfile {
         'disabilityFlag': disabilityFlag,
         'accessibilityMode': accessibilityMode,
         'disabilityType': disabilityType,
+        'hasPhysicalConsideration': hasPhysicalConsideration,
+        'physicalConsiderationDetails': physicalConsiderationDetails,
         'medicalConditions': medicalConditions,
         'onboardingStep': onboardingStep,
         'followersCount': followersCount,

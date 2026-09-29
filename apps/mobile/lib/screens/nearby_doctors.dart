@@ -982,30 +982,40 @@ class _DoctorCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Fee + Book button
+                // Fee + Call button
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       '₹${doctor.consultationFee}',
-                      style: const TextStyle(color: VColor.text, fontSize: 14, fontWeight: FontWeight.w700),
+                      style: const TextStyle(color: VColor.accentGreen, fontSize: 15, fontWeight: FontWeight.w800),
+                    ),
+                    const Text(
+                      'Consult Fee',
+                      style: TextStyle(color: VColor.textLow, fontSize: 10),
                     ),
                     const SizedBox(height: 4),
                     SizedBox(
-                      height: 34,
-                      child: FilledButton(
-                        onPressed: () => onTap(),
+                      height: 32,
+                      child: FilledButton.icon(
+                        onPressed: () async {
+                          final uri = Uri.parse('tel:${doctor.phone}');
+                          try {
+                            await launchUrl(uri);
+                          } catch (_) {}
+                        },
+                        icon: const Icon(Icons.call_rounded, size: 13),
+                        label: const Text('Call'),
                         style: FilledButton.styleFrom(
                           backgroundColor: VColor.accent,
                           foregroundColor: VColor.textOnAccent,
-                          padding: const EdgeInsets.symmetric(horizontal: VSpace.base),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           minimumSize: Size.zero,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(VRadius.pill),
                           ),
-                          textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                         ),
-                        child: const Text('Book'),
                       ),
                     ),
                   ],
@@ -1243,11 +1253,11 @@ class _DoctorDetailSheet extends StatelessWidget {
 
             const SizedBox(height: VSpace.base),
 
-            // ── Action buttons ────────────────────────────────
+            // ── Action buttons (Call Clinic & Directions) ───────────────────
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: FilledButton.icon(
                     onPressed: () async {
                       final uri = Uri.parse('tel:${doctor.phone}');
                       try {
@@ -1257,13 +1267,15 @@ class _DoctorDetailSheet extends StatelessWidget {
                       } catch (_) {}
                     },
                     icon: const Icon(Icons.call_rounded, size: 18),
-                    label: const Text('Call'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: VColor.accentGreen,
-                      side: const BorderSide(color: VColor.accentGreen),
+                    label: const Text('Call Clinic'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: VColor.accentGreen,
+                      foregroundColor: Colors.black,
+                      minimumSize: const Size(0, 48),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(VRadius.pill),
                       ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -1282,33 +1294,15 @@ class _DoctorDetailSheet extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: VColor.accent,
                       side: const BorderSide(color: VColor.accent),
+                      minimumSize: const Size(0, 48),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(VRadius.pill),
                       ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: VSpace.sm),
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Appointment request sent to ${doctor.name}!'),
-                    duration: const Duration(seconds: 3),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.calendar_today_rounded, size: 18),
-              label: const Text('Book Appointment'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(VRadius.pill),
-                ),
-              ),
             ),
           ],
         ),

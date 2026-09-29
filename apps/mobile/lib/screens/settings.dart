@@ -158,6 +158,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         initialWeightKg: _profile?.weightKg ?? 60,
                         initialDisabilityFlag: _profile?.disabilityFlag ?? false,
                         initialDisabilityType: _profile?.disabilityType ?? 'none',
+                        initialHasPhysicalConsideration: _profile?.hasPhysicalConsideration ?? false,
+                        initialPhysicalConsiderationDetails: _profile?.physicalConsiderationDetails ?? '',
                         initialMedicalConditions: _profile?.medicalConditions ?? [],
                       ),
                     );
@@ -286,6 +288,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         initialWeightKg: _profile?.weightKg ?? 60,
                         initialDisabilityFlag: _profile?.disabilityFlag ?? false,
                         initialDisabilityType: _profile?.disabilityType ?? 'none',
+                        initialHasPhysicalConsideration: _profile?.hasPhysicalConsideration ?? false,
+                        initialPhysicalConsiderationDetails: _profile?.physicalConsiderationDetails ?? '',
                         initialMedicalConditions: _profile?.medicalConditions ?? [],
                       ),
                     );

@@ -6,6 +6,7 @@ import '../api/client.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import 'pose_tracker.dart';
 
 class ChallengeDetailScreen extends StatefulWidget {
   const ChallengeDetailScreen({
@@ -55,9 +56,139 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
     _checkedInToday = widget.customChallenge?.checkedInToday ?? false;
   }
 
+  String _detectExerciseForChallenge(String title) {
+    final lower = title.toLowerCase();
+    if (lower.contains('push')) return 'pushup';
+    if (lower.contains('squat')) return 'squat';
+    if (lower.contains('curl') || lower.contains('arm') || lower.contains('bicep')) return 'bicep_curl';
+    if (lower.contains('bridge') || lower.contains('glute') || lower.contains('hip')) return 'glute_bridge';
+    if (lower.contains('jump') || lower.contains('cardio') || lower.contains('jack')) return 'jumping_jacks';
+    return 'squat';
+  }
+
   Future<void> _checkIn() async {
     final custom = widget.customChallenge;
     if (custom == null) return;
+
+    final detectedEx = _detectExerciseForChallenge(custom.title);
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: VColor.bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(VRadius.xl)),
+        side: BorderSide(color: VColor.line),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(VSpace.base),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: VColor.accent.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: VColor.accent, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'AI Workout Verification',
+                        style: TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Verify daily proof for "${custom.title}"',
+                        style: const TextStyle(color: VColor.textLow, fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: VSpace.base),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [VColor.accent.withValues(alpha: 0.15), VColor.surfaceRaised],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(VRadius.lg),
+                border: Border.all(color: VColor.accent.withValues(alpha: 0.4)),
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: VColor.accent.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.videocam_rounded, color: VColor.accent),
+                ),
+                title: Row(
+                  children: [
+                    const Text('Live AI Camera Form Verification',
+                        style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold, fontSize: 13.5)),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: VColor.accentGreen.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(VRadius.pill),
+                      ),
+                      child: const Text('RECOMMENDED',
+                          style: TextStyle(color: VColor.accentGreen, fontSize: 8.5, fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ),
+                subtitle: const Text(
+                  'AI monitors joint angles, requires full range of motion & detects shallow form with "Do it better!" warnings.',
+                  style: TextStyle(color: VColor.textMid, fontSize: 11.5),
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: VColor.accent),
+                onTap: () => Navigator.pop(ctx, 'live_camera'),
+              ),
+            ),
+            const SizedBox(height: VSpace.sm),
+            ListTile(
+              leading: const Icon(Icons.flash_on_rounded, color: VColor.accentGreen),
+              title: const Text('Quick Pass Verification', style: TextStyle(color: VColor.text, fontWeight: FontWeight.w600)),
+              subtitle: const Text('Check in without camera', style: TextStyle(color: VColor.textMid, fontSize: 12)),
+              onTap: () => Navigator.pop(ctx, 'direct'),
+            ),
+            const SizedBox(height: VSpace.sm),
+          ],
+        ),
+      ),
+    );
+
+    if (action == null || !mounted) return;
+
+    if (action == 'live_camera') {
+      final verified = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PoseTrackerScreen(
+            exerciseName: detectedEx,
+            targetReps: 10,
+            isChallengeVerification: true,
+            challengeTitle: custom.title,
+          ),
+        ),
+      );
+
+      if (verified != true || !mounted) return;
+    }
+
     setState(() => _busy = true);
     try {
       final newStreak = await context.read<VyraApi>().checkinChallenge(custom.id);
@@ -71,7 +202,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('🔥 Check-in recorded! $newStreak-day streak active! +10 Coins!'),
+            content: Text('🎉 AI Verified & Checked in! $newStreak-day streak active! +10 Coins!'),
             backgroundColor: VColor.accentGreen,
           ),
         );

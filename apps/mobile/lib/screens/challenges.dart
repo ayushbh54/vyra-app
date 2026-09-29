@@ -9,6 +9,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/screen_scaffold.dart';
 import 'challenge_detail.dart';
+import 'pose_tracker.dart';
 
 /// TAB 4 — CHALLENGES & REWARDS
 ///
@@ -79,10 +80,21 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
     }
   }
 
+    String _detectExerciseForChallenge(String title) {
+    final lower = title.toLowerCase();
+    if (lower.contains('push')) return 'pushup';
+    if (lower.contains('squat')) return 'squat';
+    if (lower.contains('curl') || lower.contains('arm') || lower.contains('bicep')) return 'bicep_curl';
+    if (lower.contains('bridge') || lower.contains('glute') || lower.contains('hip')) return 'glute_bridge';
+    if (lower.contains('jump') || lower.contains('cardio') || lower.contains('jack')) return 'jumping_jacks';
+    return 'squat';
+  }
+
   Future<void> _verifyAndCheckIn(CustomChallenge challenge) async {
     final api = context.read<VyraApi>();
-    final picker = ImagePicker();
-    final source = await showModalBottomSheet<ImageSource>(
+    final detectedEx = _detectExerciseForChallenge(challenge.title);
+
+    final mode = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: VColor.bg,
       shape: const RoundedRectangleBorder(
@@ -110,11 +122,11 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'AI Workout Proof Verification',
+                      'AI Workout Verification',
                       style: TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      'Capture proof for "${challenge.title}"',
+                      'Verify daily proof for "${challenge.title}"',
                       style: const TextStyle(color: VColor.textLow, fontSize: 12),
                     ),
                   ],
@@ -122,17 +134,62 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
               ],
             ),
             const SizedBox(height: VSpace.base),
+            // Primary AI Camera Movement Verification
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [VColor.accent.withValues(alpha: 0.15), VColor.surfaceRaised],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(VRadius.lg),
+                border: Border.all(color: VColor.accent.withValues(alpha: 0.4)),
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: VColor.accent.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.videocam_rounded, color: VColor.accent),
+                ),
+                title: Row(
+                  children: [
+                    const Text('Live AI Camera Form Verification',
+                        style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: VColor.accentGreen.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(VRadius.pill),
+                      ),
+                      child: const Text('RECOMMENDED',
+                          style: TextStyle(color: VColor.accentGreen, fontSize: 9, fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ),
+                subtitle: const Text(
+                  'AI validates posture, range of motion & counts only correct reps with real-time audio guidance.',
+                  style: TextStyle(color: VColor.textMid, fontSize: 12),
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: VColor.accent),
+                onTap: () => Navigator.pop(ctx, 'live_camera'),
+              ),
+            ),
+            const SizedBox(height: VSpace.sm),
             ListTile(
               leading: const Icon(Icons.photo_camera_rounded, color: VColor.accentGreen),
-              title: const Text('Take Live Photo with Camera', style: TextStyle(color: VColor.text, fontWeight: FontWeight.w600)),
-              subtitle: const Text('Instant biometric & pose verification', style: TextStyle(color: VColor.textMid, fontSize: 12)),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              title: const Text('Take Snapshot Proof', style: TextStyle(color: VColor.text, fontWeight: FontWeight.w600)),
+              subtitle: const Text('Instant biometric & pose verification snapshot', style: TextStyle(color: VColor.textMid, fontSize: 12)),
+              onTap: () => Navigator.pop(ctx, 'photo_camera'),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_rounded, color: VColor.accent),
-              title: const Text('Choose from Gallery', style: TextStyle(color: VColor.text, fontWeight: FontWeight.w600)),
+              title: const Text('Upload from Gallery', style: TextStyle(color: VColor.text, fontWeight: FontWeight.w600)),
               subtitle: const Text('Upload recent workout snapshot', style: TextStyle(color: VColor.textMid, fontSize: 12)),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
             ),
             const SizedBox(height: VSpace.sm),
           ],
@@ -140,7 +197,54 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
       ),
     );
 
-    if (source == null || !mounted) return;
+    if (mode == null || !mounted) return;
+
+    if (mode == 'live_camera') {
+      final verified = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PoseTrackerScreen(
+            exerciseName: detectedEx,
+            targetReps: 10,
+            isChallengeVerification: true,
+            challengeTitle: challenge.title,
+          ),
+        ),
+      );
+
+      if (verified != true || !mounted) return;
+
+      setState(() => _checkingIn = true);
+      try {
+        final streak = await api.checkinChallenge(challenge.id);
+        HapticFeedback.heavyImpact();
+        if (mounted) {
+          setState(() {
+            _challenges = [
+              for (final c in _challenges ?? [])
+                if (c.id == challenge.id) c.copyWith(streak: streak, checkedInToday: true) else c,
+            ];
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('🎉 AI Camera Verified! 10 reps completed with good form. $streak-day streak!'),
+              backgroundColor: VColor.accentGreen,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } on ApiException catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verification error: $e')));
+      } finally {
+        if (mounted) setState(() => _checkingIn = false);
+      }
+      return;
+    }
+
+    final picker = ImagePicker();
+    final source = mode == 'photo_camera' ? ImageSource.camera : ImageSource.gallery;
 
     try {
       final photo = await picker.pickImage(source: source, imageQuality: 85);

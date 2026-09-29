@@ -37,6 +37,8 @@ export interface StoredUser {
   disabilityFlag: boolean;
   accessibilityMode: boolean;
   disabilityType?: string;
+  hasPhysicalConsideration?: boolean;
+  physicalConsiderationDetails?: string;
   medicalConditions?: string[];
   fitnessGoal: FitnessGoal;
   dietToggle: boolean;
