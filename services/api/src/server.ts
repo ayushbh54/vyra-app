@@ -140,7 +140,7 @@ export function buildRouter(deps: ServerDeps): Router {
   // exists yet to attach the latter to, and a blanket default limit wasn't in
   // the audit's 3 confirmed findings, so it's left alone rather than guessed at.
   const RATE_LIMIT_AUTH_PER_MIN = Number(process.env.RATE_LIMIT_AUTH_PER_MIN) || 10;
-  const RATE_LIMIT_AI_PER_HOUR = Number(process.env.RATE_LIMIT_AI_PER_HOUR) || 20;
+  const RATE_LIMIT_AI_PER_HOUR = Number(process.env.RATE_LIMIT_AI_PER_HOUR) || 120;
   const RATE_LIMIT_DEMO_PER_MIN = 10; // fixed, not env-driven — brief just asked for "a reasonable limit"
 
   /** Throws 429 (with a Retry-After header) once `maxPerWindow` is exceeded for this IP+bucket. */
@@ -194,6 +194,18 @@ export function buildRouter(deps: ServerDeps): Router {
       throw HttpError.forbidden('This account is no longer active.');
     }
     return user;
+  }
+
+  async function optionalUser(ctx: Ctx) {
+    const header = ctx.req.headers.authorization;
+    if (!header?.startsWith('Bearer ')) return null;
+    try {
+      const payload = verifyToken(authConfig, header.slice(7), now());
+      if (payload.typ !== 'access' || payload.admin) return null;
+      return await store.getUser(payload.sub);
+    } catch {
+      return null;
+    }
   }
 
   /** Same shape as requireUser, for the separate admin_users credential space. */
@@ -984,6 +996,38 @@ export function buildRouter(deps: ServerDeps): Router {
       metric, unit: spec.unit, points,
       normalBand: spec.normalHigh > 0 ? { low: spec.normalLow, high: spec.normalHigh } : null,
       disclaimer: DISCLAIMERS.biometric,
+    };
+  });
+
+  router.get('/v1/tracking/today', async (ctx) => {
+    const user = await requireUser(ctx);
+    const date = ctx.query.get('date') ?? today();
+    const rec = await store.getTracking(user.id, date);
+    if (!rec) {
+      return {
+        recordDate: date,
+        steps: 0,
+        waterMl: 0,
+        heartRateBpm: null,
+        spo2: null,
+        caloriesBurned: 0,
+        source: 'none',
+      };
+    }
+
+    const hr = decryptNumber(keyRing, rec.encrypted['heartRateBpm'], user.id, 'heartRateBpm');
+    const spo2 = decryptNumber(keyRing, rec.encrypted['spo2'], user.id, 'spo2');
+    const steps = rec.steps ?? 0;
+    const caloriesBurned = Math.round(steps * 0.04);
+
+    return {
+      recordDate: date,
+      steps,
+      waterMl: rec.waterMl ?? 0,
+      heartRateBpm: hr ?? null,
+      spo2: spo2 ?? null,
+      caloriesBurned,
+      source: rec.source ?? 'manual',
     };
   });
 
@@ -2430,16 +2474,21 @@ Respond in this exact JSON format:
 
   router.post('/v1/eraktkosh/donor/register', async (ctx) => {
     const b = (ctx.body && typeof ctx.body === 'object') ? ctx.body as Record<string, unknown> : {};
-    if (!b.fullName || !b.bloodGroup || !b.mobile || !b.city) {
+    const user = await optionalUser(ctx);
+    const fullName = String(b.fullName || user?.name || '').trim();
+    const bloodGroup = String(b.bloodGroup || '').trim();
+    const mobile = String(b.mobile || '').trim();
+    const city = String(b.city || '').trim();
+    if (!fullName || !bloodGroup || !mobile || !city) {
       throw HttpError.badRequest('fullName, bloodGroup, mobile, and city are required fields.');
     }
     const donor = {
-      fullName: String(b.fullName),
-      bloodGroup: String(b.bloodGroup),
-      mobile: String(b.mobile),
+      fullName,
+      bloodGroup,
+      mobile,
       age: Number(b.age || 25),
       gender: String(b.gender || 'male'),
-      city: String(b.city),
+      city,
     };
     const result = await eRaktKoshClient.preRegisterDonor(donor);
     return result;
@@ -2447,17 +2496,20 @@ Respond in this exact JSON format:
 
   router.post('/v1/eraktkosh/thalassemia/request', async (ctx) => {
     const b = (ctx.body && typeof ctx.body === 'object') ? ctx.body as Record<string, unknown> : {};
-    if (!b.patientName || !b.bloodGroup || !b.hospitalName) {
+    const patientName = String(b.patientName || '').trim();
+    const bloodGroup = String(b.bloodGroup || '').trim();
+    const hospitalName = String(b.hospitalName || '').trim();
+    if (!patientName || !bloodGroup || !hospitalName) {
       throw HttpError.badRequest('patientName, bloodGroup, and hospitalName are required fields.');
     }
     const req = {
       patientId: String(b.patientId || randomUUID()),
-      patientName: String(b.patientName),
-      bloodGroup: String(b.bloodGroup),
+      patientName,
+      bloodGroup,
       unitsRequired: Number(b.unitsRequired || 1),
       transfusionDueDate: String(b.transfusionDueDate || new Date().toISOString().split('T')[0]),
-      hospitalName: String(b.hospitalName),
-      specialRequirement: (b.specialRequirement || 'Leukodepleted PRBC') as 'Leukodepleted PRBC' | 'Washed RBC' | 'Irradiated RBC',
+      hospitalName,
+      specialRequirement: (b.specialRequirement || 'Leukodepleted PRBC') as any,
     };
     const result = await eRaktKoshClient.submitThalassemiaRequest(req);
     return result;

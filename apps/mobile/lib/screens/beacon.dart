@@ -20,8 +20,8 @@ class BeaconScreen extends StatefulWidget {
 
 class _BeaconScreenState extends State<BeaconScreen> {
   bool _enabled = false;
-  final List<TextEditingController> _names = [];
-  final List<TextEditingController> _phones = [];
+  final List<TextEditingController> _names = List.generate(3, (_) => TextEditingController());
+  final List<TextEditingController> _phones = List.generate(3, (_) => TextEditingController());
   bool _loading = true;
   String? _error;
   bool _saving = false;
@@ -44,14 +44,10 @@ class _BeaconScreenState extends State<BeaconScreen> {
     try {
       final state = await context.read<VyraApi>().beacon();
       _enabled = state.enabled;
-      _names
-        ..clear()
-        ..addAll(List.generate(3, (i) =>
-            TextEditingController(text: i < state.contacts.length ? state.contacts[i].name : '')));
-      _phones
-        ..clear()
-        ..addAll(List.generate(3, (i) =>
-            TextEditingController(text: i < state.contacts.length ? state.contacts[i].phone : '')));
+      for (var i = 0; i < 3; i++) {
+        _names[i].text = i < state.contacts.length ? state.contacts[i].name : '';
+        _phones[i].text = i < state.contacts.length ? state.contacts[i].phone : '';
+      }
       if (mounted) setState(() => _error = null);
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);

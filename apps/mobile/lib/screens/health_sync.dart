@@ -241,6 +241,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             sub.cancel();
           }
           _notifySubscriptions.clear();
+          // Flush any final unpersisted readings to database & backend immediately
+          _persistLiveWatchDataToDatabase();
           if (mounted) {
             setState(() {
               _isRealBleConnected = false;

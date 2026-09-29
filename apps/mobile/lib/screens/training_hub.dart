@@ -118,18 +118,17 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('custom_window_start', start);
       await prefs.setString('custom_window_end', end);
+      if (!mounted) return;
       setState(() {
         _customWindowStart = start;
         _customWindowEnd = end;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✨ Preferred workout slot set to $start – $end!'),
-            backgroundColor: const Color(0xFF10B981),
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✨ Preferred workout slot set to $start – $end!'),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
     } catch (_) {}
   }
 
@@ -138,15 +137,14 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('custom_window_start');
       await prefs.remove('custom_window_end');
+      if (!mounted) return;
       setState(() {
         _customWindowStart = null;
         _customWindowEnd = null;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reset to auto-detected schedule.')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reset to auto-detected schedule.')),
+      );
     } catch (_) {}
   }
 

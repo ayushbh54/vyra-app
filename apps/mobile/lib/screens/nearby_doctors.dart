@@ -1248,7 +1248,14 @@ class _DoctorDetailSheet extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => launchUrl(Uri.parse('tel:${doctor.phone}')),
+                    onPressed: () async {
+                      final uri = Uri.parse('tel:${doctor.phone}');
+                      try {
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                        }
+                      } catch (_) {}
+                    },
                     icon: const Icon(Icons.call_rounded, size: 18),
                     label: const Text('Call'),
                     style: OutlinedButton.styleFrom(
@@ -1263,8 +1270,13 @@ class _DoctorDetailSheet extends StatelessWidget {
                 const SizedBox(width: VSpace.sm),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => launchUrl(Uri.parse(
-                        'https://maps.google.com/?q=${Uri.encodeComponent(doctor.address)}')),
+                    onPressed: () async {
+                      final uri = Uri.parse(
+                          'https://maps.google.com/?q=${Uri.encodeComponent(doctor.address)}');
+                      try {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      } catch (_) {}
+                    },
                     icon: const Icon(Icons.directions_rounded, size: 18),
                     label: const Text('Directions'),
                     style: OutlinedButton.styleFrom(

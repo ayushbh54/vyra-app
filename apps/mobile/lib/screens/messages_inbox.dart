@@ -42,64 +42,27 @@ class _MessagesInboxScreenState extends State<MessagesInboxScreen> {
       final items = await context.read<VyraApi>().listConversations();
       if (mounted) {
         setState(() {
-          _conversations = items.isNotEmpty ? items : _getDefaultConversations();
+          _conversations = items;
           _error = null;
         });
       }
-    } on ApiException {
+    } on ApiException catch (e) {
       if (mounted) {
         setState(() {
-          _conversations = _getDefaultConversations();
-          _error = null;
+          _conversations = [];
+          _error = e.message;
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() {
-          _conversations = _getDefaultConversations();
-          _error = null;
+          _conversations = [];
+          _error = 'Could not load direct athlete channels. Please try again.';
         });
       }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  List<ConversationItem> _getDefaultConversations() {
-    return const [
-      ConversationItem(
-        id: 'conv_vikram',
-        otherUserId: 'user_vikram',
-        otherName: 'Vikram Sharma (Pro Runner)',
-        otherHandle: 'vikram_runner',
-        lastMessage: 'Crushed the 10k! Let’s pace 5:10/km for Sunday long run. 🏃‍♂️',
-        lastMessageAt: '12m ago',
-      ),
-      ConversationItem(
-        id: 'conv_ananya',
-        otherUserId: 'user_ananya',
-        otherName: 'Ananya Desai (Yoga Coach)',
-        otherHandle: 'ananya_yoga',
-        lastMessage: 'Morning vinyasa flow session at 7 AM tomorrow? 🧘‍♀️',
-        lastMessageAt: '1h ago',
-      ),
-      ConversationItem(
-        id: 'conv_kabir',
-        otherUserId: 'user_kabir',
-        otherName: 'Coach Kabir (Strength Specialist)',
-        otherHandle: 'coach_kabir',
-        lastMessage: 'Keep that protein intake up after today’s heavy squats! 💪',
-        lastMessageAt: '3h ago',
-      ),
-      ConversationItem(
-        id: 'conv_rhea',
-        otherUserId: 'user_rhea',
-        otherName: 'Rhea Sen (Marathoner)',
-        otherHandle: 'rhea_fit',
-        lastMessage: 'Shared her 21-day streak badge with you 🔥',
-        lastMessageAt: 'Yesterday',
-      ),
-    ];
   }
 
   List<ConversationItem> get _filteredConversations {
@@ -230,61 +193,68 @@ class _MessagesInboxScreenState extends State<MessagesInboxScreen> {
             const SizedBox(height: VSpace.base),
 
             // ── Live Telemetry Partners Tray (Stitch Page 38c) ──
-            Container(
-              padding: const EdgeInsets.all(VSpace.md),
-              decoration: BoxDecoration(
-                color: VColor.surfaceRaised,
-                borderRadius: BorderRadius.circular(VRadius.lg),
-                border: Border.all(color: VColor.line),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'LIVE TELEMETRY PARTNERS',
-                        style: TextStyle(
-                          color: VColor.textLow,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: VColor.accentGreenGlow,
-                          borderRadius: BorderRadius.circular(VRadius.pill),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.fiber_manual_record, color: VColor.accentGreen, size: 8),
-                            SizedBox(width: 4),
-                            Text('5 ONLINE', style: TextStyle(color: VColor.accentGreen, fontSize: 9.5, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: VSpace.sm),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
+            if (_conversations.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(VSpace.md),
+                decoration: BoxDecoration(
+                  color: VColor.surfaceRaised,
+                  borderRadius: BorderRadius.circular(VRadius.lg),
+                  border: Border.all(color: VColor.line),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _partnerAvatar('Arjun', 'AM', true),
-                        _partnerAvatar('Rhea', 'RS', true),
-                        _partnerAvatar('Vikram', 'VR', true),
-                        _partnerAvatar('Pooja', 'PK', false),
-                        _partnerAvatar('Kabir', 'KM', true),
+                        const Text(
+                          'LIVE TELEMETRY PARTNERS',
+                          style: TextStyle(
+                            color: VColor.textLow,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: VColor.accentGreenGlow,
+                            borderRadius: BorderRadius.circular(VRadius.pill),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.fiber_manual_record, color: VColor.accentGreen, size: 8),
+                              const SizedBox(width: 4),
+                              Text('${_conversations.length} CHANNELS', style: const TextStyle(color: VColor.accentGreen, fontSize: 9.5, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: VSpace.sm),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          for (final c in _conversations.take(8))
+                            _partnerAvatar(
+                              c.otherName.split(' ').first,
+                              c.otherName.split(' ').where((s) => s.isNotEmpty).map((s) => s[0]).take(2).join().toUpperCase(),
+                              c.otherUserId,
+                              c.otherName,
+                              c.otherHandle,
+                              c.id,
+                              true,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: VSpace.base),
+              const SizedBox(height: VSpace.base),
+            ],
 
             // ── Conversation List ──
             if (_loading)
@@ -362,17 +332,25 @@ class _MessagesInboxScreenState extends State<MessagesInboxScreen> {
     );
   }
 
-  Widget _partnerAvatar(String name, String initials, bool online) {
+  Widget _partnerAvatar(
+    String name,
+    String initials,
+    String userId,
+    String fullName,
+    String handle,
+    String convId,
+    bool online,
+  ) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => AthleteChatScreen(
-              athleteId: 'user_${name.toLowerCase()}',
-              athleteName: name,
-              athleteHandle: '@${name.toLowerCase()}_athlete',
-              conversationId: 'conv_${name.toLowerCase()}',
+              athleteId: userId,
+              athleteName: fullName,
+              athleteHandle: handle,
+              conversationId: convId,
             ),
           ),
         ).then((_) => _load());
@@ -393,7 +371,7 @@ class _MessagesInboxScreenState extends State<MessagesInboxScreen> {
                   ),
                   child: Center(
                     child: Text(
-                      initials,
+                      initials.isNotEmpty ? initials : 'AT',
                       style: const TextStyle(color: VColor.accent, fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                   ),

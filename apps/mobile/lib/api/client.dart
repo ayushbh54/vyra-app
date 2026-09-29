@@ -107,8 +107,32 @@ class VyraApi {
         _ => _http.get(uri, headers: headers),
       }
           .timeout(timeout);
-
-      final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+      Map<String, dynamic> decoded;
+      try {
+        final parsed = jsonDecode(res.body);
+        if (parsed is Map<String, dynamic>) {
+          decoded = parsed;
+        } else {
+          decoded = {'ok': res.statusCode >= 200 && res.statusCode < 300, 'data': parsed};
+        }
+      } catch (_) {
+        if (res.statusCode >= 500) {
+          throw ApiException(
+            'SERVER_ERROR',
+            'VYRA Cloud is currently updating or waking up (${res.statusCode}). Please retry in a few moments.',
+            res.statusCode,
+          );
+        } else if (res.statusCode >= 400) {
+          if (res.statusCode == 401) await setToken(null);
+          throw ApiException(
+            'REQUEST_ERROR',
+            'Request failed with status ${res.statusCode}.',
+            res.statusCode,
+          );
+        } else {
+          throw const ApiException('INVALID_RESPONSE', 'Invalid response from server.', 0);
+        }
+      }
 
       if (decoded['ok'] != true) {
         final err = decoded['error'] as Map<String, dynamic>? ?? {};

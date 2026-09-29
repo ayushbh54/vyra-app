@@ -33,7 +33,7 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
       vsync: this,
       duration: const Duration(seconds: 8),
     )..addListener(() {
-        if (_isAutoTurntable) {
+        if (mounted && _isAutoTurntable) {
           setState(() {
             _rotationAngle += 0.008;
             if (_rotationAngle > math.pi * 2) {

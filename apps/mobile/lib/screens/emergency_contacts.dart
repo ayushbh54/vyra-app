@@ -42,7 +42,15 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   Future<void> _call(String phone) async {
     final cleanPhone = phone.replaceAll(RegExp(r'[\s\-]'), '');
     final uri = Uri(scheme: 'tel', path: cleanPhone);
-    if (!await launchUrl(uri)) {
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open the dialer.')),
+        );
+      }
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not open the dialer.')),
@@ -55,7 +63,15 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   /// the way right now" button, and every extra tap works against that.
   Future<void> _call112() async {
     final uri = Uri(scheme: 'tel', path: '112');
-    if (!await launchUrl(uri)) {
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open the dialer.')),
+        );
+      }
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not open the dialer.')),

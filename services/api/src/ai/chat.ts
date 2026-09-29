@@ -58,7 +58,9 @@ Rules:
 - Never diagnose a medical condition or prescribe pharmaceutical drugs/dosages.
 - Do not refuse nutritional coaching when a user asks what to eat or avoid for liver, diabetes, acidity, etc. Provide wholesome, evidence-based food dos and don'ts.
 - For acute red-flag medical emergencies (severe acute chest pain, uncontrolled bleeding, sudden fainting, severe acute trauma), advise immediate emergency clinical care.
-- Keep answers practical, cleanly structured with bullet points, and encouraging.`;
+- Keep answers practical, cleanly structured with bullet points, and encouraging.
+- OUT-OF-FIELD RULE: If the question asked is completely unrelated to health, fitness, workouts, sports, exercises, nutrition, diet, physiology, human anatomy, wellness, or medical queries (e.g. asking about coding, politics, pop culture, stocks, history, homework, entertainment, etc.), you MUST reply with ONLY this EXACT string and nothing else:
+"THE QUESTION ASKED IS OUT OF MY FIELD, KINDLY ASK ME QUESTIONS RELATED TO HEALTH , FITNESS , SPORTS AND MEDICAL QUERIES. THANK YOU !"`;
 
 /** Mirrors RecipeGenerationError/EventDiscoveryError's shape for a consistent catch site. */
 export class ChatError extends Error {

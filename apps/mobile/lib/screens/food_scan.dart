@@ -159,7 +159,7 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
       });
       await _scan(File(xfile.path));
     } catch (e) {
-      setState(() => _error = 'Could not access camera or gallery. Please grant permission in Settings.');
+      if (mounted) setState(() => _error = 'Could not access camera or gallery. Please grant permission in Settings.');
     }
   }
 
@@ -189,6 +189,7 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
         throw Exception('No recognizable food items found in this photo.');
       }
 
+      if (!mounted) return;
       setState(() {
         _items = parsed;
         _disclaimer = result['disclaimer'] as String? ?? 'Visual estimates provided by VYRA Gemini Vision Engine.';
@@ -215,14 +216,16 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
 
     try {
       final parsed = _estimateMacrosFromText(query);
-      setState(() {
-        _items = parsed;
-        _disclaimer = 'Parsed via VYRA Gemini Natural Language Nutrition Engine.';
-      });
+      if (mounted) {
+        setState(() {
+          _items = parsed;
+          _disclaimer = 'Parsed via VYRA Gemini Natural Language Nutrition Engine.';
+        });
+      }
     } catch (_) {
-      setState(() => _error = 'Could not parse meal. Please try again.');
+      if (mounted) setState(() => _error = 'Could not parse meal. Please try again.');
     } finally {
-      setState(() => _scanning = false);
+      if (mounted) setState(() => _scanning = false);
     }
   }
 
