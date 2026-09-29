@@ -232,7 +232,7 @@ class _UserFollowListScreenState extends State<UserFollowListScreen>
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const Scaffold(backgroundColor: VColor.bg, body: FriendsScreen())),
-                  ).then((_) => _loadData());
+                  ).then((_) { if (mounted) _loadData(); });
                 },
               ),
             ],

@@ -57,12 +57,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleAudioCoach(bool val) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('audio_coach_enabled', val);
+    if (!mounted) return;
     setState(() => _audioCoachEnabled = val);
   }
 
   Future<void> _setPreferredDuration(int min) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('preferred_duration_min', min);
+    if (!mounted) return;
     setState(() => _preferredDurationMin = min);
   }
 

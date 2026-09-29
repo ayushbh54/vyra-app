@@ -102,7 +102,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       if (!mounted) return;
       widget.onComplete();
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _saving = false);
     }

@@ -8,7 +8,6 @@
 // • Tap to dismiss (slides back up) OR auto-dismisses after 5 s.
 // • Use [DailySloganBanner.show] as a static helper on any screen.
 
-// ignore_for_file: unused_field
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/motivation_service.dart';
@@ -17,12 +16,15 @@ import '../services/motivation_service.dart';
 // Design tokens (mirrors VColor / VSpace / VRadius constants)
 // ---------------------------------------------------------------------------
 class _V {
+  // ignore: unused_field
   static const Color bg          = Color(0xFF0A0A0F);
+  // ignore: unused_field
   static const Color surface     = Color(0xFF13131A);
   static const Color accent      = Color(0xFF00D2FF);
   static const Color accentGreen = Color(0xFF34FF8C);
   static const Color text        = Color(0xFFFFFFFF);
   static const Color textMid     = Color(0xFFB0B0C3);
+  // ignore: unused_field
   static const Color line        = Color(0xFF1E1E2E);
   static const Color accentGlow  = Color(0x3300D2FF); // 20% opacity cyan
 
@@ -30,10 +32,13 @@ class _V {
   static const double sm   = 8;
   static const double base = 16;
   static const double lg   = 24;
+  // ignore: unused_field
   static const double xl   = 32;
 
+  // ignore: unused_field
   static const double radiusMd  = 8;
   static const double radiusLg  = 12;
+  // ignore: unused_field
   static const double radiusPill = 100;
 }
 
@@ -329,14 +334,14 @@ class _EmojiBadge extends StatelessWidget {
       height: 48,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: _badgeColor(category).withOpacity(0.12),
+        color: _badgeColor(category).withValues(alpha: 0.12),
         border: Border.all(
-          color: _badgeColor(category).withOpacity(0.35),
+          color: _badgeColor(category).withValues(alpha: 0.35),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: _badgeColor(category).withOpacity(0.25),
+            color: _badgeColor(category).withValues(alpha: 0.25),
             blurRadius: 14,
             spreadRadius: 0,
           ),

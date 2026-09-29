@@ -41,7 +41,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> {
   Future<void> _toggleKudos(PostItem item) async {
     try {
       await context.read<VyraApi>().togglePostKudos(item.id);
-      await _load();
+      if (mounted) await _load();
     } on ApiException catch (_) {
       // A failed kudos tap is not worth interrupting the feed for.
     }
@@ -49,7 +49,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> {
 
   Future<void> _openComposer() async {
     final created = await pushScreen<bool>(context, 'New post', const CreatePostScreen());
-    if (created == true) _load();
+    if (created == true && mounted) _load();
   }
 
   @override
@@ -431,6 +431,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     try {
       await context.read<VyraApi>().addPostComment(_post.id, text);
       _commentCtrl.clear();
+      if (!mounted) return;
       await _load();
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
@@ -538,7 +539,7 @@ class _MyPostsScreenState extends State<MyPostsScreen> {
 
   Future<void> _edit(PostItem post) async {
     final saved = await pushScreen<bool>(context, 'Edit post', CreatePostScreen(editing: post));
-    if (saved == true) _load();
+    if (saved == true && mounted) _load();
   }
 
   Future<void> _delete(PostItem post) async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,7 +19,6 @@ import 'challenges_hub.dart';
 import 'exercise_detail.dart';
 import 'face_hair_yoga.dart';
 import 'food_scan.dart';
-import 'friends_leaderboard.dart';
 import 'health_report_ai.dart';
 import 'health_sync.dart';
 import 'library.dart';

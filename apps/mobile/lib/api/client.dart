@@ -99,6 +99,8 @@ class VyraApi {
     try {
       final http.Response res = await switch (method) {
         'POST' => _http.post(uri, headers: headers, body: jsonEncode(body ?? {})),
+        'PATCH' => _http.patch(uri, headers: headers, body: jsonEncode(body ?? {})),
+        'PUT' => _http.put(uri, headers: headers, body: jsonEncode(body ?? {})),
         'DELETE' => _http.delete(uri, headers: headers),
         _ => _http.get(uri, headers: headers),
       }

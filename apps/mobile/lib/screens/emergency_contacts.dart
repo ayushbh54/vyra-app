@@ -76,7 +76,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
             phone: result.phone,
             relationship: result.relationship,
           );
-      _load();
+      if (mounted) _load();
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -104,7 +104,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
         phone: result.phone,
         relationship: result.relationship,
       );
-      _load();
+      if (mounted) _load();
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -130,7 +130,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     if (confirmed != true || !mounted) return;
     try {
       await context.read<VyraApi>().deleteEmergencyContact(contact.id);
-      _load();
+      if (mounted) _load();
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }

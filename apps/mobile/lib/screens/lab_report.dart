@@ -63,10 +63,10 @@ class _LabReportScreenState extends State<LabReportScreen> {
       final xfile = await _picker.pickImage(source: src, imageQuality: 85, maxWidth: 1600);
       if (xfile == null) return;
       final file = File(xfile.path);
-      setState(() { _image = file; _result = null; _error = null; });
+      if (mounted) setState(() { _image = file; _result = null; _error = null; });
       await _analyse(file);
     } catch (_) {
-      setState(() => _error = 'Could not access camera or gallery.');
+      if (mounted) setState(() => _error = 'Could not access camera or gallery.');
     }
   }
 
@@ -78,11 +78,11 @@ class _LabReportScreenState extends State<LabReportScreen> {
       final b64    = base64Encode(bytes);
       final mime   = file.path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
       final result = await context.read<VyraApi>().scanLabReport(imageBase64: b64, mimeType: mime);
-      setState(() => _result = result);
+      if (mounted) setState(() => _result = result);
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 

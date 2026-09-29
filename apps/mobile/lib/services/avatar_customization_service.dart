@@ -69,7 +69,7 @@ class AvatarFaceProfile {
         'usePhotoFace': usePhotoFace,
         'skinTone': skinTone,
         'hairStyle': hairStyle,
-        'hairColor': hairColor.value,
+        'hairColor': hairColor.toARGB32(),
         'facialHair': facialHair,
         'visorStyle': visorStyle,
         'outfitStyle': outfitStyle,

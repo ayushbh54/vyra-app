@@ -1253,35 +1253,43 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
     ..strokeWidth = 10
     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
 
+  // ignore: unused_field
   static final Paint _conduitPaint = Paint()
     ..strokeCap = StrokeCap.round;
 
+  // ignore: unused_field
   static final Paint _servoHousingPaint = Paint()
     ..color = const Color(0xFF1E2838)
     ..style = PaintingStyle.fill;
 
+  // ignore: unused_field
   static final Paint _servoRimPaint = Paint()
     ..color = const Color(0xFF8BA7C4)
     ..strokeWidth = 1.5
     ..style = PaintingStyle.stroke;
 
+  // ignore: unused_field
   static final Paint _servoLedPaint = Paint()
     ..style = PaintingStyle.fill;
 
+  // ignore: unused_field
   static final Paint _torsoOutlinePaint = Paint()
     ..color = const Color(0xFF7F9CB8).withValues(alpha: 0.6)
     ..strokeWidth = 1.2
     ..style = PaintingStyle.stroke;
 
+  // ignore: unused_field
   static final Paint _arcReactorGlowPaint = Paint()
     ..color = const Color(0xFF00D2FF).withValues(alpha: 0.35)
     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
 
+  // ignore: unused_field
   static final Paint _arcReactorRingPaint = Paint()
     ..color = const Color(0xFF00D2FF)
     ..strokeWidth = 1.5
     ..style = PaintingStyle.stroke;
 
+  // ignore: unused_field
   static final Paint _arcReactorCorePaint = Paint()
     ..color = const Color(0xFFDFE2F0);
 
@@ -1684,8 +1692,8 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
         handR: const _Vector3D(24, -44, -10),
         hipL: _Vector3D(-16, -46 + dipDepth, 4),
         hipR: _Vector3D(16, -46 + dipDepth, 4),
-        kneeL: _Vector3D(-18, -44, 28),
-        kneeR: _Vector3D(18, -44, 28),
+        kneeL: const _Vector3D(-18, -44, 28),
+        kneeR: const _Vector3D(18, -44, 28),
         footL: const _Vector3D(-18, -4, 28),
         footR: const _Vector3D(18, -4, 28),
         quadFlexed: false,
@@ -2164,10 +2172,10 @@ class _Biomechanical3DAvatarPainter extends CustomPainter {
       ..close();
 
     // Compression Athletic Top Gradient (Obsidian to Navy Graphite)
-    final compressionGradient = LinearGradient(
+    const compressionGradient = LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: const [
+      colors: [
         Color(0xFF0F172A),
         Color(0xFF1E293B),
         Color(0xFF0F172A),

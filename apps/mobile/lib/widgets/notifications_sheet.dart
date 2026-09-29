@@ -79,9 +79,9 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
     });
   }
 
-  void _dismiss(int index) {
+  void _dismiss(Map<String, dynamic> item) {
     setState(() {
-      _notifications.removeAt(index);
+      _notifications.remove(item);
     });
   }
 
@@ -215,7 +215,7 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
                         return Dismissible(
                           key: ValueKey(item['id']),
                           direction: DismissDirection.endToStart,
-                          onDismissed: (_) => _dismiss(index),
+                          onDismissed: (_) => _dismiss(item),
                           background: Container(
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.only(right: 20),

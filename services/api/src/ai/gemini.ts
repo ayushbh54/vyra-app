@@ -215,9 +215,9 @@ export class GeminiClient {
     }
   }
 
-  /** Text generation with timeout and bounded retry. */
+  /** Text generation with timeout, standard generateContent fallback, and bounded retry. */
   async generateText(options: GenerateOptions): Promise<string> {
-    const { url, body, parse } = options.image
+    let req = options.image
       ? this.visionRequest(options)
       : this.interactionsRequest(options);
 
@@ -230,7 +230,7 @@ export class GeminiClient {
       const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
 
       try {
-        const response = await this.transport(url, {
+        const response = await this.transport(req.url, {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
@@ -238,11 +238,18 @@ export class GeminiClient {
             // and referrer headers.
             'x-goog-api-key': this.config.apiKey,
           },
-          body: JSON.stringify(body),
+          body: JSON.stringify(req.body),
           signal: controller.signal,
         });
 
         if (!response.ok) {
+          // Standard AI Studio API keys use the /models/{model}:generateContent endpoint.
+          // If /interactions returns 404 or 400, fall back seamlessly to generateContent.
+          if ((response.status === 404 || response.status === 400) && !options.image && req.url.endsWith('/interactions')) {
+            clearTimeout(timer);
+            req = this.textContentRequest(options);
+            continue;
+          }
           const retryable = response.status === 429 || response.status >= 500;
           const kind: GeminiFailureKind =
             response.status === 429 ? 'rate_limited'
@@ -261,7 +268,7 @@ export class GeminiClient {
           continue;
         }
 
-        const text = parse(await response.json());
+        const text = req.parse(await response.json());
         if (!text) {
           lastError = new GeminiError('empty_response', 'Gemini returned no content', true);
           continue;
@@ -353,6 +360,39 @@ export class GeminiClient {
 
     return {
       url: `${this.config.baseUrl}/models/${this.config.visionModel}:generateContent`,
+      body,
+      parse: (json: unknown) => {
+        const r = json as GenerateContentResponse;
+        if (r.promptFeedback?.blockReason) {
+          throw new GeminiError('blocked_by_safety', `Blocked: ${r.promptFeedback.blockReason}`, false);
+        }
+        return r.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('').trim() ?? '';
+      },
+    };
+  }
+
+  /**
+   * Standard generateContent for text-only input — used as a fallback when the
+   * Interactions API returns 404 (standard AI Studio keys don't expose it).
+   * Same response shape as visionRequest but without image data.
+   */
+  private textContentRequest(options: GenerateOptions) {
+    const body: Record<string, unknown> = {
+      contents: [{ role: 'user', parts: [{ text: options.prompt }] }],
+      generationConfig: {
+        temperature: options.temperature ?? 0.4,
+        maxOutputTokens: this.config.maxOutputTokens,
+        ...(options.responseSchema
+          ? { responseMimeType: 'application/json', responseSchema: options.responseSchema }
+          : {}),
+      },
+    };
+    if (options.systemInstruction) {
+      body.systemInstruction = { parts: [{ text: options.systemInstruction }] };
+    }
+
+    return {
+      url: `${this.config.baseUrl}/models/${this.config.textModel}:generateContent`,
       body,
       parse: (json: unknown) => {
         const r = json as GenerateContentResponse;

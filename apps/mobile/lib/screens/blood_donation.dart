@@ -11,7 +11,6 @@
 // 6. Thalassemia Lifeline Recurring Donation Pledge (/thalassemia/...)
 // ============================================================
 
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -78,11 +77,14 @@ class _BloodDonationScreenState extends State<BloodDonationScreen> with SingleTi
   late TabController _tabController;
   final MapController _mapController = MapController();
 
-  EligibilityStatus _eligibility = EligibilityStatus.eligible;
+  // ignore: unused_field
+  final EligibilityStatus _eligibility = EligibilityStatus.eligible;
+  // ignore: unused_field
   final int _daysUntilEligible = 0;
   bool _handRaised = false;
   String _selectedComponent = 'All';
-  String _selectedGroup = 'O+';
+  // ignore: unused_field
+  final String _selectedGroup = 'O+';
   bool _isThalassemiaPledged = true;
 
   static const LatLng _centre = LatLng(28.6667, 77.4784); // Ghaziabad / Delhi NCR

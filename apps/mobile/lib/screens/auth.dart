@@ -75,7 +75,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!mounted) return;
       widget.onAuthenticated();
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -89,7 +89,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!mounted) return;
       widget.onAuthenticated();
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -174,7 +174,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!mounted) return;
       widget.onAuthenticated();
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _loading = false);
     }

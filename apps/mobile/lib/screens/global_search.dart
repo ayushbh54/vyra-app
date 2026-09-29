@@ -71,7 +71,9 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     if (widget.initialQuery != null) {
       _searchController.text = widget.initialQuery!;
     }
-    _executeSearch(_searchController.text.trim());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _executeSearch(_searchController.text.trim());
+    });
   }
 
   @override
@@ -556,7 +558,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
             ),
             alignment: Alignment.center,
             child: Text(
-              item.title.substring(0, 1),
+              item.title.isNotEmpty ? item.title[0] : '?',
               style: const TextStyle(color: VColor.accent, fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ),
@@ -799,7 +801,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      item.title.substring(0, 1),
+                      item.title.isNotEmpty ? item.title[0] : '?',
                       style: const TextStyle(color: VColor.accent, fontWeight: FontWeight.bold, fontSize: 12),
                     ),
                   ),

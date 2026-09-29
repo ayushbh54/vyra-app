@@ -79,13 +79,13 @@ class PoseTrackerScreen extends StatefulWidget {
   final int targetReps;
 
   const PoseTrackerScreen({
-    Key? key,
+    super.key,
     this.exerciseName = 'squat',
     this.targetReps = 12,
-  }) : super(key: key);
+  });
 
   @override
-  _PoseTrackerScreenState createState() => _PoseTrackerScreenState();
+  State<PoseTrackerScreen> createState() => _PoseTrackerScreenState();
 }
 
 class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProviderStateMixin {
@@ -98,7 +98,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
   bool _isTrackingActive = false;
   bool _isPaused = false;
   bool _simulatedMotionEnabled = false;
-  bool _lowLightWarning = false;
+  final bool _lowLightWarning = false;
   
   Timer? _motionTimer;
   double _motionCycle = 0.0;
@@ -158,7 +158,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
       _isInContractionPhase = false;
       _feedbackMessage = newEx.formHint;
     });
-    _speak("${newEx.name} selected. Target: ${_targetReps} reps.");
+    _speak("${newEx.name} selected. Target: $_targetReps reps.");
   }
 
   void _startTracking() {
@@ -207,14 +207,14 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
       _repCount++;
       _formScore = math.min(100.0, _formScore + 2.0);
       _repColor = VColor.accentGreen;
-      _feedbackMessage = "Rep ${_repCount}! ${_currentExercise.cueUp}";
+      _feedbackMessage = "Rep $_repCount! ${_currentExercise.cueUp}";
     });
     
     if (_repCount >= _targetReps) {
-      _speak("Awesome! Set complete! ${_repCount} reps.");
+      _speak("Awesome! Set complete! $_repCount reps.");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("🎉 Workout Complete! ${_targetReps} reps logged to your VYRA profile."),
+          content: Text("🎉 Workout Complete! $_targetReps reps logged to your VYRA profile."),
           backgroundColor: VColor.accentGreen,
         ),
       );
@@ -839,7 +839,7 @@ class ModernPosePainter extends CustomPainter {
     canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(24)), reticlePaint);
 
     // Corner guides
-    final cornerLen = 24.0;
+    const cornerLen = 24.0;
     final cornerPaint = Paint()
       ..color = VColor.accent
       ..strokeWidth = 2.5

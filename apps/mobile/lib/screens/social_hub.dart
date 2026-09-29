@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 import '../widgets/common.dart';
-import 'ai_chat.dart';
 import 'clubs.dart';
 import 'events.dart';
 import 'feed.dart';

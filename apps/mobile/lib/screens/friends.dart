@@ -63,6 +63,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       } else {
         await api.follow(user.id);
       }
+      if (!mounted) return;
       await _search(_controller.text);
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));

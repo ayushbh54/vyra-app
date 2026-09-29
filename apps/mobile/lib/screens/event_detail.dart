@@ -37,10 +37,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     try {
       if (_registered) {
         await api.unregisterFromEvent(widget.event.id);
-        setState(() => _registered = false);
+        if (mounted) setState(() => _registered = false);
       } else {
         await api.registerForEvent(widget.event.id);
-        setState(() => _registered = true);
+        if (mounted) setState(() => _registered = true);
       }
       widget.onRegisteredChanged?.call(_registered);
       if (mounted) {

@@ -456,9 +456,9 @@ class _UploadCard extends StatelessWidget {
               padding: const EdgeInsets.all(VSpace.md),
               margin: const EdgeInsets.only(bottom: VSpace.base),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.12),
+                color: Colors.red.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(VRadius.md),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -507,7 +507,7 @@ class _UploadCard extends StatelessWidget {
                       width: 72,
                       height: 72,
                       decoration: BoxDecoration(
-                        color: VColor.accent.withOpacity(0.12),
+                        color: VColor.accent.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.document_scanner_rounded,
@@ -523,7 +523,7 @@ class _UploadCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: VSpace.xs),
-                  Text(
+                  const Text(
                     'Take a clear photo or select from gallery.\nGemini AI extracts authentic biomarkers instantly.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -599,7 +599,7 @@ class _DashedBorderBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: _DashedRectPainter(
-        color: VColor.accent.withOpacity(0.35),
+        color: VColor.accent.withValues(alpha: 0.35),
         strokeWidth: 1.5,
         gap: 6,
         dashWidth: 8,
@@ -758,7 +758,7 @@ class _AnalyzingView extends StatelessWidget {
                   border: Border.all(color: VColor.accent, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: VColor.accent.withOpacity(0.2),
+                      color: VColor.accent.withValues(alpha: 0.2),
                       blurRadius: 20,
                       spreadRadius: 2,
                     ),
@@ -784,7 +784,7 @@ class _AnalyzingView extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        VColor.accent.withOpacity(0.28),
+                        VColor.accent.withValues(alpha: 0.28),
                         VColor.bg,
                       ],
                     ),
@@ -834,7 +834,7 @@ class _AnalyzingView extends StatelessWidget {
                         color: isDone
                             ? VColor.accentGreen
                             : isActive
-                                ? VColor.accent.withOpacity(0.22)
+                                ? VColor.accent.withValues(alpha: 0.22)
                                 : VColor.surface,
                         border: Border.all(
                           color: isDone
@@ -1090,9 +1090,9 @@ class _ResultsView extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(VSpace.md),
               decoration: BoxDecoration(
-                color: VColor.accent.withOpacity(0.08),
+                color: VColor.accent.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(VRadius.md),
-                border: Border.all(color: VColor.accent.withOpacity(0.3)),
+                border: Border.all(color: VColor.accent.withValues(alpha: 0.3)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1221,7 +1221,7 @@ class _ReportMetaHeader extends StatelessWidget {
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                color: VColor.accent.withOpacity(0.12),
+                color: VColor.accent.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(VRadius.md.toDouble()),
               ),
               child: const Icon(Icons.description_rounded,
@@ -1255,7 +1255,7 @@ class _ReportMetaHeader extends StatelessWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: VSpace.sm, vertical: 4),
             decoration: BoxDecoration(
-              color: VColor.accentGreen.withOpacity(0.15),
+              color: VColor.accentGreen.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(VRadius.pill.toDouble()),
             ),
             child: const Text(
@@ -1353,7 +1353,7 @@ class _BiomarkerCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: VColor.surface,
         borderRadius: BorderRadius.circular(VRadius.lg.toDouble()),
-        border: Border.all(color: color.withOpacity(0.28), width: 1.2),
+        border: Border.all(color: color.withValues(alpha: 0.28), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1379,7 +1379,7 @@ class _BiomarkerCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   borderRadius:
                       BorderRadius.circular(VRadius.pill.toDouble()),
                 ),
@@ -1460,7 +1460,7 @@ class _AiInsightsSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: VColor.surface,
         borderRadius: BorderRadius.circular(VRadius.lg.toDouble()),
-        border: Border.all(color: VColor.accent.withOpacity(0.35)),
+        border: Border.all(color: VColor.accent.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1482,7 +1482,7 @@ class _AiInsightsSection extends StatelessWidget {
           const SizedBox(height: VSpace.sm),
           Container(
             height: 1,
-            color: VColor.accent.withOpacity(0.18),
+            color: VColor.accent.withValues(alpha: 0.18),
           ),
           const SizedBox(height: VSpace.sm),
 

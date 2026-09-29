@@ -275,8 +275,14 @@ class _BeaconScreenState extends State<BeaconScreen> {
           const SizedBox(height: VSpace.base),
 
           const VSectionHeader('Safety contacts'),
-          for (var i = 0; i < 3; i++) ...[
-            VCard(
+          if (_names.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(child: Text('Failed to load contacts.', style: TextStyle(color: VColor.textMid))),
+            )
+          else
+            for (var i = 0; i < 3; i++) ...[
+              VCard(
               tone: CardTone.raised,
               child: Column(
                 children: [

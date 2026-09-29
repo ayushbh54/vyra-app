@@ -53,10 +53,17 @@ class _MapsScreenState extends State<MapsScreen> {
         return;
       }
       final pos = await Geolocator.getCurrentPosition();
+      if (!mounted) return;
       _mapController.move(ll.LatLng(pos.latitude, pos.longitude), 14);
     } catch (_) {
       // Silent — the map still works without a centred location.
     }
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
   }
 
   @override

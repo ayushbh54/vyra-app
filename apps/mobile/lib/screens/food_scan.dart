@@ -416,15 +416,15 @@ class _FoodScanScreenState extends State<FoodScanScreen> {
               )),
             ]),
             const SizedBox(height: 24),
-            Row(
+            const Row(
               children: [
-                const Expanded(child: Divider(color: VColor.line)),
+                Expanded(child: Divider(color: VColor.line)),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 12),
                   child: Text('OR DESCRIBE MEAL (VOICE / TEXT)',
                       style: TextStyle(color: VColor.textLow, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
                 ),
-                const Expanded(child: Divider(color: VColor.line)),
+                Expanded(child: Divider(color: VColor.line)),
               ],
             ),
             const SizedBox(height: 16),

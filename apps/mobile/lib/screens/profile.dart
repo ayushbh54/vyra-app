@@ -14,7 +14,6 @@ import 'first_aid.dart';
 import 'food.dart';
 import 'health_report_ai.dart';
 import 'health_sync.dart';
-import 'lab_report.dart';
 import 'leaderboard.dart';
 import 'settings.dart';
 import 'training_hub.dart';

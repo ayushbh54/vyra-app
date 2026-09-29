@@ -116,6 +116,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
     try {
       final hasPerm = await _requestBluetoothPermissions();
       if (!hasPerm) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('⚠️ Bluetooth and Location permissions are required to scan for watches.'),
@@ -127,6 +128,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
 
       final isSupported = await FlutterBluePlus.isSupported;
       if (!isSupported) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Bluetooth LE is not supported on this phone.')),
         );
@@ -138,6 +140,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
         try {
           await FlutterBluePlus.turnOn();
         } catch (_) {
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Please enable Bluetooth in your phone settings.')),
           );

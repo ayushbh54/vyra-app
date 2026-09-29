@@ -172,6 +172,7 @@ class _RecordScreenState extends State<RecordScreen> {
     // Snapshot today's steps so we get session-only steps correctly
     await _initHealth();
 
+    if (!mounted) return;
     setState(() {
       _state        = _RecordState.recording;
       _fixes.clear();

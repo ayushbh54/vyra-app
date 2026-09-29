@@ -67,10 +67,10 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: const Color(0xFF102A43),
-              content: Row(
+              content: const Row(
                 children: [
-                  const Icon(Icons.check_circle_rounded, color: Color(0xFF34FF8C)),
-                  const SizedBox(width: 10),
+                  Icon(Icons.check_circle_rounded, color: Color(0xFF34FF8C)),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Face photo mapped to 3D Avatar successfully!',
@@ -348,15 +348,16 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
                           onPressed: _isSaving
                               ? null
                               : () async {
+                                  final messenger = ScaffoldMessenger.of(context);
                                   setState(() => _isSaving = true);
                                   await AvatarCustomizationService.instance.updateProfile(_profile);
                                   await Future.delayed(const Duration(milliseconds: 300));
                                   if (!mounted) return;
                                   setState(() => _isSaving = false);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      backgroundColor: const Color(0xFF00D2FF),
-                                      content: const Text(
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      backgroundColor: Color(0xFF00D2FF),
+                                      content: Text(
                                         '3D Avatar Profile Saved Successfully!',
                                         style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
                                       ),
@@ -877,7 +878,7 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
           title: const Text('Use My Real Face Photo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           subtitle: const Text('Display your real selfie on the 3D avatar head', style: TextStyle(color: Color(0xFF8896AB), fontSize: 12)),
           value: _profile.usePhotoFace,
-          activeColor: const Color(0xFF00D2FF),
+          activeThumbColor: const Color(0xFF00D2FF),
           onChanged: (val) => _updateProfile(_profile.copyWith(usePhotoFace: val)),
         ),
         const SizedBox(height: 10),

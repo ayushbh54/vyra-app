@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../services/social_integration_service.dart';
 import '../theme.dart';
-import '../widgets/common.dart';
 
 /// SUBWAY SURFERS & WHATSAPP STYLE SOCIAL LEADERBOARD & AUTO-DISCOVERY
 ///

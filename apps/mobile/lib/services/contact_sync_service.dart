@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 // In modern Flutter 3.22+, contacts_service uses legacy v1 Android Registrar.
 // We use permission_handler + clean phone hash sync.
+import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class VyraUser {
@@ -89,7 +90,7 @@ class ContactSyncService {
           return users;
         }
       } catch (e) {
-        print('Error syncing contacts: $e');
+        debugPrint('Error syncing contacts: $e');
       }
     }
     

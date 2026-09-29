@@ -46,7 +46,7 @@ class _MessagesInboxScreenState extends State<MessagesInboxScreen> {
           _error = null;
         });
       }
-    } on ApiException catch (e) {
+    } on ApiException {
       if (mounted) {
         setState(() {
           _conversations = _getDefaultConversations();

@@ -61,6 +61,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
     setState(() => _busy = true);
     try {
       final newStreak = await context.read<VyraApi>().checkinChallenge(custom.id);
+      if (!mounted) return;
       HapticFeedback.heavyImpact();
       setState(() {
         _streak = newStreak;

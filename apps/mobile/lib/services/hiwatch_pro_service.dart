@@ -87,8 +87,18 @@ class HiWatchProProtocol {
       return HiWatchTelemetryData.empty();
     }
 
-    // Check packet header
     final header = bytes[0];
+    // Standard Bluetooth SIG Heart Rate Measurement (UUID 0x2A37)
+    if ((header != 0xCD && header != 0xAB) && bytes.length >= 2) {
+      final flags = bytes[0];
+      final is16Bit = (flags & 0x01) != 0;
+      final hr = is16Bit && bytes.length >= 3 ? (bytes[1] | (bytes[2] << 8)) : bytes[1];
+      if (hr > 30 && hr < 240) {
+        return HiWatchTelemetryData(heartRateBpm: hr);
+      }
+    }
+
+    // Check packet header
     if (header != 0xCD && header != 0xAB) {
       return HiWatchTelemetryData.empty();
     }
@@ -115,16 +125,6 @@ class HiWatchProProtocol {
         heartRateBpm: (hr > 30 && hr < 220) ? hr : null,
         bloodOxygenSpo2: (spo2 >= 70 && spo2 <= 100) ? spo2 : null,
       );
-    }
-
-    // Standard Bluetooth SIG Heart Rate Measurement (UUID 0x2A37)
-    if ((header != 0xCD && header != 0xAB) && bytes.length >= 2) {
-      final flags = bytes[0];
-      final is16Bit = (flags & 0x01) != 0;
-      final hr = is16Bit && bytes.length >= 3 ? (bytes[1] | (bytes[2] << 8)) : bytes[1];
-      if (hr > 30 && hr < 240) {
-        return HiWatchTelemetryData(heartRateBpm: hr);
-      }
     }
 
     return HiWatchTelemetryData.empty();

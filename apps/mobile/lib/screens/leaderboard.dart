@@ -30,8 +30,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
-    _tabs.addListener(() { if (_tabs.indexIsChanging) _load(_scopes[_tabs.index]); });
-    _load('world');
+    _tabs.addListener(() { _load(_scopes[_tabs.index]); });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _load('world');
+    });
   }
 
   @override
@@ -42,11 +44,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     setState(() { _loading = true; _error = null; });
     try {
       final lb = await context.read<VyraApi>().leaderboard(scope: scope);
+      if (!mounted) return;
       setState(() => _data[scope] = _BoardData.fromLeaderboard(lb));
     } on ApiException catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.message);
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 

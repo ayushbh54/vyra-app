@@ -77,7 +77,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
           SnackBar(content: Text('Redeemed "${reward.title}".')),
         );
       }
-      await _load();
+      if (mounted) await _load();
     } on ApiException catch (e) {
       // Covers the "not enough coins" case and any other redeem failure —
       // e.message is already a clear, user-facing string from the server.
