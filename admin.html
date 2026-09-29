@@ -3224,7 +3224,7 @@
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
                   <div>
                     <div style="font-size:15px; font-weight:800; color:#FFF;">🩺 Nearby Rated Sports Medicine & Clinical Doctors (NHA Verified)</div>
-                    <div style="font-size:11.5px; color:var(--text-muted);">Book direct consults with verified sports orthopedics, nutritionists & cardiologists</div>
+                    <div style="font-size:11.5px; color:var(--text-muted);">View details, timings & directly call verified sports orthopedics, nutritionists & cardiologists</div>
                   </div>
                   <div style="display:flex; gap:6px; flex-wrap:wrap;">
                     <button class="category-chip active" onclick="filterDoctorsCategory('all', this)">All (4)</button>
@@ -3246,7 +3246,7 @@
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
                       <span style="font-size:11px; color:var(--emerald);">● Available Today</span>
-                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:5px 12px;" onclick="bookDoctorConsult('Dr. Sneha Kulkarni')">Book Consult</button>
+                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:5px 12px;" onclick="alert('📞 Dr. Sneha Kulkarni\n\nPhone: +91-11-2659-4400\nTimings: 10 AM – 6 PM\nConsulting Fees: ₹800')">📞 Call</button>
                     </div>
                   </div>
 
@@ -3261,7 +3261,7 @@
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
                       <span style="font-size:11px; color:var(--emerald);">● Available Today</span>
-                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:5px 12px;" onclick="bookDoctorConsult('Dr. Rajesh Aggarwal')">Book Consult</button>
+                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:5px 12px;" onclick="alert('📞 Dr. Rajesh Aggarwal\n\nPhone: +91-11-4713-5000\nTimings: 9 AM – 5 PM\nConsulting Fees: ₹700')">📞 Call</button>
                     </div>
                   </div>
 
@@ -3276,7 +3276,7 @@
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
                       <span style="font-size:11px; color:var(--emerald);">● Available Tomorrow</span>
-                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:5px 12px;" onclick="bookDoctorConsult('Dr. Arvind Mehta')">Book Consult</button>
+                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:5px 12px;" onclick="alert('📞 Dr. Arvind Mehta\n\nPhone: +91-11-2651-5050\nTimings: 11 AM – 7 PM\nConsulting Fees: ₹900')">📞 Call</button>
                     </div>
                   </div>
 
@@ -3291,7 +3291,7 @@
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
                       <span style="font-size:11px; color:var(--emerald);">● Available Today</span>
-                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:5px 12px;" onclick="bookDoctorConsult('Dr. Meenakshi Sundaram')">Book Consult</button>
+                      <button class="tag-pill tag-cyan" style="cursor:pointer; font-weight:700; padding:5px 12px;" onclick="alert('📞 Dr. Meenakshi Sundaram\n\nPhone: +91-11-2461-7938\nTimings: 9 AM – 4 PM\nConsulting Fees: ₹500')">📞 Call</button>
                     </div>
                   </div>
                 </div>
@@ -8629,11 +8629,6 @@ function initThreeBackground() {
       });
     }
     window.filterDoctorsCategory = filterDoctorsCategory;
-
-    function bookDoctorConsult(name) {
-      showToast('Appointment request sent to ' + name + '! Hospital desk will confirm via SMS.', '🩺');
-    }
-    window.bookDoctorConsult = bookDoctorConsult;
 
     // ── SMARTWATCH BLE & REWARDS STORE ───────────────────────────────────────
     var isWatchConnected = false;
