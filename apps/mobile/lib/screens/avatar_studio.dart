@@ -1721,43 +1721,22 @@ class _CyberGridPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()
-      ..color = VColor.accent.withValues(alpha: 0.04)
-      ..strokeWidth = 0.5;
-
-    // Horizontal grid lines
-    for (double y = size.height * 0.5; y < size.height; y += 30) {
-      final alpha =
-          0.04 * (1 - (y - size.height * 0.5) / (size.height * 0.5));
-      linePaint.color =
-          VColor.accent.withValues(alpha: alpha.clamp(0.01, 0.06));
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
+    final paint = Paint()
+      ..color = const Color(0xFF00E5FF).withValues(alpha: 0.1)
+      ..strokeWidth = 1.0;
+    for (double i = 0; i < size.width; i += 40) {
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
     }
-
-    // Vertical grid lines converging to center
-    final cx = size.width / 2;
-    for (double x = -size.width; x < size.width * 2; x += 40) {
-      final topX = cx + (x - cx) * 0.3;
-      linePaint.color = VColor.accent.withValues(alpha: 0.025);
-      canvas.drawLine(
-          Offset(topX, size.height * 0.5), Offset(x, size.height), linePaint);
+    for (double i = 0; i < size.height; i += 40) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
     }
-
-    // Animated pulse ring on podium area
-    final pulseRadius = 100 + math.sin(progress * math.pi * 2) * 20;
-    canvas.drawCircle(
-      Offset(cx, size.height * 0.85),
-      pulseRadius,
-      Paint()
-        ..color = VColor.accent.withValues(alpha: 0.03)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
-    );
+    // Also horizontal perspective lines could be drawn, but let's keep it simple.
   }
 
   @override
-  bool shouldRepaint(covariant _CyberGridPainter oldDelegate) =>
-      oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _CyberGridPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
 }
 
 /// ─────────────────────────────────────────────────────────────────────────────
@@ -1788,1273 +1767,193 @@ class _FreeFireAvatarPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
-    final cy = size.height * 0.42;
 
-    // Idle breathing animation — subtle scale pulse
-    final breathe = math.sin(idleProgress * math.pi * 2) * 5.0;
-    final breatheScale = 1.0 + math.sin(idleProgress * math.pi * 2) * 0.015;
-
-    // Rotation
-    final cosRot = math.cos(rotationAngle);
-    final sinRot = math.sin(rotationAngle);
+    // 1. Dark gradient background behind character
+    final bgGrad = RadialGradient(
+      center: Alignment.center,
+      radius: 0.8,
+      colors: [const Color(0xFF1A1030), const Color(0xFF0A0810)],
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint()..shader = bgGrad.createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
+    );
 
     // Body type multipliers
     double shoulderMult = 1.0;
-    double armWidth = 1.0;
-    double torsoWidth = 1.0;
-    double legWidth = 1.0;
-
-    switch (profile.bodyType) {
-      case 'muscular':
-        shoulderMult = 1.2;
-        armWidth = 1.3;
-        torsoWidth = 1.15;
-        legWidth = 1.2;
-        break;
-      case 'lean':
-        shoulderMult = 0.88;
-        armWidth = 0.85;
-        torsoWidth = 0.88;
-        legWidth = 0.9;
-        break;
+    if (profile.bodyType == 'muscular') {
+      shoulderMult = 1.2;
+    } else if (profile.bodyType == 'lean') {
+      shoulderMult = 0.88;
     }
 
-    final isMale = profile.avatarGender == 'male';
-
-    // Save canvas for scale transformation (breathing)
-    canvas.save();
-    canvas.translate(cx, cy);
-    canvas.scale(1.15 * breatheScale, 1.15 * breatheScale); // 15% bigger overall
-    canvas.translate(-cx, -cy);
-
-    // ── 1. PODIUM ──
-    _drawPodium(canvas, cx, size.height * 0.88, size);
-
-    // ── 2. SHADOW ──
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(cx, size.height * 0.87),
-        width: 150,
-        height: 28,
-      ),
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.5)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
-    );
-
-    // ── 3. GET POSE LANDMARKS ──
-    final pose = _calculatePoseLandmarks(
-      cx,
-      cy,
-      breathe,
-      cosRot,
-      sinRot,
-      isMale,
-      shoulderMult,
-      profile.sportPose,
-    );
-
-    // ── 4. OUTFIT COLORS ──
-    final outfit = _getOutfitColors(profile.outfitStyle);
     final skinColors = profile.skinGradientColors;
 
-    // ── 5. DRAW BODY ──
+    // 2. Make body positions CORRECT for tall athletic character
+    final headR = size.height * 0.072; // head radius
+    final headCy = size.height * 0.13; // head center y
+    final neckTop = headCy + headR * 0.7;
+    final shoulderY = neckTop + headR * 0.7;
+    final shoulderWidth = size.width * 0.38 * shoulderMult;
+    final elbowY = shoulderY + size.height * 0.15;
+    final handY = elbowY + size.height * 0.14;
+    final torsoBottomY = shoulderY + size.height * 0.22;
+    final hipWidth = size.width * 0.18;
+    final kneeY = torsoBottomY + size.height * 0.22;
+    final footY = kneeY + size.height * 0.2;
+    final leftX = cx - shoulderWidth / 2;
+    final rightX = cx + shoulderWidth / 2;
+    final leftLegX = cx - hipWidth;
+    final rightLegX = cx + hipWidth;
+    final leftFootX = cx - hipWidth * 1.3;
+    final rightFootX = cx + hipWidth * 1.3;
 
-    // Legs
-    final legPaint = Paint()
-      ..color = outfit['pants']!
-      ..strokeWidth = (isMale ? 32 : 28) * legWidth
+    // 9. Add overall glow effect
+    final auraGlow = Paint()
+      ..color = const Color(0xFF00B8D4).withValues(alpha: 0.06 + 0.03 * math.sin(idleProgress * math.pi * 2))
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30);
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx, (shoulderY + torsoBottomY) / 2), width: shoulderWidth * 2.2, height: size.height * 0.55),
+      auraGlow);
+
+    // 3. Draw legs FIRST (black tactical pants with cyan accent)
+    final pantPaint = Paint()
+      ..color = const Color(0xFF0D0D12)
+      ..strokeWidth = 38
       ..strokeCap = StrokeCap.round;
+    // Left leg
+    canvas.drawLine(Offset(leftLegX, torsoBottomY), Offset(leftLegX - 6, kneeY), pantPaint);
+    canvas.drawLine(Offset(leftLegX - 6, kneeY), Offset(leftFootX, footY), pantPaint);
+    // Right leg
+    canvas.drawLine(Offset(rightLegX, torsoBottomY), Offset(rightLegX + 6, kneeY), pantPaint);
+    canvas.drawLine(Offset(rightLegX + 6, kneeY), Offset(rightFootX, footY), pantPaint);
 
-    canvas.drawLine(pose['pelvis']!, pose['kneeL']!, legPaint);
-    canvas.drawLine(pose['kneeL']!, pose['footL']!, legPaint);
-    canvas.drawLine(pose['pelvis']!, pose['kneeR']!, legPaint);
-    canvas.drawLine(pose['kneeR']!, pose['footR']!, legPaint);
+    // Cyan accent stripe on right leg
+    final cyanStripe = Paint()
+      ..color = const Color(0xFF00E5FF)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(rightLegX + 10, torsoBottomY + 10), Offset(rightFootX + 8, kneeY + 20), cyanStripe);
+    // Spider-web pattern on left knee area
+    _drawSpiderPattern(canvas, Offset(leftLegX - 6, kneeY), 22);
 
-    // Knee detail
-    final kneeHighlight = Paint()
-      ..color = outfit['pants']!.withValues(alpha: 0.6)
-      ..strokeWidth = 3;
-    canvas.drawLine(
-      Offset(pose['kneeL']!.dx - 4, pose['kneeL']!.dy),
-      Offset(pose['kneeL']!.dx + 4, pose['kneeL']!.dy),
-      kneeHighlight,
-    );
-    canvas.drawLine(
-      Offset(pose['kneeR']!.dx - 4, pose['kneeR']!.dy),
-      Offset(pose['kneeR']!.dx + 4, pose['kneeR']!.dy),
-      kneeHighlight,
-    );
+    // 4. Draw shoes
+    // Black shoes with cyan accent sole
+    final shoePaint = Paint()..color = const Color(0xFF111118);
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(leftFootX - 4, footY + 8), width: 42, height: 20),
+      const Radius.circular(8)), shoePaint);
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(rightFootX + 4, footY + 8), width: 42, height: 20),
+      const Radius.circular(8)), shoePaint);
+    // Cyan accent sole line
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(leftFootX - 4, footY + 16), width: 44, height: 5),
+      const Radius.circular(3)),
+      Paint()..color = const Color(0xFF00B8D4));
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(rightFootX + 4, footY + 16), width: 44, height: 5),
+      const Radius.circular(3)),
+      Paint()..color = const Color(0xFF00B8D4));
 
-    // Shoes
-    Color shoeColor = VColor.accentOrangeSoft;
-    if (profile.shoeColor == 'cyan') shoeColor = VColor.accent;
-    if (profile.shoeColor == 'white') shoeColor = Colors.white;
-    if (profile.shoeColor == 'stealth') shoeColor = VColor.surfaceHigh;
-
-    final shoePaint = Paint()..color = shoeColor;
-    final shoeW = isMale ? 34.0 : 28.0;
-    final shoeH = isMale ? 18.0 : 14.0;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: pose['footL']!, width: shoeW, height: shoeH),
-        const Radius.circular(8),
-      ),
-      shoePaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: pose['footR']!, width: shoeW, height: shoeH),
-        const Radius.circular(8),
-      ),
-      shoePaint,
-    );
-    // Shoe sole
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center:
-              Offset(pose['footL']!.dx, pose['footL']!.dy + shoeH * 0.35),
-          width: shoeW * 0.9,
-          height: 4,
-        ),
-        const Radius.circular(2),
-      ),
-      Paint()..color = Colors.black.withValues(alpha: 0.4),
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center:
-              Offset(pose['footR']!.dx, pose['footR']!.dy + shoeH * 0.35),
-          width: shoeW * 0.9,
-          height: 4,
-        ),
-        const Radius.circular(2),
-      ),
-      Paint()..color = Colors.black.withValues(alpha: 0.4),
-    );
-
-    // Torso
-    final waistWidth =
-        (isMale ? 22.0 : 18.0) * torsoWidth * cosRot.abs().clamp(0.3, 1.0);
+    // 5. Draw muscular torso (skin tone base + blue electric glow)
+    // Torso base — skin tone trapezoid
     final torsoPath = Path()
-      ..moveTo(pose['shoulderL']!.dx, pose['shoulderL']!.dy)
-      ..lineTo(pose['shoulderR']!.dx, pose['shoulderR']!.dy)
-      ..lineTo(pose['pelvis']!.dx + waistWidth, pose['pelvis']!.dy)
-      ..lineTo(pose['pelvis']!.dx - waistWidth, pose['pelvis']!.dy)
+      ..moveTo(leftX, shoulderY)
+      ..lineTo(rightX, shoulderY)
+      ..lineTo(cx + hipWidth * 1.1, torsoBottomY)
+      ..lineTo(cx - hipWidth * 1.1, torsoBottomY)
       ..close();
+    canvas.drawPath(torsoPath,
+      Paint()..color = skinColors[0]);
 
-    // Torso gradient — uses outfit color pickers
-    final topGrad = LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [outfit['topPrimary']!, outfit['topSecondary']!],
-    );
-    canvas.drawPath(
-      torsoPath,
-      Paint()
-        ..shader = topGrad.createShader(
-          Rect.fromLTRB(
-            pose['shoulderL']!.dx,
-            pose['shoulderL']!.dy,
-            pose['shoulderR']!.dx,
-            pose['pelvis']!.dy,
-          ),
-        ),
-    );
-
-    // Collar detail
-    canvas.drawLine(
-      Offset(
-          pose['shoulderL']!.dx * 0.65 + pose['shoulderR']!.dx * 0.35,
-          pose['shoulderL']!.dy),
-      Offset(
-          pose['shoulderL']!.dx * 0.35 + pose['shoulderR']!.dx * 0.65,
-          pose['shoulderR']!.dy),
-      Paint()
-        ..color = outfit['topPrimary']!.withValues(alpha: 0.6)
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round,
-    );
-
-    // Sport-specific accent stripe on torso
-    if (profile.sportPose == 'running' || profile.sportPose == 'cycling') {
-      final stripePaint = Paint()
-        ..color = VColor.accent.withValues(alpha: 0.35)
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round;
-      final midY = (pose['shoulderL']!.dy + pose['pelvis']!.dy) / 2;
-      canvas.drawLine(
-        Offset(pose['shoulderL']!.dx * 0.8 + cx * 0.2, midY - 10),
-        Offset(pose['shoulderL']!.dx * 0.8 + cx * 0.2, midY + 10),
-        stripePaint,
-      );
+    // Muscle definition lines on abs/chest
+    final musclePaint = Paint()
+      ..color = skinColors[1].withValues(alpha: 0.5)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    // Abs center line
+    canvas.drawLine(Offset(cx, shoulderY + 20), Offset(cx, torsoBottomY - 10), musclePaint);
+    // Pec line
+    canvas.drawLine(Offset(cx - 18, shoulderY + 25), Offset(cx + 18, shoulderY + 25), musclePaint);
+    // Ribs
+    for (int i = 1; i <= 3; i++) {
+      final ribY = shoulderY + 40 + i * 18.0;
+      canvas.drawLine(Offset(cx - 22, ribY), Offset(cx + 22, ribY),
+        Paint()..color = skinColors[1].withValues(alpha: 0.25)..strokeWidth = 1.5);
     }
 
-    // Belt
-    final beltRect = Rect.fromCenter(
-      center: pose['pelvis']!,
-      width: (isMale ? 50 : 44) *
-              torsoWidth *
-              cosRot.abs().clamp(0.4, 1.0) +
-          10,
-      height: 8,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(beltRect, const Radius.circular(4)),
-      Paint()..color = outfit['belt']!,
-    );
+    // === ELECTRIC BLUE LIGHTNING GLOW ON TORSO ===
+    _drawLightningGlow(canvas, cx, shoulderY, torsoBottomY, size, idleProgress);
+
+    // 8. Black tactical waistband / belt
+    // Belt / waistband
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(cx, torsoBottomY + 5), width: hipWidth * 2.8, height: 14),
+      const Radius.circular(5)),
+      Paint()..color = const Color(0xFF1A1830));
     // Belt buckle
-    canvas.drawCircle(
-        pose['pelvis']!, 5, Paint()..color = Colors.white.withValues(alpha: 0.8));
-
-    // Arms
-    final armPaint = Paint()
-      ..strokeWidth = (isMale ? 22 : 18) * armWidth
-      ..strokeCap = StrokeCap.round;
-
-    // Left arm (forearm is skin tone for short sleeves)
-    armPaint.color = outfit['topSecondary']!;
-    canvas.drawLine(pose['shoulderL']!, pose['elbowL']!, armPaint);
-    armPaint.color = skinColors[1];
-    armPaint.strokeWidth = (isMale ? 20 : 16) * armWidth;
-    canvas.drawLine(pose['elbowL']!, pose['handL']!, armPaint);
-
-    // Right arm
-    armPaint.color = outfit['topSecondary']!;
-    armPaint.strokeWidth = (isMale ? 22 : 18) * armWidth;
-    canvas.drawLine(pose['shoulderR']!, pose['elbowR']!, armPaint);
-    armPaint.color = skinColors[1];
-    armPaint.strokeWidth = (isMale ? 20 : 16) * armWidth;
-    canvas.drawLine(pose['elbowR']!, pose['handR']!, armPaint);
-
-    // Hands (skin-colored fists)
-    canvas.drawCircle(
-      pose['handL']!,
-      (isMale ? 8 : 7) * armWidth,
-      Paint()..color = skinColors[0],
-    );
-    canvas.drawCircle(
-      pose['handR']!,
-      (isMale ? 8 : 7) * armWidth,
-      Paint()..color = skinColors[0],
-    );
-
-    // Weightlifting barbell
-    if (profile.sportPose == 'weightlifting') {
-      _drawBarbell(canvas, pose, isMale);
-    }
-
-    // Smartwatch
-    if (profile.watchStyle != 'none') {
-      Color watchColor = VColor.accent;
-      if (profile.watchStyle == 'sport_band_orange') {
-        watchColor = VColor.accentOrangeSoft;
-      }
-      if (profile.watchStyle == 'gold_chrono') {
-        watchColor = const Color(0xFFFFD700);
-      }
-
-      final wrist = Offset(
-        (pose['elbowL']!.dx + pose['handL']!.dx) / 2,
-        (pose['elbowL']!.dy + pose['handL']!.dy) / 2,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: wrist, width: 14, height: 12),
-          const Radius.circular(3),
-        ),
-        Paint()..color = const Color(0xFF1A1A2E),
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: wrist, width: 10, height: 8),
-          const Radius.circular(2),
-        ),
-        Paint()..color = watchColor,
-      );
-    }
-
-    // ── 6. NECK ──
-    final neck = pose['neck']!;
     canvas.drawRect(
-      Rect.fromCenter(center: neck, width: 16, height: 22),
-      Paint()..color = skinColors[1],
-    );
+      Rect.fromCenter(center: Offset(cx, torsoBottomY + 5), width: 18, height: 12),
+      Paint()..color = const Color(0xFF2A2850));
+    canvas.drawRect(
+      Rect.fromCenter(center: Offset(cx, torsoBottomY + 5), width: 10, height: 6),
+      Paint()..color = const Color(0xFF00B8D4).withValues(alpha: 0.7));
 
-    // ── 7. HEADPHONES ──
-    if (profile.accessoryStyle == 'headphones_silver') {
-      final hpPaint = Paint()
-        ..color = VColor.text
-        ..strokeWidth = 5
-        ..style = PaintingStyle.stroke;
-      canvas.drawArc(
-        Rect.fromCenter(
-            center: Offset(neck.dx, neck.dy - 24), width: 50, height: 30),
-        math.pi * 0.8,
-        math.pi * 0.4,
-        false,
-        hpPaint,
-      );
-      canvas.drawCircle(
-        Offset(neck.dx - 24, neck.dy - 10),
-        7,
-        Paint()..color = VColor.accent,
-      );
-      canvas.drawCircle(
-        Offset(neck.dx + 24, neck.dy - 10),
-        7,
-        Paint()..color = VColor.accent,
-      );
-    }
-
-    // ── 8. HEAD & FACE ──
-    final head = pose['head']!;
-    _drawHead(canvas, head, cosRot, sinRot, skinColors, isMale);
-
-    canvas.restore();
-  }
-
-  // ── BARBELL for Weightlifting pose ──
-  void _drawBarbell(
-      Canvas canvas, Map<String, Offset> pose, bool isMale) {
-    final handL = pose['handL']!;
-    final handR = pose['handR']!;
-    final barPaint = Paint()
-      ..color = const Color(0xFFBEC3CC)
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round;
-
-    // Bar connecting hands
-    canvas.drawLine(
-      Offset(handL.dx - 20, handL.dy),
-      Offset(handR.dx + 20, handR.dy),
-      barPaint,
-    );
-
-    // Weight plates — left
-    final platePaint = Paint()..color = VColor.accent;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-            center: Offset(handL.dx - 24, handL.dy), width: 10, height: 28),
-        const Radius.circular(3),
-      ),
-      platePaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-            center: Offset(handL.dx - 36, handL.dy), width: 8, height: 22),
-        const Radius.circular(2),
-      ),
-      Paint()..color = VColor.accentOrange,
-    );
-
-    // Weight plates — right
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-            center: Offset(handR.dx + 24, handR.dy), width: 10, height: 28),
-        const Radius.circular(3),
-      ),
-      platePaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-            center: Offset(handR.dx + 36, handR.dy), width: 8, height: 22),
-        const Radius.circular(2),
-      ),
-      Paint()..color = VColor.accentOrange,
-    );
-  }
-
-  // ── POSE CALCULATOR ──
-  Map<String, Offset> _calculatePoseLandmarks(
-    double cx,
-    double cy,
-    double breathe,
-    double cosRot,
-    double sinRot,
-    bool isMale,
-    double shoulderMult,
-    String sport,
-  ) {
-    // Default standing pose values
-    double footLX = cx - 24 * cosRot;
-    double footLY = cy + 145;
-    double footRX = cx + 24 * cosRot;
-    double footRY = cy + 145;
-    double kneeLX = cx - 20 * cosRot;
-    double kneeLY = cy + 95;
-    double kneeRX = cx + 20 * cosRot;
-    double kneeRY = cy + 95;
-    double pelvisX = cx;
-    double pelvisY = cy + 30 - (breathe * 0.2);
-
-    final shoulderSpan = (isMale ? 48.0 : 38.0) * shoulderMult;
-    double sLX = cx - shoulderSpan * cosRot;
-    double sLY = cy - 50 - breathe;
-    double sRX = cx + shoulderSpan * cosRot;
-    double sRY = cy - 50 - breathe;
-
-    double eLX = cx - (isMale ? 58 : 52) * cosRot - (sinRot * 10);
-    double eLY = cy - 10 - breathe;
-    double eRX = cx + (isMale ? 58 : 52) * cosRot + (sinRot * 10);
-    double eRY = cy - 10 - breathe;
-    double hLX = cx - (isMale ? 26 : 22) * cosRot;
-    double hLY = cy + 30 - breathe;
-    double hRX = cx + (isMale ? 26 : 22) * cosRot;
-    double hRY = cy + 30 - breathe;
-
-    // Apply sport-specific pose modifications
-    switch (sport) {
-      case 'running':
-        // Dynamic running stride
-        final runCycle = math.sin(idleProgress * math.pi * 4) * 0.5 + 0.5;
-        footLX = cx - 35 * cosRot;
-        footLY = cy + 140 - runCycle * 15;
-        footRX = cx + 30 * cosRot;
-        footRY = cy + 145 + runCycle * 5;
-        kneeLX = cx - 25 * cosRot;
-        kneeLY = cy + 90 - runCycle * 8;
-        kneeRX = cx + 18 * cosRot;
-        kneeRY = cy + 95;
-        // Arms pumping
-        eLX = cx - 55 * cosRot;
-        eLY = cy - 20 - breathe - runCycle * 10;
-        eRX = cx + 50 * cosRot;
-        eRY = cy + 5 - breathe + runCycle * 10;
-        hLX = cx - 30 * cosRot;
-        hLY = cy - 5 - breathe;
-        hRX = cx + 20 * cosRot;
-        hRY = cy + 20 - breathe;
-        break;
-
-      case 'boxing':
-        // Boxing guard stance
-        footLX = cx - 30 * cosRot;
-        footRX = cx + 20 * cosRot;
-        kneeLX = cx - 22 * cosRot;
-        kneeLY = cy + 88;
-        kneeRX = cx + 16 * cosRot;
-        kneeRY = cy + 90;
-        // Guard position - fists up
-        eLX = cx - 40 * cosRot;
-        eLY = cy - 45 - breathe;
-        eRX = cx + 35 * cosRot;
-        eRY = cy - 40 - breathe;
-        hLX = cx - 20 * cosRot;
-        hLY = cy - 55 - breathe;
-        hRX = cx + 18 * cosRot;
-        hRY = cy - 50 - breathe;
-        break;
-
-      case 'yoga':
-        // Tree pose (Vrksasana)
-        footLX = cx;
-        footLY = cy + 145;
-        footRX = cx - 10 * cosRot;
-        footRY = cy + 80;
-        kneeLX = cx;
-        kneeLY = cy + 95;
-        kneeRX = cx + 25 * cosRot;
-        kneeRY = cy + 80;
-        // Arms above head (namaste)
-        eLX = cx - 20 * cosRot;
-        eLY = cy - 75 - breathe;
-        eRX = cx + 20 * cosRot;
-        eRY = cy - 75 - breathe;
-        hLX = cx - 5;
-        hLY = cy - 100 - breathe;
-        hRX = cx + 5;
-        hRY = cy - 100 - breathe;
-        pelvisY = cy + 30;
-        break;
-
-      case 'cycling':
-        // Leaning forward cycling position
-        pelvisY = cy + 40;
-        sLY = cy - 35 - breathe;
-        sRY = cy - 35 - breathe;
-        footLX = cx - 30 * cosRot;
-        footLY = cy + 140;
-        footRX = cx + 30 * cosRot;
-        footRY = cy + 120;
-        kneeLX = cx - 25 * cosRot;
-        kneeLY = cy + 95;
-        kneeRX = cx + 20 * cosRot;
-        kneeRY = cy + 85;
-        // Hands on handlebars
-        eLX = cx - 45 * cosRot;
-        eLY = cy - 15 - breathe;
-        eRX = cx + 45 * cosRot;
-        eRY = cy - 15 - breathe;
-        hLX = cx - 35 * cosRot;
-        hLY = cy + 5 - breathe;
-        hRX = cx + 35 * cosRot;
-        hRY = cy + 5 - breathe;
-        break;
-
-      case 'weightlifting':
-        // Overhead press / power clean finish
-        footLX = cx - 28 * cosRot;
-        footLY = cy + 145;
-        footRX = cx + 28 * cosRot;
-        footRY = cy + 145;
-        kneeLX = cx - 24 * cosRot;
-        kneeLY = cy + 90;
-        kneeRX = cx + 24 * cosRot;
-        kneeRY = cy + 90;
-        pelvisY = cy + 28;
-        // Wider stance shoulders
-        sLX = cx - shoulderSpan * 1.05 * cosRot;
-        sRX = cx + shoulderSpan * 1.05 * cosRot;
-        // Arms up — barbell overhead press
-        eLX = cx - 52 * cosRot;
-        eLY = cy - 70 - breathe;
-        eRX = cx + 52 * cosRot;
-        eRY = cy - 70 - breathe;
-        hLX = cx - 45 * cosRot;
-        hLY = cy - 95 - breathe;
-        hRX = cx + 45 * cosRot;
-        hRY = cy - 95 - breathe;
-        break;
-
-      case 'squat':
-        // Deep squat position — legs wide and bent
-        footLX = cx - 40 * cosRot;
-        footLY = cy + 145;
-        footRX = cx + 40 * cosRot;
-        footRY = cy + 145;
-        kneeLX = cx - 38 * cosRot;
-        kneeLY = cy + 80;
-        kneeRX = cx + 38 * cosRot;
-        kneeRY = cy + 80;
-        pelvisX = cx;
-        pelvisY = cy + 70;
-        sLY = cy - 20 - breathe;
-        sRY = cy - 20 - breathe;
-        // Arms forward for balance
-        eLX = cx - 32 * cosRot;
-        eLY = cy - 30 - breathe;
-        eRX = cx + 32 * cosRot;
-        eRY = cy - 30 - breathe;
-        hLX = cx - 15 * cosRot;
-        hLY = cy - 15 - breathe;
-        hRX = cx + 15 * cosRot;
-        hRY = cy - 15 - breathe;
-        break;
-
-      case 'plank':
-        // Full horizontal plank — body straight, arms locked
-        pelvisX = cx;
-        pelvisY = cy + 40;
-        footLX = cx - 55 * cosRot;
-        footLY = cy + 70;
-        footRX = cx - 50 * cosRot;
-        footRY = cy + 70;
-        kneeLX = cx - 20 * cosRot;
-        kneeLY = cy + 60;
-        kneeRX = cx - 15 * cosRot;
-        kneeRY = cy + 60;
-        sLX = cx + 45 * cosRot;
-        sLY = cy + 10 - breathe;
-        sRX = cx + 50 * cosRot;
-        sRY = cy + 10 - breathe;
-        eLX = cx + 50 * cosRot;
-        eLY = cy + 35 - breathe;
-        eRX = cx + 55 * cosRot;
-        eRY = cy + 35 - breathe;
-        hLX = cx + 50 * cosRot;
-        hLY = cy + 50 - breathe;
-        hRX = cx + 55 * cosRot;
-        hRY = cy + 50 - breathe;
-        break;
-
-      case 'pushup':
-        // Push-up down position
-        final pushPhase = math.sin(idleProgress * math.pi * 2) * 0.5 + 0.5;
-        pelvisX = cx;
-        pelvisY = cy + 40 - pushPhase * 15;
-        footLX = cx - 50 * cosRot;
-        footLY = cy + 80;
-        footRX = cx - 45 * cosRot;
-        footRY = cy + 80;
-        kneeLX = cx - 20 * cosRot;
-        kneeLY = cy + 65;
-        kneeRX = cx - 15 * cosRot;
-        kneeRY = cy + 65;
-        sLX = cx + 40 * cosRot;
-        sLY = cy - 5 - breathe + pushPhase * 15;
-        sRX = cx + 45 * cosRot;
-        sRY = cy - 5 - breathe + pushPhase * 15;
-        eLX = cx + 30 * cosRot;
-        eLY = cy + 20 - breathe + pushPhase * 10;
-        eRX = cx + 35 * cosRot;
-        eRY = cy + 20 - breathe + pushPhase * 10;
-        hLX = cx + 30 * cosRot;
-        hLY = cy + 45 - breathe + pushPhase * 5;
-        hRX = cx + 35 * cosRot;
-        hRY = cy + 45 - breathe + pushPhase * 5;
-        break;
-
-      case 'swimming':
-        // Freestyle swimming stroke
-        final swimPhase = math.sin(idleProgress * math.pi * 3);
-        pelvisX = cx;
-        pelvisY = cy + 30;
-        sLY = cy - 40 - breathe;
-        sRY = cy - 40 - breathe;
-        footLX = cx - 30 * cosRot;
-        footLY = cy + 130 + swimPhase * 8;
-        footRX = cx + 25 * cosRot;
-        footRY = cy + 130 - swimPhase * 8;
-        // Alternating arm strokes
-        eLX = cx - 60 * cosRot;
-        eLY = cy - 60 - breathe + swimPhase * 20;
-        eRX = cx + 50 * cosRot;
-        eRY = cy + 10 - breathe - swimPhase * 20;
-        hLX = cx - 70 * cosRot;
-        hLY = cy - 50 - breathe + swimPhase * 25;
-        hRX = cx + 35 * cosRot;
-        hRY = cy + 30 - breathe - swimPhase * 15;
-        break;
-
-      case 'dancing':
-        // Dynamic dance pose — arms expressive, weight shifted
-        final dancePhase = math.sin(idleProgress * math.pi * 4);
-        footLX = cx - 35 * cosRot;
-        footLY = cy + 145 + dancePhase * 5;
-        footRX = cx + 20 * cosRot;
-        footRY = cy + 140;
-        kneeLX = cx - 28 * cosRot;
-        kneeLY = cy + 90 + dancePhase * 4;
-        kneeRX = cx + 15 * cosRot;
-        kneeRY = cy + 92;
-        sLX = cx - shoulderSpan * 1.1 * cosRot;
-        sLY = cy - 55 - breathe + dancePhase * 5;
-        sRX = cx + shoulderSpan * 0.9 * cosRot;
-        sRY = cy - 50 - breathe - dancePhase * 5;
-        eLX = cx - 65 * cosRot;
-        eLY = cy - 70 - breathe + dancePhase * 10;
-        eRX = cx + 60 * cosRot;
-        eRY = cy - 20 - breathe - dancePhase * 8;
-        hLX = cx - 75 * cosRot;
-        hLY = cy - 65 - breathe + dancePhase * 12;
-        hRX = cx + 70 * cosRot;
-        hRY = cy - 15 - breathe - dancePhase * 10;
-        break;
-
-      case 'football':
-        // Power kick stance — one leg raised, arms spread for balance
-        final kickPhase = math.sin(idleProgress * math.pi * 1.5) * 0.5 + 0.5;
-        footLX = cx - 15 * cosRot;
-        footLY = cy + 145;
-        footRX = cx + 50 * cosRot;
-        footRY = cy + 90 - kickPhase * 20;
-        kneeLX = cx - 10 * cosRot;
-        kneeLY = cy + 92;
-        kneeRX = cx + 35 * cosRot;
-        kneeRY = cy + 70 - kickPhase * 15;
-        // Arms spread for balance
-        eLX = cx - 62 * cosRot;
-        eLY = cy - 20 - breathe;
-        eRX = cx + 62 * cosRot;
-        eRY = cy - 15 - breathe;
-        hLX = cx - 72 * cosRot;
-        hLY = cy - 10 - breathe;
-        hRX = cx + 72 * cosRot;
-        hRY = cy - 5 - breathe;
-        break;
-
-      case 'cricket':
-        // Batting stance — bat raised, side profile
-        footLX = cx - 38 * cosRot;
-        footLY = cy + 145;
-        footRX = cx + 18 * cosRot;
-        footRY = cy + 145;
-        kneeLX = cx - 30 * cosRot;
-        kneeLY = cy + 92;
-        kneeRX = cx + 14 * cosRot;
-        kneeRY = cy + 92;
-        // Both hands gripping bat raised to shoulder
-        eLX = cx - 10 * cosRot;
-        eLY = cy - 55 - breathe;
-        eRX = cx + 15 * cosRot;
-        eRY = cy - 60 - breathe;
-        hLX = cx - 5 * cosRot;
-        hLY = cy - 80 - breathe;
-        hRX = cx + 10 * cosRot;
-        hRY = cy - 85 - breathe;
-        break;
-
-      case 'skipping':
-        // Jump rope pose — mid-air, knees bent, arms looping
-        final skipPhase = math.sin(idleProgress * math.pi * 6) * 0.5 + 0.5;
-        pelvisY = cy + 20 - skipPhase * 20;
-        footLX = cx - 18 * cosRot;
-        footLY = cy + 130 - skipPhase * 25;
-        footRX = cx + 18 * cosRot;
-        footRY = cy + 132 - skipPhase * 22;
-        kneeLX = cx - 16 * cosRot;
-        kneeLY = cy + 85 - skipPhase * 15;
-        kneeRX = cx + 16 * cosRot;
-        kneeRY = cy + 87 - skipPhase * 12;
-        sLY = cy - 52 - breathe - skipPhase * 5;
-        sRY = cy - 52 - breathe - skipPhase * 5;
-        // Arms rotating rope
-        eLX = cx - 55 * cosRot - skipPhase * 10;
-        eLY = cy - 15 - breathe + skipPhase * 20;
-        eRX = cx + 55 * cosRot + skipPhase * 10;
-        eRY = cy - 20 - breathe + skipPhase * 20;
-        hLX = cx - 60 * cosRot - skipPhase * 12;
-        hLY = cy + 5 - breathe + skipPhase * 25;
-        hRX = cx + 60 * cosRot + skipPhase * 12;
-        hRY = cy - 0 - breathe + skipPhase * 25;
-        break;
-    }
-
-    final neckY = sLY - 15;
-
-    return {
-      'footL': Offset(footLX, footLY),
-      'footR': Offset(footRX, footRY),
-      'kneeL': Offset(kneeLX, kneeLY),
-      'kneeR': Offset(kneeRX, kneeRY),
-      'pelvis': Offset(pelvisX, pelvisY),
-      'shoulderL': Offset(sLX, sLY),
-      'shoulderR': Offset(sRX, sRY),
-      'elbowL': Offset(eLX, eLY),
-      'elbowR': Offset(eRX, eRY),
-      'handL': Offset(hLX, hLY),
-      'handR': Offset(hRX, hRY),
-      'neck': Offset(cx, neckY),
-      'head': Offset(cx, neckY - 42),
-    };
-  }
-
-  Map<String, Color> _getOutfitColors(String style) {
-    // Always mix in the user's custom primary/secondary picks
-    switch (style) {
-      case 'hoodie_white':
-        return {
-          'topPrimary': outfitPrimary,
-          'topSecondary': outfitSecondary,
-          'pants': const Color(0xFF3E4C5E),
-          'belt': VColor.accentOrange,
-        };
-      case 'runner_stealth':
-        return {
-          'topPrimary': outfitPrimary,
-          'topSecondary': outfitSecondary,
-          'pants': VColor.surfaceRaised,
-          'belt': VColor.accent,
-        };
-      case 'sunset_orange':
-        return {
-          'topPrimary': outfitPrimary,
-          'topSecondary': outfitSecondary,
-          'pants': const Color(0xFF2B2D42),
-          'belt': const Color(0xFFFFE66D),
-        };
-      case 'athletic_teal':
-      default:
-        return {
-          'topPrimary': outfitPrimary,
-          'topSecondary': outfitSecondary,
-          'pants': const Color(0xFF334E68),
-          'belt': VColor.accentOrangeSoft,
-        };
-    }
-  }
-
-  // ── PODIUM ──
-  void _drawPodium(Canvas canvas, double cx, double cy, Size size) {
-    // Outer glow ring
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, cy + 6), width: 280, height: 55),
-      Paint()
-        ..color = VColor.accent.withValues(alpha: 0.12)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5,
-    );
-
-    // Platform fill
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, cy), width: 240, height: 46),
-      Paint()
-        ..color = VColor.bgLift
-        ..style = PaintingStyle.fill,
-    );
-
-    // Main ring
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, cy), width: 240, height: 46),
-      Paint()
-        ..color = VColor.accent
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 3),
-    );
-
-    // Inner ring
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, cy - 2), width: 190, height: 36),
-      Paint()
-        ..color = VColor.accentGreen.withValues(alpha: 0.4)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2,
-    );
-
-    // Hexagonal pattern dots on platform
-    for (int i = 0; i < 6; i++) {
-      final angle = (math.pi * 2 / 6) * i;
-      final dotX = cx + math.cos(angle) * 60;
-      final dotY = cy + math.sin(angle) * 12;
-      canvas.drawCircle(
-        Offset(dotX, dotY),
-        2,
-        Paint()..color = VColor.accent.withValues(alpha: 0.3),
-      );
-    }
-  }
-
-  // ── HEAD & FACE ──
-  void _drawHead(
-    Canvas canvas,
-    Offset head,
-    double cosRot,
-    double sinRot,
-    List<Color> skinColors,
-    bool isMale,
-  ) {
-    const headRadius = 34.0;
-
-    // Skin gradient
-    final skinGrad = RadialGradient(
-      center: Alignment(0.2 * cosRot, -0.3),
-      radius: 0.85,
-      colors: skinColors,
-    );
-    canvas.drawCircle(
-      head,
-      headRadius,
-      Paint()
-        ..shader = skinGrad.createShader(
-            Rect.fromCircle(center: head, radius: headRadius)),
-    );
-
-    // Ear highlights
-    canvas.drawCircle(
-      Offset(head.dx - headRadius * cosRot * 0.95, head.dy + 2),
-      6,
-      Paint()..color = skinColors[1],
-    );
-    canvas.drawCircle(
-      Offset(head.dx + headRadius * cosRot * 0.95, head.dy + 2),
-      6,
-      Paint()..color = skinColors[1],
-    );
-
-    // HAIR
-    final hairPaint = Paint()..color = profile.hairColor;
-    _drawHairStyle(canvas, head, hairPaint, isMale);
-
-    // CAPS / HEADWEAR
-    if (profile.capStyle != 'none') {
-      Color capColor = VColor.surfaceHigh;
-      if (profile.capStyle == 'visor_neon') capColor = VColor.accent;
-      if (profile.capStyle == 'beanie_gray') capColor = VColor.textLow;
-
-      final capPath = Path()
-        ..moveTo(head.dx - 36, head.dy - 16)
-        ..quadraticBezierTo(head.dx, head.dy - 50, head.dx + 36, head.dy - 16)
-        ..close();
-      canvas.drawPath(capPath, Paint()..color = capColor);
-
-      if (profile.capStyle == 'snapback_black' ||
-          profile.capStyle == 'visor_neon') {
-        canvas.drawOval(
-          Rect.fromCenter(
-              center: Offset(head.dx, head.dy - 16), width: 60, height: 12),
-          Paint()..color = capColor,
-        );
-      }
-    }
-
-    // SWEATBAND / HEADBAND
-    if (profile.accessoryStyle == 'sweatband_red') {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(
-              center: Offset(head.dx, head.dy - 20), width: 62, height: 8),
-          const Radius.circular(4),
-        ),
-        Paint()..color = const Color(0xFFFF4136),
-      );
-      // Knot detail
-      canvas.drawCircle(
-        Offset(head.dx + 30, head.dy - 20),
-        4,
-        Paint()..color = const Color(0xFFCC3333),
-      );
-    }
-
-    // EYES
-    final eyeShiftX = 10 * cosRot;
-    final eyeL = Offset(head.dx - 12 + (eyeShiftX * 0.4), head.dy - 4);
-    final eyeR = Offset(head.dx + 12 + (eyeShiftX * 0.4), head.dy - 4);
-
-    if (profile.accessoryStyle == 'sunglasses_stealth') {
-      // Sunglasses
-      final shadesPaint = Paint()..color = const Color(0xFF101622);
-      final framePaint = Paint()
-        ..color = const Color(0xFF3A3A4A)
-        ..strokeWidth = 1.5
-        ..style = PaintingStyle.stroke;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: eyeL, width: 24, height: 16),
-          const Radius.circular(6),
-        ),
-        shadesPaint,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: eyeR, width: 24, height: 16),
-          const Radius.circular(6),
-        ),
-        shadesPaint,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: eyeL, width: 24, height: 16),
-          const Radius.circular(6),
-        ),
-        framePaint,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: eyeR, width: 24, height: 16),
-          const Radius.circular(6),
-        ),
-        framePaint,
-      );
-      canvas.drawLine(
-        Offset(eyeL.dx + 12, eyeL.dy),
-        Offset(eyeR.dx - 12, eyeR.dy),
-        Paint()
-          ..color = const Color(0xFF3A3A4A)
-          ..strokeWidth = 2,
-      );
-      // Lens glare
-      canvas.drawLine(
-        Offset(eyeL.dx - 6, eyeL.dy - 4),
-        Offset(eyeL.dx - 2, eyeL.dy - 6),
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.3)
-          ..strokeWidth = 1.5
-          ..strokeCap = StrokeCap.round,
-      );
-    } else {
-      // Eye whites
-      canvas.drawOval(
-        Rect.fromCenter(center: eyeL, width: 14, height: 17),
-        Paint()..color = Colors.white,
-      );
-      canvas.drawOval(
-        Rect.fromCenter(center: eyeR, width: 14, height: 17),
-        Paint()..color = Colors.white,
-      );
-
-      // Irises
-      canvas.drawCircle(eyeL, 6, Paint()..color = const Color(0xFF5C3317));
-      canvas.drawCircle(eyeR, 6, Paint()..color = const Color(0xFF5C3317));
-
-      // Pupils
-      canvas.drawCircle(eyeL, 3.5, Paint()..color = Colors.black);
-      canvas.drawCircle(eyeR, 3.5, Paint()..color = Colors.black);
-
-      // Catchlights
-      canvas.drawCircle(
-        Offset(eyeL.dx - 1.5, eyeL.dy - 2),
-        1.8,
-        Paint()..color = Colors.white,
-      );
-      canvas.drawCircle(
-        Offset(eyeR.dx - 1.5, eyeR.dy - 2),
-        1.8,
-        Paint()..color = Colors.white,
-      );
-    }
-
-    // Eyebrows
-    final browPaint = Paint()
-      ..color = profile.hairColor
-      ..strokeWidth = isMale ? 3.5 : 2.5
+    // 6. Draw arms with armored gauntlets
+    // Upper arms — skin tone
+    final armPaint = Paint()
+      ..strokeWidth = 28
       ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-    canvas.drawLine(
-      Offset(eyeL.dx - 7, eyeL.dy - 12),
-      Offset(eyeL.dx + 7, eyeL.dy - 11),
-      browPaint,
-    );
-    canvas.drawLine(
-      Offset(eyeR.dx - 7, eyeR.dy - 11),
-      Offset(eyeR.dx + 7, eyeR.dy - 12),
-      browPaint,
-    );
+      ..color = skinColors[0];
+    canvas.drawLine(Offset(leftX, shoulderY), Offset(leftX - 12, elbowY), armPaint);
+    canvas.drawLine(Offset(rightX, shoulderY), Offset(rightX + 12, elbowY), armPaint);
 
-    // Stubble / facial hair
-    if (isMale && profile.facialHair != 'clean') {
-      final stubblePaint = Paint()
-        ..color = profile.hairColor.withValues(alpha: 0.45)
-        ..strokeWidth = 2.2
-        ..strokeCap = StrokeCap.round
-        ..style = PaintingStyle.stroke;
-      final stubblePath = Path()
-        ..moveTo(head.dx - 18, head.dy + 12)
-        ..quadraticBezierTo(head.dx, head.dy + 28, head.dx + 18, head.dy + 12);
-      canvas.drawPath(stubblePath, stubblePaint);
-    }
+    // Forearms — DARK ARMOR GAUNTLETS
+    final gauntletPaint = Paint()
+      ..strokeWidth = 26
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFF1A1A28);
+    canvas.drawLine(Offset(leftX - 12, elbowY), Offset(leftX - 18, handY), gauntletPaint);
+    canvas.drawLine(Offset(rightX + 12, elbowY), Offset(rightX + 18, handY), gauntletPaint);
 
-    // Nose
-    canvas.drawCircle(
-      Offset(head.dx + (eyeShiftX * 0.3), head.dy + 8),
-      2.5,
-      Paint()..color = skinColors[2],
-    );
+    // Gauntlet cyan accent lines
+    final gauntletAccent = Paint()..color = const Color(0xFF00E5FF)..strokeWidth = 2;
+    canvas.drawLine(Offset(leftX - 10, elbowY + 10), Offset(leftX - 16, handY - 15), gauntletAccent);
+    canvas.drawLine(Offset(rightX + 10, elbowY + 10), Offset(rightX + 16, handY - 15), gauntletAccent);
 
-    // Confident smile
-    final smilePath = Path()
-      ..moveTo(head.dx - 9 + (eyeShiftX * 0.3), head.dy + 17)
-      ..quadraticBezierTo(
-        head.dx + (eyeShiftX * 0.3),
-        head.dy + 24,
-        head.dx + 11 + (eyeShiftX * 0.3),
-        head.dy + 18,
-      );
-    canvas.drawPath(
-      smilePath,
-      Paint()
-        ..color = const Color(0xFFBB4444)
-        ..strokeWidth = 2.5
-        ..strokeCap = StrokeCap.round
-        ..style = PaintingStyle.stroke,
-    );
+    // Blue glow on upper arms too
+    _drawArmLightning(canvas, Offset(leftX, shoulderY), Offset(leftX - 12, elbowY), idleProgress);
+    _drawArmLightning(canvas, Offset(rightX, shoulderY), Offset(rightX + 12, elbowY), idleProgress);
+
+    // Hands/fists
+    canvas.drawCircle(Offset(leftX - 18, handY), 12, Paint()..color = const Color(0xFF1A1A28));
+    canvas.drawCircle(Offset(rightX + 18, handY), 12, Paint()..color = const Color(0xFF1A1A28));
+
+    // 7. Draw head and face
+    // Neck
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(cx, neckTop + headR * 0.3), width: 24, height: headR * 1.0),
+      const Radius.circular(6)), Paint()..color = skinColors[0]);
+
+    // Head
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx, headCy), width: headR * 1.8, height: headR * 2.1),
+      Paint()..color = skinColors[0]);
+
+    // === HAIR — Silver/White Spiky ===
+    _drawSpikeyHair(canvas, cx, headCy, headR);
+
+    // === DARK SUNGLASSES ===
+    _drawSunglasses(canvas, cx, headCy, headR);
+
+    // Jaw shadow
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx, headCy + headR * 0.6), width: headR * 1.4, height: headR * 0.6),
+      Paint()..color = skinColors[2].withValues(alpha: 0.4));
   }
 
-  // ── HAIR STYLES ──
-  void _drawHairStyle(
-      Canvas canvas, Offset head, Paint hairPaint, bool isMale) {
-    switch (profile.hairStyle) {
-      case 'short_crop':
-        // Clean short top
-        final topHair = Path()
-          ..moveTo(head.dx - 32, head.dy - 10)
-          ..quadraticBezierTo(
-              head.dx, head.dy - 46, head.dx + 32, head.dy - 10)
-          ..quadraticBezierTo(
-              head.dx, head.dy - 24, head.dx - 32, head.dy - 10)
-          ..close();
-        canvas.drawPath(topHair, hairPaint);
-        // Sideburns
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromCenter(
-                center: Offset(head.dx - 31, head.dy - 2),
-                width: 6,
-                height: 18),
-            const Radius.circular(3),
-          ),
-          hairPaint,
-        );
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromCenter(
-                center: Offset(head.dx + 31, head.dy - 2),
-                width: 6,
-                height: 18),
-            const Radius.circular(3),
-          ),
-          hairPaint,
-        );
-        break;
-
-      case 'buzz_cut':
-        // Very short all-over
-        canvas.drawArc(
-          Rect.fromCenter(
-              center: Offset(head.dx, head.dy - 8), width: 66, height: 56),
-          math.pi,
-          math.pi,
-          true,
-          hairPaint..color = profile.hairColor.withValues(alpha: 0.7),
-        );
-        hairPaint.color = profile.hairColor;
-        break;
-
-      case 'long_tied':
-        // Long hair tied back (ponytail)
-        // Volume on sides
-        canvas.drawCircle(
-            Offset(head.dx - 28, head.dy - 8), 18, hairPaint);
-        canvas.drawCircle(
-            Offset(head.dx + 28, head.dy - 8), 18, hairPaint);
-        canvas.drawCircle(
-            Offset(head.dx - 30, head.dy + 10), 16, hairPaint);
-        canvas.drawCircle(
-            Offset(head.dx + 30, head.dy + 10), 16, hairPaint);
-        // Top arch
-        final topHair = Path()
-          ..moveTo(head.dx - 34, head.dy - 12)
-          ..quadraticBezierTo(
-              head.dx, head.dy - 50, head.dx + 34, head.dy - 12)
-          ..quadraticBezierTo(
-              head.dx, head.dy - 22, head.dx - 34, head.dy - 12)
-          ..close();
-        canvas.drawPath(topHair, hairPaint);
-        // Ponytail
-        final tailPath = Path()
-          ..moveTo(head.dx - 5, head.dy + 24)
-          ..quadraticBezierTo(
-              head.dx + 15, head.dy + 55, head.dx + 5, head.dy + 70);
-        canvas.drawPath(
-          tailPath,
-          Paint()
-            ..color = profile.hairColor
-            ..strokeWidth = 12
-            ..strokeCap = StrokeCap.round
-            ..style = PaintingStyle.stroke,
-        );
-        // Hair tie
-        canvas.drawCircle(
-          Offset(head.dx, head.dy + 28),
-          4,
-          Paint()..color = VColor.accent,
-        );
-        break;
-
-      case 'mohawk':
-        // Shaved sides + tall center strip
-        canvas.drawArc(
-          Rect.fromCenter(
-              center: Offset(head.dx, head.dy - 8), width: 66, height: 56),
-          math.pi,
-          math.pi,
-          true,
-          Paint()..color = profile.hairColor.withValues(alpha: 0.3),
-        );
-        // Mohawk strip
-        final mohawkPath = Path()
-          ..moveTo(head.dx - 8, head.dy + 10)
-          ..quadraticBezierTo(
-              head.dx - 6, head.dy - 55, head.dx, head.dy - 55)
-          ..quadraticBezierTo(
-              head.dx + 6, head.dy - 55, head.dx + 8, head.dy + 10)
-          ..close();
-        canvas.drawPath(mohawkPath, hairPaint);
-        break;
-
-      case 'braided':
-        // Braids from top going down sides
-        final topHair = Path()
-          ..moveTo(head.dx - 32, head.dy - 8)
-          ..quadraticBezierTo(
-              head.dx, head.dy - 48, head.dx + 32, head.dy - 8)
-          ..quadraticBezierTo(
-              head.dx, head.dy - 20, head.dx - 32, head.dy - 8)
-          ..close();
-        canvas.drawPath(topHair, hairPaint);
-        // Left braid
-        for (int i = 0; i < 5; i++) {
-          final y = head.dy + i * 12;
-          canvas.drawCircle(
-            Offset(head.dx - 32 + math.sin(i * 0.8) * 3, y),
-            5,
-            hairPaint,
-          );
-        }
-        // Right braid
-        for (int i = 0; i < 5; i++) {
-          final y = head.dy + i * 12;
-          canvas.drawCircle(
-            Offset(head.dx + 32 + math.sin(i * 0.8) * 3, y),
-            5,
-            hairPaint,
-          );
-        }
-        break;
-
-      case 'bald':
-        // Just a very subtle hair shadow on top
-        canvas.drawArc(
-          Rect.fromCenter(
-              center: Offset(head.dx, head.dy - 10), width: 62, height: 50),
-          math.pi,
-          math.pi,
-          false,
-          Paint()
-            ..color = profile.hairColor.withValues(alpha: 0.15)
-            ..strokeWidth = 2
-            ..style = PaintingStyle.stroke,
-        );
-        break;
-
-      default:
-        // Fallback wavy/default
-        if (!isMale) {
-          canvas.drawCircle(
-              Offset(head.dx - 26, head.dy - 10), 18, hairPaint);
-          canvas.drawCircle(
-              Offset(head.dx + 26, head.dy - 10), 18, hairPaint);
-          canvas.drawCircle(
-              Offset(head.dx - 28, head.dy + 12), 16, hairPaint);
-          canvas.drawCircle(
-              Offset(head.dx + 28, head.dy + 12), 16, hairPaint);
-          final topHair = Path()
-            ..moveTo(head.dx - 32, head.dy - 12)
-            ..quadraticBezierTo(
-                head.dx, head.dy - 48, head.dx + 32, head.dy - 12)
-            ..quadraticBezierTo(
-                head.dx, head.dy - 20, head.dx - 32, head.dy - 12)
-            ..close();
-          canvas.drawPath(topHair, hairPaint);
-        } else {
-          final maleTopHair = Path()
-            ..moveTo(head.dx - 32, head.dy - 8)
-            ..quadraticBezierTo(
-                head.dx, head.dy - 44, head.dx + 32, head.dy - 8)
-            ..quadraticBezierTo(
-                head.dx, head.dy - 22, head.dx - 32, head.dy - 8)
-            ..close();
-          canvas.drawPath(maleTopHair, hairPaint);
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(
-              Rect.fromCenter(
-                  center: Offset(head.dx - 30, head.dy - 2),
-                  width: 6,
-                  height: 22),
-              const Radius.circular(3),
-            ),
-            hairPaint,
-          );
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(
-              Rect.fromCenter(
-                  center: Offset(head.dx + 30, head.dy - 2),
-                  width: 6,
-                  height: 22),
-              const Radius.circular(3),
-            ),
-            hairPaint,
-          );
-        }
-    }
-  }
+  
 
   @override
   bool shouldRepaint(covariant _FreeFireAvatarPainter oldDelegate) {
@@ -3065,4 +1964,148 @@ class _FreeFireAvatarPainter extends CustomPainter {
         oldDelegate.outfitPrimary != outfitPrimary ||
         oldDelegate.outfitSecondary != outfitSecondary;
   }
+}
+
+
+void _drawLightningGlow(Canvas canvas, double cx, double shoulderY, double torsoBottomY, Size size, double progress) {
+  final rand = math.Random(42);
+  final glowPaint = Paint()
+    ..strokeCap = StrokeCap.round
+    ..strokeWidth = 1.5
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+  
+  // Animate lightning using sin waves
+  final pulse = math.sin(progress * math.pi * 2);
+  final numBolts = 12;
+  for (int i = 0; i < numBolts; i++) {
+    final startX = cx + (rand.nextDouble() - 0.5) * 70;
+    final startY = shoulderY + rand.nextDouble() * (torsoBottomY - shoulderY);
+    final endX = startX + (rand.nextDouble() - 0.5) * 40;
+    final endY = startY + rand.nextDouble() * 40 - 10;
+    final alpha = (0.4 + 0.5 * pulse + rand.nextDouble() * 0.3).clamp(0.0, 1.0);
+    glowPaint.color = Color.fromRGBO(100, 200, 255, alpha);
+    
+    // Jagged lightning path
+    final path = Path();
+    path.moveTo(startX, startY);
+    final midX = (startX + endX) / 2 + (rand.nextDouble() - 0.5) * 15;
+    final midY = (startY + endY) / 2;
+    path.lineTo(midX, midY);
+    path.lineTo(endX, endY);
+    canvas.drawPath(path, glowPaint);
+  }
+  
+  // Main central bright bolt
+  final mainGlow = Paint()
+    ..color = Color.fromRGBO(150, 230, 255, (0.6 + 0.4 * pulse).clamp(0.0, 1.0))
+    ..strokeWidth = 2.5
+    ..strokeCap = StrokeCap.round
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+  canvas.drawLine(
+    Offset(cx - 15, shoulderY + 20),
+    Offset(cx + 10, shoulderY + 60),
+    mainGlow);
+  canvas.drawLine(
+    Offset(cx + 10, shoulderY + 60),
+    Offset(cx - 8, shoulderY + 100),
+    mainGlow);
+}
+
+void _drawArmLightning(Canvas canvas, Offset top, Offset bottom, double progress) {
+  final rand = math.Random(7);
+  final pulse = math.sin(progress * math.pi * 2 + 1.0);
+  final numLines = 4;
+  final glowPaint = Paint()
+    ..strokeWidth = 1.2
+    ..strokeCap = StrokeCap.round
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+  for (int i = 0; i < numLines; i++) {
+    final t = rand.nextDouble();
+    final x = top.dx + (bottom.dx - top.dx) * t + (rand.nextDouble() - 0.5) * 18;
+    final y = top.dy + (bottom.dy - top.dy) * t;
+    final ex = x + (rand.nextDouble() - 0.5) * 20;
+    final ey = y + rand.nextDouble() * 20;
+    glowPaint.color = Color.fromRGBO(100, 200, 255, (0.3 + 0.4 * pulse).clamp(0.0, 1.0));
+    canvas.drawLine(Offset(x, y), Offset(ex, ey), glowPaint);
+  }
+}
+
+void _drawSpikeyHair(Canvas canvas, double cx, double headCy, double headR) {
+  final hairPaint = Paint()..color = const Color(0xFFE8E8F0); // Silver white
+  
+  // Base hair — rounded cap
+  canvas.drawOval(
+    Rect.fromCenter(center: Offset(cx, headCy - headR * 0.3), width: headR * 1.9, height: headR * 1.5),
+    hairPaint);
+  
+  // Spiky top — multiple triangular spikes
+  final spikes = [
+    [cx - 8.0, headCy - headR * 0.9, cx - 20.0, headCy - headR * 1.8, cx + 2.0, headCy - headR * 0.8],
+    [cx + 2.0, headCy - headR * 0.8, cx - 2.0, headCy - headR * 2.0, cx + 15.0, headCy - headR * 0.9],
+    [cx + 10.0, headCy - headR * 0.9, cx + 16.0, headCy - headR * 1.7, cx + 24.0, headCy - headR * 0.8],
+    [cx - 22.0, headCy - headR * 0.6, cx - 30.0, headCy - headR * 1.4, cx - 10.0, headCy - headR * 0.6],
+  ];
+  for (final spike in spikes) {
+    final path = Path()
+      ..moveTo(spike[0], spike[1])
+      ..lineTo(spike[2], spike[3])
+      ..lineTo(spike[4], spike[5])
+      ..close();
+    canvas.drawPath(path, hairPaint);
+  }
+  // Shadow on hair
+  canvas.drawOval(
+    Rect.fromCenter(center: Offset(cx + 10, headCy - headR * 0.2), width: headR * 0.8, height: headR * 0.8),
+    Paint()..color = const Color(0xFF8888A0).withValues(alpha: 0.25));
+}
+
+void _drawSunglasses(Canvas canvas, double cx, double headCy, double headR) {
+  final glassesY = headCy - headR * 0.05;
+  // Frame
+  final framePaint = Paint()
+    ..color = const Color(0xFF111118)
+    ..style = PaintingStyle.fill;
+  // Left lens
+  canvas.drawRRect(RRect.fromRectAndRadius(
+    Rect.fromCenter(center: Offset(cx - headR * 0.35, glassesY), width: headR * 0.65, height: headR * 0.28),
+    const Radius.circular(5)), framePaint);
+  // Right lens
+  canvas.drawRRect(RRect.fromRectAndRadius(
+    Rect.fromCenter(center: Offset(cx + headR * 0.35, glassesY), width: headR * 0.65, height: headR * 0.28),
+    const Radius.circular(5)), framePaint);
+  // Bridge between lenses
+  canvas.drawRect(
+    Rect.fromCenter(center: Offset(cx, glassesY), width: headR * 0.18, height: headR * 0.1),
+    Paint()..color = const Color(0xFF222230));
+  // Lens tint/glare
+  canvas.drawRRect(RRect.fromRectAndRadius(
+    Rect.fromCenter(center: Offset(cx - headR * 0.45, glassesY - 3), width: headR * 0.2, height: headR * 0.08),
+    const Radius.circular(3)),
+    Paint()..color = Colors.white.withValues(alpha: 0.15));
+  // Side temples
+  canvas.drawLine(
+    Offset(cx - headR * 0.68, glassesY),
+    Offset(cx - headR * 0.95, glassesY + 5),
+    Paint()..color = const Color(0xFF111118)..strokeWidth = 3);
+  canvas.drawLine(
+    Offset(cx + headR * 0.68, glassesY),
+    Offset(cx + headR * 0.95, glassesY + 5),
+    Paint()..color = const Color(0xFF111118)..strokeWidth = 3);
+}
+
+void _drawSpiderPattern(Canvas canvas, Offset center, double radius) {
+  final paint = Paint()
+    ..color = const Color(0xFF2A2A3A)
+    ..strokeWidth = 1.0
+    ..style = PaintingStyle.stroke;
+  // Radial web lines
+  for (int i = 0; i < 6; i++) {
+    final angle = i * math.pi / 3;
+    canvas.drawLine(center,
+      Offset(center.dx + math.cos(angle) * radius, center.dy + math.sin(angle) * radius),
+      paint);
+  }
+  // Concentric rings
+  canvas.drawCircle(center, radius * 0.4, paint);
+  canvas.drawCircle(center, radius * 0.75, paint);
 }

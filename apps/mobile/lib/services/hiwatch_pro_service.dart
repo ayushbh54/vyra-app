@@ -161,6 +161,39 @@ class HiWatchProProtocol {
       }
     }
 
+    // 4. Generic HR-first format (many Shenzhen BLE clones send [hr, spo2, ...])
+    if (bytes.length >= 2 && header > 35 && header < 225) {
+      final possibleSpo2 = bytes[1];
+      if (possibleSpo2 >= 75 && possibleSpo2 <= 100) {
+        return HiWatchTelemetryData(
+          heartRateBpm: header,
+          bloodOxygenSpo2: possibleSpo2,
+        );
+      }
+      // HR only packet
+      return HiWatchTelemetryData(heartRateBpm: header);
+    }
+
+    // 5. Format [0x02, hr, spo2, ...] — used by some HiWatch FitPro variants
+    if (header == 0x02 && bytes.length >= 3) {
+      final hr = bytes[1];
+      final spo2 = bytes[2];
+      return HiWatchTelemetryData(
+        heartRateBpm: (hr > 35 && hr < 225) ? hr : null,
+        bloodOxygenSpo2: (spo2 >= 75 && spo2 <= 100) ? spo2 : null,
+      );
+    }
+
+    // 6. Format [0x04, 0x00, hr, spo2] — HiWatch Ultra / Watch 8 Ultra variants
+    if (header == 0x04 && bytes.length >= 4) {
+      final hr = bytes[2];
+      final spo2 = bytes[3];
+      return HiWatchTelemetryData(
+        heartRateBpm: (hr > 35 && hr < 225) ? hr : null,
+        bloodOxygenSpo2: (spo2 >= 75 && spo2 <= 100) ? spo2 : null,
+      );
+    }
+
     return HiWatchTelemetryData.empty();
   }
 }

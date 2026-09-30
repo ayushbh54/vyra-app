@@ -337,6 +337,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         HiWatchProProtocol.buildSyncTimeCommand(),
         HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),
         HiWatchProProtocol.buildRequestLiveMetricsCommand(),
+        HiWatchProProtocol.buildStartHeartRateMeasureCommand(), // trigger HR+SpO2 immediately on connect
       ]);
 
       // Start continuous real-time live telemetry polling stream (paced, cycling 1 command per tick)
@@ -378,19 +379,27 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
   void _startContinuousLiveTelemetryStream() {
     _livePollingTimer?.cancel();
-    _livePollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+    _livePollingTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
       if (!_isRealBleConnected) {
         timer.cancel();
         return;
       }
       _telemetryTick++;
-      // Rotate query commands one at a time to keep MCU buffer stable and prevent watchdog reboots
-      if (_telemetryTick % 3 == 0) {
-        await _broadcastWatchCommands([HiWatchProProtocol.buildUniversalHeartbeatCommand()]);
-      } else if (_telemetryTick % 3 == 1) {
-        await _broadcastWatchCommands([HiWatchProProtocol.buildRequestLiveMetricsCommand()]);
-      } else {
-        await _broadcastWatchCommands([HiWatchProProtocol.buildDaFitStepQueryCommand()]);
+      // 4-step rotation — covers all data types while keeping MCU buffer stable
+      switch (_telemetryTick % 4) {
+        case 0:
+          await _broadcastWatchCommands([HiWatchProProtocol.buildUniversalHeartbeatCommand()]);
+          break;
+        case 1:
+          // HR + SpO2 measurement — was missing before, causing no data
+          await _broadcastWatchCommands([HiWatchProProtocol.buildStartHeartRateMeasureCommand()]);
+          break;
+        case 2:
+          await _broadcastWatchCommands([HiWatchProProtocol.buildRequestLiveMetricsCommand()]);
+          break;
+        case 3:
+          await _broadcastWatchCommands([HiWatchProProtocol.buildDaFitStepQueryCommand()]);
+          break;
       }
     });
   }
@@ -1473,6 +1482,35 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               ],
             ),
             const SizedBox(height: VSpace.md),
+
+            // Show waiting indicator when connected but no data yet
+            if (_liveHeartRate == 0 && _liveSpo2 == 0)
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: VColor.accent.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: VColor.accent.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 10, height: 10,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color: VColor.accent.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Requesting HR & SpO2 from watch...',
+                      style: TextStyle(color: VColor.accent, fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
 
             // Metrics Row 1: Heart Rate + Zone, SpO2, Steps
             Row(
