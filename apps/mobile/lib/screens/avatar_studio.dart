@@ -1767,193 +1767,299 @@ class _FreeFireAvatarPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
+    final isMale = profile.avatarGender == 'male';
+    final skin = profile.skinGradientColors;
+    final breathe = math.sin(idleProgress * math.pi * 2) * 3.0;
+    final breatheScale = 1.0 + math.sin(idleProgress * math.pi * 2) * 0.012;
 
-    // 1. Dark gradient background behind character
-    final bgGrad = RadialGradient(
-      center: Alignment.center,
-      radius: 0.8,
-      colors: [const Color(0xFF1A1030), const Color(0xFF0A0810)],
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..shader = bgGrad.createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
-    );
+    // Body type
+    double shoulderW = isMale ? size.width * 0.42 : size.width * 0.34;
+    double hipW = isMale ? size.width * 0.32 : size.width * 0.38;
+    if (profile.bodyType == 'muscular') { shoulderW *= 1.2; hipW *= 1.05; }
+    if (profile.bodyType == 'lean') { shoulderW *= 0.88; hipW *= 0.9; }
 
-    // Body type multipliers
-    double shoulderMult = 1.0;
-    if (profile.bodyType == 'muscular') {
-      shoulderMult = 1.2;
-    } else if (profile.bodyType == 'lean') {
-      shoulderMult = 0.88;
+    // Vertical layout
+    final headR = size.height * 0.075;
+    final headCy = size.height * 0.14 + breathe * 0.3;
+    final neckY = headCy + headR * 0.95;
+    final shoulderY = neckY + headR * 0.55;
+    final elbowY = shoulderY + size.height * 0.16;
+    final wristY = elbowY + size.height * 0.13;
+    final torsoEndY = shoulderY + size.height * 0.24;
+    final kneeY = torsoEndY + size.height * 0.22;
+    final ankleY = kneeY + size.height * 0.19;
+
+    canvas.save();
+    canvas.translate(cx, size.height * 0.5);
+    canvas.scale(breatheScale, breatheScale);
+    canvas.translate(-cx, -size.height * 0.5);
+
+    // ── OUTFIT COLORS ──
+    Color topColor, pantsColor, shoeBaseColor, shoeSoleColor;
+    switch (profile.outfitStyle) {
+      case 'hoodie_white':
+        topColor = const Color(0xFFE8ECEF);
+        pantsColor = const Color(0xFF2C3E50);
+        break;
+      case 'runner_stealth':
+        topColor = const Color(0xFF1A1A2E);
+        pantsColor = const Color(0xFF16213E);
+        break;
+      case 'sunset_orange':
+        topColor = const Color(0xFFE05C2A);
+        pantsColor = const Color(0xFF2B2D42);
+        break;
+      case 'athletic_teal':
+      default:
+        topColor = const Color(0xFF0A9396);
+        pantsColor = const Color(0xFF1A1A2E);
+    }
+    if (!isMale) topColor = Color.lerp(topColor, Colors.white, 0.15)!;
+
+    switch (profile.shoeColor) {
+      case 'cyan':    shoeBaseColor = const Color(0xFF006D77); shoeSoleColor = const Color(0xFF00B4D8); break;
+      case 'white':   shoeBaseColor = const Color(0xFFEEEEEE); shoeSoleColor = const Color(0xFFCCCCCC); break;
+      case 'stealth': shoeBaseColor = const Color(0xFF1A1A2E); shoeSoleColor = const Color(0xFF3A3A5E); break;
+      case 'orange': default:
+        shoeBaseColor = const Color(0xFFE05C2A); shoeSoleColor = const Color(0xFFFF8C42);
     }
 
-    final skinColors = profile.skinGradientColors;
+    // ── LEGS / PANTS ──
+    final legL = cx - hipW * 0.3;
+    final legR = cx + hipW * 0.3;
+    final footL = cx - hipW * 0.38;
+    final footR = cx + hipW * 0.38;
+    final pantP = Paint()..color = pantsColor..strokeWidth = isMale ? 30 : 26..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(legL, torsoEndY), Offset(legL - 4, kneeY), pantP);
+    canvas.drawLine(Offset(legL - 4, kneeY), Offset(footL, ankleY), pantP);
+    canvas.drawLine(Offset(legR, torsoEndY), Offset(legR + 4, kneeY), pantP);
+    canvas.drawLine(Offset(legR + 4, kneeY), Offset(footR, ankleY), pantP);
+    // Pants crease
+    canvas.drawLine(Offset(legL - 2, torsoEndY + 10), Offset(legL - 4, kneeY - 10),
+        Paint()..color = pantsColor.withValues(alpha: 0.4)..strokeWidth = 1.5);
+    canvas.drawLine(Offset(legR + 2, torsoEndY + 10), Offset(legR + 4, kneeY - 10),
+        Paint()..color = pantsColor.withValues(alpha: 0.4)..strokeWidth = 1.5);
 
-    // 2. Make body positions CORRECT for tall athletic character
-    final headR = size.height * 0.072; // head radius
-    final headCy = size.height * 0.13; // head center y
-    final neckTop = headCy + headR * 0.7;
-    final shoulderY = neckTop + headR * 0.7;
-    final shoulderWidth = size.width * 0.38 * shoulderMult;
-    final elbowY = shoulderY + size.height * 0.15;
-    final handY = elbowY + size.height * 0.14;
-    final torsoBottomY = shoulderY + size.height * 0.22;
-    final hipWidth = size.width * 0.18;
-    final kneeY = torsoBottomY + size.height * 0.22;
-    final footY = kneeY + size.height * 0.2;
-    final leftX = cx - shoulderWidth / 2;
-    final rightX = cx + shoulderWidth / 2;
-    final leftLegX = cx - hipWidth;
-    final rightLegX = cx + hipWidth;
-    final leftFootX = cx - hipWidth * 1.3;
-    final rightFootX = cx + hipWidth * 1.3;
+    // ── SHOES ──
+    final shW = isMale ? 44.0 : 38.0;
+    for (final fx in [footL - 4, footR + 4]) {
+      final dir = fx < cx ? -1 : 1;
+      canvas.drawRRect(RRect.fromRectAndCorners(
+        Rect.fromCenter(center: Offset(fx + dir * 4, ankleY + 8), width: shW, height: 18),
+        bottomLeft: const Radius.circular(8), bottomRight: const Radius.circular(8),
+        topLeft: const Radius.circular(4), topRight: const Radius.circular(4),
+      ), Paint()..color = shoeBaseColor);
+      canvas.drawRRect(RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(fx + dir * 4, ankleY + 15), width: shW + 2, height: 6),
+        const Radius.circular(3)), Paint()..color = shoeSoleColor);
+      canvas.drawLine(Offset(fx + dir * 4 - 8, ankleY + 4), Offset(fx + dir * 4 + 8, ankleY + 4),
+          Paint()..color = Colors.white.withValues(alpha: 0.4)..strokeWidth = 1.5);
+    }
 
-    // 9. Add overall glow effect
-    final auraGlow = Paint()
-      ..color = const Color(0xFF00B8D4).withValues(alpha: 0.06 + 0.03 * math.sin(idleProgress * math.pi * 2))
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30);
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, (shoulderY + torsoBottomY) / 2), width: shoulderWidth * 2.2, height: size.height * 0.55),
-      auraGlow);
-
-    // 3. Draw legs FIRST (black tactical pants with cyan accent)
-    final pantPaint = Paint()
-      ..color = const Color(0xFF0D0D12)
-      ..strokeWidth = 38
-      ..strokeCap = StrokeCap.round;
-    // Left leg
-    canvas.drawLine(Offset(leftLegX, torsoBottomY), Offset(leftLegX - 6, kneeY), pantPaint);
-    canvas.drawLine(Offset(leftLegX - 6, kneeY), Offset(leftFootX, footY), pantPaint);
-    // Right leg
-    canvas.drawLine(Offset(rightLegX, torsoBottomY), Offset(rightLegX + 6, kneeY), pantPaint);
-    canvas.drawLine(Offset(rightLegX + 6, kneeY), Offset(rightFootX, footY), pantPaint);
-
-    // Cyan accent stripe on right leg
-    final cyanStripe = Paint()
-      ..color = const Color(0xFF00E5FF)
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(rightLegX + 10, torsoBottomY + 10), Offset(rightFootX + 8, kneeY + 20), cyanStripe);
-    // Spider-web pattern on left knee area
-    _drawSpiderPattern(canvas, Offset(leftLegX - 6, kneeY), 22);
-
-    // 4. Draw shoes
-    // Black shoes with cyan accent sole
-    final shoePaint = Paint()..color = const Color(0xFF111118);
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(leftFootX - 4, footY + 8), width: 42, height: 20),
-      const Radius.circular(8)), shoePaint);
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(rightFootX + 4, footY + 8), width: 42, height: 20),
-      const Radius.circular(8)), shoePaint);
-    // Cyan accent sole line
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(leftFootX - 4, footY + 16), width: 44, height: 5),
-      const Radius.circular(3)),
-      Paint()..color = const Color(0xFF00B8D4));
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(rightFootX + 4, footY + 16), width: 44, height: 5),
-      const Radius.circular(3)),
-      Paint()..color = const Color(0xFF00B8D4));
-
-    // 5. Draw muscular torso (skin tone base + blue electric glow)
-    // Torso base — skin tone trapezoid
+    // ── TORSO / TOP ──
     final torsoPath = Path()
-      ..moveTo(leftX, shoulderY)
-      ..lineTo(rightX, shoulderY)
-      ..lineTo(cx + hipWidth * 1.1, torsoBottomY)
-      ..lineTo(cx - hipWidth * 1.1, torsoBottomY)
+      ..moveTo(cx - shoulderW / 2, shoulderY)
+      ..lineTo(cx + shoulderW / 2, shoulderY)
+      ..lineTo(cx + hipW / 2, torsoEndY)
+      ..lineTo(cx - hipW / 2, torsoEndY)
       ..close();
-    canvas.drawPath(torsoPath,
-      Paint()..color = skinColors[0]);
+    canvas.drawPath(torsoPath, Paint()
+      ..shader = LinearGradient(
+        colors: [topColor, Color.lerp(topColor, Colors.black, 0.3)!],
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTRB(cx - shoulderW / 2, shoulderY, cx + shoulderW / 2, torsoEndY)));
 
-    // Muscle definition lines on abs/chest
-    final musclePaint = Paint()
-      ..color = skinColors[1].withValues(alpha: 0.5)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    // Abs center line
-    canvas.drawLine(Offset(cx, shoulderY + 20), Offset(cx, torsoBottomY - 10), musclePaint);
-    // Pec line
-    canvas.drawLine(Offset(cx - 18, shoulderY + 25), Offset(cx + 18, shoulderY + 25), musclePaint);
-    // Ribs
-    for (int i = 1; i <= 3; i++) {
-      final ribY = shoulderY + 40 + i * 18.0;
-      canvas.drawLine(Offset(cx - 22, ribY), Offset(cx + 22, ribY),
-        Paint()..color = skinColors[1].withValues(alpha: 0.25)..strokeWidth = 1.5);
+    // Collar / neckline
+    if (isMale) {
+      final collarPath = Path()
+        ..moveTo(cx - shoulderW * 0.18, shoulderY)
+        ..lineTo(cx, shoulderY + 18)
+        ..lineTo(cx + shoulderW * 0.18, shoulderY);
+      canvas.drawPath(collarPath, Paint()
+        ..color = Color.lerp(topColor, Colors.black, 0.4)!
+        ..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
+    } else {
+      final collarPath = Path()
+        ..moveTo(cx - shoulderW * 0.2, shoulderY + 2)
+        ..quadraticBezierTo(cx, shoulderY + 20, cx + shoulderW * 0.2, shoulderY + 2);
+      canvas.drawPath(collarPath, Paint()
+        ..color = Color.lerp(topColor, Colors.black, 0.35)!
+        ..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
+    }
+    canvas.drawCircle(Offset(cx + 12, shoulderY + 35), 5,
+        Paint()..color = Colors.white.withValues(alpha: 0.25));
+
+    // ── BELT ──
+    canvas.drawRRect(RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(cx, torsoEndY + 4), width: hipW * 0.92, height: 10),
+        const Radius.circular(4)),
+        Paint()..color = Colors.black.withValues(alpha: 0.5));
+    canvas.drawRect(Rect.fromCenter(center: Offset(cx, torsoEndY + 4), width: 14, height: 8),
+        Paint()..color = Colors.white.withValues(alpha: 0.3));
+
+    // ── ARMS ──
+    final armW = isMale ? 22.0 : 17.0;
+    final forearmW = isMale ? 18.0 : 14.0;
+    final leftShoulder = Offset(cx - shoulderW / 2, shoulderY + 4);
+    final rightShoulder = Offset(cx + shoulderW / 2, shoulderY + 4);
+    final leftElbow = Offset(cx - shoulderW / 2 - 12, elbowY);
+    final rightElbow = Offset(cx + shoulderW / 2 + 12, elbowY);
+    final leftWrist = Offset(cx - shoulderW / 2 - 6, wristY);
+    final rightWrist = Offset(cx + shoulderW / 2 + 6, wristY);
+
+    canvas.drawLine(leftShoulder, leftElbow, Paint()..color = topColor..strokeWidth = armW..strokeCap = StrokeCap.round);
+    canvas.drawLine(rightShoulder, rightElbow, Paint()..color = topColor..strokeWidth = armW..strokeCap = StrokeCap.round);
+    canvas.drawLine(leftElbow, leftWrist, Paint()..color = skin[0]..strokeWidth = forearmW..strokeCap = StrokeCap.round);
+    canvas.drawLine(rightElbow, rightWrist, Paint()..color = skin[0]..strokeWidth = forearmW..strokeCap = StrokeCap.round);
+    canvas.drawCircle(leftWrist, forearmW * 0.65, Paint()..color = skin[0]);
+    canvas.drawCircle(rightWrist, forearmW * 0.65, Paint()..color = skin[0]);
+    canvas.drawLine(leftWrist, Offset(leftWrist.dx - 6, leftWrist.dy + 8),
+        Paint()..color = skin[1]..strokeWidth = 4..strokeCap = StrokeCap.round);
+    canvas.drawLine(rightWrist, Offset(rightWrist.dx + 6, rightWrist.dy + 8),
+        Paint()..color = skin[1]..strokeWidth = 4..strokeCap = StrokeCap.round);
+
+    // ── NECK ──
+    final neckW = isMale ? 22.0 : 17.0;
+    canvas.drawRRect(RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(cx, neckY + headR * 0.1), width: neckW, height: headR * 1.1),
+        const Radius.circular(8)),
+        Paint()..color = skin[0]);
+
+    // ── HEAD / FACE ──
+    final faceW = isMale ? headR * 1.75 : headR * 1.65;
+    final faceH = isMale ? headR * 2.0 : headR * 2.05;
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, headCy), width: faceW, height: faceH),
+        Paint()..color = skin[0]);
+    canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx, headCy + headR * 0.55), width: faceW * 0.9, height: headR * 0.9),
+        Paint()..color = skin[2].withValues(alpha: 0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+    if (!isMale || profile.skinTone == 'fair') {
+      for (final side in [-1.0, 1.0]) {
+        canvas.drawCircle(Offset(cx + side * faceW * 0.3, headCy + headR * 0.2), headR * 0.22,
+            Paint()..color = const Color(0xFFFFB3C6).withValues(alpha: 0.2)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+      }
     }
 
-    // === ELECTRIC BLUE LIGHTNING GLOW ON TORSO ===
-    _drawLightningGlow(canvas, cx, shoulderY, torsoBottomY, size, idleProgress);
+    // ── EYEBROWS ──
+    final browY = headCy - headR * 0.28;
+    final browColor = Color.lerp(profile.hairColor, Colors.black, 0.4)!;
+    final browPaint = Paint()..color = browColor..strokeWidth = isMale ? 3.0 : 2.5..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(cx - faceW * 0.36, browY + (isMale ? 2 : 1)), Offset(cx - faceW * 0.12, browY), browPaint);
+    canvas.drawLine(Offset(cx + faceW * 0.12, browY), Offset(cx + faceW * 0.36, browY + (isMale ? 2 : 1)), browPaint);
 
-    // 8. Black tactical waistband / belt
-    // Belt / waistband
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx, torsoBottomY + 5), width: hipWidth * 2.8, height: 14),
-      const Radius.circular(5)),
-      Paint()..color = const Color(0xFF1A1830));
-    // Belt buckle
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset(cx, torsoBottomY + 5), width: 18, height: 12),
-      Paint()..color = const Color(0xFF2A2850));
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset(cx, torsoBottomY + 5), width: 10, height: 6),
-      Paint()..color = const Color(0xFF00B8D4).withValues(alpha: 0.7));
+    // ── EYES ──
+    final eyeY = headCy - headR * 0.1;
+    final eyeSpacing = faceW * 0.24;
+    final eyeW = headR * 0.28;
+    final eyeH = isMale ? headR * 0.18 : headR * 0.22;
+    for (final ex in [cx - eyeSpacing, cx + eyeSpacing]) {
+      canvas.drawOval(Rect.fromCenter(center: Offset(ex, eyeY), width: eyeW * 2, height: eyeH * 2),
+          Paint()..color = Colors.white);
+      canvas.drawCircle(Offset(ex, eyeY), eyeH * 0.85, Paint()..color = const Color(0xFF3E2723));
+      canvas.drawCircle(Offset(ex, eyeY), eyeH * 0.45, Paint()..color = Colors.black);
+      canvas.drawCircle(Offset(ex + eyeH * 0.3, eyeY - eyeH * 0.3), eyeH * 0.2,
+          Paint()..color = Colors.white.withValues(alpha: 0.85));
+      final eyelidPath = Path()
+        ..moveTo(ex - eyeW, eyeY)
+        ..quadraticBezierTo(ex, eyeY - eyeH * 1.4, ex + eyeW, eyeY)
+        ..close();
+      canvas.drawPath(eyelidPath, Paint()..color = skin[0]);
+      canvas.drawPath(eyelidPath, Paint()
+        ..color = Colors.black.withValues(alpha: 0.7)
+        ..strokeWidth = 1.5..style = PaintingStyle.stroke);
+      if (!isMale) {
+        for (int l = 0; l < 5; l++) {
+          final lx = ex - eyeW * 0.8 + l * eyeW * 0.4;
+          final ly = eyeY - eyeH * 1.35;
+          canvas.drawLine(Offset(lx, ly), Offset(lx - 2 + l.toDouble(), ly - 5),
+              Paint()..color = Colors.black..strokeWidth = 1.5..strokeCap = StrokeCap.round);
+        }
+      }
+      canvas.drawOval(Rect.fromCenter(center: Offset(ex, eyeY), width: eyeW * 2, height: eyeH * 2),
+          Paint()..color = Colors.black.withValues(alpha: 0.4)..strokeWidth = 1.2..style = PaintingStyle.stroke);
+    }
 
-    // 6. Draw arms with armored gauntlets
-    // Upper arms — skin tone
-    final armPaint = Paint()
-      ..strokeWidth = 28
-      ..strokeCap = StrokeCap.round
-      ..color = skinColors[0];
-    canvas.drawLine(Offset(leftX, shoulderY), Offset(leftX - 12, elbowY), armPaint);
-    canvas.drawLine(Offset(rightX, shoulderY), Offset(rightX + 12, elbowY), armPaint);
+    // ── NOSE ──
+    final noseY = headCy + headR * 0.2;
+    final nosePath = Path()
+      ..moveTo(cx, eyeY + headR * 0.1)
+      ..quadraticBezierTo(cx + headR * 0.05, noseY, cx, noseY + headR * 0.05);
+    canvas.drawPath(nosePath, Paint()
+      ..color = skin[2].withValues(alpha: 0.5)..strokeWidth = 1.8
+      ..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
+    canvas.drawCircle(Offset(cx - headR * 0.1, noseY + headR * 0.04), 2.5,
+        Paint()..color = skin[2].withValues(alpha: 0.6));
+    canvas.drawCircle(Offset(cx + headR * 0.1, noseY + headR * 0.04), 2.5,
+        Paint()..color = skin[2].withValues(alpha: 0.6));
 
-    // Forearms — DARK ARMOR GAUNTLETS
-    final gauntletPaint = Paint()
-      ..strokeWidth = 26
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFF1A1A28);
-    canvas.drawLine(Offset(leftX - 12, elbowY), Offset(leftX - 18, handY), gauntletPaint);
-    canvas.drawLine(Offset(rightX + 12, elbowY), Offset(rightX + 18, handY), gauntletPaint);
-
-    // Gauntlet cyan accent lines
-    final gauntletAccent = Paint()..color = const Color(0xFF00E5FF)..strokeWidth = 2;
-    canvas.drawLine(Offset(leftX - 10, elbowY + 10), Offset(leftX - 16, handY - 15), gauntletAccent);
-    canvas.drawLine(Offset(rightX + 10, elbowY + 10), Offset(rightX + 16, handY - 15), gauntletAccent);
-
-    // Blue glow on upper arms too
-    _drawArmLightning(canvas, Offset(leftX, shoulderY), Offset(leftX - 12, elbowY), idleProgress);
-    _drawArmLightning(canvas, Offset(rightX, shoulderY), Offset(rightX + 12, elbowY), idleProgress);
-
-    // Hands/fists
-    canvas.drawCircle(Offset(leftX - 18, handY), 12, Paint()..color = const Color(0xFF1A1A28));
-    canvas.drawCircle(Offset(rightX + 18, handY), 12, Paint()..color = const Color(0xFF1A1A28));
-
-    // 7. Draw head and face
-    // Neck
-    canvas.drawRRect(RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx, neckTop + headR * 0.3), width: 24, height: headR * 1.0),
-      const Radius.circular(6)), Paint()..color = skinColors[0]);
-
-    // Head
+    // ── LIPS ──
+    final lipY = headCy + headR * 0.5;
+    final lipColor = !isMale
+        ? const Color(0xFFD4526C)
+        : Color.lerp(skin[1], const Color(0xFFAA4433), 0.5)!;
+    final lipW = headR * 0.52;
+    final upperLip = Path()
+      ..moveTo(cx - lipW, lipY)
+      ..quadraticBezierTo(cx - lipW * 0.4, lipY - headR * 0.12, cx, lipY - headR * 0.04)
+      ..quadraticBezierTo(cx + lipW * 0.4, lipY - headR * 0.12, cx + lipW, lipY)
+      ..close();
+    canvas.drawPath(upperLip, Paint()..color = lipColor);
+    final lowerLip = Path()
+      ..moveTo(cx - lipW * 0.9, lipY + headR * 0.02)
+      ..quadraticBezierTo(cx, lipY + headR * 0.2, cx + lipW * 0.9, lipY + headR * 0.02)
+      ..lineTo(cx + lipW * 0.9, lipY)
+      ..lineTo(cx - lipW * 0.9, lipY)
+      ..close();
+    canvas.drawPath(lowerLip, Paint()..color = Color.lerp(lipColor, Colors.white, 0.15)!);
+    canvas.drawLine(Offset(cx - lipW * 0.85, lipY), Offset(cx + lipW * 0.85, lipY),
+        Paint()..color = lipColor.withValues(alpha: 0.6)..strokeWidth = 0.8);
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, headCy), width: headR * 1.8, height: headR * 2.1),
-      Paint()..color = skinColors[0]);
+        Rect.fromCenter(center: Offset(cx, lipY + headR * 0.08), width: lipW * 0.5, height: headR * 0.06),
+        Paint()..color = Colors.white.withValues(alpha: !isMale ? 0.3 : 0.1));
 
-    // === HAIR — Silver/White Spiky ===
-    _drawSpikeyHair(canvas, cx, headCy, headR);
+    // ── FACIAL HAIR (male) ──
+    if (isMale && profile.facialHair != 'clean') {
+      final hairCol = Color.lerp(profile.hairColor, Colors.black, 0.3)!;
+      if (profile.facialHair == 'stubble') {
+        final rand = math.Random(99);
+        for (int i = 0; i < 30; i++) {
+          final fx = cx + (rand.nextDouble() - 0.5) * faceW * 0.7;
+          final fy = lipY + headR * 0.1 + rand.nextDouble() * headR * 0.5;
+          canvas.drawCircle(Offset(fx, fy), 1.2, Paint()..color = hairCol.withValues(alpha: 0.5));
+        }
+      } else if (profile.facialHair == 'neat_beard') {
+        final beardPath = Path()
+          ..moveTo(cx - faceW * 0.42, headCy + headR * 0.35)
+          ..quadraticBezierTo(cx - faceW * 0.46, headCy + headR * 0.8, cx, headCy + headR * 1.0)
+          ..quadraticBezierTo(cx + faceW * 0.46, headCy + headR * 0.8, cx + faceW * 0.42, headCy + headR * 0.35)
+          ..quadraticBezierTo(cx, lipY + headR * 0.2, cx - faceW * 0.42, headCy + headR * 0.35)
+          ..close();
+        canvas.drawPath(beardPath, Paint()..color = hairCol.withValues(alpha: 0.75));
+      }
+    }
 
-    // === DARK SUNGLASSES ===
-    _drawSunglasses(canvas, cx, headCy, headR);
+    // ── HAIR ──
+    _drawHumanHair(canvas, cx, headCy, headR, faceW, profile.hairStyle, profile.hairColor, isMale);
 
-    // Jaw shadow
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, headCy + headR * 0.6), width: headR * 1.4, height: headR * 0.6),
-      Paint()..color = skinColors[2].withValues(alpha: 0.4));
+    // ── ACCESSORIES ──
+    if (profile.accessoryStyle == 'sunglasses_stealth') {
+      _drawAccessorySunglasses(canvas, cx, eyeY, headR, faceW);
+    } else if (profile.accessoryStyle == 'headphones_silver') {
+      _drawHeadphones(canvas, cx, headCy, headR, faceW);
+    } else if (profile.accessoryStyle == 'sweatband_red') {
+      canvas.drawRRect(RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(cx, headCy - headR * 0.62), width: faceW * 1.1, height: headR * 0.18),
+          const Radius.circular(4)),
+          Paint()..color = const Color(0xFFD32F2F));
+    }
+    if (profile.capStyle != 'none') {
+      _drawCap(canvas, cx, headCy, headR, faceW, profile.capStyle, profile.hairColor);
+    }
+
+    canvas.restore();
   }
-
-  
 
   @override
   bool shouldRepaint(covariant _FreeFireAvatarPainter oldDelegate) {
@@ -1967,145 +2073,267 @@ class _FreeFireAvatarPainter extends CustomPainter {
 }
 
 
-void _drawLightningGlow(Canvas canvas, double cx, double shoulderY, double torsoBottomY, Size size, double progress) {
-  final rand = math.Random(42);
-  final glowPaint = Paint()
-    ..strokeCap = StrokeCap.round
-    ..strokeWidth = 1.5
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-  
-  // Animate lightning using sin waves
-  final pulse = math.sin(progress * math.pi * 2);
-  final numBolts = 12;
-  for (int i = 0; i < numBolts; i++) {
-    final startX = cx + (rand.nextDouble() - 0.5) * 70;
-    final startY = shoulderY + rand.nextDouble() * (torsoBottomY - shoulderY);
-    final endX = startX + (rand.nextDouble() - 0.5) * 40;
-    final endY = startY + rand.nextDouble() * 40 - 10;
-    final alpha = (0.4 + 0.5 * pulse + rand.nextDouble() * 0.3).clamp(0.0, 1.0);
-    glowPaint.color = Color.fromRGBO(100, 200, 255, alpha);
-    
-    // Jagged lightning path
-    final path = Path();
-    path.moveTo(startX, startY);
-    final midX = (startX + endX) / 2 + (rand.nextDouble() - 0.5) * 15;
-    final midY = (startY + endY) / 2;
-    path.lineTo(midX, midY);
-    path.lineTo(endX, endY);
-    canvas.drawPath(path, glowPaint);
+// ─────────────────────────────────────────────────────────────────────────────
+// HUMAN HAIR STYLES — 8 styles for male & female
+// ─────────────────────────────────────────────────────────────────────────────
+void _drawHumanHair(
+  Canvas canvas,
+  double cx,
+  double headCy,
+  double headR,
+  double faceW,
+  String style,
+  Color hairColor,
+  bool isMale,
+) {
+  final hp = Paint()..color = hairColor;
+  final hpDark = Paint()..color = Color.lerp(hairColor, Colors.black, 0.35)!;
+  final hpLight = Paint()..color = Color.lerp(hairColor, Colors.white, 0.25)!;
+
+  switch (style) {
+    case 'pixar_wavy': // Wavy flowing — default female
+      // Base cap
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx, headCy - headR * 0.2), width: faceW * 1.12, height: headR * 1.5),
+        hp,
+      );
+      // Side waves left
+      final lWave = Path()
+        ..moveTo(cx - faceW * 0.52, headCy - headR * 0.5)
+        ..quadraticBezierTo(cx - faceW * 0.7, headCy + headR * 0.4, cx - faceW * 0.58, headCy + headR * 1.0)
+        ..quadraticBezierTo(cx - faceW * 0.5, headCy + headR * 0.7, cx - faceW * 0.42, headCy - headR * 0.3)
+        ..close();
+      canvas.drawPath(lWave, hp);
+      // Side waves right
+      final rWave = Path()
+        ..moveTo(cx + faceW * 0.52, headCy - headR * 0.5)
+        ..quadraticBezierTo(cx + faceW * 0.7, headCy + headR * 0.4, cx + faceW * 0.58, headCy + headR * 1.0)
+        ..quadraticBezierTo(cx + faceW * 0.5, headCy + headR * 0.7, cx + faceW * 0.42, headCy - headR * 0.3)
+        ..close();
+      canvas.drawPath(rWave, hp);
+      // Hair shine
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx - headR * 0.15, headCy - headR * 0.55), width: headR * 0.45, height: headR * 0.18),
+        Paint()..color = hpLight.color.withValues(alpha: 0.4)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+      );
+      break;
+
+    case 'ponytail':
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx, headCy - headR * 0.2), width: faceW * 1.1, height: headR * 1.4),
+        hp,
+      );
+      // Ponytail at back
+      final pt = Path()
+        ..moveTo(cx - headR * 0.25, headCy - headR * 0.7)
+        ..quadraticBezierTo(cx - headR * 0.5, headCy + headR * 0.5, cx - headR * 0.2, headCy + headR * 1.6)
+        ..quadraticBezierTo(cx + headR * 0.1, headCy + headR * 1.5, cx + headR * 0.2, headCy - headR * 0.5)
+        ..close();
+      canvas.drawPath(pt, hpDark);
+      // Hair tie
+      canvas.drawCircle(Offset(cx, headCy + headR * 0.5), 5,
+          Paint()..color = const Color(0xFF222222));
+      break;
+
+    case 'high_bun':
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx, headCy - headR * 0.2), width: faceW * 1.1, height: headR * 1.35),
+        hp,
+      );
+      // Bun on top
+      canvas.drawCircle(
+        Offset(cx, headCy - headR * 1.0), headR * 0.42, hp,
+      );
+      canvas.drawCircle(
+        Offset(cx, headCy - headR * 1.0), headR * 0.42,
+        Paint()..color = hpDark.color..style = PaintingStyle.stroke..strokeWidth = 2.5,
+      );
+      break;
+
+    case 'short_crop': // Short cropped — male/female
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx, headCy - headR * 0.3), width: faceW * 1.08, height: headR * 1.1),
+        hp,
+      );
+      // Texture lines
+      for (int i = 0; i < 4; i++) {
+        final lx = cx - headR * 0.5 + i * headR * 0.3;
+        canvas.drawLine(Offset(lx, headCy - headR * 0.9), Offset(lx + 6, headCy - headR * 0.5),
+            Paint()..color = hpDark.color..strokeWidth = 1.5..strokeCap = StrokeCap.round);
+      }
+      break;
+
+    case 'crew_fade': // Crew / fade — masculine
+      final fadePath = Path()
+        ..moveTo(cx - faceW * 0.53, headCy - headR * 0.0)
+        ..quadraticBezierTo(cx - faceW * 0.52, headCy - headR * 1.0, cx, headCy - headR * 1.1)
+        ..quadraticBezierTo(cx + faceW * 0.52, headCy - headR * 1.0, cx + faceW * 0.53, headCy - headR * 0.0)
+        ..close();
+      canvas.drawPath(fadePath, hp);
+      // Side fade gradient
+      canvas.drawRect(
+        Rect.fromLTWH(cx - faceW * 0.55, headCy - headR * 0.3, faceW * 0.15, headR * 0.4),
+        Paint()..shader = LinearGradient(
+          colors: [hairColor.withValues(alpha: 0), hairColor],
+          begin: Alignment.centerLeft, end: Alignment.centerRight,
+        ).createShader(Rect.fromLTWH(cx - faceW * 0.55, headCy - headR * 0.3, faceW * 0.15, headR * 0.4)),
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(cx + faceW * 0.4, headCy - headR * 0.3, faceW * 0.15, headR * 0.4),
+        Paint()..shader = LinearGradient(
+          colors: [hairColor, hairColor.withValues(alpha: 0)],
+          begin: Alignment.centerLeft, end: Alignment.centerRight,
+        ).createShader(Rect.fromLTWH(cx + faceW * 0.4, headCy - headR * 0.3, faceW * 0.15, headR * 0.4)),
+      );
+      break;
+
+    case 'braided':
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx, headCy - headR * 0.2), width: faceW * 1.1, height: headR * 1.4),
+        hp,
+      );
+      // Braid down right side
+      for (int i = 0; i < 6; i++) {
+        canvas.drawOval(
+          Rect.fromCenter(center: Offset(cx + faceW * 0.42, headCy + headR * (0.1 + i * 0.2)), width: headR * 0.22, height: headR * 0.15),
+          Paint()..color = i.isEven ? hairColor : hpDark.color,
+        );
+      }
+      break;
+
+    case 'bald':
+      // Just a clean scalp — no extra drawing
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx, headCy - headR * 0.1), width: faceW * 1.02, height: headR * 1.15),
+        Paint()..color = Color.lerp(hairColor, const Color(0xFF888888), 0.85)!..style = PaintingStyle.stroke..strokeWidth = 2,
+      );
+      break;
+
+    case 'mohawk':
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx, headCy - headR * 0.15), width: faceW * 1.08, height: headR * 1.2),
+        Paint()..color = hpDark.color,
+      );
+      // Mohawk strip
+      final moPath = Path()
+        ..moveTo(cx - headR * 0.16, headCy - headR * 0.8)
+        ..lineTo(cx - headR * 0.13, headCy - headR * 1.85)
+        ..lineTo(cx + headR * 0.13, headCy - headR * 1.85)
+        ..lineTo(cx + headR * 0.16, headCy - headR * 0.8)
+        ..close();
+      canvas.drawPath(moPath, hp);
+      break;
+
+    default:
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx, headCy - headR * 0.2), width: faceW * 1.1, height: headR * 1.45),
+        hp,
+      );
   }
-  
-  // Main central bright bolt
-  final mainGlow = Paint()
-    ..color = Color.fromRGBO(150, 230, 255, (0.6 + 0.4 * pulse).clamp(0.0, 1.0))
-    ..strokeWidth = 2.5
-    ..strokeCap = StrokeCap.round
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
-  canvas.drawLine(
-    Offset(cx - 15, shoulderY + 20),
-    Offset(cx + 10, shoulderY + 60),
-    mainGlow);
-  canvas.drawLine(
-    Offset(cx + 10, shoulderY + 60),
-    Offset(cx - 8, shoulderY + 100),
-    mainGlow);
 }
 
-void _drawArmLightning(Canvas canvas, Offset top, Offset bottom, double progress) {
-  final rand = math.Random(7);
-  final pulse = math.sin(progress * math.pi * 2 + 1.0);
-  final numLines = 4;
-  final glowPaint = Paint()
-    ..strokeWidth = 1.2
-    ..strokeCap = StrokeCap.round
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-  for (int i = 0; i < numLines; i++) {
-    final t = rand.nextDouble();
-    final x = top.dx + (bottom.dx - top.dx) * t + (rand.nextDouble() - 0.5) * 18;
-    final y = top.dy + (bottom.dy - top.dy) * t;
-    final ex = x + (rand.nextDouble() - 0.5) * 20;
-    final ey = y + rand.nextDouble() * 20;
-    glowPaint.color = Color.fromRGBO(100, 200, 255, (0.3 + 0.4 * pulse).clamp(0.0, 1.0));
-    canvas.drawLine(Offset(x, y), Offset(ex, ey), glowPaint);
+// ─────────────────────────────────────────────────────────────────────────────
+// ACCESSORY: SUNGLASSES
+// ─────────────────────────────────────────────────────────────────────────────
+void _drawAccessorySunglasses(Canvas canvas, double cx, double eyeY, double headR, double faceW) {
+  final framePaint = Paint()..color = const Color(0xFF1A1A2E);
+  final lensPaint = Paint()..color = const Color(0xFF0D0D0D).withValues(alpha: 0.85);
+  final eyeSpacing = faceW * 0.24;
+  final lensW = headR * 0.62;
+  final lensH = headR * 0.28;
+
+  for (final ex in [cx - eyeSpacing, cx + eyeSpacing]) {
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(ex, eyeY), width: lensW * 2, height: lensH * 2),
+      const Radius.circular(6)), lensPaint);
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(ex, eyeY), width: lensW * 2, height: lensH * 2),
+      const Radius.circular(6)),
+      Paint()..color = const Color(0xFF00E5FF).withValues(alpha: 0.12)..style = PaintingStyle.stroke..strokeWidth = 1.5);
+    // Lens glare
+    canvas.drawOval(Rect.fromCenter(center: Offset(ex - lensW * 0.3, eyeY - lensH * 0.3), width: lensW * 0.35, height: lensH * 0.25),
+        Paint()..color = Colors.white.withValues(alpha: 0.15));
+  }
+  // Bridge
+  canvas.drawLine(Offset(cx - eyeSpacing + lensW, eyeY), Offset(cx + eyeSpacing - lensW, eyeY),
+      Paint()..color = framePaint.color..strokeWidth = 3);
+  // Temples
+  canvas.drawLine(Offset(cx - eyeSpacing - lensW, eyeY), Offset(cx - eyeSpacing - lensW - headR * 0.35, eyeY + 4),
+      Paint()..color = framePaint.color..strokeWidth = 2.5);
+  canvas.drawLine(Offset(cx + eyeSpacing + lensW, eyeY), Offset(cx + eyeSpacing + lensW + headR * 0.35, eyeY + 4),
+      Paint()..color = framePaint.color..strokeWidth = 2.5);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACCESSORY: HEADPHONES
+// ─────────────────────────────────────────────────────────────────────────────
+void _drawHeadphones(Canvas canvas, double cx, double headCy, double headR, double faceW) {
+  const silver = Color(0xFFBDBDBD);
+  // Arc over head
+  final arcRect = Rect.fromCenter(center: Offset(cx, headCy - headR * 0.15), width: faceW * 1.3, height: headR * 1.4);
+  canvas.drawArc(arcRect, math.pi, math.pi, false,
+      Paint()..color = silver..strokeWidth = 6..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
+  // Ear cups
+  for (final side in [-1.0, 1.0]) {
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(cx + side * faceW * 0.62, headCy - headR * 0.1), width: 18, height: 26),
+      const Radius.circular(6)),
+      Paint()..color = const Color(0xFF424242));
+    canvas.drawRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(cx + side * faceW * 0.62, headCy - headR * 0.1), width: 12, height: 18),
+      const Radius.circular(5)),
+      Paint()..color = const Color(0xFF212121));
   }
 }
 
-void _drawSpikeyHair(Canvas canvas, double cx, double headCy, double headR) {
-  final hairPaint = Paint()..color = const Color(0xFFE8E8F0); // Silver white
-  
-  // Base hair — rounded cap
-  canvas.drawOval(
-    Rect.fromCenter(center: Offset(cx, headCy - headR * 0.3), width: headR * 1.9, height: headR * 1.5),
-    hairPaint);
-  
-  // Spiky top — multiple triangular spikes
-  final spikes = [
-    [cx - 8.0, headCy - headR * 0.9, cx - 20.0, headCy - headR * 1.8, cx + 2.0, headCy - headR * 0.8],
-    [cx + 2.0, headCy - headR * 0.8, cx - 2.0, headCy - headR * 2.0, cx + 15.0, headCy - headR * 0.9],
-    [cx + 10.0, headCy - headR * 0.9, cx + 16.0, headCy - headR * 1.7, cx + 24.0, headCy - headR * 0.8],
-    [cx - 22.0, headCy - headR * 0.6, cx - 30.0, headCy - headR * 1.4, cx - 10.0, headCy - headR * 0.6],
-  ];
-  for (final spike in spikes) {
-    final path = Path()
-      ..moveTo(spike[0], spike[1])
-      ..lineTo(spike[2], spike[3])
-      ..lineTo(spike[4], spike[5])
+// ─────────────────────────────────────────────────────────────────────────────
+// ACCESSORY: CAP / HAT
+// ─────────────────────────────────────────────────────────────────────────────
+void _drawCap(Canvas canvas, double cx, double headCy, double headR, double faceW, String capStyle, Color hairColor) {
+  Color capColor;
+  switch (capStyle) {
+    case 'visor_neon':  capColor = const Color(0xFF00E5FF); break;
+    case 'beanie_gray': capColor = const Color(0xFF607D8B); break;
+    case 'backward_cap':
+    case 'snapback_black':
+    default: capColor = const Color(0xFF1A1A2E);
+  }
+
+  if (capStyle == 'beanie_gray') {
+    // Beanie — covers top of head
+    final bPath = Path()
+      ..moveTo(cx - faceW * 0.52, headCy - headR * 0.12)
+      ..quadraticBezierTo(cx - faceW * 0.5, headCy - headR * 1.3, cx, headCy - headR * 1.35)
+      ..quadraticBezierTo(cx + faceW * 0.5, headCy - headR * 1.3, cx + faceW * 0.52, headCy - headR * 0.12)
       ..close();
-    canvas.drawPath(path, hairPaint);
+    canvas.drawPath(bPath, Paint()..color = capColor);
+    // Beanie ribbing
+    canvas.drawLine(Offset(cx - faceW * 0.52, headCy - headR * 0.12), Offset(cx + faceW * 0.52, headCy - headR * 0.12),
+        Paint()..color = Colors.white.withValues(alpha: 0.2)..strokeWidth = 5);
+  } else {
+    // Cap base (panel)
+    final capPath = Path()
+      ..moveTo(cx - faceW * 0.54, headCy - headR * 0.08)
+      ..quadraticBezierTo(cx - faceW * 0.5, headCy - headR * 1.2, cx, headCy - headR * 1.25)
+      ..quadraticBezierTo(cx + faceW * 0.5, headCy - headR * 1.2, cx + faceW * 0.54, headCy - headR * 0.08)
+      ..close();
+    canvas.drawPath(capPath, Paint()..color = capColor);
+    // Brim
+    if (capStyle != 'backward_cap') {
+      canvas.drawRRect(RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(cx - faceW * 0.12, headCy - headR * 0.05), width: faceW * 0.7, height: 10),
+        const Radius.circular(4)),
+        Paint()..color = Color.lerp(capColor, Colors.black, 0.4)!);
+    } else {
+      // Backward brim at back
+      canvas.drawRRect(RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(cx + faceW * 0.2, headCy - headR * 0.05), width: faceW * 0.6, height: 9),
+        const Radius.circular(4)),
+        Paint()..color = Color.lerp(capColor, Colors.black, 0.4)!);
+    }
+    // Cap logo
+    canvas.drawCircle(Offset(cx, headCy - headR * 0.6), 5,
+        Paint()..color = Colors.white.withValues(alpha: 0.35));
   }
-  // Shadow on hair
-  canvas.drawOval(
-    Rect.fromCenter(center: Offset(cx + 10, headCy - headR * 0.2), width: headR * 0.8, height: headR * 0.8),
-    Paint()..color = const Color(0xFF8888A0).withValues(alpha: 0.25));
 }
 
-void _drawSunglasses(Canvas canvas, double cx, double headCy, double headR) {
-  final glassesY = headCy - headR * 0.05;
-  // Frame
-  final framePaint = Paint()
-    ..color = const Color(0xFF111118)
-    ..style = PaintingStyle.fill;
-  // Left lens
-  canvas.drawRRect(RRect.fromRectAndRadius(
-    Rect.fromCenter(center: Offset(cx - headR * 0.35, glassesY), width: headR * 0.65, height: headR * 0.28),
-    const Radius.circular(5)), framePaint);
-  // Right lens
-  canvas.drawRRect(RRect.fromRectAndRadius(
-    Rect.fromCenter(center: Offset(cx + headR * 0.35, glassesY), width: headR * 0.65, height: headR * 0.28),
-    const Radius.circular(5)), framePaint);
-  // Bridge between lenses
-  canvas.drawRect(
-    Rect.fromCenter(center: Offset(cx, glassesY), width: headR * 0.18, height: headR * 0.1),
-    Paint()..color = const Color(0xFF222230));
-  // Lens tint/glare
-  canvas.drawRRect(RRect.fromRectAndRadius(
-    Rect.fromCenter(center: Offset(cx - headR * 0.45, glassesY - 3), width: headR * 0.2, height: headR * 0.08),
-    const Radius.circular(3)),
-    Paint()..color = Colors.white.withValues(alpha: 0.15));
-  // Side temples
-  canvas.drawLine(
-    Offset(cx - headR * 0.68, glassesY),
-    Offset(cx - headR * 0.95, glassesY + 5),
-    Paint()..color = const Color(0xFF111118)..strokeWidth = 3);
-  canvas.drawLine(
-    Offset(cx + headR * 0.68, glassesY),
-    Offset(cx + headR * 0.95, glassesY + 5),
-    Paint()..color = const Color(0xFF111118)..strokeWidth = 3);
-}
-
-void _drawSpiderPattern(Canvas canvas, Offset center, double radius) {
-  final paint = Paint()
-    ..color = const Color(0xFF2A2A3A)
-    ..strokeWidth = 1.0
-    ..style = PaintingStyle.stroke;
-  // Radial web lines
-  for (int i = 0; i < 6; i++) {
-    final angle = i * math.pi / 3;
-    canvas.drawLine(center,
-      Offset(center.dx + math.cos(angle) * radius, center.dy + math.sin(angle) * radius),
-      paint);
-  }
-  // Concentric rings
-  canvas.drawCircle(center, radius * 0.4, paint);
-  canvas.drawCircle(center, radius * 0.75, paint);
-}
