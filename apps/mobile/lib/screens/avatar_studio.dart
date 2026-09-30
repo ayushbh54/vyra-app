@@ -52,14 +52,14 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
       vsync: this,
       duration: const Duration(seconds: 8),
     )..addListener(() {
-        if (mounted && _isAutoTurntable) {
+        if (!mounted) return;
+        if (_isAutoTurntable) {
           setState(() {
             _rotationAngle += 0.008;
-            if (_rotationAngle > math.pi * 2) {
-              _rotationAngle -= math.pi * 2;
-            }
+            if (_rotationAngle > math.pi * 2) _rotationAngle -= math.pi * 2;
           });
         }
+        // Breathing animation rebuild is handled by AnimatedBuilder's Listenable.merge
       })
       ..repeat();
 
@@ -219,7 +219,7 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
 
                     // The Avatar
                     AnimatedBuilder(
-                      animation: _poseTransition,
+                      animation: Listenable.merge([_poseTransition, _idleAnimCtrl]),
                       builder: (context, child) {
                         return RepaintBoundary(
                           child: CustomPaint(
@@ -1788,11 +1788,11 @@ class _FreeFireAvatarPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
-    final cy = size.height * 0.48;
+    final cy = size.height * 0.42;
 
     // Idle breathing animation — subtle scale pulse
-    final breathe = math.sin(idleProgress * math.pi * 2) * 3.0;
-    final breatheScale = 1.0 + math.sin(idleProgress * math.pi * 2) * 0.008;
+    final breathe = math.sin(idleProgress * math.pi * 2) * 5.0;
+    final breatheScale = 1.0 + math.sin(idleProgress * math.pi * 2) * 0.015;
 
     // Rotation
     final cosRot = math.cos(rotationAngle);
@@ -1824,7 +1824,7 @@ class _FreeFireAvatarPainter extends CustomPainter {
     // Save canvas for scale transformation (breathing)
     canvas.save();
     canvas.translate(cx, cy);
-    canvas.scale(breatheScale, breatheScale);
+    canvas.scale(1.15 * breatheScale, 1.15 * breatheScale); // 15% bigger overall
     canvas.translate(-cx, -cy);
 
     // ── 1. PODIUM ──
@@ -1863,7 +1863,7 @@ class _FreeFireAvatarPainter extends CustomPainter {
     // Legs
     final legPaint = Paint()
       ..color = outfit['pants']!
-      ..strokeWidth = (isMale ? 26 : 22) * legWidth
+      ..strokeWidth = (isMale ? 32 : 28) * legWidth
       ..strokeCap = StrokeCap.round;
 
     canvas.drawLine(pose['pelvis']!, pose['kneeL']!, legPaint);
@@ -2011,22 +2011,22 @@ class _FreeFireAvatarPainter extends CustomPainter {
 
     // Arms
     final armPaint = Paint()
-      ..strokeWidth = (isMale ? 18 : 14) * armWidth
+      ..strokeWidth = (isMale ? 22 : 18) * armWidth
       ..strokeCap = StrokeCap.round;
 
     // Left arm (forearm is skin tone for short sleeves)
     armPaint.color = outfit['topSecondary']!;
     canvas.drawLine(pose['shoulderL']!, pose['elbowL']!, armPaint);
     armPaint.color = skinColors[1];
-    armPaint.strokeWidth = (isMale ? 16 : 12) * armWidth;
+    armPaint.strokeWidth = (isMale ? 20 : 16) * armWidth;
     canvas.drawLine(pose['elbowL']!, pose['handL']!, armPaint);
 
     // Right arm
     armPaint.color = outfit['topSecondary']!;
-    armPaint.strokeWidth = (isMale ? 18 : 14) * armWidth;
+    armPaint.strokeWidth = (isMale ? 22 : 18) * armWidth;
     canvas.drawLine(pose['shoulderR']!, pose['elbowR']!, armPaint);
     armPaint.color = skinColors[1];
-    armPaint.strokeWidth = (isMale ? 16 : 12) * armWidth;
+    armPaint.strokeWidth = (isMale ? 20 : 16) * armWidth;
     canvas.drawLine(pose['elbowR']!, pose['handR']!, armPaint);
 
     // Hands (skin-colored fists)

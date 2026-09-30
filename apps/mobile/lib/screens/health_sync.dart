@@ -20,7 +20,8 @@ class HealthSyncScreen extends StatefulWidget {
   State<HealthSyncScreen> createState() => _HealthSyncScreenState();
 }
 
-class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerProviderStateMixin {
+class _HealthSyncScreenState extends State<HealthSyncScreen>
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   static const _prefsLastSyncedKey = 'vyra_health_last_synced_at';
   static const _prefsStepsKey = 'vyra_health_last_steps';
   static const _prefsCaloriesKey = 'vyra_health_last_calories';
@@ -69,6 +70,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
   bool _isScanning = false;
   List<ScanResult> _scanResults = [];
   StreamSubscription<List<ScanResult>>? _scanSubscription;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -251,24 +255,29 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
           return;
         }
         if (state == BluetoothConnectionState.disconnected && hasSeenConnected) {
-          _livePollingTimer?.cancel();
-          _continuousDbSyncTimer?.cancel();
-          for (var sub in _notifySubscriptions) {
-            sub.cancel();
-          }
-          _notifySubscriptions.clear();
-          // Flush any final unpersisted readings to database & backend immediately
-          _persistLiveWatchDataToDatabase();
-          if (!mounted) return;
-          // Only update connection status — preserve telemetry values so the
-          // last-known readings remain visible even after disconnect.
-          setState(() {
-            _isRealBleConnected = false;
-            _connectionStatusText = "Disconnected";
+          // Small delay to debounce transient disconnects during BLE handshake
+          Future.delayed(const Duration(milliseconds: 400), () {
+            if (!mounted) return;
+            if (_isRealBleConnected) return; // reconnected in the meantime
+            _livePollingTimer?.cancel();
+            _continuousDbSyncTimer?.cancel();
+            for (var sub in _notifySubscriptions) {
+              sub.cancel();
+            }
+            _notifySubscriptions.clear();
+            // Flush any final unpersisted readings to database & backend immediately
+            _persistLiveWatchDataToDatabase();
+            if (!mounted) return;
+            // Only update connection status — preserve telemetry values so the
+            // last-known readings remain visible even after disconnect.
+            setState(() {
+              _isRealBleConnected = false;
+              _connectionStatusText = 'Disconnected';
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Smartwatch disconnected: $_pairedWatchName')),
+            );
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Smartwatch disconnected: $_pairedWatchName')),
-          );
         }
       });
 
@@ -1199,6 +1208,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // required for AutomaticKeepAliveClientMixin
     return Scaffold(
       backgroundColor: VColor.bg,
       body: SafeArea(
@@ -1207,9 +1217,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
           children: [
             _buildHeader(context),
             const SizedBox(height: VSpace.lg),
-            _buildHeroCard(),
+            RepaintBoundary(child: _buildHeroCard()),
             const SizedBox(height: VSpace.md),
-            _buildStatusCard(),
+            RepaintBoundary(child: _buildStatusCard()),
             AnimatedSize(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
