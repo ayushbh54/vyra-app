@@ -30,7 +30,7 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
   bool _checkingIn = false;
 
   // Track joined community challenges locally
-  final Set<String> _joinedCommunityChallenges = {'comm_steps_50k', 'comm_nosugar_7d'};
+  final Set<String> _joinedCommunityChallenges = {};
 
   @override
   void initState() {

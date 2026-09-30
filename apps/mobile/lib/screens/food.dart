@@ -38,13 +38,13 @@ class _FoodScreenState extends State<FoodScreen> {
 
   SugarResult? _sugar;
   bool _loggingSugar = false;
-  int _zeroSugarStreak = 3;
+  int _zeroSugarStreak = 0;
   Map<String, double> _sugarHistory = {};
 
-  int _consumedCal = 1380;
-  double _consumedProtein = 95.0;
-  double _consumedCarbs = 145.0;
-  double _consumedFat = 42.0;
+  int _consumedCal = 0;
+  double _consumedProtein = 0.0;
+  double _consumedCarbs = 0.0;
+  double _consumedFat = 0.0;
   String? _clinicalNutritionFocus;
 
   @override
@@ -62,7 +62,7 @@ class _FoodScreenState extends State<FoodScreen> {
       final addCarbs = prefs.getDouble('logged_carbs_$dateKey') ?? 0.0;
       final addFat = prefs.getDouble('logged_fat_$dateKey') ?? 0.0;
       final focus = prefs.getString('clinical_nutrition_focus');
-      final streak = prefs.getInt('zero_sugar_streak') ?? 3;
+      final streak = prefs.getInt('zero_sugar_streak') ?? 0;
       final rawHist = prefs.getString('zero_sugar_history');
       Map<String, double> hist = {};
       if (rawHist != null) {
@@ -70,17 +70,16 @@ class _FoodScreenState extends State<FoodScreen> {
         hist = decoded.map((k, v) => MapEntry(k, (v as num).toDouble()));
       }
 
-      if (mounted) {
-        setState(() {
-          _consumedCal = 1380 + addCal;
-          _consumedProtein = 95.0 + addProtein;
-          _consumedCarbs = 145.0 + addCarbs;
-          _consumedFat = 42.0 + addFat;
-          _clinicalNutritionFocus = focus;
-          _zeroSugarStreak = streak;
-          _sugarHistory = hist;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _consumedCal = addCal;
+        _consumedProtein = addProtein;
+        _consumedCarbs = addCarbs;
+        _consumedFat = addFat;
+        _clinicalNutritionFocus = focus;
+        _zeroSugarStreak = streak;
+        _sugarHistory = hist;
+      });
     } catch (_) {}
   }
 
@@ -133,13 +132,32 @@ class _FoodScreenState extends State<FoodScreen> {
       }
     }
 
-    if (mounted) {
-      setState(() {
-        _recipe = res;
-        _recipeError = err;
-        _generating = false;
-      });
+    if (res == null) {
+      res = Recipe(
+        title: 'Simple ${_ingredients.first} Stir-fry',
+        ingredients: _ingredients.map((i) => (name: i, quantity: '1 portion')).toList(),
+        steps: [
+          'Wash and prep all ingredients.',
+          'Heat a pan over medium heat with a little oil.',
+          'Add ${_ingredients.join(", ")} and stir-fry until cooked.',
+          'Season with salt, pepper, and your favorite spices.',
+          'Serve hot and enjoy!'
+        ],
+        cookTimeMin: 15,
+        containsEgg: false,
+        containsMeat: false,
+        nutrition: {'calories': 250, 'proteinG': 10, 'carbsG': 20, 'fatG': 15},
+        disclaimer: 'This is a locally generated fallback recipe since the AI is unavailable.'
+      );
+      err = null;
     }
+
+    if (!mounted) return;
+    setState(() {
+      _recipe = res;
+      _recipeError = err;
+      _generating = false;
+    });
   }
 
   Future<void> _logSugar([double? directGrams]) async {
@@ -161,8 +179,16 @@ class _FoodScreenState extends State<FoodScreen> {
     }
 
     setState(() => _loggingSugar = true);
+    SugarResult? apiResult;
     try {
-      final result = await context.read<VyraApi>().logSugar(grams);
+      apiResult = await context.read<VyraApi>().logSugar(grams);
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sugar intake recorded offline.')));
+    }
+
+    try {
       final prefs = await SharedPreferences.getInstance();
       final todayKey = DateTime.now().toIso8601String().substring(0, 10);
       _sugarHistory[todayKey] = grams;
@@ -173,39 +199,34 @@ class _FoodScreenState extends State<FoodScreen> {
       }
       await prefs.setInt('zero_sugar_streak', _zeroSugarStreak);
       await prefs.setString('zero_sugar_history', jsonEncode(_sugarHistory));
+    } catch (_) {}
 
-      if (mounted) {
-        setState(() {
-          _sugar = result;
-          _sugarController.clear();
-        });
-        if (grams == 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: VColor.accentGreen,
-              content: Text('🎉 Zero Added Sugar logged today! $_zeroSugarStreak day streak maintained! 🏆'),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Logged ${grams.toStringAsFixed(1)}g of added sugar.'),
-            ),
-          );
-        }
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sugar intake recorded.')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loggingSugar = false);
+    if (!mounted) return;
+    setState(() {
+      _sugar = apiResult ?? SugarResult(
+        sugarGrams: grams,
+        guidelineG: 50,
+        pctOfGuideline: (grams / 50 * 100).toInt(),
+        zeroSugarStreak: _zeroSugarStreak,
+        disclaimer: 'Locally recorded.'
+      );
+      _sugarController.clear();
+      _loggingSugar = false;
+    });
+
+    if (grams == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: VColor.accentGreen,
+          content: Text('🎉 Zero Added Sugar logged today! $_zeroSugarStreak day streak maintained! 🏆'),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logged ${grams.toStringAsFixed(1)}g of added sugar.'),
+        ),
+      );
     }
   }
 

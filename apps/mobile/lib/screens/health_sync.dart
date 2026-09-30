@@ -59,7 +59,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
   int _liveDistanceMeters = 0;
   int _activeMinutes = 0;
   String _liveHrZone = "Resting";
-  int _liveRecoveryScore = 95;
+  int _liveRecoveryScore = 0;
   DateTime? _lastAutoSavedAt;
   bool _isAutoSaving = false;
   
@@ -199,6 +199,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
 
   Future<void> _connectToRealWatch(BluetoothDevice device) async {
     try {
+      // Only update connecting status — preserve all existing telemetry and UI state
+      if (!mounted) return;
       setState(() {
         _isConnecting = true;
         _connectionStatusText = "Connecting to ${device.platformName.isNotEmpty ? device.platformName : 'Watch'}...";
@@ -206,17 +208,22 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
 
       await FlutterBluePlus.stopScan();
 
-      // Clean up previous sessions
+      // Clean up previous sessions — cancel connection listener FIRST to prevent
+      // stale listener from firing setState(_isRealBleConnected=false) during
+      // the disconnect handshake, which caused the screen flash/restart.
       _livePollingTimer?.cancel();
       _continuousDbSyncTimer?.cancel();
+      _connectionSubscription?.cancel();
+      _connectionSubscription = null;
       for (var sub in _notifySubscriptions) {
         sub.cancel();
       }
       _notifySubscriptions.clear();
       _writeCharacteristics.clear();
       _notifyCharacteristics.clear();
-      _connectionSubscription?.cancel();
       await _connectedBleDevice?.disconnect();
+
+      if (!mounted) return;
 
       // Connect to physical hardware
       await device.connect(
@@ -225,16 +232,25 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
         autoConnect: false,
       );
 
+      if (!mounted) return;
+
       _connectedBleDevice = device;
       _pairedWatchName = device.platformName.isNotEmpty ? device.platformName : "HiWatch Pro";
 
       // Save paired watch name
       final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
       await prefs.setString(_prefsBleWatchNameKey, _pairedWatchName!);
 
-      // Listen for disconnection
+      // Listen for disconnection — skip initial 'disconnected' emission that fires
+      // before the connection handshake completes (prevents full screen rebuild/restart)
+      bool hasSeenConnected = false;
       _connectionSubscription = device.connectionState.listen((state) {
-        if (state == BluetoothConnectionState.disconnected) {
+        if (state == BluetoothConnectionState.connected) {
+          hasSeenConnected = true;
+          return;
+        }
+        if (state == BluetoothConnectionState.disconnected && hasSeenConnected) {
           _livePollingTimer?.cancel();
           _continuousDbSyncTimer?.cancel();
           for (var sub in _notifySubscriptions) {
@@ -243,17 +259,20 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
           _notifySubscriptions.clear();
           // Flush any final unpersisted readings to database & backend immediately
           _persistLiveWatchDataToDatabase();
-          if (mounted) {
-            setState(() {
-              _isRealBleConnected = false;
-              _connectionStatusText = "Disconnected";
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Smartwatch disconnected: $_pairedWatchName')),
-            );
-          }
+          if (!mounted) return;
+          // Only update connection status — preserve telemetry values so the
+          // last-known readings remain visible even after disconnect.
+          setState(() {
+            _isRealBleConnected = false;
+            _connectionStatusText = "Disconnected";
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Smartwatch disconnected: $_pairedWatchName')),
+          );
         }
       });
+
+      if (!mounted) return;
 
       // Discover GATT services & characteristics across vendor & standard profiles
       final services = await device.discoverServices();
@@ -375,6 +394,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
         return;
       }
       await _persistLiveWatchDataToDatabase();
+      if (!mounted) timer.cancel();
     });
   }
 
@@ -435,7 +455,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
       if (_activeMinutes > 0) 'activeMinutes': _activeMinutes,
     };
 
-    if (mounted) setState(() => _isAutoSaving = true);
+    if (!mounted) return;
+    setState(() => _isAutoSaving = true);
 
     // 1. Dual-Write: Cloud Backend Database (Isolated per user, encrypted, conflict-safe)
     try {
@@ -1189,10 +1210,17 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
             _buildHeroCard(),
             const SizedBox(height: VSpace.md),
             _buildStatusCard(),
-            if (_isRealBleConnected) ...[
-              const SizedBox(height: VSpace.md),
-              _buildLiveGattCard(),
-            ],
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topCenter,
+              child: _isRealBleConnected
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: VSpace.md),
+                      child: _buildLiveGattCard(),
+                    )
+                  : const SizedBox.shrink(),
+            ),
             const SizedBox(height: VSpace.md),
             _buildDevicesCard(),
             if (_lastSummary.isNotEmpty) ...[
@@ -1485,7 +1513,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                         const Icon(Icons.water_drop_rounded, color: VColor.accent, size: 18),
                         const SizedBox(width: 4),
                         Text(
-                          _liveSpo2 > 0 ? "$_liveSpo2%" : "98%",
+                          _liveSpo2 > 0 ? "$_liveSpo2%" : "--",
                           style: const TextStyle(
                             color: VColor.text,
                             fontSize: 22,
@@ -1575,7 +1603,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> with SingleTickerPr
                         const Icon(Icons.shield_rounded, color: VColor.accent, size: 16),
                         const SizedBox(width: 4),
                         Text(
-                          "$_liveRecoveryScore%",
+                          _liveRecoveryScore > 0 ? "$_liveRecoveryScore%" : "--",
                           style: const TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.w800),
                         ),
                       ],

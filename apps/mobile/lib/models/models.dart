@@ -875,6 +875,7 @@ class ClubItem {
   final String interestTag;
   final int memberCount;
   final bool joined;
+  final bool requestPending;
 
   const ClubItem({
     required this.id,
@@ -883,6 +884,7 @@ class ClubItem {
     required this.interestTag,
     required this.memberCount,
     required this.joined,
+    this.requestPending = false,
   });
 
   factory ClubItem.fromJson(Map<String, dynamic> j) => ClubItem(
@@ -892,6 +894,7 @@ class ClubItem {
         interestTag: _s(j['interestTag']),
         memberCount: _i(j['memberCount']),
         joined: _b(j['joined']),
+        requestPending: _b(j['requestPending']),
       );
 }
 

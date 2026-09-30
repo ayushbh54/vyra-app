@@ -23,6 +23,8 @@ class AvatarFaceProfile {
     this.avatarGender = 'female', // 'female', 'male'
     this.photoPath,
     this.userName = 'Athlete',
+    this.bodyType = 'athletic', // 'athletic', 'muscular', 'lean'
+    this.sportPose = 'running', // 'running', 'boxing', 'yoga', 'cycling'
   });
 
   final bool useUserLikeness;
@@ -40,6 +42,8 @@ class AvatarFaceProfile {
   final String avatarGender;
   final String? photoPath;
   final String userName;
+  final String bodyType;
+  final String sportPose;
 
   AvatarFaceProfile copyWith({
     bool? useUserLikeness,
@@ -57,6 +61,8 @@ class AvatarFaceProfile {
     String? avatarGender,
     String? photoPath,
     String? userName,
+    String? bodyType,
+    String? sportPose,
   }) {
     return AvatarFaceProfile(
       useUserLikeness: useUserLikeness ?? this.useUserLikeness,
@@ -74,6 +80,8 @@ class AvatarFaceProfile {
       avatarGender: avatarGender ?? this.avatarGender,
       photoPath: photoPath ?? this.photoPath,
       userName: userName ?? this.userName,
+      bodyType: bodyType ?? this.bodyType,
+      sportPose: sportPose ?? this.sportPose,
     );
   }
 
@@ -93,6 +101,8 @@ class AvatarFaceProfile {
         'avatarGender': avatarGender,
         'photoPath': photoPath,
         'userName': userName,
+        'bodyType': bodyType,
+        'sportPose': sportPose,
       };
 
   factory AvatarFaceProfile.fromJson(Map<String, dynamic> json) {
@@ -112,6 +122,8 @@ class AvatarFaceProfile {
       avatarGender: json['avatarGender'] as String? ?? 'female',
       photoPath: json['photoPath'] as String?,
       userName: json['userName'] as String? ?? 'Athlete',
+      bodyType: json['bodyType'] as String? ?? 'athletic',
+      sportPose: json['sportPose'] as String? ?? 'running',
     );
   }
 
