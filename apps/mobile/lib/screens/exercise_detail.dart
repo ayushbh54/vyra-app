@@ -36,12 +36,22 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   void initState() {
     super.initState();
     _checkMovement();
+    // Auto-sync avatar pose to this exercise — driven by Gemini workout plan slug
+    _syncAvatarPose();
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
     super.dispose();
+  }
+
+  /// Automatically transitions the avatar to the pose matching this exercise.
+  /// Uses AvatarCustomizationService.slugToAvatarPose() to map the exercise slug.
+  void _syncAvatarPose() {
+    final slug = widget.item.slug;
+    // Fire-and-forget: don't await, no blocking UI
+    AvatarCustomizationService.instance.setActiveExercisePose(slug);
   }
 
   Future<void> _checkMovement() async {

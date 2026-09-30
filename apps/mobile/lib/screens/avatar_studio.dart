@@ -196,11 +196,11 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
                   children: [
                     // Studio ambient background
                     Container(
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         gradient: RadialGradient(
-                          center: const Alignment(0, -0.3),
+                          center: Alignment(0, -0.3),
                           radius: 0.9,
-                          colors: const [
+                          colors: [
                             VColor.surface,
                             VColor.bg,
                             VColor.bgLift,
@@ -453,36 +453,32 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
   Map<String, dynamic> _getSportData(String sport) {
     switch (sport) {
       case 'boxing':
-        return {
-          'name': 'Boxing',
-          'icon': Icons.sports_mma_rounded,
-          'color': const Color(0xFFFF4136)
-        };
+        return {'name': 'Boxing', 'icon': Icons.sports_mma_rounded, 'color': const Color(0xFFFF4136)};
       case 'yoga':
-        return {
-          'name': 'Yoga',
-          'icon': Icons.self_improvement_rounded,
-          'color': const Color(0xFF9B59B6)
-        };
+        return {'name': 'Yoga', 'icon': Icons.self_improvement_rounded, 'color': const Color(0xFF9B59B6)};
       case 'cycling':
-        return {
-          'name': 'Cycling',
-          'icon': Icons.directions_bike_rounded,
-          'color': VColor.accentGreen
-        };
+        return {'name': 'Cycling', 'icon': Icons.directions_bike_rounded, 'color': VColor.accentGreen};
       case 'weightlifting':
-        return {
-          'name': 'Weights',
-          'icon': Icons.fitness_center_rounded,
-          'color': VColor.accentOrange
-        };
+        return {'name': 'Weights', 'icon': Icons.fitness_center_rounded, 'color': VColor.accentOrange};
+      case 'squat':
+        return {'name': 'Squat', 'icon': Icons.accessibility_new_rounded, 'color': const Color(0xFFFF6B6B)};
+      case 'plank':
+        return {'name': 'Plank', 'icon': Icons.horizontal_rule_rounded, 'color': const Color(0xFF2ECC71)};
+      case 'pushup':
+        return {'name': 'Push-up', 'icon': Icons.arrow_downward_rounded, 'color': const Color(0xFF3498DB)};
+      case 'swimming':
+        return {'name': 'Swimming', 'icon': Icons.pool_rounded, 'color': const Color(0xFF1ABC9C)};
+      case 'dancing':
+        return {'name': 'Dance', 'icon': Icons.music_note_rounded, 'color': const Color(0xFFE91E63)};
+      case 'football':
+        return {'name': 'Football', 'icon': Icons.sports_soccer_rounded, 'color': const Color(0xFF27AE60)};
+      case 'cricket':
+        return {'name': 'Cricket', 'icon': Icons.sports_cricket_rounded, 'color': const Color(0xFFF39C12)};
+      case 'skipping':
+        return {'name': 'Skipping', 'icon': Icons.loop_rounded, 'color': const Color(0xFF8E44AD)};
       case 'running':
       default:
-        return {
-          'name': 'Running',
-          'icon': Icons.directions_run_rounded,
-          'color': VColor.accent
-        };
+        return {'name': 'Running', 'icon': Icons.directions_run_rounded, 'color': VColor.accent};
     }
   }
 
@@ -613,25 +609,26 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Sport Pose — now 5 options
+        // Sport Pose — all 13 exercises in scrollable grid
         _buildSectionTitle('SPORT POSE', Icons.sports_score_rounded),
         const SizedBox(height: 10),
-        Row(
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
           children: [
-            _buildSportCard('running', 'Runner',
-                Icons.directions_run_rounded, VColor.accent),
-            const SizedBox(width: 6),
-            _buildSportCard('boxing', 'Boxing',
-                Icons.sports_mma_rounded, const Color(0xFFFF4136)),
-            const SizedBox(width: 6),
-            _buildSportCard('yoga', 'Yoga',
-                Icons.self_improvement_rounded, const Color(0xFF9B59B6)),
-            const SizedBox(width: 6),
-            _buildSportCard('cycling', 'Cycling',
-                Icons.directions_bike_rounded, VColor.accentGreen),
-            const SizedBox(width: 6),
-            _buildSportCard('weightlifting', 'Weights',
-                Icons.fitness_center_rounded, VColor.accentOrange),
+            _buildSportChip('running',      'Run',      Icons.directions_run_rounded,   VColor.accent),
+            _buildSportChip('boxing',       'Boxing',   Icons.sports_mma_rounded,        const Color(0xFFFF4136)),
+            _buildSportChip('yoga',         'Yoga',     Icons.self_improvement_rounded,  const Color(0xFF9B59B6)),
+            _buildSportChip('cycling',      'Cycle',    Icons.directions_bike_rounded,   VColor.accentGreen),
+            _buildSportChip('weightlifting','Weights',  Icons.fitness_center_rounded,    VColor.accentOrange),
+            _buildSportChip('squat',        'Squat',    Icons.accessibility_new_rounded, const Color(0xFFFF6B6B)),
+            _buildSportChip('plank',        'Plank',    Icons.horizontal_rule_rounded,   const Color(0xFF2ECC71)),
+            _buildSportChip('pushup',       'Push-up',  Icons.arrow_downward_rounded,    const Color(0xFF3498DB)),
+            _buildSportChip('swimming',     'Swim',     Icons.pool_rounded,              const Color(0xFF1ABC9C)),
+            _buildSportChip('dancing',      'Dance',    Icons.music_note_rounded,        const Color(0xFFE91E63)),
+            _buildSportChip('football',     'Football', Icons.sports_soccer_rounded,     const Color(0xFF27AE60)),
+            _buildSportChip('cricket',      'Cricket',  Icons.sports_cricket_rounded,    const Color(0xFFF39C12)),
+            _buildSportChip('skipping',     'Skip',     Icons.loop_rounded,              const Color(0xFF8E44AD)),
           ],
         ),
 
@@ -671,54 +668,40 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen>
     );
   }
 
-  Widget _buildSportCard(
-      String id, String label, IconData icon, Color color) {
+
+  /// Compact chip for the 13-exercise Wrap grid.
+  Widget _buildSportChip(String id, String label, IconData icon, Color color) {
     final isSelected = _profile.sportPose == id;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => _updateProfile(_profile.copyWith(sportPose: id)),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            gradient: isSelected
-                ? LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      color.withValues(alpha: 0.3),
-                      color.withValues(alpha: 0.08)
-                    ],
-                  )
-                : null,
-            color: isSelected ? null : VColor.surfaceRaised,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? color : VColor.line,
-              width: isSelected ? 2 : 1,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                        color: color.withValues(alpha: 0.3), blurRadius: 10)
-                  ]
-                : null,
-          ),
-          child: Column(
-            children: [
-              Icon(icon,
-                  color: isSelected ? color : VColor.textLow, size: 22),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? VColor.text : VColor.textLow,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 9,
-                ),
+    return GestureDetector(
+      onTap: () => _updateProfile(_profile.copyWith(sportPose: id)),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(colors: [color.withValues(alpha: 0.35), color.withValues(alpha: 0.12)])
+              : null,
+          color: isSelected ? null : VColor.surfaceRaised,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? color : VColor.line, width: isSelected ? 2 : 1),
+          boxShadow: isSelected
+              ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8)]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: isSelected ? color : VColor.textLow, size: 14),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? color : VColor.textLow,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                fontSize: 11,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -2338,6 +2321,199 @@ class _FreeFireAvatarPainter extends CustomPainter {
         hLY = cy - 95 - breathe;
         hRX = cx + 45 * cosRot;
         hRY = cy - 95 - breathe;
+        break;
+
+      case 'squat':
+        // Deep squat position — legs wide and bent
+        footLX = cx - 40 * cosRot;
+        footLY = cy + 145;
+        footRX = cx + 40 * cosRot;
+        footRY = cy + 145;
+        kneeLX = cx - 38 * cosRot;
+        kneeLY = cy + 80;
+        kneeRX = cx + 38 * cosRot;
+        kneeRY = cy + 80;
+        pelvisX = cx;
+        pelvisY = cy + 70;
+        sLY = cy - 20 - breathe;
+        sRY = cy - 20 - breathe;
+        // Arms forward for balance
+        eLX = cx - 32 * cosRot;
+        eLY = cy - 30 - breathe;
+        eRX = cx + 32 * cosRot;
+        eRY = cy - 30 - breathe;
+        hLX = cx - 15 * cosRot;
+        hLY = cy - 15 - breathe;
+        hRX = cx + 15 * cosRot;
+        hRY = cy - 15 - breathe;
+        break;
+
+      case 'plank':
+        // Full horizontal plank — body straight, arms locked
+        pelvisX = cx;
+        pelvisY = cy + 40;
+        footLX = cx - 55 * cosRot;
+        footLY = cy + 70;
+        footRX = cx - 50 * cosRot;
+        footRY = cy + 70;
+        kneeLX = cx - 20 * cosRot;
+        kneeLY = cy + 60;
+        kneeRX = cx - 15 * cosRot;
+        kneeRY = cy + 60;
+        sLX = cx + 45 * cosRot;
+        sLY = cy + 10 - breathe;
+        sRX = cx + 50 * cosRot;
+        sRY = cy + 10 - breathe;
+        eLX = cx + 50 * cosRot;
+        eLY = cy + 35 - breathe;
+        eRX = cx + 55 * cosRot;
+        eRY = cy + 35 - breathe;
+        hLX = cx + 50 * cosRot;
+        hLY = cy + 50 - breathe;
+        hRX = cx + 55 * cosRot;
+        hRY = cy + 50 - breathe;
+        break;
+
+      case 'pushup':
+        // Push-up down position
+        final pushPhase = math.sin(idleProgress * math.pi * 2) * 0.5 + 0.5;
+        pelvisX = cx;
+        pelvisY = cy + 40 - pushPhase * 15;
+        footLX = cx - 50 * cosRot;
+        footLY = cy + 80;
+        footRX = cx - 45 * cosRot;
+        footRY = cy + 80;
+        kneeLX = cx - 20 * cosRot;
+        kneeLY = cy + 65;
+        kneeRX = cx - 15 * cosRot;
+        kneeRY = cy + 65;
+        sLX = cx + 40 * cosRot;
+        sLY = cy - 5 - breathe + pushPhase * 15;
+        sRX = cx + 45 * cosRot;
+        sRY = cy - 5 - breathe + pushPhase * 15;
+        eLX = cx + 30 * cosRot;
+        eLY = cy + 20 - breathe + pushPhase * 10;
+        eRX = cx + 35 * cosRot;
+        eRY = cy + 20 - breathe + pushPhase * 10;
+        hLX = cx + 30 * cosRot;
+        hLY = cy + 45 - breathe + pushPhase * 5;
+        hRX = cx + 35 * cosRot;
+        hRY = cy + 45 - breathe + pushPhase * 5;
+        break;
+
+      case 'swimming':
+        // Freestyle swimming stroke
+        final swimPhase = math.sin(idleProgress * math.pi * 3);
+        pelvisX = cx;
+        pelvisY = cy + 30;
+        sLY = cy - 40 - breathe;
+        sRY = cy - 40 - breathe;
+        footLX = cx - 30 * cosRot;
+        footLY = cy + 130 + swimPhase * 8;
+        footRX = cx + 25 * cosRot;
+        footRY = cy + 130 - swimPhase * 8;
+        // Alternating arm strokes
+        eLX = cx - 60 * cosRot;
+        eLY = cy - 60 - breathe + swimPhase * 20;
+        eRX = cx + 50 * cosRot;
+        eRY = cy + 10 - breathe - swimPhase * 20;
+        hLX = cx - 70 * cosRot;
+        hLY = cy - 50 - breathe + swimPhase * 25;
+        hRX = cx + 35 * cosRot;
+        hRY = cy + 30 - breathe - swimPhase * 15;
+        break;
+
+      case 'dancing':
+        // Dynamic dance pose — arms expressive, weight shifted
+        final dancePhase = math.sin(idleProgress * math.pi * 4);
+        footLX = cx - 35 * cosRot;
+        footLY = cy + 145 + dancePhase * 5;
+        footRX = cx + 20 * cosRot;
+        footRY = cy + 140;
+        kneeLX = cx - 28 * cosRot;
+        kneeLY = cy + 90 + dancePhase * 4;
+        kneeRX = cx + 15 * cosRot;
+        kneeRY = cy + 92;
+        sLX = cx - shoulderSpan * 1.1 * cosRot;
+        sLY = cy - 55 - breathe + dancePhase * 5;
+        sRX = cx + shoulderSpan * 0.9 * cosRot;
+        sRY = cy - 50 - breathe - dancePhase * 5;
+        eLX = cx - 65 * cosRot;
+        eLY = cy - 70 - breathe + dancePhase * 10;
+        eRX = cx + 60 * cosRot;
+        eRY = cy - 20 - breathe - dancePhase * 8;
+        hLX = cx - 75 * cosRot;
+        hLY = cy - 65 - breathe + dancePhase * 12;
+        hRX = cx + 70 * cosRot;
+        hRY = cy - 15 - breathe - dancePhase * 10;
+        break;
+
+      case 'football':
+        // Power kick stance — one leg raised, arms spread for balance
+        final kickPhase = math.sin(idleProgress * math.pi * 1.5) * 0.5 + 0.5;
+        footLX = cx - 15 * cosRot;
+        footLY = cy + 145;
+        footRX = cx + 50 * cosRot;
+        footRY = cy + 90 - kickPhase * 20;
+        kneeLX = cx - 10 * cosRot;
+        kneeLY = cy + 92;
+        kneeRX = cx + 35 * cosRot;
+        kneeRY = cy + 70 - kickPhase * 15;
+        // Arms spread for balance
+        eLX = cx - 62 * cosRot;
+        eLY = cy - 20 - breathe;
+        eRX = cx + 62 * cosRot;
+        eRY = cy - 15 - breathe;
+        hLX = cx - 72 * cosRot;
+        hLY = cy - 10 - breathe;
+        hRX = cx + 72 * cosRot;
+        hRY = cy - 5 - breathe;
+        break;
+
+      case 'cricket':
+        // Batting stance — bat raised, side profile
+        footLX = cx - 38 * cosRot;
+        footLY = cy + 145;
+        footRX = cx + 18 * cosRot;
+        footRY = cy + 145;
+        kneeLX = cx - 30 * cosRot;
+        kneeLY = cy + 92;
+        kneeRX = cx + 14 * cosRot;
+        kneeRY = cy + 92;
+        // Both hands gripping bat raised to shoulder
+        eLX = cx - 10 * cosRot;
+        eLY = cy - 55 - breathe;
+        eRX = cx + 15 * cosRot;
+        eRY = cy - 60 - breathe;
+        hLX = cx - 5 * cosRot;
+        hLY = cy - 80 - breathe;
+        hRX = cx + 10 * cosRot;
+        hRY = cy - 85 - breathe;
+        break;
+
+      case 'skipping':
+        // Jump rope pose — mid-air, knees bent, arms looping
+        final skipPhase = math.sin(idleProgress * math.pi * 6) * 0.5 + 0.5;
+        pelvisY = cy + 20 - skipPhase * 20;
+        footLX = cx - 18 * cosRot;
+        footLY = cy + 130 - skipPhase * 25;
+        footRX = cx + 18 * cosRot;
+        footRY = cy + 132 - skipPhase * 22;
+        kneeLX = cx - 16 * cosRot;
+        kneeLY = cy + 85 - skipPhase * 15;
+        kneeRX = cx + 16 * cosRot;
+        kneeRY = cy + 87 - skipPhase * 12;
+        sLY = cy - 52 - breathe - skipPhase * 5;
+        sRY = cy - 52 - breathe - skipPhase * 5;
+        // Arms rotating rope
+        eLX = cx - 55 * cosRot - skipPhase * 10;
+        eLY = cy - 15 - breathe + skipPhase * 20;
+        eRX = cx + 55 * cosRot + skipPhase * 10;
+        eRY = cy - 20 - breathe + skipPhase * 20;
+        hLX = cx - 60 * cosRot - skipPhase * 12;
+        hLY = cy + 5 - breathe + skipPhase * 25;
+        hRX = cx + 60 * cosRot + skipPhase * 12;
+        hRY = cy - 0 - breathe + skipPhase * 25;
         break;
     }
 

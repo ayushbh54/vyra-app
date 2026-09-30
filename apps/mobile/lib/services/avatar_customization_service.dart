@@ -273,4 +273,86 @@ class AvatarCustomizationService extends ChangeNotifier {
     await updateProfile(updated);
     return updated;
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // EXERCISE SLUG → AVATAR POSE MAPPING
+  // Driven by Gemini-recommended exercise slugs from the user's workout plan.
+  // When Gemini recommends e.g. 'push_up' or 'barbell_squat', the avatar
+  // automatically transitions to the matching pose.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Maps any exercise slug from the Gemini workout plan to an avatar pose ID.
+  static String slugToAvatarPose(String slug) {
+    final s = slug.toLowerCase().replaceAll(RegExp(r'[\s_-]+'), '_');
+
+    // Running / Cardio
+    if (_matchAny(s, ['run', 'jog', 'sprint', 'marathon', 'treadmill', 'dash'])) { return 'running'; }
+
+    // Cycling
+    if (_matchAny(s, ['cycl', 'bike', 'bicycle', 'spin', 'stationary_bike'])) { return 'cycling'; }
+
+    // Boxing / MMA
+    if (_matchAny(s, ['box', 'punch', 'kickbox', 'mma', 'jab', 'cross', 'uppercut', 'sparring'])) { return 'boxing'; }
+
+    // Yoga / Stretching / Pilates
+    if (_matchAny(s, ['yoga', 'stretch', 'pilates', 'tree_pose', 'downward', 'warrior', 'cobra',
+        'child_pose', 'meditation', 'pranayama', 'surya', 'namaste'])) { return 'yoga'; }
+
+    // Weightlifting / Strength
+    if (_matchAny(s, ['deadlift', 'bench_press', 'overhead_press', 'barbell', 'dumbbell',
+        'pull_up', 'chin_up', 'lat_pulldown', 'row', 'shoulder_press', 'bicep_curl',
+        'tricep', 'chest_fly', 'cable', 'machine', 'weightlift', 'power_clean',
+        'snatch', 'clean_jerk'])) { return 'weightlifting'; }
+
+    // Squat
+    if (_matchAny(s, ['squat', 'goblet', 'wall_sit', 'sumo', 'hack_squat', 'leg_press',
+        'front_squat', 'box_squat'])) { return 'squat'; }
+
+    // Plank / Core
+    if (_matchAny(s, ['plank', 'side_plank', 'hollow_hold', 'ab_wheel', 'leg_raise',
+        'mountain_climb', 'flutter_kick', 'russian_twist', 'bird_dog', 'dead_bug'])) { return 'plank'; }
+
+    // Push-up
+    if (_matchAny(s, ['push_up', 'pushup', 'push-up', 'diamond_push', 'wide_push',
+        'decline_push', 'incline_push', 'clap_push', 'pike_push'])) { return 'pushup'; }
+
+    // Swimming
+    if (_matchAny(s, ['swim', 'freestyle', 'breaststroke', 'backstroke', 'butterfly',
+        'water_polo', 'aqua'])) { return 'swimming'; }
+
+    // Dance / Zumba
+    if (_matchAny(s, ['danc', 'zumba', 'aerobic', 'step_aerobic', 'bollywood',
+        'hip_hop', 'bhangra'])) { return 'dancing'; }
+
+    // Football / Soccer
+    if (_matchAny(s, ['football', 'soccer', 'kick', 'penalty', 'dribble'])) { return 'football'; }
+
+    // Cricket
+    if (_matchAny(s, ['cricket', 'batting', 'bowling', 'fielding'])) { return 'cricket'; }
+
+    // Skipping / Jump rope
+    if (_matchAny(s, ['skip', 'jump_rope', 'rope_skip', 'jumping_jack', 'jump',
+        'box_jump', 'burpee'])) { return 'skipping'; }
+
+    // Default: running for any unrecognized cardio/general exercise
+    return 'running';
+  }
+
+  static bool _matchAny(String slug, List<String> keywords) =>
+      keywords.any((k) => slug.contains(k));
+
+  /// Call this whenever the user opens an exercise or starts a recommended workout.
+  /// The avatar will automatically transition to that exercise's pose.
+  Future<void> setActiveExercisePose(String exerciseSlug) async {
+    final pose = slugToAvatarPose(exerciseSlug);
+    if (_profile.sportPose == pose) return; // already on correct pose
+    final updated = _profile.copyWith(sportPose: pose);
+    _profile = updated;
+    notifyListeners();
+    // Persist so profile screen also reflects it
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefKey, jsonEncode(updated.toJson()));
+    } catch (_) {}
+  }
 }

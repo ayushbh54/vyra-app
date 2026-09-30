@@ -538,6 +538,24 @@ class _FoodScreenState extends State<FoodScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── Quick-add suggestion chips ────────────────────────────
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: ['Paneer', 'Dal', 'Roti', 'Rice', 'Tofu', 'Eggs']
+                      .map((s) => ActionChip(
+                            label: Text(s, style: const TextStyle(color: VColor.accent, fontSize: 12, fontWeight: FontWeight.w600)),
+                            backgroundColor: VColor.accent.withValues(alpha: 0.10),
+                            side: BorderSide(color: VColor.accent.withValues(alpha: 0.35)),
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => setState(() {
+                              if (!_ingredients.contains(s)) _ingredients.add(s);
+                            }),
+                          ))
+                      .toList(),
+                ),
+                const SizedBox(height: VSpace.sm),
                 Row(
                   children: [
                     Expanded(
@@ -592,7 +610,7 @@ class _FoodScreenState extends State<FoodScreen> {
             ),
           ),
 
-          if (_recipeError != null) ...[
+          if (_recipeError != null && _recipe == null) ...[
             const SizedBox(height: VSpace.md),
             VErrorView(message: _recipeError!),
           ],
@@ -610,6 +628,62 @@ class _FoodScreenState extends State<FoodScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── 7-day streak calendar ─────────────────────────────────
+                Builder(builder: (context) {
+                  final today = DateTime.now();
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(7, (i) {
+                      final day = today.subtract(Duration(days: 6 - i));
+                      final key = day.toIso8601String().substring(0, 10);
+                      final hasData = _sugarHistory.containsKey(key);
+                      final isClean = hasData && _sugarHistory[key] == 0;
+                      final Color circleColor = hasData
+                          ? (isClean ? VColor.accentGreen : VColor.warn)
+                          : VColor.surfaceRaised;
+                      final Color borderColor = hasData
+                          ? (isClean ? VColor.accentGreen : VColor.warn)
+                          : VColor.line;
+                      final isToday = i == 6;
+                      final dayLabel = ['M', 'T', 'W', 'T', 'F', 'S', 'S'][day.weekday - 1];
+                      return Column(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: circleColor.withValues(alpha: hasData ? 0.22 : 0.10),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: borderColor.withValues(alpha: isToday ? 1.0 : 0.55),
+                                width: isToday ? 2.0 : 1.0,
+                              ),
+                            ),
+                            child: Center(
+                              child: hasData
+                                  ? Icon(
+                                      isClean ? Icons.check_rounded : Icons.close_rounded,
+                                      color: isClean ? VColor.accentGreen : VColor.warn,
+                                      size: 16,
+                                    )
+                                  : const Icon(Icons.remove_rounded, color: VColor.textLow, size: 14),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            dayLabel,
+                            style: TextStyle(
+                              color: isToday ? VColor.accent : VColor.textLow,
+                              fontSize: 10,
+                              fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  );
+                }),
+                const SizedBox(height: VSpace.md),
                 Row(
                   children: [
                     Container(

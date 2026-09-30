@@ -20,6 +20,7 @@ import 'trophy_case.dart';
 import 'user_follow_list.dart';
 import '../services/readings_history_service.dart';
 import '../services/report_history_service.dart';
+import '../services/avatar_customization_service.dart';
 import 'avatar_studio.dart';
 import 'training_hub.dart';
 
@@ -70,6 +71,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadProfile();
+    _syncAvatarFromWorkoutPlan();
     ReadingsHistoryService.instance.init();
     ReportHistoryService.instance.init();
   }
@@ -79,6 +81,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final p = await context.read<VyraApi>().getProfile();
       if (mounted) setState(() => _profile = p);
     } catch (_) {}
+  }
+
+  /// Loads today's Gemini workout plan and sets avatar pose to the first exercise.
+  /// This keeps the avatar in sync with what Gemini recommended for this user today.
+  Future<void> _syncAvatarFromWorkoutPlan() async {
+    try {
+      final todayData = await context.read<VyraApi>().today();
+      final entries = todayData.plan.entries;
+      if (entries.isNotEmpty) {
+        final firstSlug = entries.first.exerciseSlug;
+        if (firstSlug.isNotEmpty) {
+          await AvatarCustomizationService.instance.setActiveExercisePose(firstSlug);
+        }
+      }
+    } catch (_) {
+      // Silently ignore — avatar keeps its last saved pose
+    }
   }
 
   @override
