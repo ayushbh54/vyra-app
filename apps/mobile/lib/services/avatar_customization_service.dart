@@ -180,9 +180,10 @@ class AvatarFaceProfile {
         return const Color(0xFF00D2FF);
     }
   }
-}
 
 /// ─────────────────────────────────────────────────────────────────────────────
+}
+
 /// AVATAR CUSTOMIZATION SERVICE (Offline Persistent Storage & Face Analyzer)
 /// ─────────────────────────────────────────────────────────────────────────────
 class AvatarCustomizationService extends ChangeNotifier {
@@ -343,16 +344,42 @@ class AvatarCustomizationService extends ChangeNotifier {
 
   /// Call this whenever the user opens an exercise or starts a recommended workout.
   /// The avatar will automatically transition to that exercise's pose.
+  static const Map<String, String> _poseToRpmAnim = {
+    'running':       'run',
+    'boxing':        'punch',
+    'yoga':          'idle',
+    'cycling':       'idle', 
+    'weightlifting': 'idle',
+    'squat':         'idle',
+    'plank':         'idle',
+    'pushup':        'idle',
+    'swimming':      'idle',
+    'dancing':       'wave',
+    'football':      'kick',
+    'cricket':       'idle',
+    'skipping':      'jump',
+  };
+
+  String _currentRpmExercisePose = 'idle';
+  String get currentRpmExercisePose => _currentRpmExercisePose;
+
+  /// Call this whenever the user opens an exercise or starts a recommended workout.
+  /// The avatar will automatically transition to that exercise's pose.
   Future<void> setActiveExercisePose(String exerciseSlug) async {
     final pose = slugToAvatarPose(exerciseSlug);
-    if (_profile.sportPose == pose) return; // already on correct pose
+    final rpmAnim = _poseToRpmAnim[pose] ?? 'idle';
+    
+    if (_profile.sportPose == pose && _currentRpmExercisePose == rpmAnim) return;
+    
     final updated = _profile.copyWith(sportPose: pose);
     _profile = updated;
+    _currentRpmExercisePose = rpmAnim;
     notifyListeners();
     // Persist so profile screen also reflects it
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefKey, jsonEncode(updated.toJson()));
+      await prefs.setString('rpm_current_anim', rpmAnim);
     } catch (_) {}
   }
 }

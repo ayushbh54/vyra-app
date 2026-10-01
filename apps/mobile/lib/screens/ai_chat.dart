@@ -8,6 +8,8 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../api/client.dart';
 import '../theme.dart';
+import '../services/avatar_customization_service.dart';
+
 
 /// AI COACH CHAT — powered by Gemini.
 ///
@@ -94,6 +96,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       setState(() {
         _messages.addAll(initialMessages);
       });
+      
       _saveHistory();
       _scrollToBottom();
     }
@@ -252,7 +255,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
       _loading = true;
       _error = null;
     });
-    _saveHistory();
+    
+      _saveHistory();
     _scrollToBottom();
 
     // Out-of-field check
@@ -268,6 +272,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ),
         );
       });
+      
       _saveHistory();
       _scrollToBottom();
       return;
@@ -278,9 +283,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
       final resp = await api.chatMessage(text, conversationId: _convId);
       _convId = resp['conversationId'] as String?;
       final reply = resp['reply'] as String? ?? '...';
+      _syncAvatarFromAiResponse(reply);
       if (mounted) {
         setState(() => _messages.add(_AiChatMessage('model', reply)));
       }
+      
       _saveHistory();
     } on ApiException catch (e) {
       if (mounted) {
@@ -305,6 +312,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       if (mounted) {
         setState(() => _loading = false);
       }
+      
       _saveHistory();
       _scrollToBottom();
     }
@@ -511,6 +519,33 @@ class _AiChatScreenState extends State<AiChatScreen> {
         ),
       ]),
     );
+  }
+
+  void _syncAvatarFromAiResponse(String aiResponse) {
+    final lower = aiResponse.toLowerCase();
+    
+    final exerciseKeywords = {
+      'running': 'running', 'run ': 'running', 'jog': 'running', 'sprint': 'running',
+      'squat': 'squat', 'squats': 'squat',
+      'push-up': 'pushup', 'pushup': 'pushup', 'push up': 'pushup',
+      'plank': 'plank',
+      'yoga': 'yoga',
+      'cycling': 'cycling', 'cycle': 'cycling', 'bike': 'cycling',
+      'boxing': 'boxing', 'punch': 'boxing',
+      'swimming': 'swimming', 'swim': 'swimming',
+      'weight': 'weightlifting', 'deadlift': 'weightlifting', 'bench': 'weightlifting',
+      'dance': 'dancing', 'zumba': 'dancing',
+      'football': 'football', 'soccer': 'football',
+      'cricket': 'cricket',
+      'skipping': 'skipping', 'jump rope': 'skipping', 'burpee': 'skipping',
+    };
+    
+    for (final entry in exerciseKeywords.entries) {
+      if (lower.contains(entry.key)) {
+        AvatarCustomizationService.instance.setActiveExercisePose(entry.value);
+        break;
+      }
+    }
   }
 
   Widget _suggestionChip(String label) {
