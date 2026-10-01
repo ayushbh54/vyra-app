@@ -65,15 +65,73 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
 
     final lower = custom.title.toLowerCase();
     final desc = (custom.rules).toLowerCase();
-    final isGym = lower.contains('squat') || lower.contains('push') ||
-        widget.badge == 'Strength' || custom.title.contains('Strength');
-    final isHydration = lower.contains('water') ||
-        lower.contains('hydration') ||
-        desc.contains('water') ||
-        desc.contains('hydration');
+    final combined = '$lower $desc';
 
-    if (isGym || isHydration) {
-      await _openCameraVerification(custom.title, custom.id, isHydration);
+    // ── Hydration challenge detection ───────────────────────────────────────
+    final isHydration = combined.contains('water') ||
+        combined.contains('hydration') ||
+        combined.contains('drink') ||
+        combined.contains('juice');
+
+    // ── Fitness / exercise challenge detection ──────────────────────────────
+    // Covers ALL exercises Gemini / dataset can generate
+    final isFitness = widget.badge == 'Strength' ||
+        widget.badge == 'Fitness' ||
+        widget.badge == 'Cardio' ||
+        widget.badge == 'Yoga' ||
+        widget.badge == 'Sport' ||
+        combined.contains('squat') ||
+        combined.contains('push') ||
+        combined.contains('plank') ||
+        combined.contains('lunge') ||
+        combined.contains('deadlift') ||
+        combined.contains('pull') ||
+        combined.contains('bench') ||
+        combined.contains('curl') ||
+        combined.contains('press') ||
+        combined.contains('row') ||
+        combined.contains('burpee') ||
+        combined.contains('jump') ||
+        combined.contains('skip') ||
+        combined.contains('run') ||
+        combined.contains('jog') ||
+        combined.contains('sprint') ||
+        combined.contains('cycling') ||
+        combined.contains('bike') ||
+        combined.contains('swim') ||
+        combined.contains('yoga') ||
+        combined.contains('stretch') ||
+        combined.contains('boxing') ||
+        combined.contains('punch') ||
+        combined.contains('kickbox') ||
+        combined.contains('crunch') ||
+        combined.contains('sit.up') ||
+        combined.contains('workout') ||
+        combined.contains('exercise') ||
+        combined.contains('strength') ||
+        combined.contains('fitness') ||
+        combined.contains('cardio') ||
+        combined.contains('cricket') ||
+        combined.contains('football') ||
+        combined.contains('dance') ||
+        combined.contains('zumba') ||
+        combined.contains('hiit') ||
+        combined.contains('tabata') ||
+        combined.contains('glute') ||
+        combined.contains('leg') ||
+        combined.contains('chest') ||
+        combined.contains('back') ||
+        combined.contains('shoulder') ||
+        combined.contains('arm') ||
+        combined.contains('core') ||
+        combined.contains('abs');
+
+    if (isHydration) {
+      await _openCameraVerification(custom.title, custom.id, true);
+      return;
+    }
+    if (isFitness) {
+      await _openCameraVerification(custom.title, custom.id, false);
       return;
     }
 
