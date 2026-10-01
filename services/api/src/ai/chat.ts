@@ -73,8 +73,76 @@ export class ChatError extends Error {
   }
 }
 
+export interface UserHealthContext {
+  name?: string;
+  age?: number;
+  gender?: string;
+  bodyType?: string;           // 'athletic'|'lean'|'muscular'
+  bmi?: number;
+  goal?: string;               // 'lose_weight'|'gain_weight'|'general_wellness'
+  physicalConsiderations?: string; // injuries, disabilities
+  labMarkers?: Record<string, number>; // e.g. {hemoglobin: 11.2, glucose: 95}
+  labInsights?: string[];      // key lab findings
+  currentDiet?: string;        // vegetarian/vegan/non-veg
+  preferredCuisine?: string;   // indian/continental etc
+  watchHeartRate?: number;     // current HR from smartwatch
+  watchSteps?: number;         // today's steps
+  watchSpo2?: number;          // current SpO2
+  todayExercises?: string[];   // exercises done today
+  recommendedExercises?: string[]; // today's plan exercises
+  fitnessLevel?: string;       // beginner/intermediate/advanced
+}
+
+function buildPersonalContextBlock(ctx: UserHealthContext): string {
+  const lines: string[] = ['=== ATHLETE PERSONAL PROFILE ==='];
+  
+  if (ctx.name) lines.push(`Name: ${ctx.name}`);
+  if (ctx.age) lines.push(`Age: ${ctx.age} years`);
+  if (ctx.gender) lines.push(`Gender: ${ctx.gender}`);
+  if (ctx.bodyType) lines.push(`Body Type: ${ctx.bodyType}`);
+  if (ctx.bmi) lines.push(`BMI: ${ctx.bmi.toFixed(1)}`);
+  if (ctx.goal) lines.push(`Goal: ${ctx.goal.replace(/_/g,' ')}`);
+  if (ctx.fitnessLevel) lines.push(`Fitness Level: ${ctx.fitnessLevel}`);
+  if (ctx.physicalConsiderations) lines.push(`Physical Considerations: ${ctx.physicalConsiderations}`);
+  if (ctx.currentDiet) lines.push(`Diet Type: ${ctx.currentDiet}`);
+  
+  if (ctx.watchHeartRate || ctx.watchSteps || ctx.watchSpo2) {
+    lines.push('\n=== LIVE SMARTWATCH DATA ===');
+    if (ctx.watchHeartRate) lines.push(`Heart Rate: ${ctx.watchHeartRate} bpm`);
+    if (ctx.watchSpo2) lines.push(`SpO2: ${ctx.watchSpo2}%`);
+    if (ctx.watchSteps) lines.push(`Steps Today: ${ctx.watchSteps}`);
+  }
+  
+  if (ctx.labMarkers && Object.keys(ctx.labMarkers).length > 0) {
+    lines.push('\n=== RECENT LAB MARKERS ===');
+    for (const [k, v] of Object.entries(ctx.labMarkers)) {
+      lines.push(`${k}: ${v}`);
+    }
+  }
+  if (ctx.labInsights?.length) {
+    lines.push('Lab Insights: ' + ctx.labInsights.join('; '));
+  }
+  
+  if (ctx.todayExercises?.length) {
+    lines.push('\n=== TODAY\'S ACTIVITY ===');
+    lines.push(`Completed: ${ctx.todayExercises.join(', ')}`);
+  }
+  if (ctx.recommendedExercises?.length) {
+    lines.push(`Planned: ${ctx.recommendedExercises.join(', ')}`);
+  }
+  
+  lines.push('\n=== INSTRUCTIONS ===');
+  lines.push('Use ALL the above athlete data to give hyper-personalized, specific advice.');
+  lines.push('Reference their actual numbers (HR, BMI, lab values) in responses.');
+  lines.push('Contraindicate exercises that conflict with their physical considerations.');
+  lines.push('Align diet advice with their diet type and lab markers.');
+  lines.push('If watch HR > 100 at rest, suggest recovery. If SpO2 < 95, flag it.');
+  
+  return lines.join('\n');
+}
+
 /** Renders saved history + the new message as the single transcript Gemini sees. */
-function buildPrompt(userMessage: string, history: ChatMessage[]): string {
+function buildPrompt(userMessage: string, history: ChatMessage[], userContext?: UserHealthContext): string {
   const recent = history.slice(-MAX_HISTORY_TURNS);
   const lines = recent.map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.body}`);
   
@@ -84,22 +152,28 @@ function buildPrompt(userMessage: string, history: ChatMessage[]): string {
     lines.push(`[System Grounding Context]:\n${grounding}`);
   }
 
+  if (userContext) {
+    lines.push(buildPersonalContextBlock(userContext));
+  }
+
   lines.push(`User: ${userMessage}`, 'Assistant:');
   return lines.join('\n');
 }
 
 export async function sendChatMessage(
   client: GeminiClient,
-  params: { userMessage: string; history: ChatMessage[] },
+  message: string,
+  history: ChatMessage[],
+  userContext?: UserHealthContext
 ): Promise<string> {
-  const userMessage = params.userMessage.trim();
+  const userMessage = message.trim();
   if (!userMessage) {
     throw new ChatError('invalid_input', 'Message cannot be empty.');
   }
 
   try {
     const reply = await client.generateText({
-      prompt: buildPrompt(userMessage, params.history),
+      prompt: buildPrompt(userMessage, history, userContext),
       systemInstruction: SYSTEM_INSTRUCTION,
       temperature: 0.6,
     });

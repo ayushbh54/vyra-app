@@ -194,6 +194,12 @@ class HiWatchProProtocol {
       );
     }
 
+    // Catch-all: if first byte looks like a heart rate (35-225 range)
+    if (bytes.isNotEmpty && bytes[0] >= 35 && bytes[0] <= 225) {
+      // Could be raw HR byte
+      return HiWatchTelemetryData(heartRateBpm: bytes[0]);
+    }
+
     return HiWatchTelemetryData.empty();
   }
 }

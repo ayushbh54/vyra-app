@@ -182,6 +182,36 @@ function poolForAthlete(user: StoredUser, date: string): PlaceableExercise[] {
       score += 20;
     }
 
+// Body type specific scoring
+    if (user.bodyType === 'lean' && goal === 'gain_weight') {
+      if (body.includes('chest') || body.includes('back') || body.includes('bicep')) score += 20;
+    }
+    if (user.bodyType === 'overweight' && goal === 'lose_weight') {
+      if (isCardio || e.isLowImpact) score += 25;
+      if (body.includes('core') || body.includes('full')) score += 15;
+    }
+    // Lab marker based scoring
+    if (user.latestLabMarkers) {
+      const hb = user.latestLabMarkers['hemoglobin'];
+      if (hb && hb < 12) {
+        // Low hemoglobin — only low intensity
+        if (e.intensity !== 1) score -= 40;
+      }
+      const glucose = user.latestLabMarkers['glucose'] || user.latestLabMarkers['blood_sugar'];
+      if (glucose && glucose > 126) {
+        // Diabetic range — boost walking/light cardio
+        if (isCardio && e.isLowImpact) score += 30;
+      }
+    }
+    // Fitness level scoring
+    if (user.fitnessLevel === 'beginner') {
+      if (e.intensity === 3) score -= 25;
+      if (e.intensity === 1 || e.isLowImpact) score += 15;
+    }
+    if (user.fitnessLevel === 'advanced') {
+      if (e.intensity === 3) score += 20;
+    }
+    
     if (daySplit === 0 && (body.includes('chest') || body.includes('arms') || body.includes('core'))) score += 35;
     if (daySplit === 1 && (body.includes('legs') || body.includes('glutes'))) score += 35;
     if (daySplit === 2 && (isCardio || body.includes('full'))) score += 35;
@@ -1394,10 +1424,39 @@ export function buildRouter(deps: ServerDeps): Router {
     }
 
     try {
-      const reply = await sendChatMessage(geminiChat, {
-        userMessage: message,
-        history: history.map((m): ChatMessage => ({ role: m.role, body: m.body })),
-      });
+      let age: number | undefined;
+      if (user.dob) {
+        age = new Date().getFullYear() - parseInt(user.dob.slice(0, 4));
+      }
+      const bmi = (user.weightKg && user.heightCm) ? user.weightKg / ((user.heightCm / 100) ** 2) : undefined;
+      
+      const plan = await store.getPlan(user.id, today);
+      const tracking = await store.getTracking(user.id, today);
+
+      const userContext = {
+        name: user.name,
+        age,
+        gender: user.gender,
+        bodyType: user.bodyType,
+        bmi,
+        goal: user.fitnessGoal,
+        physicalConsiderations: [user.disabilityType, user.physicalConsiderationDetails].filter(Boolean).join('; ') || undefined,
+        labMarkers: user.latestLabMarkers,
+        labInsights: user.labInsights,
+        currentDiet: user.dietPreference,
+        preferredCuisine: 'Indian',
+        fitnessLevel: user.fitnessLevel,
+        watchSteps: tracking?.steps,
+        recommendedExercises: plan ? plan.entries.map(e => e.name) : undefined,
+        todayExercises: plan ? plan.entries.filter(e => e.isCompleted).map(e => e.name) : undefined,
+      };
+
+      const reply = await sendChatMessage(
+        geminiChat,
+        message,
+        history.map((m): ChatMessage => ({ role: m.role, body: m.body })),
+        userContext
+      );
       await store.appendChatMessage(user.id, 'user', message);
       await store.appendChatMessage(user.id, 'assistant', reply);
       return { reply };

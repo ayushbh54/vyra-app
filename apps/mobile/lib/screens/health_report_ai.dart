@@ -307,6 +307,19 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
                 'Consult a healthcare professional for clinical correlation.',
           ),
         );
+
+        // Persist lab markers to SharedPreferences so the AI coach (ai_chat.dart)
+        // can reference the user's latest blood biomarkers in every conversation.
+        unawaited(() async {
+          final prefs = await SharedPreferences.getInstance();
+          final markers = <String, dynamic>{};
+          for (final b in parsedBiomarkers) {
+            final key = b.name.toLowerCase().replaceAll(' ', '_');
+            markers[key] = b.value;
+          }
+          await prefs.setString('latest_lab_markers', jsonEncode(markers));
+          await prefs.setString('latest_lab_insights', jsonEncode(parsedInsights));
+        }());
       } else {
         // Zero dummy data: If not readable, show clear medical guidance
         setState(() {

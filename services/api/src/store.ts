@@ -41,6 +41,10 @@ export interface StoredUser {
   physicalConsiderationDetails?: string;
   medicalConditions?: string[];
   fitnessGoal: FitnessGoal;
+  fitnessLevel?: string;
+  bodyType?: string;
+  latestLabMarkers?: Record<string, number>;
+  labInsights?: string[];
   dietToggle: boolean;
   dietPreference: DietPreference;
   city?: string;

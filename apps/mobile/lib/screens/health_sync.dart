@@ -63,6 +63,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   int _liveRecoveryScore = 0;
   DateTime? _lastAutoSavedAt;
   bool _isAutoSaving = false;
+  String? _lastDataTimestamp;
+
+  final _hrNotifier = ValueNotifier<int>(0);
+  final _spo2Notifier = ValueNotifier<int>(0);
+  final _stepsNotifier = ValueNotifier<int>(0);
   
   late AnimationController _heartPulseController;
 
@@ -422,9 +427,14 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     if (telemetry.isEmpty) return;
 
     if (!mounted) return;
+    
+    final now = TimeOfDay.now();
+    _lastDataTimestamp = '${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}:${DateTime.now().second.toString().padLeft(2,'0')}';
+
     setState(() {
       if (telemetry.heartRateBpm != null && telemetry.heartRateBpm! > 0) {
         _liveHeartRate = telemetry.heartRateBpm!;
+        _hrNotifier.value = _liveHeartRate;
         if (_liveHeartRate < 60) {
           _liveHrZone = "Resting / Low";
         } else if (_liveHeartRate <= 100) {
@@ -438,9 +448,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       }
       if (telemetry.bloodOxygenSpo2 != null && telemetry.bloodOxygenSpo2! > 0) {
         _liveSpo2 = telemetry.bloodOxygenSpo2!;
+        _spo2Notifier.value = _liveSpo2;
       }
       if (telemetry.steps != null && telemetry.steps! > 0) {
         _liveSteps = telemetry.steps!;
+        _stepsNotifier.value = _liveSteps;
         _liveCalories = telemetry.calories ?? (_liveSteps * 0.04).round();
         _liveDistanceMeters = telemetry.distanceMeters ?? (_liveSteps * 0.75).round();
         _activeMinutes = (_liveSteps / 110).round();
@@ -452,6 +464,21 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         if (_liveSpo2 > 0) _lastSummary['bloodOxygenSpo2'] = _liveSpo2;
       }
     });
+
+    // Persist live telemetry to SharedPreferences so the AI coach (ai_chat.dart)
+    // can include up-to-date watch readings in every message's userContext.
+    unawaited(() async {
+      final prefs = await SharedPreferences.getInstance();
+      if (telemetry.heartRateBpm != null && telemetry.heartRateBpm! > 0) {
+        await prefs.setInt('live_heart_rate', telemetry.heartRateBpm!);
+      }
+      if (telemetry.bloodOxygenSpo2 != null && telemetry.bloodOxygenSpo2! > 0) {
+        await prefs.setInt('live_spo2', telemetry.bloodOxygenSpo2!);
+      }
+      if (telemetry.steps != null && telemetry.steps! > 0) {
+        await prefs.setInt('live_steps', telemetry.steps!);
+      }
+    }());
   }
 
   Future<void> _persistLiveWatchDataToDatabase() async {
@@ -510,23 +537,31 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   }
 
   Future<void> _broadcastWatchCommands(List<List<int>> commandList) async {
-    if (_writeCharacteristics.isEmpty) return;
-    // Target the primary vendor command characteristic (first in sorted list)
-    final targetChar = _writeCharacteristics.first;
-    for (var cmd in commandList) {
-      try {
-        if (targetChar.properties.writeWithoutResponse) {
-          await targetChar.write(cmd, withoutResponse: true);
-        } else {
-          await targetChar.write(cmd, withoutResponse: false);
-        }
-      } catch (_) {
+    if (!_isRealBleConnected) return;
+
+    if (_writeCharacteristics.isNotEmpty) {
+      // Target the primary vendor command characteristic (first in sorted list)
+      final targetChar = _writeCharacteristics.first;
+      for (var cmd in commandList) {
         try {
-          await targetChar.write(cmd, withoutResponse: false);
+          if (targetChar.properties.writeWithoutResponse) {
+            await targetChar.write(cmd, withoutResponse: true);
+          } else {
+            await targetChar.write(cmd, withoutResponse: false);
+          }
+          await Future.delayed(const Duration(milliseconds: 50));
         } catch (_) {}
       }
-      // Pacing interval: 150ms ensures low-cost watch MCU buffers never overflow
-      await Future.delayed(const Duration(milliseconds: 150));
+      return;
+    }
+
+    for (final char in _writeCharacteristics) {
+      for (final cmd in commandList) {
+        try {
+          await char.write(cmd, withoutResponse: true);
+          await Future.delayed(const Duration(milliseconds: 50));
+        } catch (_) {}
+      }
     }
   }
 
@@ -1431,53 +1466,46 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           children: [
             // Header: Watch Name + Live Pulse Status
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.bluetooth_connected_rounded, color: VColor.accentGreen, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      _pairedWatchName ?? "HiWatch Pro",
-                      style: const TextStyle(
-                        color: VColor.text,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.3, end: 1.0),
+                  duration: const Duration(milliseconds: 800),
+                  builder: (_, v, __) => Container(
+                    width: 8, height: 8,
+                    decoration: BoxDecoration(
+                      color: VColor.accentGreen.withValues(alpha: v),
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: VColor.accentGreen.withValues(alpha: v * 0.5), blurRadius: 6)],
                     ),
-                  ],
+                  ),
+                  onEnd: () => setState(() {}), // loops
                 ),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: VColor.accentGreen.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(VRadius.pill),
-                        border: Border.all(color: VColor.accentGreen.withValues(alpha: 0.4)),
-                      ),
-                      child: Row(
-                        children: [
-                          ScaleTransition(
-                            scale: Tween(begin: 0.7, end: 1.3).animate(_heartPulseController),
-                            child: const Icon(Icons.fiber_manual_record, color: VColor.accentGreen, size: 8),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            "LIVE STREAMING",
-                            style: TextStyle(color: VColor.accentGreen, fontSize: 9.5, fontWeight: FontWeight.w800),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: VColor.textLow, size: 18),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: _disconnectRealWatch,
-                    ),
-                  ],
+                const SizedBox(width: 6),
+                const Text('LIVE', style: TextStyle(color: VColor.accentGreen, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                const Spacer(),
+                Text('Updated: ${_lastDataTimestamp ?? "waiting..."}',
+                  style: const TextStyle(color: VColor.textLow, fontSize: 10)),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.close, color: VColor.textLow, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: _disconnectRealWatch,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.bluetooth_connected_rounded, color: VColor.accentGreen, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  _pairedWatchName ?? "HiWatch Pro",
+                  style: const TextStyle(
+                    color: VColor.text,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ],
             ),
@@ -1527,12 +1555,15 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                           child: const Icon(Icons.favorite, color: Colors.redAccent, size: 18),
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          _liveHeartRate > 0 ? "$_liveHeartRate" : "--",
-                          style: const TextStyle(
-                            color: VColor.text,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
+                        ValueListenableBuilder<int>(
+                          valueListenable: _hrNotifier,
+                          builder: (_, hr, __) => Text(
+                            hr == 0 ? '--' : '$hr',
+                            style: const TextStyle(
+                              color: VColor.text,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                         const Text(" bpm", style: TextStyle(color: VColor.textLow, fontSize: 10)),
@@ -1560,12 +1591,15 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                       children: [
                         const Icon(Icons.water_drop_rounded, color: VColor.accent, size: 18),
                         const SizedBox(width: 4),
-                        Text(
-                          _liveSpo2 > 0 ? "$_liveSpo2%" : "--",
-                          style: const TextStyle(
-                            color: VColor.text,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
+                        ValueListenableBuilder<int>(
+                          valueListenable: _spo2Notifier,
+                          builder: (_, spo2, __) => Text(
+                            spo2 == 0 ? '--' : '$spo2%',
+                            style: const TextStyle(
+                              color: VColor.text,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                       ],
@@ -1582,13 +1616,19 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                       children: [
                         const Icon(Icons.directions_walk_rounded, color: VColor.accentOrange, size: 18),
                         const SizedBox(width: 4),
-                        Text(
-                          "$displaySteps",
-                          style: const TextStyle(
-                            color: VColor.text,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                          ),
+                        ValueListenableBuilder<int>(
+                          valueListenable: _stepsNotifier,
+                          builder: (_, steps, __) {
+                            final s = steps > 0 ? steps : (_lastSummary['steps']?.toInt() ?? 0);
+                            return Text(
+                              s == 0 ? '0' : '$s',
+                              style: const TextStyle(
+                                color: VColor.text,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),

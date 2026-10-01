@@ -240,6 +240,74 @@ class _AiChatScreenState extends State<AiChatScreen> {
     super.dispose();
   }
 
+  /// Collects all available user health data and builds a context map
+  /// that gets sent to the backend with every message.
+  Future<Map<String, dynamic>> _buildUserContext() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userCtx = <String, dynamic>{};
+
+    // Basic profile
+    userCtx['name'] = prefs.getString('user_name') ?? prefs.getString('profile_name');
+    userCtx['age'] = prefs.getInt('user_age');
+    userCtx['gender'] = prefs.getString('user_gender');
+    userCtx['goal'] = prefs.getString('user_goal') ?? prefs.getString('fitnessGoal');
+    userCtx['fitnessLevel'] = prefs.getString('fitness_level') ?? prefs.getString('fitnessLevel');
+    userCtx['currentDiet'] = prefs.getString('diet_type') ?? prefs.getString('dietType');
+
+    // BMI
+    final weight = prefs.getDouble('user_weight') ?? prefs.getInt('user_weight')?.toDouble();
+    final height = prefs.getDouble('user_height') ?? prefs.getInt('user_height')?.toDouble();
+    if (weight != null && height != null && height > 0) {
+      final heightM = height > 10 ? height / 100 : height; // convert cm to m
+      userCtx['bmi'] = (weight / (heightM * heightM)).toStringAsFixed(1);
+    }
+
+    // Body type from avatar / body scan result
+    final bodyType = prefs.getString('body_scan_result');
+    if (bodyType != null) {
+      try {
+        final decoded = jsonDecode(bodyType) as Map<String, dynamic>;
+        userCtx['bodyType'] = decoded['bodyType'];
+      } catch (_) {}
+    }
+
+    // Physical considerations
+    userCtx['physicalConsiderations'] = prefs.getString('physical_considerations')
+        ?? prefs.getString('physicalConsiderationDetails');
+
+    // Lab markers from report history
+    try {
+      final labRaw = prefs.getString('latest_lab_markers');
+      if (labRaw != null) {
+        userCtx['labMarkers'] = jsonDecode(labRaw);
+      }
+      final labInsightsRaw = prefs.getString('latest_lab_insights');
+      if (labInsightsRaw != null) {
+        userCtx['labInsights'] = jsonDecode(labInsightsRaw);
+      }
+    } catch (_) {}
+
+    // Smartwatch live data (saved by health_sync.dart)
+    final liveHr = prefs.getInt('live_heart_rate');
+    final liveSpo2 = prefs.getInt('live_spo2');
+    final liveSteps = prefs.getInt('live_steps');
+    if (liveHr != null && liveHr > 0) userCtx['watchHeartRate'] = liveHr;
+    if (liveSpo2 != null && liveSpo2 > 0) userCtx['watchSpo2'] = liveSpo2;
+    if (liveSteps != null) userCtx['watchSteps'] = liveSteps;
+
+    // Today's recommended exercises (from training hub prefs)
+    final todayExercisesRaw = prefs.getString('today_recommended_exercises');
+    if (todayExercisesRaw != null) {
+      try {
+        userCtx['recommendedExercises'] = jsonDecode(todayExercisesRaw);
+      } catch (_) {}
+    }
+
+    // Remove null entries
+    userCtx.removeWhere((k, v) => v == null);
+    return userCtx;
+  }
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _loading) return;
@@ -280,7 +348,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
     try {
       final api = context.read<VyraApi>();
-      final resp = await api.chatMessage(text, conversationId: _convId);
+      final userCtx = await _buildUserContext();
+      final resp = await api.chatMessage(text, conversationId: _convId, userContext: userCtx);
       _convId = resp['conversationId'] as String?;
       final reply = resp['reply'] as String? ?? '...';
       _syncAvatarFromAiResponse(reply);

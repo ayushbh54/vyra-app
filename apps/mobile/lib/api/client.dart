@@ -771,12 +771,17 @@ class VyraApi {
 
   /// Sends a message to the AI coach and returns the reply + conversationId.
   /// Pass [conversationId] on subsequent turns for threading.
+  /// Pass [userContext] to provide the backend with the user's full health
+  /// profile (BMI, lab markers, smartwatch telemetry, goals, etc.) so Gemini
+  /// can give deeply personalised answers.
   Future<Map<String, dynamic>> chatMessage(
     String message, {
     String? conversationId,
+    Map<String, dynamic>? userContext,
   }) async {
     final body = <String, dynamic>{'message': message};
     if (conversationId != null) body['conversationId'] = conversationId;
+    if (userContext != null && userContext.isNotEmpty) body['userContext'] = userContext;
     return _request('POST', '/v1/chat/message', body: body);
   }
 
