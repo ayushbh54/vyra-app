@@ -10,6 +10,7 @@ class SavedReadingEntry {
   final int waterMl;
   final int heartRateBpm;
   final double weightKg;
+  final int bloodOxygenSpo2;
 
   const SavedReadingEntry({
     required this.id,
@@ -19,6 +20,7 @@ class SavedReadingEntry {
     required this.waterMl,
     required this.heartRateBpm,
     required this.weightKg,
+    this.bloodOxygenSpo2 = 0,
   });
 
   Map<String, dynamic> toJson() => {
@@ -29,6 +31,7 @@ class SavedReadingEntry {
         'waterMl': waterMl,
         'heartRateBpm': heartRateBpm,
         'weightKg': weightKg,
+        'bloodOxygenSpo2': bloodOxygenSpo2,
       };
 
   factory SavedReadingEntry.fromJson(Map<String, dynamic> json) => SavedReadingEntry(
@@ -39,6 +42,7 @@ class SavedReadingEntry {
         waterMl: (json['waterMl'] as num?)?.toInt() ?? 0,
         heartRateBpm: (json['heartRateBpm'] as num?)?.toInt() ?? 0,
         weightKg: (json['weightKg'] as num?)?.toDouble() ?? 0.0,
+        bloodOxygenSpo2: (json['bloodOxygenSpo2'] as num?)?.toInt() ?? 0,
       );
 }
 

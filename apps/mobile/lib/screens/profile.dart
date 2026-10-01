@@ -47,6 +47,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'waterMl': TextEditingController(),
     'heartRateBpm': TextEditingController(),
     'weightKg': TextEditingController(),
+    'bloodOxygenSpo2': TextEditingController(),
   };
 
   static const _metricLabels = {
@@ -54,6 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'waterMl': ('Water', 'e.g. 2000', 'ml'),
     'heartRateBpm': ('Resting heart rate', 'e.g. 68', 'bpm'),
     'weightKg': ('Weight', 'e.g. 62.5', 'kg'),
+    'bloodOxygenSpo2': ('Blood Oxygen (SpO2)', 'e.g. 98', '%'),
   };
 
   // Blood report
@@ -128,16 +130,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     final stepsVal = int.tryParse(_controllers['steps']?.text.trim() ?? '') ?? 0;
-    final waterVal = int.tryParse(_controllers['water']?.text.trim() ?? '') ?? 0;
-    final hrVal = int.tryParse(_controllers['heart_rate']?.text.trim() ?? '') ?? 0;
-    final wtVal = double.tryParse(_controllers['weight_kg']?.text.trim() ?? '') ?? 0.0;
+    final waterVal = int.tryParse(_controllers['waterMl']?.text.trim() ?? '') ?? 0;
+    final hrVal = int.tryParse(_controllers['heartRateBpm']?.text.trim() ?? '') ?? 0;
+    final wtVal = double.tryParse(_controllers['weightKg']?.text.trim() ?? '') ?? 0.0;
+    final spo2Val = int.tryParse(_controllers['bloodOxygenSpo2']?.text.trim() ?? '') ?? 0;
 
     setState(() => _savingMetrics = true);
     try {
       final message = await context.read<VyraApi>().logTracking(values);
       if (!mounted) return;
 
-      if (stepsVal > 0 || waterVal > 0 || hrVal > 0 || wtVal > 0) {
+      if (stepsVal > 0 || waterVal > 0 || hrVal > 0 || wtVal > 0 || spo2Val > 0) {
         final now = DateTime.now();
         final dtStr = '${now.day}/${now.month}/${now.year}, ${now.hour}:${now.minute.toString().padLeft(2, '0')}';
         ReadingsHistoryService.instance.saveEntry(
@@ -149,6 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             waterMl: waterVal,
             heartRateBpm: hrVal,
             weightKg: wtVal,
+            bloodOxygenSpo2: spo2Val,
           ),
         );
       }
@@ -282,6 +286,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       _vitalBadge('❤️ ${item.heartRateBpm} bpm', const Color(0xFFEF4444)),
                                     if (item.weightKg > 0)
                                       _vitalBadge('⚖️ ${item.weightKg} kg', const Color(0xFF10B981)),
+                                    if (item.bloodOxygenSpo2 > 0)
+                                      _vitalBadge('🩸 ${item.bloodOxygenSpo2} %', const Color(0xFFF43F5E)),
                                   ],
                                 ),
                               ],
@@ -314,8 +320,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showBloodReportHistorySheet() {
+  void _showBloodReportHistorySheet() async {
+    await ReportHistoryService.instance.init();
     final reports = ReportHistoryService.instance.reports;
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: VColor.surface,

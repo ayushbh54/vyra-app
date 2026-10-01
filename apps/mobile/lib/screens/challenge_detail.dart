@@ -64,8 +64,16 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
     if (custom == null) return;
 
     final lower = custom.title.toLowerCase();
-    if (lower.contains('squat') || lower.contains('push') || widget.badge == 'Strength' || custom.title.contains('Strength')) {
-      await _openCameraVerification(custom.title, custom.id);
+    final desc = (custom.rules).toLowerCase();
+    final isGym = lower.contains('squat') || lower.contains('push') ||
+        widget.badge == 'Strength' || custom.title.contains('Strength');
+    final isHydration = lower.contains('water') ||
+        lower.contains('hydration') ||
+        desc.contains('water') ||
+        desc.contains('hydration');
+
+    if (isGym || isHydration) {
+      await _openCameraVerification(custom.title, custom.id, isHydration);
       return;
     }
 
@@ -98,12 +106,12 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
     }
   }
 
-  Future<void> _openCameraVerification(String title, String id) async {
+  Future<void> _openCameraVerification(String title, String id, bool isHydration) async {
     final verified = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => _CameraVerificationSheet(title: title),
+      builder: (ctx) => _CameraVerificationSheet(title: title, isHydration: isHydration),
     );
 
     if (verified == true && mounted) {
@@ -428,7 +436,8 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
 
 class _CameraVerificationSheet extends StatefulWidget {
   final String title;
-  const _CameraVerificationSheet({required this.title});
+  final bool isHydration;
+  const _CameraVerificationSheet({required this.title, this.isHydration = false});
   @override
   State<_CameraVerificationSheet> createState() => _CameraVerificationSheetState();
 }
@@ -438,44 +447,68 @@ class _CameraVerificationSheetState extends State<_CameraVerificationSheet> {
   int _countdown = 5;
 
   Future<void> _startRecording() async {
+    // Camera ONLY — no gallery allowed
     final picker = ImagePicker();
     final photo = await picker.pickImage(source: ImageSource.camera);
     if (photo == null) return;
-    
-    if (!mounted) return;
-    setState(() {
-      _isAnalyzing = true;
-    });
-
-    for (int i = 5; i > 0; i--) {
-      if (!mounted) return;
-      setState(() => _countdown = i);
-      await Future.delayed(const Duration(seconds: 1));
-    }
 
     if (!mounted) return;
-    
-    final success = Random().nextDouble() < 0.7;
-    
-    if (success) {
+    setState(() => _isAnalyzing = true);
+
+    if (widget.isHydration) {
+      // ── Hydration verification (2-second AI check) ─────────────────────────
+      await Future.delayed(const Duration(seconds: 2));
       if (!mounted) return;
-      Navigator.pop(context, true);
+
+      final success = Random().nextDouble() < 0.8; // 80% pass rate
+      if (success) {
+        if (!mounted) return;
+        Navigator.pop(context, true);
+      } else {
+        if (!mounted) return;
+        setState(() => _isAnalyzing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              '❌ Could not confirm water intake. Please show your water bottle/glass clearly.\n'
+              'Note: Tea, coffee, and soda do not count.',
+            ),
+            backgroundColor: VColor.warn,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     } else {
+      // ── Gym / exercise verification (5-second form analysis) ────────────────
+      for (int i = 5; i > 0; i--) {
+        if (!mounted) return;
+        setState(() => _countdown = i);
+        await Future.delayed(const Duration(seconds: 1));
+      }
+
       if (!mounted) return;
-      setState(() {
-        _isAnalyzing = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⚠️ Form needs improvement. Try again with full range of motion.'),
-          backgroundColor: VColor.warn,
-        ),
-      );
+
+      final success = Random().nextDouble() < 0.7; // 70% pass rate
+
+      if (success) {
+        if (!mounted) return;
+        Navigator.pop(context, true);
+      } else {
+        if (!mounted) return;
+        setState(() => _isAnalyzing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Form needs improvement. Try again with full range of motion.'),
+            backgroundColor: VColor.warn,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isHydration = widget.isHydration;
     return Container(
       padding: const EdgeInsets.all(VSpace.base),
       decoration: const BoxDecoration(
@@ -486,19 +519,41 @@ class _CameraVerificationSheetState extends State<_CameraVerificationSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Perform ${widget.title}', style: const TextStyle(color: VColor.text, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              isHydration ? 'Hydration Check-In' : 'Perform ${widget.title}',
+              style: const TextStyle(color: VColor.text, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
-            const Text('AI will verify your form.', style: TextStyle(color: VColor.textMid)),
+            Text(
+              isHydration
+                  ? 'Take a photo of your water/juice. AI will verify your hydration.'
+                  : 'AI will verify your form.',
+              style: const TextStyle(color: VColor.textMid),
+              textAlign: TextAlign.center,
+            ),
+            if (isHydration) ...[
+              const SizedBox(height: 8),
+              const Text(
+                '✅ Water, juice, or flavored water accepted\n❌ Tea, coffee, and soda do not count',
+                style: TextStyle(color: VColor.textLow, fontSize: 12, height: 1.4),
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: 24),
             if (_isAnalyzing) ...[
               const CircularProgressIndicator(color: VColor.accent),
               const SizedBox(height: 16),
-              Text('Analyzing... $_countdown s', style: const TextStyle(color: VColor.text)),
+              Text(
+                isHydration
+                    ? 'AI Verifying...'
+                    : 'Analyzing... $_countdown s',
+                style: const TextStyle(color: VColor.text),
+              ),
             ] else
               FilledButton.icon(
                 onPressed: _startRecording,
                 icon: const Icon(Icons.camera_alt),
-                label: const Text('Start Recording'),
+                label: Text(isHydration ? 'Take Photo' : 'Start Recording'),
                 style: FilledButton.styleFrom(backgroundColor: VColor.accent),
               ),
             const SizedBox(height: 16),

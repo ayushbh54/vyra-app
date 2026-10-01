@@ -284,7 +284,7 @@ class _HealthReportAiScreenState extends State<HealthReportAiScreen>
           _screenState = _ScreenState.results;
         });
 
-        ReportHistoryService.instance.saveReport(
+        await ReportHistoryService.instance.saveReport(
           SavedReportEntry(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
             timestamp: DateTime.now(),

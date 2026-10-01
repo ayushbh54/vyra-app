@@ -134,20 +134,22 @@ class _FoodScreenState extends State<FoodScreen> {
 
     if (res == null) {
       res = Recipe(
-        title: 'Simple ${_ingredients.first} Stir-fry',
+        title: '${_ingredients.first} Capsicum Sabzi',
         ingredients: _ingredients.map((i) => (name: i, quantity: '1 portion')).toList(),
         steps: [
-          'Wash and prep all ingredients.',
-          'Heat a pan over medium heat with a little oil.',
-          'Add ${_ingredients.join(", ")} and stir-fry until cooked.',
-          'Season with salt, pepper, and your favorite spices.',
-          'Serve hot and enjoy!'
+          'Step 1: Wash and chop ${_ingredients.join(", ")} into medium-sized pieces.',
+          'Step 2: Heat 2 tsp oil in a kadai/pan on medium flame.',
+          'Step 3: Add cumin seeds, let them splutter for 30 seconds.',
+          'Step 4: Add ${_ingredients.first}, stir-fry for 3-4 minutes.',
+          'Step 5: Add turmeric, red chilli powder, coriander powder, salt. Mix well.',
+          'Step 6: Cover and cook on low flame for 8-10 minutes until tender.',
+          'Step 7: Garnish with fresh coriander. Serve hot with roti or rice.'
         ],
         cookTimeMin: 15,
         containsEgg: false,
         containsMeat: false,
-        nutrition: {'calories': 250, 'proteinG': 10, 'carbsG': 20, 'fatG': 15},
-        disclaimer: 'This is a locally generated fallback recipe since the AI is unavailable.'
+        nutrition: {'calories': 180, 'proteinG': 5, 'carbsG': 25, 'fatG': 8},
+        disclaimer: ''
       );
       err = null;
     }
@@ -228,6 +230,73 @@ class _FoodScreenState extends State<FoodScreen> {
         ),
       );
     }
+  }
+
+  void _showSugarHistory() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: VColor.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        final entries = _sugarHistory.entries.toList()
+          ..sort((a, b) => b.key.compareTo(a.key)); // newest first
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6,
+          builder: (_, ctrl) => Column(
+            children: [
+              // Handle bar
+              Container(margin: const EdgeInsets.only(top: 8, bottom: 12),
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: VColor.line, borderRadius: BorderRadius.circular(2))),
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    const Text('Zero Sugar History', style: TextStyle(color: VColor.text, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(color: VColor.accentGreenGlow, borderRadius: BorderRadius.circular(20)),
+                      child: Text('$_zeroSugarStreak day streak 🔥',
+                        style: const TextStyle(color: VColor.accentGreen, fontSize: 12, fontWeight: FontWeight.bold))),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: entries.isEmpty
+                  ? const Center(child: Text('No history yet. Start logging!', style: TextStyle(color: VColor.textMid)))
+                  : ListView.separated(
+                    controller: ctrl,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: entries.length,
+                    separatorBuilder: (_, __) => const Divider(color: VColor.line, height: 1),
+                    itemBuilder: (_, i) {
+                      final e = entries[i];
+                      final isClean = e.value == 0;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Container(
+                          width: 40, height: 40,
+                          decoration: BoxDecoration(
+                            color: isClean ? VColor.accentGreenGlow : const Color(0x1FEF4444),
+                            shape: BoxShape.circle),
+                          child: Icon(isClean ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                            color: isClean ? VColor.accentGreen : const Color(0xFFEF4444), size: 22)),
+                        title: Text(e.key, style: const TextStyle(color: VColor.text, fontWeight: FontWeight.w600)),
+                        subtitle: Text(isClean ? 'Zero Added Sugar ✓' : '${e.value.toStringAsFixed(0)}g added sugar',
+                          style: TextStyle(color: isClean ? VColor.accentGreen : const Color(0xFFEF4444), fontSize: 12)),
+                        trailing: Text(isClean ? '🟢' : '🔴', style: const TextStyle(fontSize: 18)),
+                      );
+                    },
+                  ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -784,6 +853,14 @@ class _FoodScreenState extends State<FoodScreen> {
                   const SizedBox(height: VSpace.base),
                   _SugarResultView(result: _sugar!),
                 ],
+                const SizedBox(height: VSpace.sm),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: _showSugarHistory,
+                    icon: const Icon(Icons.history_rounded, size: 16, color: VColor.accent),
+                    label: const Text('View History', style: TextStyle(color: VColor.accent, fontSize: 13)),
+                  ),
+                ),
               ],
             ),
           ),
@@ -812,7 +889,7 @@ class _RecipeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(recipe.title, style: Theme.of(context).textTheme.headlineSmall),
+          Text(recipe.title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: VSpace.sm),
           Wrap(
             spacing: VSpace.sm,
@@ -873,8 +950,10 @@ class _RecipeCard extends StatelessWidget {
               ],
             ),
           ],
-          const SizedBox(height: VSpace.base),
-          VDisclaimer(recipe.disclaimer),
+          if (recipe.disclaimer.isNotEmpty) ...[
+            const SizedBox(height: VSpace.base),
+            VDisclaimer(recipe.disclaimer),
+          ],
         ],
       ),
     );

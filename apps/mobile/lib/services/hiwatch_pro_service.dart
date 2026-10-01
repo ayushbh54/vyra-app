@@ -103,13 +103,17 @@ class HiWatchProProtocol {
     final header = bytes[0];
 
     // 1. Standard Bluetooth SIG Heart Rate Measurement (UUID 0x2A37)
-    if (header != 0xCD && header != 0xAB && header != 0xAA && bytes.length >= 2) {
+    //    Only applies when header is NOT a known HiWatch/DaFit command byte.
+    if (header != 0xCD && header != 0xAB && header != 0xAA &&
+        header != 0x02 && header != 0x04 && bytes.length >= 2) {
       final flags = bytes[0];
       final is16Bit = (flags & 0x01) != 0;
       final hr = is16Bit && bytes.length >= 3 ? (bytes[1] | (bytes[2] << 8)) : bytes[1];
-      if (hr > 35 && hr < 235) {
+      if (hr >= 40 && hr <= 200) {
         return HiWatchTelemetryData(heartRateBpm: hr);
       }
+      // Flags byte didn't yield a valid HR — don't fall through to catch-alls.
+      return HiWatchTelemetryData.empty();
     }
 
     // 2. HiWatch / FitPro protocol (0xCD 0x00 ...)
@@ -133,10 +137,13 @@ class HiWatchProProtocol {
         final hr = bytes[4];
         final spo2 = bytes.length >= 6 ? bytes[5] : null;
         return HiWatchTelemetryData(
-          heartRateBpm: (hr > 35 && hr < 225) ? hr : null,
+          heartRateBpm: (hr >= 40 && hr <= 200) ? hr : null,
           bloodOxygenSpo2: (spo2 != null && spo2 >= 75 && spo2 <= 100) ? spo2 : null,
         );
       }
+
+      // Unknown 0xCD sub-command — discard rather than misinterpret.
+      return HiWatchTelemetryData.empty();
     }
 
     // 3. DaFit / Shenzhen protocol (0xAB or 0xAA)
@@ -155,31 +162,23 @@ class HiWatchProProtocol {
         final hr = bytes[2];
         final spo2 = bytes.length >= 4 ? bytes[3] : null;
         return HiWatchTelemetryData(
-          heartRateBpm: (hr > 35 && hr < 225) ? hr : null,
+          heartRateBpm: (hr >= 40 && hr <= 200) ? hr : null,
           bloodOxygenSpo2: (spo2 != null && spo2 >= 75 && spo2 <= 100) ? spo2 : null,
         );
       }
+      // Unknown 0xAB/0xAA sub-command — discard.
+      return HiWatchTelemetryData.empty();
     }
 
-    // 4. Generic HR-first format (many Shenzhen BLE clones send [hr, spo2, ...])
-    if (bytes.length >= 2 && header > 35 && header < 225) {
-      final possibleSpo2 = bytes[1];
-      if (possibleSpo2 >= 75 && possibleSpo2 <= 100) {
-        return HiWatchTelemetryData(
-          heartRateBpm: header,
-          bloodOxygenSpo2: possibleSpo2,
-        );
-      }
-      // HR only packet
-      return HiWatchTelemetryData(heartRateBpm: header);
-    }
+    // 4. [REMOVED] Generic HR-first catch-all — was causing packet headers,
+    //    checksums, and any byte in 35-225 to be misread as heart-rate values.
 
     // 5. Format [0x02, hr, spo2, ...] — used by some HiWatch FitPro variants
     if (header == 0x02 && bytes.length >= 3) {
       final hr = bytes[1];
       final spo2 = bytes[2];
       return HiWatchTelemetryData(
-        heartRateBpm: (hr > 35 && hr < 225) ? hr : null,
+        heartRateBpm: (hr >= 40 && hr <= 200) ? hr : null,
         bloodOxygenSpo2: (spo2 >= 75 && spo2 <= 100) ? spo2 : null,
       );
     }
@@ -189,16 +188,13 @@ class HiWatchProProtocol {
       final hr = bytes[2];
       final spo2 = bytes[3];
       return HiWatchTelemetryData(
-        heartRateBpm: (hr > 35 && hr < 225) ? hr : null,
+        heartRateBpm: (hr >= 40 && hr <= 200) ? hr : null,
         bloodOxygenSpo2: (spo2 >= 75 && spo2 <= 100) ? spo2 : null,
       );
     }
 
-    // Catch-all: if first byte looks like a heart rate (35-225 range)
-    if (bytes.isNotEmpty && bytes[0] >= 35 && bytes[0] <= 225) {
-      // Could be raw HR byte
-      return HiWatchTelemetryData(heartRateBpm: bytes[0]);
-    }
+    // [REMOVED] Old catch-all that returned bytes[0] as HR for any value in
+    // 35-225 — this caused false heart-rate readings from arbitrary packet bytes.
 
     return HiWatchTelemetryData.empty();
   }

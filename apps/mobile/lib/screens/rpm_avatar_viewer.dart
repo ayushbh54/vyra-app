@@ -31,21 +31,23 @@ class _RpmAvatarViewerScreenState extends State<RpmAvatarViewerScreen> {
   };
   bool _isScanning = false;
 
-  // ── Default 3D avatars — shown when user hasn't created their own yet ─────
-  // These are verified RPM-format GLB files; user can override with their own
-  static const String _defaultMaleGlb =
-      'https://models.readyplayer.me/6460d95f9ae10f45bef9a7f1.glb';
-  static const String _defaultFemaleGlb =
-      'https://models.readyplayer.me/6460d95f9ae10f45bef9a7f2.glb';
+  // ── Default 3D RPM avatars — shown before user creates their own ───────────
+  // These are official RPM sample fullbody avatars (verified working GLB URLs)
+  static const _defaultMale =
+      'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb';
+  static const _defaultFemale =
+      'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a7.glb';
 
-  /// Always returns a valid GLB URL — custom if saved, else gender-based default.
-  String get _effectiveGlb {
+  /// Always returns a valid GLB URL — user's saved avatar or gender default.
+  String get _effectiveUrl {
     if (_avatarUrl != null && _avatarUrl!.isNotEmpty) return _avatarUrl!;
     final g = (_gender ?? 'male').toLowerCase();
-    return g == 'female' ? _defaultFemaleGlb : _defaultMaleGlb;
+    return g == 'female' ? _defaultFemale : _defaultMale;
   }
 
-  bool get _isDefaultAvatar => _avatarUrl == null || _avatarUrl!.isEmpty;
+  bool get _isUsingDefault =>
+      _avatarUrl == null || _avatarUrl!.isEmpty;
+
 
   static const exercises = [
     {'id': 'idle',          'label': 'Idle',        'icon': Icons.person_outline_rounded,          'anim': 'idle'},
@@ -96,9 +98,15 @@ class _RpmAvatarViewerScreenState extends State<RpmAvatarViewerScreen> {
     setState(() => _isLoading = true);
     final prefs = await SharedPreferences.getInstance();
     final bodyScan = await BodyScanService.instance.loadSaved();
+    // Read gender from any key set during onboarding / profile setup
+    final gender = prefs.getString('rpm_gender') ??
+        prefs.getString('user_gender') ??
+        prefs.getString('gender') ??
+        'male';
+    if (!mounted) return;
     setState(() {
       _avatarUrl = prefs.getString('rpm_avatar_url');
-      _gender = prefs.getString('rpm_gender');
+      _gender = gender;
       _lastUpdated = prefs.getString('rpm_avatar_updated_at');
       _bodyScanResult = bodyScan;
       _isLoading = false;
@@ -337,51 +345,25 @@ class _RpmAvatarViewerScreenState extends State<RpmAvatarViewerScreen> {
       backgroundColor: const Color(0xFF0D0D0F),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreator,
-        icon: const Icon(Icons.edit),
-        label: Text(_avatarUrl == null ? 'Create Avatar' : 'Edit Avatar'),
+        icon: Icon(_isUsingDefault ? Icons.add_rounded : Icons.edit_rounded),
+        label: Text(_isUsingDefault ? 'Create My Avatar' : 'Edit Avatar'),
         backgroundColor: VColor.accent,
         foregroundColor: Colors.black,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: VColor.accent))
-          : _avatarUrl == null
-              ? _buildEmptyState()
-              : _buildAvatarView(),
+          : _buildAvatarView(),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.accessibility_new_rounded, size: 80, color: VColor.textMuted),
-          const SizedBox(height: 16),
-          const Text('No 3D Avatar Yet',
-              style: TextStyle(color: VColor.text, fontSize: 24, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          const Text('Create your personalized 3D coach!',
-              style: TextStyle(color: VColor.textMuted)),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: VColor.accent,
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            onPressed: _openCreator,
-            child: const Text('Create Now', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
+  // _buildEmptyState removed — we always show a default 3D avatar now
+  // Male default: _defaultMale GLB | Female default: _defaultFemale GLB
 
   Widget _buildAvatarView() {
     return Stack(
       children: [
         ModelViewer(
-          src: _avatarUrl!,
+          src: _effectiveUrl,      // always valid — user's or gender default
           alt: '3D Avatar',
           ar: false,
           autoRotate: false,

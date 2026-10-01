@@ -432,7 +432,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     _lastDataTimestamp = '${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}:${DateTime.now().second.toString().padLeft(2,'0')}';
 
     setState(() {
-      if (telemetry.heartRateBpm != null && telemetry.heartRateBpm! > 0) {
+      if (telemetry.heartRateBpm != null && telemetry.heartRateBpm! >= 40 && telemetry.heartRateBpm! <= 200) {
         _liveHeartRate = telemetry.heartRateBpm!;
         _hrNotifier.value = _liveHeartRate;
         if (_liveHeartRate < 60) {
@@ -469,7 +469,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     // can include up-to-date watch readings in every message's userContext.
     unawaited(() async {
       final prefs = await SharedPreferences.getInstance();
-      if (telemetry.heartRateBpm != null && telemetry.heartRateBpm! > 0) {
+      if (telemetry.heartRateBpm != null && telemetry.heartRateBpm! >= 40 && telemetry.heartRateBpm! <= 200) {
         await prefs.setInt('live_heart_rate', telemetry.heartRateBpm!);
       }
       if (telemetry.bloodOxygenSpo2 != null && telemetry.bloodOxygenSpo2! > 0) {
