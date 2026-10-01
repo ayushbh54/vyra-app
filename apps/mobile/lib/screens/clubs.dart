@@ -10,7 +10,7 @@ import 'club_detail.dart';
 /// CLUBS — interest-based groups with a request-to-join workflow.
 ///
 /// Tapping a club card navigates to [ClubDetailScreen]. Status is displayed
-/// inline: 'Member ✓', 'Pending ⏳', or 'View →'.
+/// inline: 'Member ✓', 'Pending ⏳', or 'Request →'.
 class ClubsScreen extends StatefulWidget {
   const ClubsScreen({super.key});
 
@@ -76,19 +76,26 @@ class _ClubsScreenState extends State<ClubsScreen> {
     if (_pendingRequests.contains(club.id) || club.requestPending) {
       return const Text(
         'Pending ⏳',
-        style: TextStyle(color: VColor.accent, fontSize: 12, fontWeight: FontWeight.w700),
+        style: TextStyle(color: VColor.warn, fontSize: 12, fontWeight: FontWeight.w700),
       );
     }
-    return const Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'View',
-          style: TextStyle(color: VColor.textMid, fontSize: 12, fontWeight: FontWeight.w600),
-        ),
-        SizedBox(width: 2),
-        Icon(Icons.arrow_forward_ios_rounded, size: 12, color: VColor.textMid),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        border: Border.all(color: VColor.text),
+        borderRadius: BorderRadius.circular(VRadius.pill),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Request',
+            style: TextStyle(color: VColor.text, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          SizedBox(width: 4),
+          Icon(Icons.arrow_forward_rounded, size: 12, color: VColor.text),
+        ],
+      ),
     );
   }
 
@@ -153,11 +160,9 @@ class _ClubsScreenState extends State<ClubsScreen> {
           const SizedBox(height: VSpace.base),
 
           if (displayClubs.isEmpty)
-            VEmptyState(
-              title: _selectedCity == 'All Cities' ? 'No clubs yet' : 'No clubs in $_selectedCity yet',
-              body: _selectedCity == 'All Cities'
-                  ? 'Check back soon.'
-                  : 'Be the first athlete to start a running or training club in $_selectedCity!',
+            const VEmptyState(
+              title: 'No clubs available',
+              body: 'Check back soon.',
             )
           else
             for (final club in displayClubs) ...[

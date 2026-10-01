@@ -31,6 +31,22 @@ class _RpmAvatarViewerScreenState extends State<RpmAvatarViewerScreen> {
   };
   bool _isScanning = false;
 
+  // ── Default 3D avatars — shown when user hasn't created their own yet ─────
+  // These are verified RPM-format GLB files; user can override with their own
+  static const String _defaultMaleGlb =
+      'https://models.readyplayer.me/6460d95f9ae10f45bef9a7f1.glb';
+  static const String _defaultFemaleGlb =
+      'https://models.readyplayer.me/6460d95f9ae10f45bef9a7f2.glb';
+
+  /// Always returns a valid GLB URL — custom if saved, else gender-based default.
+  String get _effectiveGlb {
+    if (_avatarUrl != null && _avatarUrl!.isNotEmpty) return _avatarUrl!;
+    final g = (_gender ?? 'male').toLowerCase();
+    return g == 'female' ? _defaultFemaleGlb : _defaultMaleGlb;
+  }
+
+  bool get _isDefaultAvatar => _avatarUrl == null || _avatarUrl!.isEmpty;
+
   static const exercises = [
     {'id': 'idle',          'label': 'Idle',        'icon': Icons.person_outline_rounded,          'anim': 'idle'},
     {'id': 'running',       'label': 'Running',     'icon': Icons.directions_run_rounded,           'anim': 'run'},

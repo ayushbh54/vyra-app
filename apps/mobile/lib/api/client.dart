@@ -799,7 +799,7 @@ class VyraApi {
   /// Start or get existing conversation with an athlete
   Future<ConversationItem> startConversation(String userId) async {
     final res = await _request('POST', '/v1/conversations', body: {'userId': userId});
-    return ConversationItem.fromJson(res);
+    return ConversationItem.fromJson((res['conversation'] as Map<String, dynamic>?) ?? res);
   }
 
   /// List direct messages in a conversation

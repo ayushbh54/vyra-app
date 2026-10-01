@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api/client.dart';
 import '../models/models.dart';
@@ -317,25 +318,110 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ),
                 const SizedBox(height: VSpace.md),
                 Container(
-                  height: 120,
-                  width: double.infinity,
                   decoration: BoxDecoration(
                     color: VColor.surfaceRaised,
-                    borderRadius: BorderRadius.circular(VRadius.md),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: VColor.line),
                   ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.pin_drop_rounded, color: VColor.accent, size: 32),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Route & GPS Waypoint: ${event.location}',
-                          style: const TextStyle(color: VColor.textMid, fontSize: 12),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: VColor.accentGreen.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.location_on_rounded,
+                              color: VColor.accentGreen,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              event.location,
+                              style: const TextStyle(
+                                color: VColor.text,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Open in Google Maps
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.map_rounded, size: 18),
+                          label: const Text('Open in Google Maps'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: VColor.accent,
+                            foregroundColor: VColor.textOnAccent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: () async {
+                            final uri = Uri.parse(
+                              'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(event.location)}',
+                            );
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            } else {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Could not open maps. Please install Google Maps.'),
+                                  ),
+                                );
+                              }
+                            }
+                          },
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Get Directions
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.directions_rounded, size: 18),
+                          label: const Text('Get Directions'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: VColor.accentGreen,
+                            side: const BorderSide(color: VColor.accentGreen),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: () async {
+                            final uri = Uri.parse(
+                              'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(event.location)}',
+                            );
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            } else {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Could not open maps.'),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

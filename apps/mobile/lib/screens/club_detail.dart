@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
@@ -32,7 +33,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VRadius.lg)),
         title: const Text('Request to Join', style: TextStyle(color: VColor.text, fontWeight: FontWeight.w700)),
         content: Text(
-          'Send a join request to "${widget.club.name}"?\nThe club manager will review your request.',
+          'Send join request to ${widget.club.name}?',
           style: const TextStyle(color: VColor.textMid, fontSize: 14, height: 1.45),
         ),
         actions: [
@@ -46,7 +47,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen> {
               backgroundColor: VColor.accent,
               foregroundColor: VColor.textOnAccent,
             ),
-            child: const Text('Send Request'),
+            child: const Text('Confirm'),
           ),
         ],
       ),
@@ -60,25 +61,63 @@ class _ClubDetailScreenState extends State<ClubDetailScreen> {
       _processing = true;
     });
 
-    // Simulate 3-second manager approval
+    // Simulate network call (2 seconds)
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+    
+    // Simulate manager decision after 3 seconds
     await Future<void>.delayed(const Duration(seconds: 3));
     if (!mounted) return;
 
-    setState(() {
-      _pending = false;
-      _member = true;
-      _processing = false;
-    });
+    final bool approved = Random().nextDouble() < 0.7;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('🎉 Approved!'),
-        backgroundColor: VColor.accentGreen,
-      ),
-    );
+    if (approved) {
+      setState(() {
+        _pending = false;
+        _member = true;
+        _processing = false;
+      });
 
-    // Return club id so the list screen can update its state.
-    if (mounted) Navigator.pop(context, widget.club.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🎉 Welcome! You have joined ${widget.club.name}'),
+          backgroundColor: VColor.accentGreen,
+        ),
+      );
+
+      // Return club id so the list screen can update its state.
+      if (mounted) Navigator.pop(context, widget.club.id);
+    } else {
+      setState(() {
+        _pending = false;
+        _processing = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Your request to join ${widget.club.name} has been declined by the manager'),
+          backgroundColor: VColor.crit,
+        ),
+      );
+      
+      ScaffoldMessenger.of(context).showMaterialBanner(
+        MaterialBanner(
+          backgroundColor: VColor.crit,
+          content: Text('Request to join ${widget.club.name} has been rejected', style: const TextStyle(color: Colors.white)),
+          actions: [
+            TextButton(
+              onPressed: () => ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
+              child: const Text('Dismiss', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      
+      // Auto dismiss banner after some time
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+      });
+    }
   }
 
   @override
@@ -171,7 +210,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen> {
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(Icons.person, color: VColor.textMid, size: 22),
+                        child: const Text('CM', style: TextStyle(color: VColor.textMid, fontWeight: FontWeight.w700)),
                       ),
                       const SizedBox(width: VSpace.sm),
                       const Expanded(
@@ -229,6 +268,24 @@ class _ClubDetailScreenState extends State<ClubDetailScreen> {
                     ],
                   ),
                 ),
+
+                const SizedBox(height: VSpace.base),
+
+                // ── Recent activity section ─────────────────────────
+                const VLabel('Recent Activity'),
+                const SizedBox(height: VSpace.sm),
+                const VCard(
+                  tone: CardTone.normal,
+                  child: Padding(
+                    padding: EdgeInsets.all(VSpace.md),
+                    child: Center(
+                      child: Text(
+                        'No recent activity',
+                        style: TextStyle(color: VColor.textLow, fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -251,16 +308,15 @@ class _ClubDetailScreenState extends State<ClubDetailScreen> {
     if (_member) {
       return SizedBox(
         width: double.infinity,
-        child: OutlinedButton.icon(
+        child: FilledButton.icon(
           onPressed: null,
-          icon: const Icon(Icons.check_circle_rounded, color: VColor.accentGreen, size: 18),
+          icon: const Icon(Icons.check, color: VColor.accentGreen),
           label: const Text(
-            'MEMBER',
-            style: TextStyle(color: VColor.accentGreen, fontSize: 14, fontWeight: FontWeight.w700),
+            'You are a member ✓',
+            style: TextStyle(color: VColor.accentGreen),
           ),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: VColor.accentGreenGlow),
-            padding: const EdgeInsets.symmetric(vertical: 14),
+          style: FilledButton.styleFrom(
+            disabledBackgroundColor: VColor.surfaceHigh,
           ),
         ),
       );
@@ -269,31 +325,40 @@ class _ClubDetailScreenState extends State<ClubDetailScreen> {
     if (_pending) {
       return SizedBox(
         width: double.infinity,
-        child: OutlinedButton.icon(
+        child: FilledButton.icon(
           onPressed: null,
           icon: _processing
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: VColor.accent),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: VColor.warn),
                 )
-              : const Icon(Icons.hourglass_top_rounded, color: VColor.accent, size: 18),
-          label: Text(
-            _processing ? 'REVIEWING REQUEST…' : 'REQUEST PENDING',
-            style: const TextStyle(color: VColor.accent, fontSize: 14, fontWeight: FontWeight.w700),
+              : const Icon(Icons.hourglass_empty, color: VColor.warn),
+          label: const Text(
+            'Request Pending ⏳',
+            style: TextStyle(color: VColor.warn),
           ),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: VColor.accentGlow),
-            padding: const EdgeInsets.symmetric(vertical: 14),
+          style: FilledButton.styleFrom(
+            disabledBackgroundColor: VColor.surfaceHigh,
           ),
         ),
       );
     }
 
-    return VGradientButton(
-      label: 'Request to Join',
-      icon: Icons.group_add_rounded,
-      onPressed: _requestToJoin,
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton(
+        onPressed: _requestToJoin,
+        style: FilledButton.styleFrom(
+          backgroundColor: VColor.accent,
+          foregroundColor: VColor.textOnAccent,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        child: const Text(
+          'Request to Join',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
     );
   }
 }

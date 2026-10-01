@@ -115,7 +115,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
             if (_items != null && _items!.isEmpty)
               VEmptyState(
-                title: 'Your feed is empty',
+                title: 'No posts yet. Start your first workout!',
                 body: 'Record your first activity, or follow other athletes to see theirs here.',
                 action: FilledButton(
                   onPressed: () => pushScreen(context, 'Find athletes', const FriendsScreen()),

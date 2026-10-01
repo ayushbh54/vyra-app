@@ -312,15 +312,38 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
     }
   }
 
-  void _toggleCommunityChallenge(String id) {
+  Future<void> _toggleCommunityChallenge(String id, String title) async {
     HapticFeedback.selectionClick();
-    setState(() {
-      if (_joinedCommunityChallenges.contains(id)) {
+    if (_joinedCommunityChallenges.contains(id)) {
+      setState(() {
         _joinedCommunityChallenges.remove(id);
-      } else {
-        _joinedCommunityChallenges.add(id);
+      });
+    } else {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: VColor.surfaceRaised,
+          title: Text('Join "$title"?', style: const TextStyle(color: VColor.text)),
+          content: const Text("You'll be held accountable!", style: TextStyle(color: VColor.textMid)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel', style: TextStyle(color: VColor.textLow)),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(backgroundColor: VColor.accent),
+              child: const Text('Join', style: TextStyle(color: VColor.textOnAccent)),
+            ),
+          ],
+        ),
+      );
+      if (confirm == true && mounted) {
+        setState(() {
+          _joinedCommunityChallenges.add(id);
+        });
       }
-    });
+    }
   }
 
   void _openCustomDetail(CustomChallenge c) {
@@ -354,8 +377,7 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
         rewardCoins: item.rewardCoins,
         currentProgress: item.currentProgress,
         progressLabel: item.progressLabel,
-        isJoined: _joinedCommunityChallenges.contains(item.id),
-        onToggleJoin: () => _toggleCommunityChallenge(item.id),
+        onToggleJoin: () => _toggleCommunityChallenge(item.id, item.title),
       ),
     );
   }
@@ -591,37 +613,37 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
         title: 'Weekly 50,000 Steps Marathon',
         description: 'Walk or run 50,000 steps across 7 days. Sync via GPS or wearable.',
         badge: '7 Days',
-        participants: 1240,
+        participants: 0,
         rewardCoins: 50,
-        currentProgress: 0.68,
-        progressLabel: '34,200 / 50,000 steps',
+        currentProgress: 0.0,
+        progressLabel: 'Not started yet',
       ),
       _CommunityChallengeData(
         id: 'comm_nosugar_7d',
         title: '7-Day Zero Added Sugar Sprint',
         description: 'Skip all sweetened beverages, sodas & mithai for a clean digestive reset.',
         badge: 'Nutrition',
-        participants: 890,
+        participants: 0,
         rewardCoins: 40,
-        currentProgress: 0.42,
-        progressLabel: '3 / 7 days logged',
+        currentProgress: 0.0,
+        progressLabel: 'Not started yet',
       ),
       _CommunityChallengeData(
         id: 'comm_squats_100',
         title: 'Desi Strength: 100 Daily Squats',
         description: 'Complete 100 bodyweight squats daily using the 3D Form Coach.',
         badge: 'Strength',
-        participants: 615,
+        participants: 0,
         rewardCoins: 60,
-        currentProgress: 0.25,
-        progressLabel: 'Day 2 of 7',
+        currentProgress: 0.0,
+        progressLabel: 'Not started yet',
       ),
       _CommunityChallengeData(
         id: 'comm_morning_run',
         title: 'Early Bird 5K Morning Run',
         description: 'Record an outdoor 5K run between 5:00 AM and 8:00 AM on the map.',
         badge: 'Cardio',
-        participants: 430,
+        participants: 0,
         rewardCoins: 35,
         currentProgress: 0.0,
         progressLabel: 'Not started yet',
@@ -666,7 +688,7 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
               child: _CommunityChallengeCard(
                 data: item,
                 isJoined: _joinedCommunityChallenges.contains(item.id),
-                onToggleJoin: () => _toggleCommunityChallenge(item.id),
+                onToggleJoin: () => _toggleCommunityChallenge(item.id, item.title),
               ),
             ),
           ),
@@ -790,7 +812,7 @@ class _CommunityChallengeCard extends StatelessWidget {
             children: [
               const Icon(Icons.people_outline_rounded, size: 14, color: VColor.textLow),
               const SizedBox(width: 4),
-              Text('${data.participants} athletes joined',
+              Text(data.participants == 0 ? '—' : '${data.participants} athletes joined',
                   style: const TextStyle(color: VColor.textLow, fontSize: 11.5)),
             ],
           ),

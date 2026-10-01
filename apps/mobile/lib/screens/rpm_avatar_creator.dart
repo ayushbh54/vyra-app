@@ -17,7 +17,7 @@ class _RpmAvatarCreatorScreenState extends State<RpmAvatarCreatorScreen> {
   bool _isLoading = true;
   bool _avatarReceived = false;
   String? _receivedAvatarUrl;
-  String _rpmUrl = 'https://demo.readyplayer.me/avatar?frameApi&clearCache&bodyType=fullbody';
+  String _rpmUrl = 'https://demo.readyplayer.me/avatar?frameApi&clearCache&bodyType=fullbody&quality=high';
 
   @override
   void initState() {
@@ -28,7 +28,7 @@ class _RpmAvatarCreatorScreenState extends State<RpmAvatarCreatorScreen> {
   Future<void> _loadUrl() async {
     final bodyParam = widget.bodyScanResult?.rpmBodyParam ?? 'default';
     setState(() {
-      _rpmUrl = 'https://demo.readyplayer.me/avatar?frameApi&clearCache&bodyType=fullbody&bodyParam=$bodyParam';
+      _rpmUrl = 'https://demo.readyplayer.me/avatar?frameApi&clearCache&bodyType=fullbody&quality=high&bodyParam=$bodyParam';
     });
   }
 
