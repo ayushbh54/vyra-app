@@ -6,7 +6,6 @@ import 'clubs.dart';
 import 'events.dart';
 import 'feed.dart';
 import 'friends.dart';
-import 'messages_inbox.dart';
 import 'posts.dart';
 
 /// SOCIAL — the feed, posts, clubs, events, and friends all live here.
@@ -22,39 +21,21 @@ class SocialHubScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
+    return const DefaultTabController(
       length: 5,
       child: SafeArea(
         child: Column(
           children: [
-            // ── Top Header Strip with Messages & AI Coach ──
+            // ── Top Header Strip ──
             Padding(
-              padding: const EdgeInsets.fromLTRB(VSpace.base, VSpace.xs, VSpace.sm, 0),
+              padding: EdgeInsets.fromLTRB(VSpace.base, VSpace.xs, VSpace.sm, 0),
               child: Row(
                 children: [
-                  const VHeaderBadge(label: 'ATHLETE SOCIAL NETWORK', accentColor: VColor.accent),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: 'Direct Messages',
-                    icon: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: VColor.surfaceRaised,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: VColor.line),
-                      ),
-                      child: const Icon(Icons.forum_rounded, color: VColor.accent, size: 18),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const MessagesInboxScreen()),
-                      );
-                    },
-                  ),
+                  VHeaderBadge(label: 'ATHLETE SOCIAL NETWORK', accentColor: VColor.accent),
                 ],
               ),
             ),
-            const TabBar(
+            TabBar(
               isScrollable: true,
               labelColor: VColor.accent,
               unselectedLabelColor: VColor.textMid,
@@ -67,7 +48,7 @@ class SocialHubScreen extends StatelessWidget {
                 Tab(text: 'Friends'),
               ],
             ),
-            const Expanded(
+            Expanded(
               child: TabBarView(
                 children: [
                   FeedScreen(),

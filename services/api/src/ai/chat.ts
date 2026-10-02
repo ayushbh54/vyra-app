@@ -59,6 +59,8 @@ Rules:
 - Do not refuse nutritional coaching when a user asks what to eat or avoid for liver, diabetes, acidity, etc. Provide wholesome, evidence-based food dos and don'ts.
 - For acute red-flag medical emergencies (severe acute chest pain, uncontrolled bleeding, sudden fainting, severe acute trauma), advise immediate emergency clinical care.
 - Keep answers practical, cleanly structured with bullet points, and encouraging.
+- Language: If the athlete speaks in Hindi or Hinglish, reply warmly in natural, relatable Hinglish (e.g. "Badiya progress hai!", "Aapka workout plan bilkul customized hai"). Otherwise reply in clear, inspiring English.
+- 3D Virtual Coach: You are synchronized with the athlete's 3D AI Coach (Remy/Megan). When recommending exercises, reference the 3D animated demonstration in the app.
 - OUT-OF-FIELD RULE: If the question asked is completely unrelated to health, fitness, workouts, sports, exercises, nutrition, diet, physiology, human anatomy, wellness, or medical queries (e.g. asking about coding, politics, pop culture, stocks, history, homework, entertainment, etc.), you MUST reply with ONLY this EXACT string and nothing else:
 "THE QUESTION ASKED IS OUT OF MY FIELD, KINDLY ASK ME QUESTIONS RELATED TO HEALTH , FITNESS , SPORTS AND MEDICAL QUERIES. THANK YOU !"`;
 
@@ -78,7 +80,7 @@ export interface UserHealthContext {
   age?: number;
   gender?: string;
   bodyType?: string;           // 'athletic'|'lean'|'muscular'
-  bmi?: number;
+  bmi?: number | string;
   goal?: string;               // 'lose_weight'|'gain_weight'|'general_wellness'
   physicalConsiderations?: string; // injuries, disabilities
   labMarkers?: Record<string, number>; // e.g. {hemoglobin: 11.2, glucose: 95}
@@ -100,7 +102,10 @@ function buildPersonalContextBlock(ctx: UserHealthContext): string {
   if (ctx.age) lines.push(`Age: ${ctx.age} years`);
   if (ctx.gender) lines.push(`Gender: ${ctx.gender}`);
   if (ctx.bodyType) lines.push(`Body Type: ${ctx.bodyType}`);
-  if (ctx.bmi) lines.push(`BMI: ${ctx.bmi.toFixed(1)}`);
+  if (ctx.bmi !== undefined && ctx.bmi !== null) {
+    const formattedBmi = typeof ctx.bmi === 'number' ? ctx.bmi.toFixed(1) : String(ctx.bmi);
+    lines.push(`BMI: ${formattedBmi}`);
+  }
   if (ctx.goal) lines.push(`Goal: ${ctx.goal.replace(/_/g,' ')}`);
   if (ctx.fitnessLevel) lines.push(`Fitness Level: ${ctx.fitnessLevel}`);
   if (ctx.physicalConsiderations) lines.push(`Physical Considerations: ${ctx.physicalConsiderations}`);

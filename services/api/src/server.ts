@@ -1433,6 +1433,8 @@ export function buildRouter(deps: ServerDeps): Router {
       const plan = await store.getPlan(user.id, today);
       const tracking = await store.getTracking(user.id, today);
 
+      const clientContext = b.userContext && typeof b.userContext === 'object' ? b.userContext : {};
+
       const userContext = {
         name: user.name,
         age,
@@ -1449,6 +1451,7 @@ export function buildRouter(deps: ServerDeps): Router {
         watchSteps: tracking?.steps,
         recommendedExercises: plan ? plan.entries.map(e => e.name) : undefined,
         todayExercises: plan ? plan.entries.filter(e => e.isCompleted).map(e => e.name) : undefined,
+        ...clientContext,
       };
 
       const reply = await sendChatMessage(

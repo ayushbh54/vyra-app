@@ -23,16 +23,25 @@ class CoachAvatarStudioScreen extends StatefulWidget {
 }
 
 class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
-  // Selected coach: 'male' (Alex) or 'female' (Sara)
+  // ── Default: Remy (male) & Megan (female) — Adobe Mixamo realistic humans ──
+  static const String _defaultMaleName   = 'Remy';
+  static const String _defaultFemaleName = 'Megan';
+
   String _selectedGender = 'male';
-  String _activeAnim = 'Idle';
+  String _activeAnim = 'idle';
   bool _isSpeaking = false;
   bool _isSelectedSaved = false;
 
-  // Personalization settings
-  String _coachName = 'Alex';
+  // Personalization settings — defaults to Remy until user renames
+  String _coachName = _defaultMaleName;
+
   String _selectedPhysique = 'Athletic';
   String _selectedAuraName = 'Cyan Electric';
+  Color _selectedAuraColor = const Color(0xFF00E5FF);
+
+  String _selectedOutfitName = 'Signature Cyan';
+  Color _selectedOutfitColor = const Color(0xFF00E5FF);
+
   BodyScanResult? _bodyScanResult;
 
   // 4-Angle Photos for AI Posture Scan
@@ -62,16 +71,24 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
     final savedName = prefs.getString('selected_coach_name');
     final savedPhysique = prefs.getString('coach_physique') ?? 'Athletic';
     final savedAura = prefs.getString('coach_aura') ?? 'Cyan Electric';
+    final savedAuraColorInt = prefs.getInt('coach_aura_color');
+    final savedOutfit = prefs.getString('coach_outfit_name') ?? 'Signature Cyan';
+    final savedOutfitColorInt = prefs.getInt('coach_outfit_color');
 
     final savedScan = await BodyScanService.instance.loadSaved();
 
     if (mounted) {
       setState(() {
         _selectedGender = savedGender == 'female' ? 'female' : 'male';
-        _activeAnim = _selectedGender == 'female' ? 'SambaDance' : 'Idle';
-        _coachName = savedName ?? (_selectedGender == 'female' ? 'Sara' : 'Alex');
+        _activeAnim = 'idle';
+        // Default: Remy (male) or Megan (female) until user personalizes
+        _coachName = savedName ??
+            (_selectedGender == 'female' ? _defaultFemaleName : _defaultMaleName);
         _selectedPhysique = savedPhysique;
         _selectedAuraName = savedAura;
+        if (savedAuraColorInt != null) _selectedAuraColor = Color(savedAuraColorInt);
+        _selectedOutfitName = savedOutfit;
+        if (savedOutfitColorInt != null) _selectedOutfitColor = Color(savedOutfitColorInt);
         _bodyScanResult = savedScan;
       });
     }
@@ -89,6 +106,9 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
     await prefs.setString('selected_coach_model', coachModel);
     await prefs.setString('coach_physique', _selectedPhysique);
     await prefs.setString('coach_aura', _selectedAuraName);
+    await prefs.setInt('coach_aura_color', _selectedAuraColor.toARGB32());
+    await prefs.setString('coach_outfit_name', _selectedOutfitName);
+    await prefs.setInt('coach_outfit_color', _selectedOutfitColor.toARGB32());
     await prefs.setString('rpm_avatar_url', coachModel); // Universal fallback
 
     // Update Avatar Customization Service
@@ -144,20 +164,19 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
 
     final isMale = _selectedGender == 'male';
     final speechText = isMale
-        ? "Welcome athlete! I'm $_coachName, your strength and conditioning coach. Let's conquer your training goals today."
-        : "Hello athlete! I'm $_coachName, your mobility and performance coach. Together we'll unlock your peak physical form.";
+        ? "Hey! I'm $_coachName, your strength and conditioning coach. Let's conquer your training goals today."
+        : "Hello! I'm $_coachName, your fitness and wellness coach. Together we'll unlock your peak physical form.";
 
-    // Trigger movement animation while speaking
-    if (isMale) {
-      setState(() => _activeAnim = 'Walk');
-    }
+    // Trigger walk animation while speaking
+    setState(() => _activeAnim = 'walk');
+
 
     await TtsService.speak(speechText);
 
     if (mounted) {
       setState(() {
         _isSpeaking = false;
-        if (isMale) _activeAnim = 'Idle';
+        if (isMale) _activeAnim = 'idle';
       });
     }
   }
@@ -464,9 +483,11 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
 
     final availableAnims = isMale
         ? [
-            {'label': 'Idle Pose', 'anim': 'Idle', 'icon': Icons.accessibility_new_rounded},
-            {'label': 'Running', 'anim': 'Run', 'icon': Icons.directions_run_rounded},
-            {'label': 'Walking', 'anim': 'Walk', 'icon': Icons.directions_walk_rounded},
+            {'label': 'Idle Pose', 'anim': 'idle', 'icon': Icons.accessibility_new_rounded},
+            {'label': 'Running', 'anim': 'run', 'icon': Icons.directions_run_rounded},
+            {'label': 'Walking', 'anim': 'walk', 'icon': Icons.directions_walk_rounded},
+            {'label': 'Agree', 'anim': 'agree', 'icon': Icons.thumb_up_rounded},
+            {'label': 'Head Shake', 'anim': 'headShake', 'icon': Icons.do_not_disturb_alt_rounded},
           ]
         : [
             {'label': 'Workout Dance', 'anim': 'SambaDance', 'icon': Icons.sports_gymnastics_rounded},
@@ -487,21 +508,39 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
       {'name': 'Solar Sunset', 'color': const Color(0xFFFF9100)},
     ];
 
+    final outfitPresets = [
+      {'name': 'Signature Cyan', 'color': const Color(0xFF00E5FF)},
+      {'name': 'Stealth Black', 'color': const Color(0xFF212529)},
+      {'name': 'Crimson Blaze', 'color': const Color(0xFFFF1744)},
+      {'name': 'Matrix Green', 'color': const Color(0xFF00E676)},
+      {'name': 'Solar Gold', 'color': const Color(0xFFFF9100)},
+      {'name': 'Clean White', 'color': const Color(0xFFF8F9FA)},
+    ];
+
     return Scaffold(
       backgroundColor: VColor.bg,
       appBar: AppBar(
         backgroundColor: VColor.surface,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: VColor.text, size: 20),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: const Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.view_in_ar_rounded, color: VColor.accent, size: 20),
             SizedBox(width: 8),
-            Text(
-              '3D Coach Studio',
-              style: TextStyle(
-                color: VColor.text,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
+            Flexible(
+              child: Text(
+                '3D Coach Studio',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: VColor.text,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ],
@@ -579,7 +618,7 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
 
             // ── 3D Viewport ──
             Container(
-              height: 380,
+              height: 340,
               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF0D0D12),
@@ -593,7 +632,10 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
                   animationName: _activeAnim,
                   coachName: _coachName,
                   coachTitle: coachTitle,
-                  height: 380,
+                  outfitColor: _selectedOutfitColor,
+                  auraColor: _selectedAuraColor,
+                  height: 340,
+                  cameraOrbit: '0deg 75deg 3.2m',
                 ),
               ),
             ),
@@ -792,6 +834,67 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
                               color: VColor.accentGreen, size: 20),
                         ],
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ── Outfit / Gear Apparel (Kapde Style) ──
+                  const Text(
+                    'OUTFIT & GEAR APPAREL',
+                    style: TextStyle(
+                      color: VColor.textMuted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: outfitPresets.map((outfit) {
+                        final isSel = _selectedOutfitName == outfit['name'];
+                        final color = outfit['color'] as Color;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white70),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(outfit['name'] as String),
+                              ],
+                            ),
+                            selected: isSel,
+                            labelStyle: TextStyle(
+                              color: isSel ? Colors.black : VColor.text,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            selectedColor: VColor.accent,
+                            backgroundColor: VColor.bg,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(VRadius.sm),
+                            ),
+                            onSelected: (_) {
+                              setState(() {
+                                _selectedOutfitName = outfit['name'] as String;
+                                _selectedOutfitColor = color;
+                                _isSelectedSaved = false;
+                              });
+                            },
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ),
                   const SizedBox(height: 14),

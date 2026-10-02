@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/models.dart';
+import '../services/avatar_customization_service.dart';
 
 /// =============================================================================
 /// VYRA API CLIENT
@@ -52,9 +53,12 @@ class VyraApi {
   final http.Client _http;
 
   static const _tokenKey = 'vyra.accessToken';
+  static const _refreshTokenKey = 'vyra.refreshToken';
   static const _cachePrefix = 'vyra.cache.';
 
   String? _token;
+  String? _refreshToken;
+  bool _isRefreshing = false;
 
   // ---------------------------------------------------------------------------
   // Session
@@ -63,16 +67,51 @@ class VyraApi {
   Future<void> loadToken() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString(_tokenKey);
+    _refreshToken = prefs.getString(_refreshTokenKey);
   }
 
-  Future<void> setToken(String? token) async {
+  Future<void> setToken(String? token, {String? refreshToken}) async {
     _token = token;
     final prefs = await SharedPreferences.getInstance();
     if (token == null) {
       await prefs.remove(_tokenKey);
+      await prefs.remove(_refreshTokenKey);
+      _refreshToken = null;
     } else {
       await prefs.setString(_tokenKey, token);
+      if (refreshToken != null) {
+        _refreshToken = refreshToken;
+        await prefs.setString(_refreshTokenKey, refreshToken);
+      }
     }
+  }
+
+  /// Attempts silent refresh using long-lived refresh token
+  Future<bool> _tryRefreshToken() async {
+    if (_refreshToken == null || _isRefreshing) return false;
+    _isRefreshing = true;
+    try {
+      final uri = Uri.parse('$baseUrl/v1/auth/refresh');
+      final res = await _http.post(
+        uri,
+        headers: {'content-type': 'application/json'},
+        body: jsonEncode({'refreshToken': _refreshToken}),
+      ).timeout(const Duration(seconds: 10));
+
+      final parsed = jsonDecode(res.body);
+      if (parsed is Map<String, dynamic> && parsed['ok'] == true) {
+        final data = parsed['data'] as Map<String, dynamic>? ?? {};
+        final newAccess = data['accessToken'] as String?;
+        final newRefresh = data['refreshToken'] as String?;
+        if (newAccess != null && newAccess.isNotEmpty) {
+          await setToken(newAccess, refreshToken: newRefresh);
+          _isRefreshing = false;
+          return true;
+        }
+      }
+    } catch (_) {}
+    _isRefreshing = false;
+    return false;
   }
 
   Future<void> logout() async {
@@ -107,6 +146,24 @@ class VyraApi {
         _ => _http.get(uri, headers: headers),
       }
           .timeout(timeout);
+
+      // Silent 401 Token Refresh Interception
+      if (res.statusCode == 401 &&
+          path != '/v1/auth/refresh' &&
+          path != '/v1/auth/login' &&
+          path != '/v1/auth/signup') {
+        final refreshed = await _tryRefreshToken();
+        if (refreshed) {
+          return await _request(
+            method,
+            path,
+            body: body,
+            cacheKey: cacheKey,
+            timeout: timeout,
+          );
+        }
+      }
+
       Map<String, dynamic> decoded;
       try {
         final parsed = jsonDecode(res.body);
@@ -203,7 +260,10 @@ class VyraApi {
   /// One-tap demo account. Presets: student, nurse, homemaker, open.
   Future<void> startDemoSession(String preset) async {
     final j = await _request('POST', '/v1/demo/session', body: {'preset': preset});
-    await setToken('${j['accessToken']}');
+    await setToken(
+      '${j['accessToken']}',
+      refreshToken: j['refreshToken'] != null ? '${j['refreshToken']}' : null,
+    );
   }
 
   /// Real account creation — only name/email/password are required here.
@@ -214,7 +274,16 @@ class VyraApi {
     final j = await _request('POST', '/v1/auth/signup', body: {
       'name': name, 'email': email, 'password': password,
     });
-    await setToken('${j['accessToken']}');
+    await setToken(
+      '${j['accessToken']}',
+      refreshToken: j['refreshToken'] != null ? '${j['refreshToken']}' : null,
+    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_name', name);
+      await prefs.setString('profile_name', name);
+      await prefs.setString('user_email', email);
+    } catch (_) {}
     return 0;
   }
 
@@ -222,7 +291,15 @@ class VyraApi {
   /// resume onboarding or go straight to the home feed.
   Future<int> logIn({required String email, required String password}) async {
     final j = await _request('POST', '/v1/auth/login', body: {'email': email, 'password': password});
-    await setToken('${j['accessToken']}');
+    await setToken(
+      '${j['accessToken']}',
+      refreshToken: j['refreshToken'] != null ? '${j['refreshToken']}' : null,
+    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_email', email);
+      unawaited(getProfile());
+    } catch (_) {}
     return (j['onboardingStep'] as num?)?.toInt() ?? 0;
   }
 
@@ -234,14 +311,37 @@ class VyraApi {
       if (name != null && name.isNotEmpty) 'name': name,
       if (googleId != null && googleId.isNotEmpty) 'googleId': googleId,
     });
-    await setToken('${j['accessToken']}');
+    await setToken(
+      '${j['accessToken']}',
+      refreshToken: j['refreshToken'] != null ? '${j['refreshToken']}' : null,
+    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (name != null && name.isNotEmpty) {
+        await prefs.setString('user_name', name);
+        await prefs.setString('profile_name', name);
+      }
+      await prefs.setString('user_email', email);
+      unawaited(getProfile());
+    } catch (_) {}
     return (j['onboardingStep'] as num?)?.toInt() ?? 0;
   }
 
   /// Fast 1-Tap Guest Access: Immediately provisions a guest session with full token
   Future<int> logInAsGuest() async {
     final j = await _request('POST', '/v1/auth/guest');
-    await setToken('${j['accessToken']}');
+    await setToken(
+      '${j['accessToken']}',
+      refreshToken: j['refreshToken'] != null ? '${j['refreshToken']}' : null,
+    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!prefs.containsKey('user_name')) {
+        await prefs.setString('user_name', 'Athlete');
+        await prefs.setString('profile_name', 'Athlete');
+      }
+      unawaited(getProfile());
+    } catch (_) {}
     return (j['onboardingStep'] as num?)?.toInt() ?? 0;
   }
 
@@ -282,8 +382,17 @@ class VyraApi {
     bool? hasPhysicalConsideration,
     String? physicalConsiderationDetails,
   }) async {
+    // Resolve name from prefs if not provided in parameter
+    String? resolvedName = name;
+    if (resolvedName == null || resolvedName.trim().isEmpty) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        resolvedName = prefs.getString('user_name') ?? prefs.getString('profile_name');
+      } catch (_) {}
+    }
+
     final body = <String, dynamic>{};
-    if (name != null) body['name'] = name;
+    if (resolvedName != null && resolvedName.trim().isNotEmpty) body['name'] = resolvedName.trim();
     if (dob != null) body['dob'] = dob;
     if (gender != null) body['gender'] = gender;
     if (heightCm != null) body['heightCm'] = heightCm;
@@ -298,6 +407,52 @@ class VyraApi {
     if (hasPhysicalConsideration != null) body['hasPhysicalConsideration'] = hasPhysicalConsideration;
     if (physicalConsiderationDetails != null) body['physicalConsiderationDetails'] = physicalConsiderationDetails;
     await _request('POST', '/v1/onboarding/complete', body: body);
+
+    // Cache onboarding biometrics and coach configuration for instant offline Gemini brain & 3D coach sync
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (resolvedName != null && resolvedName.trim().isNotEmpty) {
+        await prefs.setString('user_name', resolvedName.trim());
+        await prefs.setString('profile_name', resolvedName.trim());
+      }
+      if (gender != null) {
+        final g = gender.toLowerCase();
+        await prefs.setString('user_gender', g);
+        await prefs.setString('selected_coach_gender', g);
+        final isFem = g == 'female';
+        await prefs.setString('selected_coach_model',
+            isFem ? 'assets/models/female_coach.glb' : 'assets/models/male_coach.glb');
+        await prefs.setString('selected_coach_name', isFem ? 'Megan' : 'Remy');
+      }
+      if (heightCm != null) await prefs.setDouble('user_height', heightCm);
+      if (weightKg != null) await prefs.setDouble('user_weight', weightKg);
+      if (fitnessGoal != null) await prefs.setString('user_goal', fitnessGoal);
+      if (dietPreference != null) await prefs.setString('diet_type', dietPreference);
+      if (primarySport != null) await prefs.setString('primary_sport', primarySport);
+      if (city != null) await prefs.setString('user_city', city);
+      if (accessibilityMode != null) await prefs.setBool('accessibility_mode', accessibilityMode);
+      if (disabilityFlag != null) await prefs.setBool('disability_flag', disabilityFlag);
+      if (dob != null) {
+        await prefs.setString('user_dob', dob);
+        try {
+          final birthDate = DateTime.parse(dob);
+          final age = DateTime.now().year - birthDate.year;
+          await prefs.setInt('user_age', age);
+        } catch (_) {}
+      }
+      if (physicalConsiderationDetails != null) {
+        await prefs.setString('physical_considerations', physicalConsiderationDetails);
+      }
+
+      // Sync AvatarCustomizationService with new profile
+      final currentProfile = AvatarCustomizationService.instance.profile;
+      await AvatarCustomizationService.instance.updateProfile(
+        currentProfile.copyWith(
+          avatarGender: gender?.toLowerCase() ?? currentProfile.avatarGender,
+          userName: resolvedName ?? currentProfile.userName,
+        ),
+      );
+    } catch (_) {}
   }
 
   Future<TodayData?> getCachedToday() async {
@@ -539,7 +694,48 @@ class VyraApi {
 
   Future<UserProfile> getProfile() async {
     final j = await _request('GET', '/v1/me', cacheKey: 'profile.me');
-    return UserProfile.fromJson(j);
+    final profile = UserProfile.fromJson(j);
+    // Keep local SharedPreferences updated so Gemini AI context & 3D coach always have fresh user metrics
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (profile.name.isNotEmpty) {
+        await prefs.setString('user_name', profile.name);
+        await prefs.setString('profile_name', profile.name);
+      }
+      if (profile.gender.isNotEmpty) {
+        final g = profile.gender.toLowerCase();
+        await prefs.setString('user_gender', g);
+        if (!prefs.containsKey('selected_coach_gender')) {
+          await prefs.setString('selected_coach_gender', g);
+          final isFem = g == 'female';
+          await prefs.setString('selected_coach_model',
+              isFem ? 'assets/models/female_coach.glb' : 'assets/models/male_coach.glb');
+          await prefs.setString('selected_coach_name', isFem ? 'Megan' : 'Remy');
+        }
+      }
+      if (profile.heightCm > 0) await prefs.setDouble('user_height', profile.heightCm);
+      if (profile.weightKg > 0) await prefs.setDouble('user_weight', profile.weightKg);
+      if (profile.dob.isNotEmpty) {
+        await prefs.setString('user_dob', profile.dob);
+        try {
+          final birthDate = DateTime.parse(profile.dob);
+          final age = DateTime.now().year - birthDate.year;
+          await prefs.setInt('user_age', age);
+        } catch (_) {}
+      }
+      if (profile.physicalConsiderationDetails.isNotEmpty) {
+        await prefs.setString('physical_considerations', profile.physicalConsiderationDetails);
+      }
+      if (profile.primarySport.isNotEmpty) {
+        await prefs.setString('primary_sport', profile.primarySport);
+      }
+      if (profile.city.isNotEmpty) {
+        await prefs.setString('user_city', profile.city);
+      }
+      await prefs.setBool('accessibility_mode', profile.accessibilityMode);
+      await prefs.setBool('disability_flag', profile.disabilityFlag);
+    } catch (_) {}
+    return profile;
   }
 
   Future<Map<String, dynamic>> me() async {

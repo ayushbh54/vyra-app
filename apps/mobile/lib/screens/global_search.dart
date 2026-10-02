@@ -329,7 +329,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
           Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back, color: VColor.text),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: VColor.text, size: 20),
                 onPressed: () => Navigator.of(context).maybePop(),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 40, minHeight: 40),

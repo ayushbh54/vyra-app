@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 /// VYRA design tokens — extracted directly from the Stitch export's own
 /// Tailwind config (Material 3 dark scheme), not approximated. Three
@@ -230,6 +231,13 @@ ThemeData buildVyraLightTheme() {
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VRadius.md)),
     ),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.android: ZoomPageTransitionsBuilder(),
+      },
+    ),
   );
 }
 
@@ -348,6 +356,13 @@ ThemeData buildVyraDarkTheme() {
       contentTextStyle: const TextStyle(color: Color(0xFFDFE2F0), fontSize: 14),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VRadius.md)),
+    ),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.android: ZoomPageTransitionsBuilder(),
+      },
     ),
   );
 }

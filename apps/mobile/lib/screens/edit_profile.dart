@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/client.dart';
 import '../theme.dart';
@@ -116,6 +117,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ? _physicalConsiderationDetailsController.text.trim()
                 : null,
           );
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_name', _nameController.text.trim());
+        final w = double.tryParse(_weightController.text);
+        if (w != null) await prefs.setDouble('user_weight', w);
+        if (_hasPhysicalConsideration && _physicalConsiderationDetailsController.text.trim().isNotEmpty) {
+          await prefs.setString('physical_considerations', _physicalConsiderationDetailsController.text.trim());
+        }
+      } catch (_) {}
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile, adaptive settings & health preferences updated.')),

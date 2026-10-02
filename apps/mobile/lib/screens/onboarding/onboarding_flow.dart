@@ -121,7 +121,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       backgroundColor: VColor.bg,
       appBar: AppBar(
         backgroundColor: VColor.bg,
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: _back),
+        automaticallyImplyLeading: false,
+        leading: _step > 0
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: VColor.text, size: 20),
+                onPressed: _back,
+              )
+            : null,
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: VSpace.sm),
           child: ClipRRect(

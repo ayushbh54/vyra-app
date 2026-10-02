@@ -1304,7 +1304,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.arrow_back, color: VColor.text),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: VColor.text, size: 20),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         const Expanded(

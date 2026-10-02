@@ -405,15 +405,19 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
   late AnimationController _animCtrl;
   bool _isPlaying = true;
   double _speedMultiplier = 1.0;
-  double _orbitAngle = 0.0; // In radians: -pi/2 (-90°) to +pi/2 (+90°), defaults to 0.0 Front View
+  String _orbitAngleString = '0deg 85deg 3.5m';
+  String _activeAngleLabel = 'Front View';
   final _picker = ImagePicker();
   String _coachModelPath = 'assets/models/male_coach.glb';
-  String _coachName = 'Alex';
+  String _coachName = 'Remy';
+  Color? _coachOutfitColor;
+  Color? _coachAuraColor;
 
   @override
   void initState() {
     super.initState();
-    _orbitAngle = 0.0; // Default front view when not touched
+    _orbitAngleString = '0deg 85deg 3.5m';
+    _activeAngleLabel = 'Front View';
 
     _animCtrl = AnimationController(
       vsync: this,
@@ -424,20 +428,26 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
     AvatarCustomizationService.instance.init();
     AvatarCustomizationService.instance.addListener(_onAvatarProfileChanged);
 
-    // Load active 3D coach model
+    // Load active 3D coach model and customized styling
     SharedPreferences.getInstance().then((prefs) {
       if (!mounted) return;
       final savedModel = prefs.getString('selected_coach_model');
+      final savedName = prefs.getString('selected_coach_name');
       final savedGender = prefs.getString('selected_coach_gender') ??
           prefs.getString('user_gender')?.toLowerCase();
       final isFemale = savedGender == 'female' ||
           (savedModel?.contains('female') ?? false);
+      final savedOutfitColorInt = prefs.getInt('coach_outfit_color');
+      final savedAuraColorInt = prefs.getInt('coach_aura_color');
+
       setState(() {
         _coachModelPath = savedModel ??
             (isFemale
                 ? 'assets/models/female_coach.glb'
                 : 'assets/models/male_coach.glb');
-        _coachName = isFemale ? 'Sara' : 'Alex';
+        _coachName = savedName ?? (isFemale ? 'Megan' : 'Remy');
+        if (savedOutfitColorInt != null) _coachOutfitColor = Color(savedOutfitColorInt);
+        if (savedAuraColorInt != null) _coachAuraColor = Color(savedAuraColorInt);
       });
       // Set avatar pose to match exercise
       AvatarCustomizationService.instance
@@ -476,6 +486,8 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
         _speedMultiplier = 0.75; // Slow motion for form learning
       } else if (_speedMultiplier == 0.75) {
         _speedMultiplier = 1.25;
+      } else if (_speedMultiplier == 1.25) {
+        _speedMultiplier = 1.5;
       } else {
         _speedMultiplier = 1.0;
       }
@@ -486,11 +498,50 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
     });
   }
 
-  void _setPresetAngle(double angle) {
+  void _setPresetAngle(String orbitString, String label) {
     HapticFeedback.selectionClick();
     setState(() {
-      _orbitAngle = angle;
+      _orbitAngleString = orbitString;
+      _activeAngleLabel = label;
     });
+  }
+
+  String _buildModelJs({required double timeScale, Color? outfit}) {
+    String topRgba = '';
+    if (outfit != null) {
+      final r = (outfit.r).toStringAsFixed(2);
+      final g = (outfit.g).toStringAsFixed(2);
+      final b = (outfit.b).toStringAsFixed(2);
+      topRgba = '[$r, $g, $b, 1.0]';
+    }
+    return '''
+    (function() {
+      function apply() {
+        var mv = document.querySelector('model-viewer');
+        if (!mv) return;
+        mv.timeScale = $timeScale;
+        if (mv.model && mv.model.materials) {
+          try {
+            for (var i = 0; i < mv.model.materials.length; i++) {
+              var mat = mv.model.materials[i];
+              if (!mat || !mat.name) continue;
+              if (mat.name === 'Topmat' || mat.name === 'Ch21_body') {
+                ${topRgba.isNotEmpty ? "mat.pbrMetallicRoughness.setBaseColorFactor($topRgba);" : ""}
+              }
+            }
+          } catch(e) {}
+        }
+      }
+      var mv = document.querySelector('model-viewer');
+      if (mv) {
+        if (mv.loaded) {
+          apply();
+        } else {
+          mv.addEventListener('load', apply, { once: true });
+        }
+      }
+    })();
+    ''';
   }
 
   /// 📸 Scan/Upload User Photo to match Avatar face (On-Device, 0 KB Network, Zero Heat)
@@ -697,98 +748,113 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                   _buildAnglePill(
                     label: 'Front View',
                     icon: Icons.accessibility_new_rounded,
-                    isSelected: _orbitAngle.abs() < 0.15,
-                    onTap: () => _setPresetAngle(0.0),
+                    isSelected: _activeAngleLabel == 'Front View',
+                    onTap: () => _setPresetAngle('0deg 85deg 3.5m', 'Front View'),
                   ),
                   _buildAnglePill(
                     label: 'Side View',
                     icon: Icons.view_sidebar_rounded,
-                    isSelected: (_orbitAngle - math.pi / 2).abs() < 0.15,
-                    onTap: () => _setPresetAngle(math.pi / 2),
+                    isSelected: _activeAngleLabel == 'Side View',
+                    onTap: () => _setPresetAngle('90deg 85deg 3.5m', 'Side View'),
                   ),
                   _buildAnglePill(
                     label: '45° Angle',
                     icon: Icons.view_in_ar_rounded,
-                    isSelected: (_orbitAngle - math.pi / 4).abs() < 0.15,
-                    onTap: () => _setPresetAngle(math.pi / 4),
+                    isSelected: _activeAngleLabel == '45° Angle',
+                    onTap: () => _setPresetAngle('45deg 85deg 3.5m', '45° Angle'),
                   ),
                   _buildAnglePill(
                     label: 'Left Side',
                     icon: Icons.view_sidebar_outlined,
-                    isSelected: (_orbitAngle + math.pi / 2).abs() < 0.15,
-                    onTap: () => _setPresetAngle(-math.pi / 2),
+                    isSelected: _activeAngleLabel == 'Left Side',
+                    onTap: () => _setPresetAngle('-90deg 85deg 3.5m', 'Left Side'),
                   ),
                 ],
               ),
             ),
           ),
 
-          // ── 3D RPM Avatar (ModelViewer with drag-to-orbit) ──
+          // ── 3D Coach Avatar Viewport (360° Touch Orbit + Perspective Presets) ──
           SizedBox(
-            height: 260,
+            height: 220,
             width: double.infinity,
-            child: GestureDetector(
-              onHorizontalDragUpdate: (details) {
-                setState(() {
-                  _orbitAngle = (_orbitAngle + details.primaryDelta! * 0.016)
-                      .clamp(-math.pi / 2, math.pi / 2);
-                });
-              },
-              child: Stack(
-                children: [
-                  // ── Realistic 3D Human Coach (Adobe Mixamo ModelViewer) ──
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: ModelViewer(
-                      key: ValueKey(
-                          '${_coachModelPath}_${AvatarCustomizationService.instance.currentMixamoAnim}'),
-                      src: _coachModelPath,
-                      alt: '3D Coach $_coachName',
-                      ar: false,
-                      autoRotate: false,
-                      cameraControls: true,
-                      shadowIntensity: 0.85,
-                      shadowSoftness: 0.8,
-                      exposure: 1.15,
-                      backgroundColor: const Color(0xFF0D0D12),
-                      cameraOrbit:
-                          '${(_orbitAngle * 180 / math.pi).toStringAsFixed(0)}deg 75deg 2.2m',
-                      animationName: AvatarCustomizationService
-                          .instance.currentMixamoAnim,
-                    ),
-                  ),
-
-                  // ── Top HUD: Drag hint & Coach name ──
-                  Positioned(
-                    top: 8,
-                    right: VSpace.base,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: VColor.bg.withValues(alpha: 0.82),
-                        borderRadius: BorderRadius.circular(VRadius.pill),
-                        border: Border.all(
-                            color: VColor.accent.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.touch_app_rounded,
-                              size: 12, color: VColor.accentCyan),
-                          const SizedBox(width: 4),
-                          Text(
-                            '3D Coach $_coachName • ${(_orbitAngle * 180 / math.pi).round()}°',
-                            style: const TextStyle(
-                              color: VColor.accentCyan,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+            child: Stack(
+              children: [
+                // ── Ambient Aura Glow ──
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: RadialGradient(
+                        center: const Alignment(0, -0.1),
+                        radius: 0.9,
+                        colors: [
+                          (_coachAuraColor ?? const Color(0xFF00E5FF)).withValues(alpha: 0.18),
+                          const Color(0xFF0D0D12),
                         ],
                       ),
                     ),
                   ),
+                ),
+
+                // ── Realistic 3D Human Coach (Adobe Mixamo ModelViewer) ──
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: ModelViewer(
+                    key: ValueKey(
+                        '${_coachModelPath}_${_orbitAngleString}_${_speedMultiplier}_${_isPlaying}_${_coachOutfitColor?.toARGB32()}'),
+                    src: _coachModelPath,
+                    alt: '3D Coach $_coachName',
+                    ar: false,
+                    autoRotate: false,
+                    cameraControls: true,
+                    autoPlay: _isPlaying,
+                    shadowIntensity: 0.85,
+                    shadowSoftness: 0.8,
+                    exposure: 1.15,
+                    backgroundColor: const Color(0xFF0D0D12),
+                    cameraOrbit: _orbitAngleString,
+                    animationName: AvatarCustomizationService
+                        .instance.currentMixamoAnim,
+                    loading: Loading.eager,
+                    relatedJs: _buildModelJs(
+                      timeScale: _isPlaying ? _speedMultiplier : 0.0,
+                      outfit: _coachOutfitColor,
+                    ),
+                  ),
+                ),
+
+                // ── Top HUD: Drag hint & Coach name ──
+                Positioned(
+                  top: 8,
+                  right: VSpace.base,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: VColor.bg.withValues(alpha: 0.82),
+                      borderRadius: BorderRadius.circular(VRadius.pill),
+                      border: Border.all(
+                          color: VColor.accent.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.touch_app_rounded,
+                            size: 12, color: VColor.accentCyan),
+                        const SizedBox(width: 4),
+                        Text(
+                          '3D Coach $_coachName • $_activeAngleLabel',
+                          style: const TextStyle(
+                            color: VColor.accentCyan,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
                   // ── Bottom HUD: Phase indicator & Target Muscle badge ──
                   Positioned(
@@ -846,7 +912,6 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                 ],
               ),
             ),
-          ),
           const SizedBox(height: VSpace.xs),
         ],
       ),

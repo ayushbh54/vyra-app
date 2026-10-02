@@ -627,13 +627,17 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      firstName,
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.2,
+                    Flexible(
+                      child: Text(
+                        firstName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.2,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 3),
@@ -662,12 +666,16 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
                     children: [
                       const Icon(Icons.bolt_rounded, size: 12, color: Color(0xFF0284C7)),
                       const SizedBox(width: 3),
-                      Text(
-                        'Endurance Athlete • Level 4',
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: Text(
+                          'Endurance Athlete • Level 4',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: textSecondary,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 2),
@@ -1295,28 +1303,40 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
               const SizedBox(height: 6),
 
               // Coach and metadata row
-              Row(
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 4,
                 children: [
-                  Icon(Icons.person_outline_rounded, size: 16, color: textSecondary),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Coach Alex Vance',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: textSecondary,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.person_outline_rounded, size: 16, color: textSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        _profile?.gender.toLowerCase() == 'female' ? 'Coach Megan (3D)' : 'Coach Remy (3D)',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Icon(Icons.info_outline_rounded, size: 15, color: textSecondary),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${nextExercise.durationMin} min · 420 kcal',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: textSecondary,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.info_outline_rounded, size: 15, color: textSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${nextExercise.durationMin} min · 420 kcal',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1574,7 +1594,7 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
             crossAxisCount: 4,
             mainAxisSpacing: 14,
             crossAxisSpacing: 10,
-            childAspectRatio: 0.82,
+            childAspectRatio: 0.74,
           ),
           itemBuilder: (context, index) {
             final item = services[index];

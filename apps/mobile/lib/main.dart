@@ -64,9 +64,6 @@ class VyraApp extends StatelessWidget {
                   GlobalCupertinoLocalizations.delegate,
                 ],
                 home: const _Bootstrap(),
-                routes: {
-                  '/': (_) => const _Bootstrap(),
-                },
               );
             },
           );
@@ -121,10 +118,9 @@ class _BootstrapState extends State<_Bootstrap> {
     });
 
     // Revalidate session & onboarding status in the background silently
-    api.me().then((me) {
+    api.getProfile().then((profile) {
       if (!mounted) return;
-      final step = ((me['onboardingStep'] as num?)?.toInt() ?? 0);
-      if (step < 9) {
+      if (profile.onboardingStep < 9) {
         setState(() => _onboardingDone = false);
       }
     }).catchError((e) {
@@ -182,7 +178,7 @@ class _BootstrapState extends State<_Bootstrap> {
       appBar: AppBar(
         backgroundColor: VColor.bg,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: VColor.text, size: 20),
           onPressed: () => setState(() => _showDemoPicker = false),
         ),
         title: const Text('Try a live demo'),
@@ -355,41 +351,42 @@ class _HomeShellState extends State<HomeShell> {
                     MaterialPageRoute(builder: (_) => const GlobalSearchScreen()),
                   ),
                 ),
-                // Instagram-style direct message button
-                IconButton(
-                  tooltip: 'Direct Messages & Athlete Chat',
-                  icon: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Icon(
-                        Icons.near_me_outlined,
-                        color: Theme.of(context).brightness == Brightness.dark ? VColor.text : const Color(0xFF0F172A),
-                        size: 23,
-                      ),
-                      Positioned(
-                        right: -2,
-                        top: -2,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF00D2FF),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Theme.of(context).brightness == Brightness.dark ? VColor.surface : Colors.white,
-                              width: 1.5,
+                // Instagram-style direct message button on Social tab only
+                if (_index == 2)
+                  IconButton(
+                    tooltip: 'Direct Messages & Athlete Chat',
+                    icon: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(
+                          Icons.near_me_outlined,
+                          color: Theme.of(context).brightness == Brightness.dark ? VColor.text : const Color(0xFF0F172A),
+                          size: 23,
+                        ),
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00D2FF),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Theme.of(context).brightness == Brightness.dark ? VColor.surface : Colors.white,
+                                width: 1.5,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const MessagesInboxScreen()),
+                      );
+                    },
                   ),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const MessagesInboxScreen()),
-                    );
-                  },
-                ),
                 const SizedBox(width: 4),
               ],
             ),

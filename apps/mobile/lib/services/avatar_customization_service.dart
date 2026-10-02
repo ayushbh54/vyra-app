@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+
+
 /// ─────────────────────────────────────────────────────────────────────────────
 /// AVATAR FACE PROFILE (Lightweight On-Device Personalization Model)
 /// ─────────────────────────────────────────────────────────────────────────────
@@ -360,34 +362,49 @@ class AvatarCustomizationService extends ChangeNotifier {
     'skipping':      'jump',
   };
 
+  // Mixamo animation mapping: Both Remy and Megan use the high-fidelity Breathing Idle ('idle')
+  // as the base skeletal animation, with pacing and speed dynamically scaled
+  // by exercise intensity (e.g. 1.5x for sprint/HIIT, 0.7x for yoga/mobility).
   static const Map<String, String> _poseToMixamoAnim = {
-    'running':       'Run',
-    'boxing':        'Run',
-    'yoga':          'Idle',
-    'cycling':       'Run', 
-    'weightlifting': 'Idle',
-    'squat':         'Idle',
-    'plank':         'Idle',
-    'pushup':        'Idle',
-    'swimming':      'Walk',
-    'dancing':       'SambaDance',
-    'football':      'Run',
-    'cricket':       'Idle',
-    'skipping':      'Run',
+    'running':       'idle',
+    'boxing':        'idle',
+    'yoga':          'idle',
+    'cycling':       'idle',
+    'weightlifting': 'idle',
+    'squat':         'idle',
+    'plank':         'idle',
+    'pushup':        'idle',
+    'swimming':      'idle',
+    'dancing':       'idle',
+    'football':      'idle',
+    'cricket':       'idle',
+    'skipping':      'idle',
   };
+
+  /// Computes AI breathing and movement tempo based on exercise intensity
+  static double exerciseIntensitySpeed(String slug) {
+    final s = slug.toLowerCase();
+    if (_matchAny(s, ['sprint', 'run', 'hiit', 'tabata', 'skip', 'burpee', 'cardio', 'dash', 'box'])) {
+      return 1.5; // High intensity / Fast breathing
+    }
+    if (_matchAny(s, ['yoga', 'stretch', 'pranayam', 'meditat', 'breath', 'rest', 'cool_down', 'foam'])) {
+      return 0.7; // Recovery / Slow calm breathing
+    }
+    return 1.0; // Athletic baseline
+  }
 
   String _currentRpmExercisePose = 'idle';
   String get currentRpmExercisePose => _currentRpmExercisePose;
 
-  String _currentMixamoAnim = 'Idle';
+  String _currentMixamoAnim = 'idle';
   String get currentMixamoAnim => _currentMixamoAnim;
 
   /// Call this whenever the user opens an exercise or starts a recommended workout.
-  /// The avatar will automatically transition to that exercise's pose.
+  /// The avatar will automatically transition to that exercise's pose and pace.
   Future<void> setActiveExercisePose(String exerciseSlug) async {
     final pose = slugToAvatarPose(exerciseSlug);
     final rpmAnim = _poseToRpmAnim[pose] ?? 'idle';
-    final mixamoAnim = _poseToMixamoAnim[pose] ?? 'Idle';
+    final mixamoAnim = _poseToMixamoAnim[pose] ?? 'idle';
     
     if (_profile.sportPose == pose &&
         _currentRpmExercisePose == rpmAnim &&
