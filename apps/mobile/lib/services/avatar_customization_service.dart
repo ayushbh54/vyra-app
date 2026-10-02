@@ -360,26 +360,52 @@ class AvatarCustomizationService extends ChangeNotifier {
     'skipping':      'jump',
   };
 
+  static const Map<String, String> _poseToMixamoAnim = {
+    'running':       'Run',
+    'boxing':        'Run',
+    'yoga':          'Idle',
+    'cycling':       'Run', 
+    'weightlifting': 'Idle',
+    'squat':         'Idle',
+    'plank':         'Idle',
+    'pushup':        'Idle',
+    'swimming':      'Walk',
+    'dancing':       'SambaDance',
+    'football':      'Run',
+    'cricket':       'Idle',
+    'skipping':      'Run',
+  };
+
   String _currentRpmExercisePose = 'idle';
   String get currentRpmExercisePose => _currentRpmExercisePose;
+
+  String _currentMixamoAnim = 'Idle';
+  String get currentMixamoAnim => _currentMixamoAnim;
 
   /// Call this whenever the user opens an exercise or starts a recommended workout.
   /// The avatar will automatically transition to that exercise's pose.
   Future<void> setActiveExercisePose(String exerciseSlug) async {
     final pose = slugToAvatarPose(exerciseSlug);
     final rpmAnim = _poseToRpmAnim[pose] ?? 'idle';
+    final mixamoAnim = _poseToMixamoAnim[pose] ?? 'Idle';
     
-    if (_profile.sportPose == pose && _currentRpmExercisePose == rpmAnim) return;
+    if (_profile.sportPose == pose &&
+        _currentRpmExercisePose == rpmAnim &&
+        _currentMixamoAnim == mixamoAnim) {
+      return;
+    }
     
     final updated = _profile.copyWith(sportPose: pose);
     _profile = updated;
     _currentRpmExercisePose = rpmAnim;
+    _currentMixamoAnim = mixamoAnim;
     notifyListeners();
     // Persist so profile screen also reflects it
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefKey, jsonEncode(updated.toJson()));
       await prefs.setString('rpm_current_anim', rpmAnim);
+      await prefs.setString('mixamo_current_anim', mixamoAnim);
     } catch (_) {}
   }
 }

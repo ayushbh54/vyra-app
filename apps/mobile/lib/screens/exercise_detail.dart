@@ -407,7 +407,8 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
   double _speedMultiplier = 1.0;
   double _orbitAngle = 0.0; // In radians: -pi/2 (-90°) to +pi/2 (+90°), defaults to 0.0 Front View
   final _picker = ImagePicker();
-  String? _rpm3dAvatarUrl; // user's saved RPM GLB URL
+  String _coachModelPath = 'assets/models/male_coach.glb';
+  String _coachName = 'Alex';
 
   @override
   void initState() {
@@ -423,11 +424,20 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
     AvatarCustomizationService.instance.init();
     AvatarCustomizationService.instance.addListener(_onAvatarProfileChanged);
 
-    // Load user's 3D avatar URL
+    // Load active 3D coach model
     SharedPreferences.getInstance().then((prefs) {
       if (!mounted) return;
+      final savedModel = prefs.getString('selected_coach_model');
+      final savedGender = prefs.getString('selected_coach_gender') ??
+          prefs.getString('user_gender')?.toLowerCase();
+      final isFemale = savedGender == 'female' ||
+          (savedModel?.contains('female') ?? false);
       setState(() {
-        _rpm3dAvatarUrl = prefs.getString('rpm_avatar_url');
+        _coachModelPath = savedModel ??
+            (isFemale
+                ? 'assets/models/female_coach.glb'
+                : 'assets/models/male_coach.glb');
+        _coachName = isFemale ? 'Sara' : 'Alex';
       });
       // Set avatar pose to match exercise
       AvatarCustomizationService.instance
@@ -726,92 +736,35 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
               },
               child: Stack(
                 children: [
-                  // ── 3D Avatar: ModelViewer (user's RPM) or placeholder ──
-                  if (_rpm3dAvatarUrl != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(0),
-                      child: ModelViewer(
-                        src: _rpm3dAvatarUrl!,
-                        alt: '3D Coach Avatar',
-                        ar: false,
-                        autoRotate: false,
-                        cameraControls: true,
-                        shadowIntensity: 0.8,
-                        backgroundColor: const Color(0xFF0D0D0F),
-                        cameraOrbit:
-                            '${(_orbitAngle * 180 / math.pi).toStringAsFixed(0)}deg 75deg 1.8m',
-                        exposure: 1.1,
-                        animationName:
-                            AvatarCustomizationService.instance.currentRpmExercisePose,
-                      ),
-                    )
-                  else
-                    // ── Beautiful placeholder when no avatar created yet ──
-                    Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Color(0xFF111120),
-                            Color(0xFF0D0D0F),
-                          ],
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Glowing avatar silhouette
-                          Container(
-                            width: 90,
-                            height: 90,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: VColor.accent.withValues(alpha: 0.08),
-                              border: Border.all(
-                                  color: VColor.accent.withValues(alpha: 0.3), width: 1.5),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: VColor.accent.withValues(alpha: 0.15),
-                                  blurRadius: 20,
-                                  spreadRadius: 4,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.accessibility_new_rounded,
-                              size: 44,
-                              color: VColor.accent,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Your 3D Coach Avatar',
-                            style: TextStyle(
-                              color: VColor.text,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Create once — appears in all exercises',
-                            style: TextStyle(
-                              color: VColor.textMuted,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
+                  // ── Realistic 3D Human Coach (Adobe Mixamo ModelViewer) ──
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: ModelViewer(
+                      key: ValueKey(
+                          '${_coachModelPath}_${AvatarCustomizationService.instance.currentMixamoAnim}'),
+                      src: _coachModelPath,
+                      alt: '3D Coach $_coachName',
+                      ar: false,
+                      autoRotate: false,
+                      cameraControls: true,
+                      shadowIntensity: 0.85,
+                      shadowSoftness: 0.8,
+                      exposure: 1.15,
+                      backgroundColor: const Color(0xFF0D0D12),
+                      cameraOrbit:
+                          '${(_orbitAngle * 180 / math.pi).toStringAsFixed(0)}deg 75deg 2.2m',
+                      animationName: AvatarCustomizationService
+                          .instance.currentMixamoAnim,
                     ),
+                  ),
 
-                  // ── Top HUD: Drag hint & angle ──
+                  // ── Top HUD: Drag hint & Coach name ──
                   Positioned(
                     top: 8,
                     right: VSpace.base,
                     child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: VColor.bg.withValues(alpha: 0.82),
                         borderRadius: BorderRadius.circular(VRadius.pill),
@@ -825,9 +778,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                               size: 12, color: VColor.accentCyan),
                           const SizedBox(width: 4),
                           Text(
-                            _rpm3dAvatarUrl != null
-                                ? 'Drag to rotate • ${(_orbitAngle * 180 / math.pi).round()}°'
-                                : 'Tap to create avatar',
+                            '3D Coach $_coachName • ${(_orbitAngle * 180 / math.pi).round()}°',
                             style: const TextStyle(
                               color: VColor.accentCyan,
                               fontSize: 10,
