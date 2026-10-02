@@ -31,22 +31,7 @@ class _RpmAvatarViewerScreenState extends State<RpmAvatarViewerScreen> {
   };
   bool _isScanning = false;
 
-  // ── Default 3D RPM avatars — shown before user creates their own ───────────
-  // These are official RPM sample fullbody avatars (verified working GLB URLs)
-  static const _defaultMale =
-      'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb';
-  static const _defaultFemale =
-      'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a7.glb';
 
-  /// Always returns a valid GLB URL — user's saved avatar or gender default.
-  String get _effectiveUrl {
-    if (_avatarUrl != null && _avatarUrl!.isNotEmpty) return _avatarUrl!;
-    final g = (_gender ?? 'male').toLowerCase();
-    return g == 'female' ? _defaultFemale : _defaultMale;
-  }
-
-  bool get _isUsingDefault =>
-      _avatarUrl == null || _avatarUrl!.isEmpty;
 
 
   static const exercises = [
@@ -345,25 +330,25 @@ class _RpmAvatarViewerScreenState extends State<RpmAvatarViewerScreen> {
       backgroundColor: const Color(0xFF0D0D0F),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreator,
-        icon: Icon(_isUsingDefault ? Icons.add_rounded : Icons.edit_rounded),
-        label: Text(_isUsingDefault ? 'Create My Avatar' : 'Edit Avatar'),
+        icon: Icon(_avatarUrl == null ? Icons.add_rounded : Icons.edit_rounded),
+        label: Text(_avatarUrl == null ? 'Create My 3D Avatar' : 'Edit Avatar'),
         backgroundColor: VColor.accent,
         foregroundColor: Colors.black,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: VColor.accent))
-          : _buildAvatarView(),
+          : _avatarUrl == null
+              ? _buildCreateAvatarPrompt()
+              : _buildAvatarView(),
     );
   }
 
-  // _buildEmptyState removed — we always show a default 3D avatar now
-  // Male default: _defaultMale GLB | Female default: _defaultFemale GLB
 
   Widget _buildAvatarView() {
     return Stack(
       children: [
         ModelViewer(
-          src: _effectiveUrl,      // always valid — user's or gender default
+          src: _avatarUrl!,
           alt: '3D Avatar',
           ar: false,
           autoRotate: false,
@@ -525,6 +510,135 @@ class _RpmAvatarViewerScreenState extends State<RpmAvatarViewerScreen> {
           const SizedBox(height: 8),
           Text('Last Updated: ${_lastUpdated != null ? DateTime.parse(_lastUpdated!).toLocal().toString().split('.')[0] : "Never"}', 
             style: const TextStyle(color: VColor.textMuted)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCreateAvatarPrompt() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF111120), Color(0xFF0D0D0F)],
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Glowing avatar circle
+            Container(
+              width: 130,
+              height: 130,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: VColor.accent.withValues(alpha: 0.07),
+                border: Border.all(
+                    color: VColor.accent.withValues(alpha: 0.35), width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: VColor.accent.withValues(alpha: 0.2),
+                    blurRadius: 40,
+                    spreadRadius: 8,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.person_4_rounded,
+                size: 64,
+                color: VColor.accent,
+              ),
+            ),
+            const SizedBox(height: 28),
+            const Text(
+              'Your 3D Avatar',
+              style: TextStyle(
+                color: VColor.text,
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                'Create your personalized Ready Player Me avatar. It will appear here and on every exercise screen.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: VColor.textMuted,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            // Feature chips row
+            const Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                _FeatureChip(icon: Icons.face_retouching_natural_rounded, label: 'Face Scan'),
+                _FeatureChip(icon: Icons.checkroom_rounded, label: 'Outfit'),
+                _FeatureChip(icon: Icons.sports_gymnastics_rounded, label: 'Poses'),
+                _FeatureChip(icon: Icons.rotate_90_degrees_ccw_rounded, label: '360° View'),
+              ],
+            ),
+            const SizedBox(height: 36),
+            ElevatedButton.icon(
+              onPressed: _openCreator,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Create My 3D Avatar',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: VColor.accent,
+                foregroundColor: Colors.black,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              '~2 minutes • Free • No account needed',
+              style: TextStyle(color: VColor.textMuted, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeatureChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _FeatureChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: VColor.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: VColor.accent.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: VColor.accent),
+          const SizedBox(width: 6),
+          Text(label,
+              style: const TextStyle(
+                  color: VColor.textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );

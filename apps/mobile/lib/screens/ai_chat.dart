@@ -212,7 +212,33 @@ class _AiChatScreenState extends State<AiChatScreen>
   Future<void> _startListening() async {
     if (_isSpeaking) { await _tts.stop(); }
     if (!_speechInitialized) { await _initSpeech(); }
-    if (!_speechInitialized) return;
+    if (!_speechInitialized) {
+      // Speech recognition unavailable (emulator or no mic permission)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.mic_off_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Microphone not available. Please type your message.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF2A2A3A),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        // Focus the text field so user can type
+      }
+      return;
+    }
 
     setState(() {
       _isListening = true;

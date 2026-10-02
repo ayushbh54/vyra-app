@@ -13,6 +13,8 @@ import '../services/tts_service.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/avatar_customization_service.dart';
 import 'avatar_studio.dart';
+import 'package:model_viewer_plus/model_viewer_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// EXERCISE DETAIL — Interactive animated movement guide, biomechanical cues,
 /// spoken-audio cadence coach, countdown timer, and completion logger.
@@ -388,31 +390,6 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 enum ExercisePerspective { side, front, diag, orbit }
 
-class _Vector3D {
-  const _Vector3D(this.x, this.y, this.z);
-  final double x;
-  final double y;
-  final double z;
-
-  _Vector3D rotateY(double rad) {
-    final cosA = math.cos(rad);
-    final sinA = math.sin(rad);
-    return _Vector3D(
-      x * cosA + z * sinA,
-      y,
-      -x * sinA + z * cosA,
-    );
-  }
-
-  Offset project(double cx, double groundY, {double fov = 440.0}) {
-    final scale = fov / (fov - z);
-    return Offset(cx + x * scale, groundY + y * scale);
-  }
-
-  double scaleFactor({double fov = 440.0}) {
-    return (fov / (fov - z)).clamp(0.60, 1.60);
-  }
-}
 
 class _ExerciseVisualGuide extends StatefulWidget {
   const _ExerciseVisualGuide({required this.item, this.movement});
@@ -430,6 +407,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
   double _speedMultiplier = 1.0;
   double _orbitAngle = 0.0; // In radians: -pi/2 (-90°) to +pi/2 (+90°), defaults to 0.0 Front View
   final _picker = ImagePicker();
+  String? _rpm3dAvatarUrl; // user's saved RPM GLB URL
 
   @override
   void initState() {
@@ -444,6 +422,17 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
     // Initialize local face personalization service (0 KB network overhead)
     AvatarCustomizationService.instance.init();
     AvatarCustomizationService.instance.addListener(_onAvatarProfileChanged);
+
+    // Load user's 3D avatar URL
+    SharedPreferences.getInstance().then((prefs) {
+      if (!mounted) return;
+      setState(() {
+        _rpm3dAvatarUrl = prefs.getString('rpm_avatar_url');
+      });
+      // Set avatar pose to match exercise
+      AvatarCustomizationService.instance
+          .setActiveExercisePose(widget.item.slug.toLowerCase());
+    });
   }
 
   void _onAvatarProfileChanged() {
@@ -724,120 +713,187 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
             ),
           ),
 
-          // ── 3D Human Coach Avatar (Touch Drag & 180° Orbit Viewport) ──
+          // ── 3D RPM Avatar (ModelViewer with drag-to-orbit) ──
           SizedBox(
-            height: 250,
+            height: 260,
             width: double.infinity,
-            child: AnimatedBuilder(
-              animation: _animCtrl,
-              builder: (context, _) {
-                // User touch-controlled horizontal angle
-                final activeOrbit = _orbitAngle;
-                final currentDeg = (activeOrbit * 180 / math.pi).round();
-
-                return GestureDetector(
-                  onHorizontalDragUpdate: (details) {
-                    setState(() {
-                      _orbitAngle = (_orbitAngle + details.primaryDelta! * 0.016)
-                          .clamp(-math.pi / 2, math.pi / 2);
-                    });
-                  },
-                  child: Stack(
-                    children: [
-                      RepaintBoundary(
-                        child: CustomPaint(
-                          size: const Size(double.infinity, 250),
-                          painter: _Biomechanical3DAvatarPainter(
-                            animationProgress: _animCtrl.value,
-                            exerciseSlug: widget.item.slug.toLowerCase(),
-                            orbitAngle: activeOrbit,
-                            faceProfile: faceProfile,
-                          ),
+            child: GestureDetector(
+              onHorizontalDragUpdate: (details) {
+                setState(() {
+                  _orbitAngle = (_orbitAngle + details.primaryDelta! * 0.016)
+                      .clamp(-math.pi / 2, math.pi / 2);
+                });
+              },
+              child: Stack(
+                children: [
+                  // ── 3D Avatar: ModelViewer (user's RPM) or placeholder ──
+                  if (_rpm3dAvatarUrl != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(0),
+                      child: ModelViewer(
+                        src: _rpm3dAvatarUrl!,
+                        alt: '3D Coach Avatar',
+                        ar: false,
+                        autoRotate: false,
+                        cameraControls: true,
+                        shadowIntensity: 0.8,
+                        backgroundColor: const Color(0xFF0D0D0F),
+                        cameraOrbit:
+                            '${(_orbitAngle * 180 / math.pi).toStringAsFixed(0)}deg 75deg 1.8m',
+                        exposure: 1.1,
+                        animationName:
+                            AvatarCustomizationService.instance.currentRpmExercisePose,
+                      ),
+                    )
+                  else
+                    // ── Beautiful placeholder when no avatar created yet ──
+                    Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0xFF111120),
+                            Color(0xFF0D0D0F),
+                          ],
                         ),
                       ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Glowing avatar silhouette
+                          Container(
+                            width: 90,
+                            height: 90,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: VColor.accent.withValues(alpha: 0.08),
+                              border: Border.all(
+                                  color: VColor.accent.withValues(alpha: 0.3), width: 1.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: VColor.accent.withValues(alpha: 0.15),
+                                  blurRadius: 20,
+                                  spreadRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.accessibility_new_rounded,
+                              size: 44,
+                              color: VColor.accent,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Your 3D Coach Avatar',
+                            style: TextStyle(
+                              color: VColor.text,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Create once — appears in all exercises',
+                            style: TextStyle(
+                              color: VColor.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
-                      // Top HUD: Interactive Drag Rotation Hint & Angle Degree
-                      Positioned(
-                        top: 8,
-                        right: VSpace.base,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  // ── Top HUD: Drag hint & angle ──
+                  Positioned(
+                    top: 8,
+                    right: VSpace.base,
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: VColor.bg.withValues(alpha: 0.82),
+                        borderRadius: BorderRadius.circular(VRadius.pill),
+                        border: Border.all(
+                            color: VColor.accent.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.touch_app_rounded,
+                              size: 12, color: VColor.accentCyan),
+                          const SizedBox(width: 4),
+                          Text(
+                            _rpm3dAvatarUrl != null
+                                ? 'Drag to rotate • ${(_orbitAngle * 180 / math.pi).round()}°'
+                                : 'Tap to create avatar',
+                            style: const TextStyle(
+                              color: VColor.accentCyan,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // ── Bottom HUD: Phase indicator & Target Muscle badge ──
+                  Positioned(
+                    bottom: 8,
+                    left: VSpace.base,
+                    right: VSpace.base,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: VColor.bg.withValues(alpha: 0.82),
-                            borderRadius: BorderRadius.circular(VRadius.pill),
-                            border: Border.all(color: VColor.accent.withValues(alpha: 0.3)),
+                            color: VColor.bg.withValues(alpha: 0.88),
+                            borderRadius: BorderRadius.circular(VRadius.sm),
+                            border: Border.all(color: VColor.line),
+                          ),
+                          child: Text(
+                            _currentPhaseName,
+                            style: const TextStyle(
+                              color: VColor.text,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: VColor.accent.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(VRadius.sm),
+                            border: Border.all(
+                                color: VColor.accent.withValues(alpha: 0.4)),
                           ),
                           child: Row(
-                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.touch_app_rounded, size: 12, color: VColor.accentCyan),
+                              const Icon(Icons.bolt_rounded,
+                                  size: 13, color: VColor.accentGreen),
                               const SizedBox(width: 4),
                               Text(
-                                'Drag to rotate • $currentDeg°',
+                                _targetMuscle,
                                 style: const TextStyle(
-                                  color: VColor.accentCyan,
-                                  fontSize: 10,
+                                  color: VColor.accentGreen,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-
-                      // Bottom HUD: Phase indicator & Target Muscle badge
-                      Positioned(
-                        bottom: 8,
-                        left: VSpace.base,
-                        right: VSpace.base,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: VColor.bg.withValues(alpha: 0.88),
-                                borderRadius: BorderRadius.circular(VRadius.sm),
-                                border: Border.all(color: VColor.line),
-                              ),
-                              child: Text(
-                                _currentPhaseName,
-                                style: const TextStyle(
-                                  color: VColor.text,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: VColor.accent.withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.circular(VRadius.sm),
-                                border: Border.all(color: VColor.accent.withValues(alpha: 0.4)),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.bolt_rounded, size: 13, color: VColor.accentGreen),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _targetMuscle,
-                                    style: const TextStyle(
-                                      color: VColor.accentGreen,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                );
-              },
+                ],
+              ),
             ),
           ),
           const SizedBox(height: VSpace.xs),
@@ -1199,1325 +1255,6 @@ class _AvatarFaceCustomizerSheetState extends State<_AvatarFaceCustomizerSheet> 
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 3D BIOMECHANICAL ROBOT AVATAR PAINTER (Universal Moves & Thermal Shield)
-// ─────────────────────────────────────────────────────────────────────────────
-class _Biomechanical3DAvatarPainter extends CustomPainter {
-  _Biomechanical3DAvatarPainter({
-    required this.animationProgress,
-    required this.exerciseSlug,
-    required this.orbitAngle,
-    required this.faceProfile,
-  });
-
-  final double animationProgress;
-  final String exerciseSlug;
-  final double orbitAngle;
-  final AvatarFaceProfile faceProfile;
-
-  // ── Pre-allocated Static Paint Objects (Prevents GC Churn & Thermal Spikes) ──
-  static final Paint _gridPaint = Paint()
-    ..color = VColor.accentCyan.withValues(alpha: 0.12)
-    ..strokeWidth = 1.2
-    ..style = PaintingStyle.stroke;
-
-  static final Paint _horizonLinePaint = Paint()
-    ..color = VColor.line.withValues(alpha: 0.65)
-    ..strokeWidth = 1.5;
-
-  static final Paint _radialRayPaint = Paint()
-    ..color = VColor.accent.withValues(alpha: 0.08)
-    ..strokeWidth = 1.0;
-
-  static final Paint _shadowPaint = Paint()
-    ..color = Colors.black.withValues(alpha: 0.65)
-    ..style = PaintingStyle.fill
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-
-  static final Paint _wallLinePaint = Paint()
-    ..color = VColor.accentCyan.withValues(alpha: 0.18)
-    ..strokeWidth = 2.0;
-
-  static final Paint _muscleGlowPaint = Paint()
-    ..color = const Color(0xFF34FF8C).withValues(alpha: 0.55)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 10
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
-
-  // ignore: unused_field
-  static final Paint _conduitPaint = Paint()
-    ..strokeCap = StrokeCap.round;
-
-  // ignore: unused_field
-  static final Paint _servoHousingPaint = Paint()
-    ..color = const Color(0xFF1E2838)
-    ..style = PaintingStyle.fill;
-
-  // ignore: unused_field
-  static final Paint _servoRimPaint = Paint()
-    ..color = const Color(0xFF8BA7C4)
-    ..strokeWidth = 1.5
-    ..style = PaintingStyle.stroke;
-
-  // ignore: unused_field
-  static final Paint _servoLedPaint = Paint()
-    ..style = PaintingStyle.fill;
-
-  // ignore: unused_field
-  static final Paint _torsoOutlinePaint = Paint()
-    ..color = const Color(0xFF7F9CB8).withValues(alpha: 0.6)
-    ..strokeWidth = 1.2
-    ..style = PaintingStyle.stroke;
-
-  // ignore: unused_field
-  static final Paint _arcReactorGlowPaint = Paint()
-    ..color = const Color(0xFF00D2FF).withValues(alpha: 0.35)
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-
-  // ignore: unused_field
-  static final Paint _arcReactorRingPaint = Paint()
-    ..color = const Color(0xFF00D2FF)
-    ..strokeWidth = 1.5
-    ..style = PaintingStyle.stroke;
-
-  // ignore: unused_field
-  static final Paint _arcReactorCorePaint = Paint()
-    ..color = const Color(0xFFDFE2F0);
-
-  static final Paint _barbellBarPaint = Paint()
-    ..color = const Color(0xFFDFE2F0)
-    ..strokeWidth = 3.2
-    ..strokeCap = StrokeCap.round;
-
-  static final Paint _weightPlatePaint = Paint()
-    ..color = const Color(0xFF141A24)
-    ..style = PaintingStyle.fill;
-
-  static final Paint _weightPlateRim = Paint()
-    ..color = const Color(0xFF00D2FF)
-    ..strokeWidth = 1.5
-    ..style = PaintingStyle.stroke;
-
-  static final Paint _hudArcPaint = Paint()
-    ..color = const Color(0xFF34FF8C)
-    ..strokeWidth = 2.0
-    ..style = PaintingStyle.stroke;
-
-  static final Paint _hudBgPaint = Paint()
-    ..color = const Color(0xCC0F131D);
-
-  static final Paint _hudBorderPaint = Paint()
-    ..color = const Color(0x6034FF8C)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.0;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final groundY = size.height - 34;
-
-    // 1. Draw 3D Perspective Ground Grid & Horizon
-    _drawPerspectiveFloorGrid(canvas, size, cx, groundY, orbitAngle);
-
-    // Sine curve cycle for smooth back-and-forth movement (0 -> 1 -> 0)
-    final cycle = (math.sin(animationProgress * 2 * math.pi - math.pi / 2) + 1) / 2;
-    final s = exerciseSlug.toLowerCase().replaceAll('_', '-');
-
-    // 2. Compute 3D Anatomical Keypoints based on Universal Move Engine
-    final pose = _computeUniversalExercise3DPose(s, cycle, animationProgress);
-
-    // 3. Project 3D Model Coordinates onto 2D Screen with Depth
-    final pHead = pose.head.rotateY(orbitAngle).project(cx, groundY);
-    final pNeck = pose.neck.rotateY(orbitAngle).project(cx, groundY);
-    final pChest = pose.chest.rotateY(orbitAngle).project(cx, groundY);
-    final pPelvis = pose.pelvis.rotateY(orbitAngle).project(cx, groundY);
-
-    final rotSL = pose.shoulderL.rotateY(orbitAngle);
-    final rotSR = pose.shoulderR.rotateY(orbitAngle);
-    final rotEL = pose.elbowL.rotateY(orbitAngle);
-    final rotER = pose.elbowR.rotateY(orbitAngle);
-    final rotHL = pose.handL.rotateY(orbitAngle);
-    final rotHR = pose.handR.rotateY(orbitAngle);
-
-    final pSL = rotSL.project(cx, groundY);
-    final pSR = rotSR.project(cx, groundY);
-    final pEL = rotEL.project(cx, groundY);
-    final pER = rotER.project(cx, groundY);
-    final pHL = rotHL.project(cx, groundY);
-    final pHR = rotHR.project(cx, groundY);
-
-    final rotHipL = pose.hipL.rotateY(orbitAngle);
-    final rotHipR = pose.hipR.rotateY(orbitAngle);
-    final rotKL = pose.kneeL.rotateY(orbitAngle);
-    final rotKR = pose.kneeR.rotateY(orbitAngle);
-    final rotFL = pose.footL.rotateY(orbitAngle);
-    final rotFR = pose.footR.rotateY(orbitAngle);
-
-    final pHipL = rotHipL.project(cx, groundY);
-    final pHipR = rotHipR.project(cx, groundY);
-    final pKL = rotKL.project(cx, groundY);
-    final pKR = rotKR.project(cx, groundY);
-    final pFL = rotFL.project(cx, groundY);
-    final pFR = rotFR.project(cx, groundY);
-
-    // 4. Ground Contact Dynamic Shadow Ellipse
-    _drawGroundContactShadow(canvas, pFL, pFR, cx, groundY, pose.elevation, cycle);
-
-    // 5. Wall Grid if Wall Sit or Wall Push
-    if (pose.isWallExercise) {
-      _drawHolographicWall(canvas, cx, groundY, orbitAngle);
-    }
-
-    // 6. Depth-Sorted Rendering (Painter's Algorithm for Perfect 3D Depth)
-    final depthL = (rotSL.z + rotEL.z + rotHL.z + rotHipL.z + rotKL.z + rotFL.z) / 6.0;
-    final depthR = (rotSR.z + rotER.z + rotHR.z + rotHipR.z + rotKR.z + rotFR.z) / 6.0;
-
-    if (depthL < depthR) {
-      // Left side is in background -> Draw Left first, then Torso/Head, then Right in foreground
-      _drawLeftLeg(canvas, pHipL, pKL, pFL, pose.quadFlexed, rotKL.z);
-      _drawLeftArm(canvas, pSL, pEL, pHL, pose.armFlexed, rotEL.z, pose.holdsWeights, orbitAngle, cycle);
-
-      _drawTorsoAndHead(canvas, pHead, pNeck, pChest, pPelvis, pSL, pSR, pHipL, pHipR, orbitAngle, pose.coreFlexed);
-
-      _drawRightLeg(canvas, pHipR, pKR, pFR, pose.quadFlexed, rotKR.z);
-      _drawRightArm(canvas, pSR, pER, pHR, pose.armFlexed, rotER.z, pose.holdsWeights, orbitAngle, cycle);
-    } else {
-      // Right side is in background -> Draw Right first, then Torso/Head, then Left in foreground
-      _drawRightLeg(canvas, pHipR, pKR, pFR, pose.quadFlexed, rotKR.z);
-      _drawRightArm(canvas, pSR, pER, pHR, pose.armFlexed, rotER.z, pose.holdsWeights, orbitAngle, cycle);
-
-      _drawTorsoAndHead(canvas, pHead, pNeck, pChest, pPelvis, pSL, pSR, pHipL, pHipR, orbitAngle, pose.coreFlexed);
-
-      _drawLeftLeg(canvas, pHipL, pKL, pFL, pose.quadFlexed, rotKL.z);
-      _drawLeftArm(canvas, pSL, pEL, pHL, pose.armFlexed, rotEL.z, pose.holdsWeights, orbitAngle, cycle);
-    }
-
-    // 7. Draw Kinetic Angle HUD Overlay
-    if (pose.hudJoint != null && pose.hudP1 != null && pose.hudP2 != null) {
-      final pJ = pose.hudJoint!.rotateY(orbitAngle).project(cx, groundY);
-      final p1 = pose.hudP1!.rotateY(orbitAngle).project(cx, groundY);
-      final p2 = pose.hudP2!.rotateY(orbitAngle).project(cx, groundY);
-      _drawKineticAngleHUD(canvas, pJ, p1, p2, pose.hudAngleDeg, pose.hudLabel);
-    }
-  }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // UNIVERSAL 3D KINEMATIC POSE CALCULATOR (All Moves Supported)
-  // ───────────────────────────────────────────────────────────────────────────
-  _Exercise3DPose _computeUniversalExercise3DPose(String s, double cycle, double animProgress) {
-    // ── 1. SQUATS & VARIATIONS (Bodyweight, Barbell, Sumo, Goblet, Jump Squat) ──
-    if (s.contains('squat') || s.contains('sumo') || s.contains('goblet')) {
-      final squatDepth = cycle * 44.0;
-      final hipZ = -28.0 * cycle;
-      final kneeZ = 20.0 * cycle;
-      final chestLeanZ = -12.0 * cycle;
-      final armCounterZ = 34.0 * cycle;
-      final kneeFlex = cycle > 0.45;
-      final angleDeg = 175.0 - (cycle * 85.0);
-
-      return _Exercise3DPose(
-        head: _Vector3D(0, -145 + squatDepth * 0.9, chestLeanZ - 4),
-        neck: _Vector3D(0, -130 + squatDepth * 0.9, chestLeanZ - 2),
-        chest: _Vector3D(0, -108 + squatDepth * 0.95, chestLeanZ),
-        pelvis: _Vector3D(0, -68 + squatDepth, hipZ),
-        shoulderL: _Vector3D(-24, -112 + squatDepth * 0.95, chestLeanZ),
-        shoulderR: _Vector3D(24, -112 + squatDepth * 0.95, chestLeanZ),
-        elbowL: _Vector3D(-22, -92 + squatDepth * 0.8, armCounterZ * 0.6),
-        elbowR: _Vector3D(22, -92 + squatDepth * 0.8, armCounterZ * 0.6),
-        handL: _Vector3D(-16, -88 + squatDepth * 0.7, armCounterZ),
-        handR: _Vector3D(16, -88 + squatDepth * 0.7, armCounterZ),
-        hipL: _Vector3D(-18, -66 + squatDepth, hipZ),
-        hipR: _Vector3D(18, -66 + squatDepth, hipZ),
-        kneeL: _Vector3D(-20, -36 + squatDepth * 0.35, kneeZ),
-        kneeR: _Vector3D(20, -36 + squatDepth * 0.35, kneeZ),
-        footL: const _Vector3D(-22, -4, 0),
-        footR: const _Vector3D(22, -4, 0),
-        quadFlexed: kneeFlex,
-        armFlexed: false,
-        coreFlexed: true,
-        elevation: 0.0,
-        holdsWeights: s.contains('goblet') || s.contains('barbell'),
-        hudJoint: _Vector3D(20, -36 + squatDepth * 0.35, kneeZ),
-        hudP1: _Vector3D(18, -66 + squatDepth, hipZ),
-        hudP2: const _Vector3D(22, -4, 0),
-        hudAngleDeg: angleDeg,
-        hudLabel: cycle > 0.8 ? '90° PARALLEL' : '${angleDeg.round()}° SQUAT',
-      );
-    }
-
-    // ── 2. LUNGES (Reverse, Forward, Walking, Bulgarian Split Squat) ──
-    if (s.contains('lunge') || s.contains('split-squat') || s.contains('step-up')) {
-      final lungeDepth = cycle * 38.0;
-      final backLegZ = -38.0 * cycle;
-      final frontLegZ = 24.0 * cycle;
-      final isLow = cycle > 0.45;
-
-      return _Exercise3DPose(
-        head: _Vector3D(0, -145 + lungeDepth * 0.85, 0),
-        neck: _Vector3D(0, -130 + lungeDepth * 0.85, 0),
-        chest: _Vector3D(0, -108 + lungeDepth * 0.85, 0),
-        pelvis: _Vector3D(0, -68 + lungeDepth, 0),
-        shoulderL: _Vector3D(-24, -112 + lungeDepth * 0.85, 0),
-        shoulderR: _Vector3D(24, -112 + lungeDepth * 0.85, 0),
-        elbowL: _Vector3D(-24, -82 + lungeDepth * 0.85, 0),
-        elbowR: _Vector3D(24, -82 + lungeDepth * 0.85, 0),
-        handL: _Vector3D(-22, -54 + lungeDepth * 0.85, 0),
-        handR: _Vector3D(22, -54 + lungeDepth * 0.85, 0),
-        hipL: _Vector3D(-16, -66 + lungeDepth, 0),
-        hipR: _Vector3D(16, -66 + lungeDepth, 0),
-        kneeL: _Vector3D(-18, -36 + lungeDepth * 0.4, frontLegZ),
-        kneeR: _Vector3D(18, -36 + lungeDepth * 0.85, backLegZ),
-        footL: _Vector3D(-18, -4, frontLegZ * 0.7),
-        footR: _Vector3D(18, -4, backLegZ * 1.1),
-        quadFlexed: isLow,
-        armFlexed: false,
-        coreFlexed: true,
-        elevation: 0.0,
-        holdsWeights: false,
-        hudJoint: _Vector3D(-18, -36 + lungeDepth * 0.4, frontLegZ),
-        hudP1: _Vector3D(-16, -66 + lungeDepth, 0),
-        hudP2: _Vector3D(-18, -4, frontLegZ * 0.7),
-        hudAngleDeg: 180.0 - (cycle * 90.0),
-        hudLabel: isLow ? '90° FRONT KNEE' : 'LUNGE DEPTH',
-      );
-    }
-
-    // ── 3. BICEP CURLS (Dumbbell, Hammer, Concentration, Preacher) ──
-    if (s.contains('bicep') || s.contains('curl') || s.contains('hammer')) {
-      final handZ = 6.0 + (math.sin(cycle * math.pi * 0.9) * 26.0);
-      final handY = -48.0 - (cycle * 48.0);
-      final isPeak = cycle > 0.45;
-      final angleDeg = 160.0 - (cycle * 115.0);
-
-      return _Exercise3DPose(
-        head: const _Vector3D(0, -145, 0),
-        neck: const _Vector3D(0, -130, 0),
-        chest: const _Vector3D(0, -108, 0),
-        pelvis: const _Vector3D(0, -68, 0),
-        shoulderL: const _Vector3D(-24, -112, 0),
-        shoulderR: const _Vector3D(24, -112, 0),
-        elbowL: const _Vector3D(-26, -76, 2),
-        elbowR: const _Vector3D(26, -76, 2),
-        handL: _Vector3D(-24, handY, handZ),
-        handR: _Vector3D(24, handY, handZ),
-        hipL: const _Vector3D(-16, -66, 0),
-        hipR: const _Vector3D(16, -66, 0),
-        kneeL: const _Vector3D(-16, -35, 0),
-        kneeR: const _Vector3D(16, -35, 0),
-        footL: const _Vector3D(-16, -4, 0),
-        footR: const _Vector3D(16, -4, 0),
-        quadFlexed: false,
-        armFlexed: isPeak,
-        coreFlexed: true,
-        elevation: 0.0,
-        holdsWeights: true,
-        hudJoint: const _Vector3D(26, -76, 2),
-        hudP1: const _Vector3D(24, -112, 0),
-        hudP2: _Vector3D(24, handY, handZ),
-        hudAngleDeg: angleDeg,
-        hudLabel: isPeak ? '45° PEAK SQUEEZE' : '${angleDeg.round()}° CURL',
-      );
-    }
-
-    // ── 4. PUSH-UPS & CHEST PRESS (Plank Pushup, Bench Press, Diamond, Incline) ──
-    if (s.contains('push-up') || s.contains('pushup') || s.contains('chest') || s.contains('bench-press') || s.contains('fly')) {
-      final dip = cycle * 28.0;
-      final chestY = -42.0 + dip;
-      final elbowY = -34.0 + (dip * 0.7);
-      final isBottom = cycle > 0.45;
-      final angleDeg = 165.0 - (cycle * 75.0);
-
-      return _Exercise3DPose(
-        head: _Vector3D(0, chestY - 14, 52),
-        neck: _Vector3D(0, chestY - 4, 42),
-        chest: _Vector3D(0, chestY, 30),
-        pelvis: _Vector3D(0, chestY + 6, -18),
-        shoulderL: _Vector3D(-26, chestY - 2, 30),
-        shoulderR: _Vector3D(26, chestY - 2, 30),
-        elbowL: _Vector3D(-34, elbowY, 20),
-        elbowR: _Vector3D(34, elbowY, 20),
-        handL: const _Vector3D(-28, -6, 26),
-        handR: const _Vector3D(28, -6, 26),
-        hipL: _Vector3D(-14, chestY + 8, -20),
-        hipR: _Vector3D(14, chestY + 8, -20),
-        kneeL: _Vector3D(-12, chestY + 12, -60),
-        kneeR: _Vector3D(12, chestY + 12, -60),
-        footL: const _Vector3D(-10, -6, -98),
-        footR: const _Vector3D(10, -6, -98),
-        quadFlexed: false,
-        armFlexed: isBottom,
-        coreFlexed: true,
-        elevation: 0.0,
-        holdsWeights: false,
-        hudJoint: _Vector3D(34, elbowY, 20),
-        hudP1: _Vector3D(26, chestY - 2, 30),
-        hudP2: const _Vector3D(28, -6, 26),
-        hudAngleDeg: angleDeg,
-        hudLabel: isBottom ? '90° CHEST DIP' : '${angleDeg.round()}° PRESS',
-      );
-    }
-
-    // ── 5. WALL SIT & STATIC LEG HOLDS ──
-    if (s.contains('wall-sit') || (s.contains('wall') && s.contains('sit'))) {
-      return _Exercise3DPose(
-        head: const _Vector3D(0, -112, -22),
-        neck: const _Vector3D(0, -98, -22),
-        chest: const _Vector3D(0, -82, -22),
-        pelvis: const _Vector3D(0, -44, -22),
-        shoulderL: const _Vector3D(-22, -84, -20),
-        shoulderR: const _Vector3D(22, -84, -20),
-        elbowL: const _Vector3D(-24, -62, -10),
-        elbowR: const _Vector3D(24, -62, -10),
-        handL: const _Vector3D(-18, -44, 4),
-        handR: const _Vector3D(18, -44, 4),
-        hipL: const _Vector3D(-16, -42, -20),
-        hipR: const _Vector3D(16, -42, -20),
-        kneeL: const _Vector3D(-18, -42, 16),
-        kneeR: const _Vector3D(18, -42, 16),
-        footL: const _Vector3D(-18, -4, 16),
-        footR: const _Vector3D(18, -4, 16),
-        quadFlexed: true,
-        armFlexed: false,
-        coreFlexed: true,
-        elevation: 0.0,
-        holdsWeights: false,
-        isWallExercise: true,
-        hudJoint: const _Vector3D(18, -42, 16),
-        hudP1: const _Vector3D(16, -42, -20),
-        hudP2: const _Vector3D(18, -4, 16),
-        hudAngleDeg: 90.0,
-        hudLabel: '90° ISOMETRIC HOLD',
-      );
-    }
-
-    // ── 6. GLUTE BRIDGE & HIP THRUST ──
-    if (s.contains('bridge') || s.contains('glute') || s.contains('hip-thrust')) {
-      final lift = cycle * 32.0; // Dynamic upward hip drive
-      final pelvisY = -10.0 - lift; // Lifts from -10 to -42
-      final isHigh = cycle > 0.45;
-      const kneeY = -34.0; // Stationary stable pivot at bent knees
-      const kneeZ = 28.0;
-
-      return _Exercise3DPose(
-        head: const _Vector3D(0, -10, -56),
-        neck: const _Vector3D(0, -10, -44),
-        chest: const _Vector3D(0, -12, -28),
-        pelvis: _Vector3D(0, pelvisY, 4),
-        shoulderL: const _Vector3D(-24, -10, -32),
-        shoulderR: const _Vector3D(24, -10, -32),
-        elbowL: const _Vector3D(-26, -4, -14),
-        elbowR: const _Vector3D(26, -4, -14),
-        handL: const _Vector3D(-24, -4, 10),
-        handR: const _Vector3D(24, -4, 10),
-        hipL: _Vector3D(-18, pelvisY, 4),
-        hipR: _Vector3D(18, pelvisY, 4),
-        kneeL: const _Vector3D(-18, kneeY, kneeZ),
-        kneeR: const _Vector3D(18, kneeY, kneeZ),
-        footL: const _Vector3D(-18, -4, 34),
-        footR: const _Vector3D(18, -4, 34),
-        quadFlexed: isHigh,
-        armFlexed: false,
-        coreFlexed: true,
-        elevation: 0.0,
-        holdsWeights: false,
-        hudJoint: _Vector3D(0, pelvisY, 4),
-        hudP1: const _Vector3D(0, -12, -28),
-        hudP2: const _Vector3D(0, kneeY, kneeZ),
-        hudAngleDeg: 155.0 + (cycle * 25.0),
-        hudLabel: isHigh ? 'PEAK GLUTE LOCKOUT 180°' : 'HIP THRUST',
-      );
-    }
-
-    // ── 7. OVERHEAD PRESS & SHOULDERS (Military, Arnold, Lateral Raise) ──
-    if (s.contains('shoulder') || s.contains('overhead') || s.contains('military') || s.contains('lateral-raise')) {
-      final pressY = -106.0 - (cycle * 62.0);
-      final handX = 26.0 - (cycle * 8.0);
-      final isLockout = cycle > 0.45;
-      final angleDeg = 90.0 + (cycle * 85.0);
-
-      return _Exercise3DPose(
-        head: const _Vector3D(0, -145, 0),
-        neck: const _Vector3D(0, -130, 0),
-        chest: const _Vector3D(0, -108, 0),
-        pelvis: const _Vector3D(0, -68, 0),
-        shoulderL: const _Vector3D(-24, -112, 0),
-        shoulderR: const _Vector3D(24, -112, 0),
-        elbowL: _Vector3D(-handX - 4, pressY + 28, 2),
-        elbowR: _Vector3D(handX + 4, pressY + 28, 2),
-        handL: _Vector3D(-handX, pressY, 2),
-        handR: _Vector3D(handX, pressY, 2),
-        hipL: const _Vector3D(-16, -66, 0),
-        hipR: const _Vector3D(16, -66, 0),
-        kneeL: const _Vector3D(-16, -35, 0),
-        kneeR: const _Vector3D(16, -35, 0),
-        footL: const _Vector3D(-16, -4, 0),
-        footR: const _Vector3D(16, -4, 0),
-        quadFlexed: false,
-        armFlexed: isLockout,
-        coreFlexed: true,
-        elevation: 0.0,
-        holdsWeights: true,
-        hudJoint: _Vector3D(handX + 4, pressY + 28, 2),
-        hudP1: const _Vector3D(24, -112, 0),
-        hudP2: _Vector3D(handX, pressY, 2),
-        hudAngleDeg: angleDeg,
-        hudLabel: isLockout ? '180° LOCKOUT' : '${angleDeg.round()}° PRESS',
-      );
-    }
-
-    // ── 8. TRICEPS (Dips, Kickbacks, Extensions) ──
-    if (s.contains('tricep') || s.contains('dip')) {
-      final dipDepth = cycle * 24.0;
-      final armAngle = 90.0 + (cycle * 60.0);
-
-      return _Exercise3DPose(
-        head: _Vector3D(0, -115 + dipDepth, -10),
-        neck: _Vector3D(0, -100 + dipDepth, -10),
-        chest: _Vector3D(0, -84 + dipDepth, -10),
-        pelvis: _Vector3D(0, -48 + dipDepth, -10),
-        shoulderL: _Vector3D(-22, -86 + dipDepth, -8),
-        shoulderR: _Vector3D(22, -86 + dipDepth, -8),
-        elbowL: _Vector3D(-26, -64 + (dipDepth * 0.4), -24),
-        elbowR: _Vector3D(26, -64 + (dipDepth * 0.4), -24),
-        handL: const _Vector3D(-24, -44, -10),
-        handR: const _Vector3D(24, -44, -10),
-        hipL: _Vector3D(-16, -46 + dipDepth, 4),
-        hipR: _Vector3D(16, -46 + dipDepth, 4),
-        kneeL: const _Vector3D(-18, -44, 28),
-        kneeR: const _Vector3D(18, -44, 28),
-        footL: const _Vector3D(-18, -4, 28),
-        footR: const _Vector3D(18, -4, 28),
-        quadFlexed: false,
-        armFlexed: cycle > 0.45,
-        coreFlexed: true,
-        elevation: 0.0,
-        holdsWeights: false,
-        hudJoint: _Vector3D(26, -64 + (dipDepth * 0.4), -24),
-        hudP1: _Vector3D(22, -86 + dipDepth, -8),
-        hudP2: const _Vector3D(24, -44, -10),
-        hudAngleDeg: armAngle,
-        hudLabel: 'TRICEP EXTENSION',
-      );
-    }
-
-    // ── 9. BACK & PULLS (Pull-ups, Lat Pulldowns, Rows, Deadlifts) ──
-    if (s.contains('pull') || s.contains('row') || s.contains('lat') || s.contains('deadlift')) {
-      final pullY = s.contains('deadlift') ? (cycle * 50.0) : -(cycle * 38.0);
-      final isBackFiring = cycle > 0.45;
-
-      return _Exercise3DPose(
-        head: _Vector3D(0, -145 + pullY * 0.5, 0),
-        neck: _Vector3D(0, -130 + pullY * 0.5, 0),
-        chest: _Vector3D(0, -108 + pullY * 0.6, 0),
-        pelvis: _Vector3D(0, -68 + pullY * 0.7, 0),
-        shoulderL: _Vector3D(-26, -114 + pullY * 0.6, 0),
-        shoulderR: _Vector3D(26, -114 + pullY * 0.6, 0),
-        elbowL: _Vector3D(-30, -96 + pullY, -14 * cycle),
-        elbowR: _Vector3D(30, -96 + pullY, -14 * cycle),
-        handL: _Vector3D(-24, -80 + pullY * 1.2, 4),
-        handR: _Vector3D(24, -80 + pullY * 1.2, 4),
-        hipL: _Vector3D(-16, -66 + pullY * 0.7, 0),
-        hipR: _Vector3D(16, -66 + pullY * 0.7, 0),
-        kneeL: const _Vector3D(-16, -35, 0),
-        kneeR: const _Vector3D(16, -35, 0),
-        footL: const _Vector3D(-18, -4, 0),
-        footR: const _Vector3D(18, -4, 0),
-        quadFlexed: false,
-        armFlexed: isBackFiring,
-        coreFlexed: true,
-        elevation: 0.0,
-        holdsWeights: true,
-        hudJoint: _Vector3D(30, -96 + pullY, -14 * cycle),
-        hudP1: _Vector3D(26, -114 + pullY * 0.6, 0),
-        hudP2: _Vector3D(24, -80 + pullY * 1.2, 4),
-        hudAngleDeg: 120.0 - (cycle * 50.0),
-        hudLabel: isBackFiring ? 'LAT ENGAGEMENT' : 'BACK DRIVE',
-      );
-    }
-
-    // ── 10. CALF RAISE (Plantarflexion on Toes) ──
-    if (s.contains('calf') || s.contains('raise') || s.contains('tiptoe')) {
-      final lift = cycle * 20.0;
-      final isPeak = cycle > 0.45;
-
-      return _Exercise3DPose(
-        head: _Vector3D(0, -145 - lift, 0),
-        neck: _Vector3D(0, -130 - lift, 0),
-        chest: _Vector3D(0, -108 - lift, 0),
-        pelvis: _Vector3D(0, -68 - lift, 0),
-        shoulderL: _Vector3D(-24, -112 - lift, 0),
-        shoulderR: _Vector3D(24, -112 - lift, 0),
-        elbowL: _Vector3D(-26, -82 - lift, 0),
-        elbowR: _Vector3D(26, -82 - lift, 0),
-        handL: _Vector3D(-24, -54 - lift, 0),
-        handR: _Vector3D(24, -54 - lift, 0),
-        hipL: _Vector3D(-16, -66 - lift, 0),
-        hipR: _Vector3D(16, -66 - lift, 0),
-        kneeL: _Vector3D(-16, -35 - lift, 0),
-        kneeR: _Vector3D(16, -35 - lift, 0),
-        footL: _Vector3D(-16, -4 - lift * 0.7, 0),
-        footR: _Vector3D(16, -4 - lift * 0.7, 0),
-        quadFlexed: isPeak,
-        armFlexed: false,
-        coreFlexed: true,
-        elevation: lift,
-        holdsWeights: false,
-        hudJoint: _Vector3D(16, -4 - lift * 0.7, 0),
-        hudP1: _Vector3D(16, -35 - lift, 0),
-        hudP2: const _Vector3D(16, -4, 12),
-        hudAngleDeg: 120.0 + (cycle * 35.0),
-        hudLabel: isPeak ? 'PEAK PLANTARFLEX' : 'CALF DRIVE',
-      );
-    }
-
-    // ── 11. CORE & PLANKS & CRUNCHES (Plank, Side Plank, Mountain Climber, Deadbug) ──
-    if (s.contains('plank') || s.contains('core') || s.contains('abs') || s.contains('crunch') || s.contains('sit-up') || s.contains('mountain')) {
-      final isMoving = s.contains('mountain') || s.contains('crunch');
-      final kneeDrive = isMoving ? (math.sin(animProgress * 4 * math.pi) * 32.0).abs() : 0.0;
-
-      return _Exercise3DPose(
-        head: const _Vector3D(0, -38, 48),
-        neck: const _Vector3D(0, -32, 38),
-        chest: const _Vector3D(0, -30, 26),
-        pelvis: const _Vector3D(0, -32, -18),
-        shoulderL: const _Vector3D(-24, -32, 26),
-        shoulderR: const _Vector3D(24, -32, 26),
-        elbowL: const _Vector3D(-24, -8, 26),
-        elbowR: const _Vector3D(24, -8, 26),
-        handL: const _Vector3D(-16, -6, 40),
-        handR: const _Vector3D(16, -6, 40),
-        hipL: const _Vector3D(-14, -32, -20),
-        hipR: const _Vector3D(14, -32, -20),
-        kneeL: _Vector3D(-14, -28, -60 + kneeDrive),
-        kneeR: const _Vector3D(14, -28, -60),
-        footL: const _Vector3D(-12, -6, -96),
-        footR: const _Vector3D(12, -6, -96),
-        quadFlexed: false,
-        armFlexed: false,
-        coreFlexed: true,
-        elevation: 0.0,
-        holdsWeights: false,
-        hudJoint: const _Vector3D(0, -32, -18),
-        hudP1: const _Vector3D(0, -30, 26),
-        hudP2: const _Vector3D(14, -28, -60),
-        hudAngleDeg: 180.0,
-        hudLabel: 'CORE STABILITY 180°',
-      );
-    }
-
-    // ── 12. YOGA & MOBILITY (Downward Dog, Cobra, Warrior, Tree, Childs Pose) ──
-    if (s.contains('yoga') || s.contains('dog') || s.contains('cobra') || s.contains('warrior') || s.contains('tree') || s.contains('child') || s.contains('stretch')) {
-      if (s.contains('dog') || s.contains('downward')) {
-        // Downward Dog: Inverted V-Shape
-        return _Exercise3DPose(
-          head: const _Vector3D(0, -42, 10),
-          neck: const _Vector3D(0, -50, 6),
-          chest: const _Vector3D(0, -62, -2),
-          pelvis: const _Vector3D(0, -84, -28), // High apex
-          shoulderL: const _Vector3D(-20, -58, 2),
-          shoulderR: const _Vector3D(20, -58, 2),
-          elbowL: const _Vector3D(-24, -34, 20),
-          elbowR: const _Vector3D(24, -34, 20),
-          handL: const _Vector3D(-22, -6, 38),
-          handR: const _Vector3D(22, -6, 38),
-          hipL: const _Vector3D(-14, -82, -28),
-          hipR: const _Vector3D(14, -82, -28),
-          kneeL: const _Vector3D(-14, -46, -48),
-          kneeR: const _Vector3D(14, -46, -48),
-          footL: const _Vector3D(-14, -6, -68),
-          footR: const _Vector3D(14, -6, -68),
-          quadFlexed: false,
-          armFlexed: true,
-          coreFlexed: true,
-          elevation: 0.0,
-          holdsWeights: false,
-          hudJoint: const _Vector3D(0, -84, -28),
-          hudP1: const _Vector3D(0, -62, -2),
-          hudP2: const _Vector3D(-14, -46, -48),
-          hudAngleDeg: 75.0,
-          hudLabel: 'INVERTED V-POSE',
-        );
-      } else if (s.contains('cobra')) {
-        // Cobra Pose: Chest arched upward, hands pressing
-        return _Exercise3DPose(
-          head: const _Vector3D(0, -78, 14),
-          neck: const _Vector3D(0, -66, 12),
-          chest: const _Vector3D(0, -52, 10),
-          pelvis: const _Vector3D(0, -10, -18),
-          shoulderL: const _Vector3D(-22, -54, 10),
-          shoulderR: const _Vector3D(22, -54, 10),
-          elbowL: const _Vector3D(-26, -30, 10),
-          elbowR: const _Vector3D(26, -30, 10),
-          handL: const _Vector3D(-24, -6, 16),
-          handR: const _Vector3D(24, -6, 16),
-          hipL: const _Vector3D(-14, -10, -20),
-          hipR: const _Vector3D(14, -10, -20),
-          kneeL: const _Vector3D(-12, -8, -50),
-          kneeR: const _Vector3D(12, -8, -50),
-          footL: const _Vector3D(-10, -6, -80),
-          footR: const _Vector3D(10, -6, -80),
-          quadFlexed: false,
-          armFlexed: true,
-          coreFlexed: true,
-          elevation: 0.0,
-          holdsWeights: false,
-          hudJoint: const _Vector3D(0, -52, 10),
-          hudP1: const _Vector3D(0, -78, 14),
-          hudP2: const _Vector3D(0, -10, -18),
-          hudAngleDeg: 140.0,
-          hudLabel: 'SPINAL EXTENSION',
-        );
-      }
-    }
-
-    // ── 13. CARDIO / HIIT / JUMPING JACKS / RUNNING STRIDE (Dynamic Default) ──
-    final bounce = (math.sin(animProgress * 4 * math.pi) * 8.0).abs();
-    final spread = cycle * 24.0;
-    final armLift = cycle * 68.0;
-
-    return _Exercise3DPose(
-      head: _Vector3D(0, -145 - bounce, 0),
-      neck: _Vector3D(0, -130 - bounce, 0),
-      chest: _Vector3D(0, -108 - bounce, 0),
-      pelvis: _Vector3D(0, -68 - bounce, 0),
-      shoulderL: _Vector3D(-24, -112 - bounce, 0),
-      shoulderR: _Vector3D(24, -112 - bounce, 0),
-      elbowL: _Vector3D(-28 - (spread * 0.6), -86 - bounce - (armLift * 0.6), 0),
-      elbowR: _Vector3D(28 + (spread * 0.6), -86 - bounce - (armLift * 0.6), 0),
-      handL: _Vector3D(-24 - spread, -62 - bounce - armLift, 0),
-      handR: _Vector3D(24 + spread, -62 - bounce - armLift, 0),
-      hipL: _Vector3D(-16, -66 - bounce, 0),
-      hipR: _Vector3D(16, -66 - bounce, 0),
-      kneeL: _Vector3D(-18 - (spread * 0.5), -35 - bounce, 0),
-      kneeR: _Vector3D(18 + (spread * 0.5), -35 - bounce, 0),
-      footL: _Vector3D(-18 - spread, -4 - bounce, 0),
-      footR: _Vector3D(18 + spread, -4 - bounce, 0),
-      quadFlexed: cycle > 0.4,
-      armFlexed: cycle > 0.4,
-      coreFlexed: true,
-      elevation: bounce,
-      holdsWeights: false,
-      hudJoint: null,
-      hudP1: null,
-      hudP2: null,
-      hudAngleDeg: 0,
-      hudLabel: '',
-    );
-  }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // ───────────────────────────────────────────────────────────────────────────
-  // 3D RENDERING SUBROUTINES (FITNESS GYM STUDIO & REAL HUMAN SHADING)
-  // ───────────────────────────────────────────────────────────────────────────
-
-  void _drawPerspectiveFloorGrid(Canvas canvas, Size size, double cx, double groundY, double orbitAngle) {
-    // Fitness Gym Studio Hardwood Planks & Perspective Radial Lines
-    for (int i = 1; i <= 3; i++) {
-      final rx = 65.0 * i;
-      final ry = rx * 0.28;
-      canvas.drawOval(Rect.fromCenter(center: Offset(cx, groundY), width: rx * 2, height: ry * 2), _gridPaint);
-    }
-    canvas.drawLine(Offset(24, groundY), Offset(size.width - 24, groundY), _horizonLinePaint);
-
-    for (double deg = -60; deg <= 60; deg += 30) {
-      final rad = deg * math.pi / 180;
-      final xEnd = cx + math.tan(rad) * 180;
-      canvas.drawLine(Offset(cx, groundY), Offset(xEnd.clamp(24.0, size.width - 24.0), groundY + 22), _radialRayPaint);
-    }
-
-    // Workout Mat for ground/floor exercises (Glute Bridge, Plank, Yoga, Pushups)
-    final s = exerciseSlug.toLowerCase();
-    if (s.contains('bridge') || s.contains('glute') || s.contains('plank') || s.contains('push-up') || s.contains('yoga') || s.contains('cobra')) {
-      final matPaint = Paint()..color = const Color(0xFF0C243B)..style = PaintingStyle.fill;
-      final matBorder = Paint()..color = const Color(0xFF00D2FF).withValues(alpha: 0.35)..style = PaintingStyle.stroke..strokeWidth = 1.2;
-      final matRect = Rect.fromCenter(center: Offset(cx, groundY - 4), width: 140, height: 42);
-      final matRRect = RRect.fromRectAndRadius(matRect, const Radius.circular(8));
-      canvas.drawRRect(matRRect, matPaint);
-      canvas.drawRRect(matRRect, matBorder);
-    }
-  }
-
-  void _drawGroundContactShadow(Canvas canvas, Offset fl, Offset fr, double cx, double groundY, double elevation, double cycle) {
-    final shadowCx = (fl.dx + fr.dx) / 2;
-    final shadowWidth = math.max(68.0 - (elevation * 1.2), 34.0);
-    final shadowHeight = shadowWidth * 0.25;
-
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(shadowCx, groundY + 2), width: shadowWidth, height: shadowHeight),
-      _shadowPaint,
-    );
-  }
-
-  void _drawHolographicWall(Canvas canvas, double cx, double groundY, double orbitAngle) {
-    final wallX = cx - 38 + (math.sin(orbitAngle) * 35);
-    for (double y = groundY - 140; y <= groundY; y += 22) {
-      canvas.drawLine(Offset(wallX - 35, y), Offset(wallX + 35, y), _wallLinePaint);
-    }
-    canvas.drawLine(Offset(wallX - 35, groundY - 140), Offset(wallX - 35, groundY), _wallLinePaint);
-    canvas.drawLine(Offset(wallX + 35, groundY - 140), Offset(wallX + 35, groundY), _wallLinePaint);
-  }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // REALISTIC HUMAN ATHLETE ANATOMICAL RENDERING (True Volumetric Musculature)
-  // ───────────────────────────────────────────────────────────────────────────
-
-  void _drawRealisticHumanLimb(
-    Canvas canvas,
-    Offset p1,
-    Offset p2,
-    double r1,
-    double r2, {
-    required bool isFlexed,
-    required double depth,
-    bool isThigh = false,
-    bool isArm = false,
-  }) {
-    final dx = p2.dx - p1.dx;
-    final dy = p2.dy - p1.dy;
-    final dist = math.sqrt(dx * dx + dy * dy);
-    if (dist < 1.0) return;
-
-    final nx = -dy / dist;
-    final ny = dx / dist;
-
-    // Organic muscular contour with natural anatomical bulge (muscle belly)
-    final midX = (p1.dx + p2.dx) / 2;
-    final midY = (p1.dy + p2.dy) / 2;
-    final bulge = isFlexed ? 2.5 : 1.2;
-    final rMid = ((r1 + r2) / 2) + bulge;
-
-    final path = Path()
-      ..moveTo(p1.dx + nx * r1, p1.dy + ny * r1)
-      ..quadraticBezierTo(midX + nx * rMid, midY + ny * rMid, p2.dx + nx * r2, p2.dy + ny * r2)
-      ..arcToPoint(Offset(p2.dx - nx * r2, p2.dy - ny * r2), radius: Radius.circular(r2))
-      ..quadraticBezierTo(midX - nx * rMid, midY - ny * rMid, p1.dx - nx * r1, p1.dy - ny * r1)
-      ..arcToPoint(Offset(p1.dx + nx * r1, p1.dy + ny * r1), radius: Radius.circular(r1))
-      ..close();
-
-    // Subtle muscle contraction glow aura on flexed muscles
-    if (isFlexed) {
-      canvas.drawPath(path, _muscleGlowPaint);
-    }
-
-    // Natural Human Skin Gradient with athletic 3D lighting highlights
-    final skinColors = faceProfile.skinGradientColors;
-    final baseSkin = skinColors[1];
-    final highlightSkin = skinColors[0];
-    final shadowSkin = Color.lerp(baseSkin, const Color(0xFF5A3114), 0.38)!;
-
-    final skinGradient = LinearGradient(
-      begin: Alignment(nx, ny),
-      end: Alignment(-nx, -ny),
-      colors: [
-        highlightSkin,
-        baseSkin,
-        shadowSkin,
-      ],
-      stops: const [0.0, 0.45, 1.0],
-    );
-
-    final limbPaint = Paint()
-      ..shader = skinGradient.createShader(Rect.fromPoints(p1, p2))
-      ..style = PaintingStyle.fill;
-    canvas.drawPath(path, limbPaint);
-
-    // If Leg (Thigh or Calf): Full Athletic Charcoal Compression Gym Leggings (Matching Coach in uuunuh.zip)
-    if (isThigh || !isArm) {
-      const leggingsGradient = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(0xFF263345),
-          Color(0xFF161F2C),
-          Color(0xFF0F1722),
-        ],
-      );
-
-      final leggingsPaint = Paint()
-        ..shader = leggingsGradient.createShader(Rect.fromPoints(p1, p2))
-        ..style = PaintingStyle.fill;
-      canvas.drawPath(path, leggingsPaint);
-
-      // Cyan Athletic Compression Muscle Seam Contour
-      final seamPaint = Paint()
-        ..color = const Color(0xFF00D2FF).withValues(alpha: 0.75)
-        ..strokeWidth = 1.6
-        ..style = PaintingStyle.stroke;
-      canvas.drawLine(
-        Offset(p1.dx + nx * (r1 * 0.75), p1.dy + ny * (r1 * 0.75)),
-        Offset(p2.dx + nx * (r2 * 0.75), p2.dy + ny * (r2 * 0.75)),
-        seamPaint,
-      );
-    }
-
-    // Natural Anatomical Joint Shading (Patella / Elbow - smooth skin, NO robot servos)
-    final jointShade = Paint()
-      ..color = shadowSkin.withValues(alpha: 0.35)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-    canvas.drawCircle(p2, r2 * 0.75, jointShade);
-  }
-
-  void _drawLeftArm(Canvas canvas, Offset s, Offset e, Offset h, bool flexed, double depth, bool holdsWeights, double orbitAngle, double cycle) {
-    // Upper Arm: Broad athletic deltoid to elbow (volumetric human muscle)
-    _drawRealisticHumanLimb(canvas, s, e, 12.0, 9.0, isFlexed: flexed, depth: depth, isArm: true);
-    // Forearm: Tapered athletic forearm to wrist
-    _drawRealisticHumanLimb(canvas, e, h, 9.0, 6.8, isFlexed: flexed, depth: depth, isArm: true);
-    _drawHandAndWeight(canvas, h, holdsWeights, orbitAngle, cycle);
-  }
-
-  void _drawRightArm(Canvas canvas, Offset s, Offset e, Offset h, bool flexed, double depth, bool holdsWeights, double orbitAngle, double cycle) {
-    _drawRealisticHumanLimb(canvas, s, e, 12.0, 9.0, isFlexed: flexed, depth: depth, isArm: true);
-    _drawRealisticHumanLimb(canvas, e, h, 9.0, 6.8, isFlexed: flexed, depth: depth, isArm: true);
-    _drawHandAndWeight(canvas, h, holdsWeights, orbitAngle, cycle);
-  }
-
-  void _drawLeftLeg(Canvas canvas, Offset hip, Offset knee, Offset foot, bool flexed, double depth) {
-    // Thigh: Muscular quadriceps with compression shorts (volumetric human muscle)
-    _drawRealisticHumanLimb(canvas, hip, knee, 17.0, 12.5, isFlexed: flexed, depth: depth, isThigh: true);
-    // Calf: Athletic gastrocnemius calf curve
-    _drawRealisticHumanLimb(canvas, knee, foot, 12.5, 8.5, isFlexed: flexed, depth: depth);
-    _drawAthleticRunningSneaker(canvas, foot, flexed);
-  }
-
-  void _drawRightLeg(Canvas canvas, Offset hip, Offset knee, Offset foot, bool flexed, double depth) {
-    _drawRealisticHumanLimb(canvas, hip, knee, 17.0, 12.5, isFlexed: flexed, depth: depth, isThigh: true);
-    _drawRealisticHumanLimb(canvas, knee, foot, 12.5, 8.5, isFlexed: flexed, depth: depth);
-    _drawAthleticRunningSneaker(canvas, foot, flexed);
-  }
-
-  /// Modern High-Performance Athletic Running Sneaker (White Midsole, Grip Outsole)
-  void _drawAthleticRunningSneaker(Canvas canvas, Offset foot, bool flexed) {
-    // Upper Shoe body
-    final upperPath = Path()
-      ..moveTo(foot.dx - 8, foot.dy - 5)
-      ..lineTo(foot.dx + 16, foot.dy - 3)
-      ..lineTo(foot.dx + 18, foot.dy + 2)
-      ..lineTo(foot.dx - 10, foot.dy + 2)
-      ..close();
-    canvas.drawPath(upperPath, Paint()..color = const Color(0xFF0F172A)..style = PaintingStyle.fill);
-
-    // Sculpted White Foam Midsole
-    final solePath = Path()
-      ..moveTo(foot.dx - 10, foot.dy + 2)
-      ..lineTo(foot.dx + 18, foot.dy + 2)
-      ..lineTo(foot.dx + 19, foot.dy + 6)
-      ..lineTo(foot.dx - 11, foot.dy + 6)
-      ..close();
-    canvas.drawPath(solePath, Paint()..color = Colors.white..style = PaintingStyle.fill);
-
-    // Cyan High-Traction Outsole Tread
-    final treadPaint = Paint()
-      ..color = flexed ? const Color(0xFF34FF8C) : const Color(0xFF00D2FF)
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(foot.dx - 11, foot.dy + 6), Offset(foot.dx + 19, foot.dy + 6), treadPaint);
-  }
-
-  void _drawHandAndWeight(Canvas canvas, Offset hand, bool holdsWeights, double orbitAngle, double cycle) {
-    final skinColors = faceProfile.skinGradientColors;
-    canvas.drawCircle(hand, 6.0, Paint()..color = skinColors[1]);
-    canvas.drawCircle(hand, 6.0, Paint()..color = skinColors[0].withValues(alpha: 0.6)..style = PaintingStyle.stroke..strokeWidth = 1.0);
-
-    if (holdsWeights) {
-      canvas.drawLine(Offset(hand.dx - 14, hand.dy), Offset(hand.dx + 14, hand.dy), _barbellBarPaint);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hand.dx - 13, hand.dy), width: 6, height: 18), const Radius.circular(2)),
-        _weightPlatePaint,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hand.dx - 13, hand.dy), width: 6, height: 18), const Radius.circular(2)),
-        _weightPlateRim,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hand.dx + 13, hand.dy), width: 6, height: 18), const Radius.circular(2)),
-        _weightPlatePaint,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hand.dx + 13, hand.dy), width: 6, height: 18), const Radius.circular(2)),
-        _weightPlateRim,
-      );
-    }
-  }
-
-  /// Draw Realistic Human Muscular Torso & Athletic Female Gym Outfit (Matching Coach in uuunuh.zip)
-  void _drawTorsoAndHead(
-    Canvas canvas,
-    Offset head,
-    Offset neck,
-    Offset chest,
-    Offset pelvis,
-    Offset sL,
-    Offset sR,
-    Offset hipL,
-    Offset hipR,
-    double orbitAngle,
-    bool coreFlexed,
-  ) {
-    final skinColors = faceProfile.skinGradientColors;
-
-    // 1. Natural Athletic Female Torso Skin Base
-    final midLeftX = (sL.dx + hipL.dx) / 2 + (math.sin(orbitAngle) * 2.0);
-    final midLeftY = (sL.dy + hipL.dy) / 2;
-    final midRightX = (sR.dx + hipR.dx) / 2 + (math.sin(orbitAngle) * 2.0);
-    final midRightY = (sR.dy + hipR.dy) / 2;
-
-    final torsoPath = Path()
-      ..moveTo(sL.dx, sL.dy)
-      ..lineTo(sR.dx, sR.dy)
-      ..quadraticBezierTo(midRightX, midRightY, hipR.dx, hipR.dy)
-      ..lineTo(hipL.dx, hipL.dy)
-      ..quadraticBezierTo(midLeftX, midLeftY, sL.dx, sL.dy)
-      ..close();
-
-    // Natural skin gradient for bare midriff & shoulders
-    final skinGradient = LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: skinColors,
-    );
-    canvas.drawPath(torsoPath, Paint()..shader = skinGradient.createShader(Rect.fromPoints(sL, hipR)));
-
-    // 2. Cyan Athletic Performance Sports Bra (From shoulders/bust down to ribcage)
-    final braBottomY = chest.dy + (pelvis.dy - chest.dy) * 0.44;
-    final braPath = Path()
-      ..moveTo(sL.dx, sL.dy)
-      ..lineTo(sR.dx, sR.dy)
-      ..lineTo(sR.dx + (hipR.dx - sR.dx) * 0.45, braBottomY)
-      ..quadraticBezierTo(chest.dx, braBottomY + 4, sL.dx + (hipL.dx - sL.dx) * 0.45, braBottomY)
-      ..close();
-
-    const braGradient = LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        Color(0xFF00E5FF),
-        Color(0xFF00B4D8),
-        Color(0xFF0077B6),
-      ],
-    );
-    canvas.drawPath(
-      braPath,
-      Paint()
-        ..shader = braGradient.createShader(Rect.fromPoints(sL, Offset(sR.dx, braBottomY)))
-        ..style = PaintingStyle.fill,
-    );
-
-    // Charcoal Elastic Underbust Band
-    final bandPaint = Paint()
-      ..color = const Color(0xFF0F172A)
-      ..strokeWidth = 3.5
-      ..style = PaintingStyle.stroke;
-    canvas.drawLine(
-      Offset(sL.dx + (hipL.dx - sL.dx) * 0.45, braBottomY),
-      Offset(sR.dx + (hipR.dx - sR.dx) * 0.45, braBottomY),
-      bandPaint,
-    );
-
-    // Cyan Racerback Shoulder Straps
-    final strapPaint = Paint()
-      ..color = const Color(0xFF00D2FF)
-      ..strokeWidth = 2.2
-      ..style = PaintingStyle.stroke;
-    canvas.drawLine(Offset(sL.dx + 4, sL.dy), Offset(chest.dx - 4, chest.dy), strapPaint);
-    canvas.drawLine(Offset(sR.dx - 4, sR.dy), Offset(chest.dx + 4, chest.dy), strapPaint);
-
-    // 3. High-Waisted Compression Leggings Waistband (From navel down to hips)
-    final waistY = chest.dy + (pelvis.dy - chest.dy) * 0.72;
-    final leggingsTopPath = Path()
-      ..moveTo(sL.dx + (hipL.dx - sL.dx) * 0.72, waistY)
-      ..lineTo(sR.dx + (hipR.dx - sR.dx) * 0.72, waistY)
-      ..lineTo(hipR.dx, hipR.dy)
-      ..lineTo(hipL.dx, hipL.dy)
-      ..close();
-
-    const leggingsWaistGradient = LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [
-        Color(0xFF263345),
-        Color(0xFF161F2C),
-      ],
-    );
-    canvas.drawPath(
-      leggingsTopPath,
-      Paint()
-        ..shader = leggingsWaistGradient.createShader(Rect.fromPoints(hipL, hipR))
-        ..style = PaintingStyle.fill,
-    );
-
-    // 4. Bare Midriff Toned Abdominal Muscles & Obliques
-    final absPaint = Paint()
-      ..color = coreFlexed ? const Color(0xFF34FF8C).withValues(alpha: 0.4) : skinColors[2].withValues(alpha: 0.35)
-      ..strokeWidth = 1.3
-      ..style = PaintingStyle.stroke;
-
-    final spineY1 = braBottomY + 3;
-    final spineY2 = waistY - 2;
-    final midX = (chest.dx + pelvis.dx) / 2;
-    canvas.drawLine(Offset(midX, spineY1), Offset(midX, spineY2), absPaint);
-    // Navel Piercing / Toned Ab Center
-    canvas.drawCircle(Offset(midX, waistY - 5), 1.2, Paint()..color = skinColors[2].withValues(alpha: 0.6));
-
-    // Natural Human Neck (Skin Tone)
-    final neckPaint = Paint()
-      ..color = skinColors[1]
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: neck, width: 11, height: 14), const Radius.circular(4)), neckPaint);
-
-    // ── Head & Realistic Female Coach Likeness ──
-    _drawPersonalizedHumanHead(canvas, head, neck, orbitAngle);
-  }
-
-  /// Draw Realistic Human Athlete Head with Wavy Brunette Hair (Free Fire / uuunuh.zip Style)
-  void _drawPersonalizedHumanHead(Canvas canvas, Offset head, Offset neck, double orbitAngle) {
-    const headRadius = 15.0;
-    final skinColors = faceProfile.skinGradientColors;
-
-    // 1. Cascading Back Hair Layers (Behind the face and neck)
-    const hairColor = Color(0xFF3A2114);
-    const hairHighlight = Color(0xFF5D3823);
-    final backHairPaint = Paint()..color = hairColor..style = PaintingStyle.fill;
-
-    final backHairPath = Path()
-      ..moveTo(head.dx - headRadius - 3, head.dy)
-      ..quadraticBezierTo(head.dx - headRadius - 8, head.dy + 18, head.dx - headRadius - 4, head.dy + 34)
-      ..quadraticBezierTo(head.dx - headRadius, head.dy + 38, head.dx - headRadius + 4, head.dy + 32)
-      ..quadraticBezierTo(head.dx - headRadius + 2, head.dy + 16, head.dx - headRadius + 1, head.dy + 4)
-      ..close();
-    canvas.drawPath(backHairPath, backHairPaint);
-
-    final backHairRight = Path()
-      ..moveTo(head.dx + headRadius + 3, head.dy)
-      ..quadraticBezierTo(head.dx + headRadius + 8, head.dy + 18, head.dx + headRadius + 4, head.dy + 34)
-      ..quadraticBezierTo(head.dx + headRadius, head.dy + 38, head.dx + headRadius - 4, head.dy + 32)
-      ..quadraticBezierTo(head.dx + headRadius - 2, head.dy + 16, head.dx + headRadius - 1, head.dy + 4)
-      ..close();
-    canvas.drawPath(backHairRight, backHairPaint);
-
-    // 2. Natural Feminine Face & Jawline
-    final skinGradient = RadialGradient(
-      center: const Alignment(-0.25, -0.25),
-      radius: 0.95,
-      colors: skinColors,
-    );
-
-    final facePath = Path()
-      ..moveTo(head.dx - headRadius, head.dy - 4)
-      ..cubicTo(head.dx - headRadius, head.dy + 10, head.dx - 8, head.dy + headRadius + 2, head.dx, head.dy + headRadius + 3)
-      ..cubicTo(head.dx + 8, head.dy + headRadius + 2, head.dx + headRadius, head.dy + 10, head.dx + headRadius, head.dy - 4)
-      ..close();
-    canvas.drawPath(facePath, Paint()..shader = skinGradient.createShader(Rect.fromCircle(center: head, radius: headRadius)));
-
-    // 3. Styled Top & Front Wavy Brunette Hair (Volume on crown, side-parted bangs)
-    final frontHairPaint = Paint()..color = hairColor..style = PaintingStyle.fill;
-    final topHair = Path()
-      ..moveTo(head.dx - headRadius - 2, head.dy - 2)
-      ..quadraticBezierTo(head.dx, head.dy - headRadius - 8, head.dx + headRadius + 2, head.dy - 2)
-      ..quadraticBezierTo(head.dx + 4, head.dy - headRadius + 2, head.dx - headRadius - 2, head.dy - 2)
-      ..close();
-    canvas.drawPath(topHair, frontHairPaint);
-
-    // Volumetric crown
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(head.dx, head.dy - headRadius - 1), width: headRadius * 2.2, height: 11),
-      Paint()..color = hairHighlight,
-    );
-
-    // Wavy Bangs framing forehead
-    final bangPath = Path()
-      ..moveTo(head.dx - headRadius - 1, head.dy - 4)
-      ..quadraticBezierTo(head.dx - 4, head.dy - headRadius + 1, head.dx + 2, head.dy - 2)
-      ..quadraticBezierTo(head.dx - 6, head.dy - 6, head.dx - headRadius - 1, head.dy - 4)
-      ..close();
-    canvas.drawPath(bangPath, frontHairPaint);
-
-    // 4. Expressive Eyes & Smile
-    final eyeShiftX = math.sin(orbitAngle) * 4.0;
-    final eyeL = Offset(head.dx - 5.0 + (eyeShiftX * 0.4), head.dy);
-    final eyeR = Offset(head.dx + 5.0 + (eyeShiftX * 0.4), head.dy);
-
-    // Eyebrows
-    final browPaint = Paint()
-      ..color = hairColor
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(eyeL.dx - 4, eyeL.dy - 4.5), Offset(eyeL.dx + 3, eyeL.dy - 3.5), browPaint);
-    canvas.drawLine(Offset(eyeR.dx - 3, eyeR.dy - 3.5), Offset(eyeR.dx + 4, eyeR.dy - 4.5), browPaint);
-
-    // Eye whites & brown pupils
-    canvas.drawOval(Rect.fromCenter(center: eyeL, width: 6.0, height: 5.5), Paint()..color = Colors.white);
-    canvas.drawOval(Rect.fromCenter(center: eyeR, width: 6.0, height: 5.5), Paint()..color = Colors.white);
-
-    canvas.drawCircle(eyeL, 2.3, Paint()..color = const Color(0xFF4A2511));
-    canvas.drawCircle(eyeR, 2.3, Paint()..color = const Color(0xFF4A2511));
-    canvas.drawCircle(Offset(eyeL.dx - 0.7, eyeL.dy - 0.7), 0.8, Paint()..color = Colors.white);
-    canvas.drawCircle(Offset(eyeR.dx - 0.7, eyeR.dy - 0.7), 0.8, Paint()..color = Colors.white);
-
-    // Eyelashes hint
-    final lashPaint = Paint()..color = Colors.black..strokeWidth = 1.0;
-    canvas.drawLine(Offset(eyeL.dx - 3.5, eyeL.dy - 2.5), Offset(eyeL.dx + 3.5, eyeL.dy - 2.5), lashPaint);
-    canvas.drawLine(Offset(eyeR.dx - 3.5, eyeR.dy - 2.5), Offset(eyeR.dx + 3.5, eyeR.dy - 2.5), lashPaint);
-
-    // Soft Blush on Cheeks
-    final blushPaint = Paint()
-      ..color = const Color(0xFFFF6B6B).withValues(alpha: 0.3)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-    canvas.drawCircle(Offset(head.dx - 7, head.dy + 4), 3.0, blushPaint);
-    canvas.drawCircle(Offset(head.dx + 7, head.dy + 4), 3.0, blushPaint);
-
-    // Nose Bridge
-    final nosePaint = Paint()
-      ..color = const Color(0xFFC07050)
-      ..strokeWidth = 1.3
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(head.dx + (eyeShiftX * 0.3), head.dy + 1), Offset(head.dx + (eyeShiftX * 0.3), head.dy + 4.5), nosePaint);
-
-    // Athletic Confident Smile
-    final smile = Path()
-      ..moveTo(head.dx - 4.5 + (eyeShiftX * 0.3), head.dy + 7.5)
-      ..quadraticBezierTo(head.dx + (eyeShiftX * 0.3), head.dy + 10.5, head.dx + 4.5 + (eyeShiftX * 0.3), head.dy + 7.5);
-    canvas.drawPath(
-      smile,
-      Paint()
-        ..color = const Color(0xFFD9485C)
-        ..strokeWidth = 1.5
-        ..strokeCap = StrokeCap.round
-        ..style = PaintingStyle.stroke,
-    );
-
-    // Facial hair if male
-    if (faceProfile.avatarGender == 'male' && faceProfile.facialHair != 'clean') {
-      final stubble = Path()
-        ..moveTo(head.dx - 9 + (eyeShiftX * 0.3), head.dy + 8)
-        ..quadraticBezierTo(head.dx + (eyeShiftX * 0.3), head.dy + 14, head.dx + 9 + (eyeShiftX * 0.3), head.dy + 8);
-      canvas.drawPath(
-        stubble,
-        Paint()
-          ..color = faceProfile.hairColor.withValues(alpha: 0.45)
-          ..strokeWidth = 1.5
-          ..strokeCap = StrokeCap.round
-          ..style = PaintingStyle.stroke,
-      );
-    }
-
-    // Ear pods / earphones
-    final earL = Offset(head.dx - headRadius + 1, head.dy);
-    final earR = Offset(head.dx + headRadius - 1, head.dy);
-    canvas.drawCircle(earL, 2.5, Paint()..color = const Color(0xFF00D2FF));
-    canvas.drawCircle(earR, 2.5, Paint()..color = const Color(0xFF00D2FF));
-  }
-
-  void _drawKineticAngleHUD(Canvas canvas, Offset joint, Offset p1, Offset p2, double angleDeg, String label) {
-    if (angleDeg <= 0) return;
-    const arcRadius = 18.0;
-
-    final ray1 = p1 - joint;
-    final ray2 = p2 - joint;
-    final startAngle = math.atan2(ray1.dy, ray1.dx);
-    final sweepAngle = math.atan2(ray2.dy, ray2.dx) - startAngle;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: joint, radius: arcRadius),
-      startAngle,
-      sweepAngle.clamp(-math.pi, math.pi),
-      false,
-      _hudArcPaint,
-    );
-
-    final textSpan = TextSpan(
-      text: label,
-      style: const TextStyle(
-        color: Color(0xFF34FF8C),
-        fontSize: 9,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 0.5,
-      ),
-    );
-    final tp = TextPainter(text: textSpan, textDirection: TextDirection.ltr)..layout();
-    final badgeCenter = Offset(joint.dx + 24, joint.dy - 12);
-
-    final bgRect = Rect.fromCenter(center: badgeCenter, width: tp.width + 10, height: 16);
-    canvas.drawRRect(RRect.fromRectAndRadius(bgRect, const Radius.circular(4)), _hudBgPaint);
-    canvas.drawRRect(RRect.fromRectAndRadius(bgRect, const Radius.circular(4)), _hudBorderPaint);
-    tp.paint(canvas, Offset(badgeCenter.dx - tp.width / 2, badgeCenter.dy - tp.height / 2));
-  }
-
-  @override
-  bool shouldRepaint(covariant _Biomechanical3DAvatarPainter oldDelegate) {
-    return oldDelegate.animationProgress != animationProgress ||
-        oldDelegate.exerciseSlug != exerciseSlug ||
-        oldDelegate.orbitAngle != orbitAngle ||
-        oldDelegate.faceProfile != faceProfile;
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DATA CLASS FOR 3D EXERCISE POSE
-// ─────────────────────────────────────────────────────────────────────────────
-class _Exercise3DPose {
-  _Exercise3DPose({
-    required this.head,
-    required this.neck,
-    required this.chest,
-    required this.pelvis,
-    required this.shoulderL,
-    required this.shoulderR,
-    required this.elbowL,
-    required this.elbowR,
-    required this.handL,
-    required this.handR,
-    required this.hipL,
-    required this.hipR,
-    required this.kneeL,
-    required this.kneeR,
-    required this.footL,
-    required this.footR,
-    required this.quadFlexed,
-    required this.armFlexed,
-    required this.coreFlexed,
-    required this.elevation,
-    required this.holdsWeights,
-    this.isWallExercise = false,
-    this.hudJoint,
-    this.hudP1,
-    this.hudP2,
-    this.hudAngleDeg = 0,
-    this.hudLabel = '',
-  });
-
-  final _Vector3D head;
-  final _Vector3D neck;
-  final _Vector3D chest;
-  final _Vector3D pelvis;
-  final _Vector3D shoulderL;
-  final _Vector3D shoulderR;
-  final _Vector3D elbowL;
-  final _Vector3D elbowR;
-  final _Vector3D handL;
-  final _Vector3D handR;
-  final _Vector3D hipL;
-  final _Vector3D hipR;
-  final _Vector3D kneeL;
-  final _Vector3D kneeR;
-  final _Vector3D footL;
-  final _Vector3D footR;
-
-  final bool quadFlexed;
-  final bool armFlexed;
-  final bool coreFlexed;
-  final double elevation;
-  final bool holdsWeights;
-  final bool isWallExercise;
-
-  final _Vector3D? hudJoint;
-  final _Vector3D? hudP1;
-  final _Vector3D? hudP2;
-  final double hudAngleDeg;
-  final String hudLabel;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // AUDIO COACH PLAYER (Spoken guidance with animated sound wave bars)
 // ─────────────────────────────────────────────────────────────────────────────
