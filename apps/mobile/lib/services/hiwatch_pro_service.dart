@@ -44,20 +44,57 @@ class HiWatchProProtocol {
   ];
 
   // ─── Command Packet Builders (Header 0xCD 0x00 / 0xAB / 0xAA) ──────────────
-  
-  /// Command to turn on real-time continuous step streaming (from SendData.getTurnOnRealTimeStep)
+
+  /// Return ACK command sent back to the watch upon receiving notify data
+  /// Reverse-engineered directly from `SendData.getReturnAck(key, seq)` in `xfkj.fitpro`
+  static List<int> buildReturnAckCommand(int key, int seq0, int seq1) {
+    return [0xDC, 0x00, 0x05, key & 0xFF, 0x01, seq0 & 0xFF, seq1 & 0xFF, 0x01];
+  }
+
+  /// Command to turn on real-time continuous step streaming
+  /// Reverse-engineered from `SendData.getTurnOnRealTimeStep(true)`:
+  /// `SwitchProtocol(0x15, 0x06, 0x01)`
   static List<int> buildTurnOnRealTimeStepCommand() {
-    return [0xCD, 0x00, 0x07, 0x07, 0x01, 0x00, 0x00, 0x00, 0x00];
+    return [0xCD, 0x00, 0x06, 0x15, 0x01, 0x06, 0x00, 0x01, 0x01];
+  }
+
+  /// Command to query full day sport summary (from SendData.getSportKeyDayGet(true)):
+  /// `SwitchProtocol(0x15, 0x0D, 0x01)`
+  static List<int> buildSportKeyDayGetCommand() {
+    return [0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01];
+  }
+
+  /// Command to query live sport metrics (from SendData.getSportKeyGet(true)):
+  /// `SwitchProtocol(0x15, 0x01, 0x01)`
+  static List<int> buildSportKeyGetCommand() {
+    return [0xCD, 0x00, 0x06, 0x15, 0x01, 0x01, 0x00, 0x01, 0x01];
   }
 
   /// Command to request current total step and calorie count immediately
   static List<int> buildRequestLiveMetricsCommand() {
-    return [0xCD, 0x00, 0x04, 0x07, 0x01];
+    return [0xCD, 0x00, 0x06, 0x15, 0x01, 0x06, 0x00, 0x01, 0x01];
   }
 
-  /// Command to trigger real-time Heart Rate & SpO2 measurement (from SendData.getSportMeasureHeartRecive)
+  /// Command to trigger real-time Heart Rate & SpO2 measurement
+  /// Reverse-engineered from `SendData.getSportMeasureHeartRecive(true)`:
+  /// `getProtocol(0x12, 0x24, [0x00, 0x01])`
   static List<int> buildStartHeartRateMeasureCommand() {
+    return [0xCD, 0x00, 0x04, 0x12, 0x24, 0x00, 0x01];
+  }
+
+  /// Secondary measurement trigger command for older FitPro variants
+  static List<int> buildLegacyHeartRateMeasureCommand() {
     return [0xCD, 0x00, 0x05, 0x09, 0x01, 0x01];
+  }
+
+  /// Command to negotiate BLE pairing (from SendData.getPair())
+  static List<int> buildPairCommand() {
+    return [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0A, 0x00, 0x01, 0x02];
+  }
+
+  /// Command to confirm bonding / binding status (from SendData.getIsBingding(true))
+  static List<int> buildIsBindingCommand() {
+    return [0xCD, 0x00, 0x02, 0x13, 0x01];
   }
 
   /// Universal query command for DaFit / HryFine clone chipsets
@@ -104,7 +141,7 @@ class HiWatchProProtocol {
 
     // 1. Standard Bluetooth SIG Heart Rate Measurement (UUID 0x2A37)
     //    Only applies when header is NOT a known HiWatch/DaFit command byte.
-    if (header != 0xCD && header != 0xAB && header != 0xAA &&
+    if (header != 0xCD && header != 0xDC && header != 0xAB && header != 0xAA &&
         header != 0x02 && header != 0x04 && bytes.length >= 2) {
       final flags = bytes[0];
       final is16Bit = (flags & 0x01) != 0;
@@ -112,15 +149,86 @@ class HiWatchProProtocol {
       if (hr >= 40 && hr <= 200) {
         return HiWatchTelemetryData(heartRateBpm: hr);
       }
-      // Flags byte didn't yield a valid HR — don't fall through to catch-alls.
       return HiWatchTelemetryData.empty();
     }
 
-    // 2. HiWatch / FitPro protocol (0xCD 0x00 ...)
+    // 2. HiWatch / FitPro protocol (0xCD ...)
     if (header == 0xCD && bytes.length >= 4) {
-      final cmdType = bytes[2];
+      // Build automatic ACK packet so watch continues continuous streaming
+      final ackKey = bytes.length > 3 ? bytes[3] : 0x01;
+      final ackSeq0 = bytes.length > 4 ? bytes[4] : 0x00;
+      final ackSeq1 = bytes.length > 5 ? bytes[5] : 0x00;
+      final ack = buildReturnAckCommand(ackKey, ackSeq0, ackSeq1);
 
-      // Step data packet (cmdType 0x07 / 0x08)
+      final cmdType = bytes[2];
+      final subCmd = bytes[3];
+
+      // A. StrappedEquipment Real-Time Telemetry Stream (0x15)
+      if (cmdType == 0x15 || subCmd == 0x15) {
+        int steps = 0;
+        int? kcal;
+        int? distMeters;
+
+        if (bytes.length >= 7) {
+          steps = (bytes[4] << 16) | (bytes[5] << 8) | bytes[6];
+        }
+        if (steps == 0 && bytes.length >= 9) {
+          steps = (bytes[6] << 16) | (bytes[7] << 8) | bytes[8];
+        }
+
+        if (bytes.length >= 9) {
+          kcal = (bytes[7] << 8) | bytes[8];
+        }
+        if (bytes.length >= 11) {
+          distMeters = (bytes[9] << 8) | bytes[10];
+        }
+
+        return HiWatchTelemetryData(
+          steps: steps > 0 ? steps : null,
+          calories: kcal,
+          distanceMeters: distMeters,
+          ackPacket: ack,
+        );
+      }
+
+      // B. Sport & Health Measurement (0x12 / 0x09)
+      if (cmdType == 0x12 || subCmd == 0x12 || cmdType == 0x09 || subCmd == 0x09) {
+        int? hr;
+        int? spo2;
+        int? steps;
+        int? kcal;
+
+        // Check if day summary data packet
+        if (bytes.length >= 8 && (subCmd == 0x06 || subCmd == 0x0D || subCmd == 0x11)) {
+          steps = (bytes[4] << 16) | (bytes[5] << 8) | bytes[6];
+          if (steps == 0 && bytes.length >= 9) {
+            steps = (bytes[5] << 16) | (bytes[6] << 8) | bytes[7];
+          }
+          if (bytes.length >= 10) {
+            kcal = (bytes[8] << 8) | bytes[9];
+          }
+        }
+
+        // Scan payload for valid HR (40-200) and SpO2 (75-100)
+        for (int i = 4; i < bytes.length; i++) {
+          final val = bytes[i];
+          if (hr == null && val >= 40 && val <= 200) {
+            hr = val;
+          } else if (spo2 == null && val >= 75 && val <= 100) {
+            spo2 = val;
+          }
+        }
+
+        return HiWatchTelemetryData(
+          heartRateBpm: hr,
+          bloodOxygenSpo2: spo2,
+          steps: steps != null && steps > 0 ? steps : null,
+          calories: kcal,
+          ackPacket: ack,
+        );
+      }
+
+      // C. Legacy Step data packet (cmdType 0x07 / 0x08)
       if ((cmdType == 0x07 || cmdType == 0x08) && bytes.length >= 7) {
         final steps = (bytes[4] << 16) | (bytes[5] << 8) | bytes[6];
         final kcal = bytes.length >= 9 ? (bytes[7] << 8) | bytes[8] : (steps * 0.04).round();
@@ -129,28 +237,18 @@ class HiWatchProProtocol {
           steps: steps,
           calories: kcal,
           distanceMeters: distMeters,
+          ackPacket: ack,
         );
       }
 
-      // Heart Rate & Blood Oxygen packet (cmdType 0x09)
-      if (cmdType == 0x09 && bytes.length >= 5) {
-        final hr = bytes[4];
-        final spo2 = bytes.length >= 6 ? bytes[5] : null;
-        return HiWatchTelemetryData(
-          heartRateBpm: (hr >= 40 && hr <= 200) ? hr : null,
-          bloodOxygenSpo2: (spo2 != null && spo2 >= 75 && spo2 <= 100) ? spo2 : null,
-        );
-      }
-
-      // Unknown 0xCD sub-command — discard rather than misinterpret.
-      return HiWatchTelemetryData.empty();
+      // Return ack so watch stream continues even on unknown packet IDs
+      return HiWatchTelemetryData(ackPacket: ack);
     }
 
     // 3. DaFit / Shenzhen protocol (0xAB or 0xAA)
     if ((header == 0xAB || header == 0xAA) && bytes.length >= 4) {
       final cmd = bytes[1];
       if ((cmd == 0x51 || cmd == 0x07 || cmd == 0x08) && bytes.length >= 5) {
-        // Steps packet
         final steps = (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
         final kcal = bytes.length >= 7 ? (bytes[5] << 8) | bytes[6] : (steps * 0.04).round();
         return HiWatchTelemetryData(
@@ -158,7 +256,6 @@ class HiWatchProProtocol {
           calories: kcal > 0 ? kcal : null,
         );
       } else if (cmd == 0x09 || cmd == 0x31) {
-        // HR packet
         final hr = bytes[2];
         final spo2 = bytes.length >= 4 ? bytes[3] : null;
         return HiWatchTelemetryData(
@@ -166,14 +263,10 @@ class HiWatchProProtocol {
           bloodOxygenSpo2: (spo2 != null && spo2 >= 75 && spo2 <= 100) ? spo2 : null,
         );
       }
-      // Unknown 0xAB/0xAA sub-command — discard.
       return HiWatchTelemetryData.empty();
     }
 
-    // 4. [REMOVED] Generic HR-first catch-all — was causing packet headers,
-    //    checksums, and any byte in 35-225 to be misread as heart-rate values.
-
-    // 5. Format [0x02, hr, spo2, ...] — used by some HiWatch FitPro variants
+    // 4. Format [0x02, hr, spo2, ...] — used by some HiWatch FitPro variants
     if (header == 0x02 && bytes.length >= 3) {
       final hr = bytes[1];
       final spo2 = bytes[2];
@@ -183,7 +276,7 @@ class HiWatchProProtocol {
       );
     }
 
-    // 6. Format [0x04, 0x00, hr, spo2] — HiWatch Ultra / Watch 8 Ultra variants
+    // 5. Format [0x04, 0x00, hr, spo2] — HiWatch Ultra / Watch 8 Ultra variants
     if (header == 0x04 && bytes.length >= 4) {
       final hr = bytes[2];
       final spo2 = bytes[3];
@@ -192,9 +285,6 @@ class HiWatchProProtocol {
         bloodOxygenSpo2: (spo2 >= 75 && spo2 <= 100) ? spo2 : null,
       );
     }
-
-    // [REMOVED] Old catch-all that returned bytes[0] as HR for any value in
-    // 35-225 — this caused false heart-rate readings from arbitrary packet bytes.
 
     return HiWatchTelemetryData.empty();
   }
@@ -208,6 +298,7 @@ class HiWatchTelemetryData {
   final int? heartRateBpm;
   final int? bloodOxygenSpo2;
   final int? batteryLevel;
+  final List<int>? ackPacket;
 
   const HiWatchTelemetryData({
     this.steps,
@@ -216,6 +307,7 @@ class HiWatchTelemetryData {
     this.heartRateBpm,
     this.bloodOxygenSpo2,
     this.batteryLevel,
+    this.ackPacket,
   });
 
   factory HiWatchTelemetryData.empty() => const HiWatchTelemetryData();
@@ -224,5 +316,6 @@ class HiWatchTelemetryData {
       steps == null &&
       calories == null &&
       heartRateBpm == null &&
-      bloodOxygenSpo2 == null;
+      bloodOxygenSpo2 == null &&
+      ackPacket == null;
 }

@@ -340,8 +340,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       // Initial gentle handshake with paced 150ms delays to prevent MCU buffer overrun
       await _broadcastWatchCommands([
         HiWatchProProtocol.buildSyncTimeCommand(),
+        HiWatchProProtocol.buildPairCommand(),
+        HiWatchProProtocol.buildIsBindingCommand(),
         HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),
-        HiWatchProProtocol.buildRequestLiveMetricsCommand(),
+        HiWatchProProtocol.buildSportKeyDayGetCommand(),
+        HiWatchProProtocol.buildSportKeyGetCommand(),
         HiWatchProProtocol.buildStartHeartRateMeasureCommand(), // trigger HR+SpO2 immediately on connect
       ]);
 
@@ -393,17 +396,26 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       // 4-step rotation — covers all data types while keeping MCU buffer stable
       switch (_telemetryTick % 4) {
         case 0:
-          await _broadcastWatchCommands([HiWatchProProtocol.buildUniversalHeartbeatCommand()]);
+          // Keep continuous step/telemetry streaming alive
+          await _broadcastWatchCommands([HiWatchProProtocol.buildTurnOnRealTimeStepCommand()]);
           break;
         case 1:
-          // HR + SpO2 measurement — was missing before, causing no data
-          await _broadcastWatchCommands([HiWatchProProtocol.buildStartHeartRateMeasureCommand()]);
+          // Request real-time heart rate & SpO2 measurement
+          await _broadcastWatchCommands([
+            HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
+            HiWatchProProtocol.buildLegacyHeartRateMeasureCommand(),
+          ]);
           break;
         case 2:
-          await _broadcastWatchCommands([HiWatchProProtocol.buildRequestLiveMetricsCommand()]);
+          // Query live day sport summary (steps, distance, kcal)
+          await _broadcastWatchCommands([HiWatchProProtocol.buildSportKeyDayGetCommand()]);
           break;
         case 3:
-          await _broadcastWatchCommands([HiWatchProProtocol.buildDaFitStepQueryCommand()]);
+          // Universal keepalive / heartbeat command
+          await _broadcastWatchCommands([
+            HiWatchProProtocol.buildUniversalHeartbeatCommand(),
+            HiWatchProProtocol.buildSportKeyGetCommand(),
+          ]);
           break;
       }
     });
@@ -423,7 +435,20 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
   void _processIncomingWatchData(List<int> bytes) {
     if (bytes.isEmpty) return;
+
     final telemetry = HiWatchProProtocol.parseNotifyPacket(bytes);
+
+    // Immediately ACK incoming HiWatch / FitPro packets so watch firmware
+    // continues streaming real-time telemetry uninterrupted.
+    if (telemetry.ackPacket != null) {
+      _sendWatchAck(telemetry.ackPacket!);
+    } else if (bytes[0] == 0xCD && bytes.length >= 4) {
+      final key = bytes[3];
+      final seq0 = bytes.length > 4 ? bytes[4] : 0;
+      final seq1 = bytes.length > 5 ? bytes[5] : 0;
+      _sendWatchAck(HiWatchProProtocol.buildReturnAckCommand(key, seq0, seq1));
+    }
+
     if (telemetry.isEmpty) return;
 
     if (!mounted) return;
@@ -563,6 +588,18 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         } catch (_) {}
       }
     }
+  }
+
+  /// Sends an ACK packet back to the watch immediately (fire-and-forget) to keep
+  /// the real-time streaming session alive. ACKs must not block data processing.
+  void _sendWatchAck(List<int> ackBytes) {
+    if (!_isRealBleConnected || _writeCharacteristics.isEmpty) return;
+    final targetChar = _writeCharacteristics.first;
+    unawaited(() async {
+      try {
+        await targetChar.write(ackBytes, withoutResponse: true);
+      } catch (_) {}
+    }());
   }
 
   Future<void> _disconnectRealWatch() async {
