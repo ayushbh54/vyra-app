@@ -83,9 +83,8 @@ class HiWatchProProtocol {
   }
 
   /// Secondary measurement trigger command for older FitPro variants
-  static List<int> buildLegacyHeartRateMeasureCommand() {
-    return [0xCD, 0x00, 0x05, 0x09, 0x01, 0x01];
-  }
+  static List<int> buildLegacyHeartRateMeasureCommand() =>
+      [0xCD, 0x00, 0x03, 0x12, 0x01, 0x01];
 
   /// Command to negotiate BLE pairing (from SendData.getPair())
   static List<int> buildPairCommand() {
@@ -98,14 +97,12 @@ class HiWatchProProtocol {
   }
 
   /// Universal query command for DaFit / HryFine clone chipsets
-  static List<int> buildDaFitStepQueryCommand() {
-    return [0xAB, 0x00, 0x04, 0xFF, 0x31];
-  }
+  static List<int> buildDaFitStepQueryCommand() =>
+      [0xAB, 0x00, 0x04, 0xFF, 0x50, 0x00, 0x00];
 
   /// Periodic Heartbeat keep-alive command to prevent watch from closing GATT notify stream
-  static List<int> buildUniversalHeartbeatCommand() {
-    return [0xCD, 0x00, 0x03, 0x01];
-  }
+  static List<int> buildUniversalHeartbeatCommand() =>
+      [0xAB, 0x00, 0x04, 0xFF, 0x56, 0x00, 0x00];
 
   /// Command to vibrate / find the watch (from SDKCmdMannager.findWatch)
   static List<int> buildFindWatchCommand() {
@@ -115,27 +112,21 @@ class HiWatchProProtocol {
   /// Command to synchronize date and time to the watch (from SDKCmdMannager.synchronTime)
   static List<int> buildSyncTimeCommand([DateTime? dt]) {
     final now = dt ?? DateTime.now();
-    return [
-      0xCD,
-      0x00,
-      0x09,
-      0x01,
-      now.year % 100,
-      now.month,
-      now.day,
-      now.hour,
-      now.minute,
-      now.second,
-    ];
+    return [0xAB, 0x00, 0x08, 0xFF, 0x92,
+      now.year - 2000, now.month, now.day,
+      now.hour, now.minute, now.second];
   }
 
   // ─── Packet Parsers ────────────────────────────────────────────────────────
   
   /// Parses raw byte packets received on notify characteristic
   static HiWatchTelemetryData parseNotifyPacket(List<int> bytes) {
-    if (bytes.length < 2) {
+    if (bytes.isEmpty) {
       return HiWatchTelemetryData.empty();
     }
+
+    // ignore: avoid_print
+    print('[WATCH-RAW] ${bytes.length}B: ${bytes.map((b) => '0x${b.toRadixString(16).padLeft(2,'0').toUpperCase()}').join(' ')}');
 
     final header = bytes[0];
 
@@ -284,6 +275,74 @@ class HiWatchProProtocol {
         heartRateBpm: (hr >= 40 && hr <= 200) ? hr : null,
         bloodOxygenSpo2: (spo2 >= 75 && spo2 <= 100) ? spo2 : null,
       );
+    }
+
+    // ── FORMAT: Single byte = raw heart rate ────────────────────────────────
+    if (bytes.length == 1 && bytes[0] >= 40 && bytes[0] <= 220) {
+      return HiWatchTelemetryData(heartRateBpm: bytes[0]);
+    }
+
+    // ── FORMAT: [0x04, 0x00, hr, spo2] ─────────────────────────────────────
+    if (header == 0x04 && bytes.length >= 4) {
+      final hr = bytes[2]; final spo2 = bytes[3];
+      return HiWatchTelemetryData(
+        heartRateBpm: (hr >= 40 && hr <= 220) ? hr : null,
+        bloodOxygenSpo2: (spo2 >= 75 && spo2 <= 100) ? spo2 : null,
+      );
+    }
+
+    // ── FORMAT: [0x02, hr, spo2, ...] ──────────────────────────────────────
+    if (header == 0x02 && bytes.length >= 3) {
+      final hr = bytes[1]; final spo2 = bytes[2];
+      return HiWatchTelemetryData(
+        heartRateBpm: (hr >= 40 && hr <= 220) ? hr : null,
+        bloodOxygenSpo2: (spo2 >= 75 && spo2 <= 100) ? spo2 : null,
+      );
+    }
+
+    // ── FORMAT: [hr, spo2, steps_hi, steps_lo] — Generic BLE watch ─────────
+    if (bytes.length >= 4 && header >= 40 && header <= 220) {
+      final possibleSpo2 = bytes[1];
+      if (possibleSpo2 >= 75 && possibleSpo2 <= 100) {
+        final steps = (bytes[2] << 8) | bytes[3];
+        return HiWatchTelemetryData(
+          heartRateBpm: header,
+          bloodOxygenSpo2: possibleSpo2,
+          steps: steps > 0 ? steps : null,
+        );
+      }
+      return HiWatchTelemetryData(heartRateBpm: header);
+    }
+
+    // ── FORMAT: [0x01, len, 0x12, 0x24, hr, spo2] ──────────────────────────
+    if (header == 0x01 && bytes.length >= 6 && bytes[2] == 0x12 && bytes[3] == 0x24) {
+      final hr = bytes[4]; final spo2 = bytes[5];
+      return HiWatchTelemetryData(
+        heartRateBpm: (hr >= 40 && hr <= 220) ? hr : null,
+        bloodOxygenSpo2: (spo2 >= 75 && spo2 <= 100) ? spo2 : null,
+      );
+    }
+
+    // ── FORMAT: Broad scan — find HR/SpO2 anywhere ─────────────────────────
+    if (bytes.length >= 3 && bytes.length <= 24) {
+      int? foundHr; int? foundSpo2; int? foundSteps;
+      for (int i = 0; i < bytes.length; i++) {
+        final v = bytes[i];
+        if (foundHr == null && v >= 45 && v <= 200) {
+          foundHr = v;
+        } else if (foundSpo2 == null && foundHr != null && v >= 85 && v <= 100) {
+          foundSpo2 = v;
+        }
+      }
+      if (bytes.length >= 6) {
+        for (int i = 0; i <= bytes.length - 3; i++) {
+          final s = (bytes[i] << 16) | (bytes[i+1] << 8) | bytes[i+2];
+          if (s > 0 && s < 100000) { foundSteps = s; break; }
+        }
+      }
+      if (foundHr != null) {
+        return HiWatchTelemetryData(heartRateBpm: foundHr, bloodOxygenSpo2: foundSpo2, steps: foundSteps);
+      }
     }
 
     return HiWatchTelemetryData.empty();

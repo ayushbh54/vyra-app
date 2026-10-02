@@ -413,6 +413,9 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
   Color? _coachOutfitColor;
   Color? _coachAuraColor;
 
+  bool _isDanceMode = false;
+  String _danceLabel = '💃 Dance';
+
   @override
   void initState() {
     super.initState();
@@ -448,6 +451,11 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
         _coachName = savedName ?? (isFemale ? 'Megan' : 'Remy');
         if (savedOutfitColorInt != null) _coachOutfitColor = Color(savedOutfitColorInt);
         if (savedAuraColorInt != null) _coachAuraColor = Color(savedAuraColorInt);
+        
+        // Set speed based on exercise intensity
+        if (!_isDanceMode) {
+          _speedMultiplier = AvatarCustomizationService.exerciseIntensitySpeed(widget.item.slug.toLowerCase());
+        }
       });
       // Set avatar pose to match exercise
       AvatarCustomizationService.instance
@@ -612,6 +620,21 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
     return widget.item.category.toUpperCase();
   }
 
+  void _toggleDance() {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _isDanceMode = !_isDanceMode;
+      if (_isDanceMode) {
+        _speedMultiplier = 1.8;
+        _danceLabel = '🛑 Stop Dance';
+      } else {
+        _speedMultiplier = AvatarCustomizationService.exerciseIntensitySpeed(
+            widget.item.slug.toLowerCase());
+        _danceLabel = '💃 Dance';
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final faceProfile = AvatarCustomizationService.instance.profile;
@@ -774,6 +797,79 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
             ),
           ),
 
+          // ── 💃 Dance / Exercise Mode Toggle ──────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(VSpace.base, 6, VSpace.base, 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _toggleDance,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _isDanceMode
+                            ? const Color(0xFFE91E63).withValues(alpha: 0.18)
+                            : VColor.accent.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(VRadius.pill),
+                        border: Border.all(
+                          color: _isDanceMode
+                              ? const Color(0xFFE91E63).withValues(alpha: 0.7)
+                              : VColor.accent.withValues(alpha: 0.35),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _isDanceMode ? Icons.stop_rounded : Icons.music_note_rounded,
+                            size: 16,
+                            color: _isDanceMode ? const Color(0xFFE91E63) : VColor.accent,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _danceLabel,
+                            style: TextStyle(
+                              color: _isDanceMode ? const Color(0xFFE91E63) : VColor.accent,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: VColor.surface,
+                    borderRadius: BorderRadius.circular(VRadius.pill),
+                    border: Border.all(color: VColor.line),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _coachModelPath.contains('female') ? Icons.female_rounded : Icons.male_rounded,
+                        size: 14,
+                        color: VColor.accentCyan,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        _coachName,
+                        style: const TextStyle(color: VColor.textMid, fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // ── 3D Coach Avatar Viewport (360° Touch Orbit + Perspective Presets) ──
           SizedBox(
             height: 220,
@@ -802,7 +898,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                   borderRadius: BorderRadius.circular(16),
                   child: ModelViewer(
                     key: ValueKey(
-                        '${_coachModelPath}_${_orbitAngleString}_${_speedMultiplier}_${_isPlaying}_${_coachOutfitColor?.toARGB32()}'),
+                        '${_coachModelPath}_${_orbitAngleString}_${_speedMultiplier}_${_isPlaying}_${_isDanceMode}_${_coachOutfitColor?.toARGB32()}'),
                     src: _coachModelPath,
                     alt: '3D Coach $_coachName',
                     ar: false,
@@ -818,7 +914,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                         .instance.currentMixamoAnim,
                     loading: Loading.eager,
                     relatedJs: _buildModelJs(
-                      timeScale: _isPlaying ? _speedMultiplier : 0.0,
+                      timeScale: _isPlaying ? (_isDanceMode ? 1.8 : _speedMultiplier) : 0.0,
                       outfit: _coachOutfitColor,
                     ),
                   ),

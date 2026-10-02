@@ -31,6 +31,7 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
   String _activeAnim = 'idle';
   bool _isSpeaking = false;
   bool _isSelectedSaved = false;
+  bool _isLoading = true;
 
   // Personalization settings — defaults to Remy until user renames
   String _coachName = _defaultMaleName;
@@ -92,6 +93,7 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
         _bodyScanResult = savedScan;
       });
     }
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _selectCoach() async {
@@ -102,6 +104,10 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
     final coachModel = isMale ? _maleModelAsset : _femaleModelAsset;
 
     await prefs.setString('selected_coach_gender', _selectedGender);
+    // Cross-save gender to all keys so any screen can detect it
+    await prefs.setString('user_gender', _selectedGender);
+    await prefs.setString('avatar_gender', _selectedGender);
+    
     await prefs.setString('selected_coach_name', _coachName);
     await prefs.setString('selected_coach_model', coachModel);
     await prefs.setString('coach_physique', _selectedPhysique);
@@ -477,6 +483,13 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: VColor.bg,
+        body: Center(child: CircularProgressIndicator(color: VColor.accent)),
+      );
+    }
+
     final isMale = _selectedGender == 'male';
     final coachTitle = isMale ? 'Strength & Conditioning' : 'Agility & Mindset';
     final modelPath = isMale ? _maleModelAsset : _femaleModelAsset;

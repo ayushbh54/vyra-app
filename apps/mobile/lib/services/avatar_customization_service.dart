@@ -381,6 +381,26 @@ class AvatarCustomizationService extends ChangeNotifier {
     'skipping':      'idle',
   };
 
+  /// Returns animation timeScale for a pose — makes the 'idle' breathing match exercise intensity.
+  static double poseToTimeScale(String pose) {
+    switch (pose) {
+      case 'running':       return 2.2;
+      case 'boxing':        return 2.0;
+      case 'skipping':      return 2.5;
+      case 'dancing':       return 1.8;
+      case 'football':      return 1.7;
+      case 'cricket':       return 1.3;
+      case 'cycling':       return 1.4;
+      case 'squat':         return 1.1;
+      case 'pushup':        return 1.0;
+      case 'weightlifting': return 1.0;
+      case 'swimming':      return 0.8;
+      case 'plank':         return 0.6;
+      case 'yoga':          return 0.4;
+      default:              return 1.0;
+    }
+  }
+
   /// Computes AI breathing and movement tempo based on exercise intensity
   static double exerciseIntensitySpeed(String slug) {
     final s = slug.toLowerCase();
@@ -399,6 +419,9 @@ class AvatarCustomizationService extends ChangeNotifier {
   String _currentMixamoAnim = 'idle';
   String get currentMixamoAnim => _currentMixamoAnim;
 
+  double _currentTimeScale = 1.0;
+  double get currentTimeScale => _currentTimeScale;
+
   /// Call this whenever the user opens an exercise or starts a recommended workout.
   /// The avatar will automatically transition to that exercise's pose and pace.
   Future<void> setActiveExercisePose(String exerciseSlug) async {
@@ -416,6 +439,7 @@ class AvatarCustomizationService extends ChangeNotifier {
     _profile = updated;
     _currentRpmExercisePose = rpmAnim;
     _currentMixamoAnim = mixamoAnim;
+    _currentTimeScale = poseToTimeScale(pose);
     notifyListeners();
     // Persist so profile screen also reflects it
     try {
