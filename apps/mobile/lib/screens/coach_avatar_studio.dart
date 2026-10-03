@@ -652,6 +652,7 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
                   auraColor: _selectedAuraColor,
                   height: 340,
                   cameraOrbit: '0deg 75deg 3.2m',
+                  autoPlay: isMale || (_activeAnim.isNotEmpty && _activeAnim == 'idle'),
                 ),
               ),
             ),

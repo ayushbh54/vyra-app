@@ -438,6 +438,28 @@ class AvatarCustomizationService extends ChangeNotifier {
     return isFemale ? 'idle' : 'Run';
   }
 
+  /// Maps exercise slug to bone-pose key matching POSES in exercise_poses.js
+  static String getExercisePoseKey(String exerciseSlug) {
+    final pose = slugToAvatarPose(exerciseSlug.toLowerCase());
+    const map = <String, String>{
+      'running':       'running',
+      'boxing':        'boxing',
+      'yoga':          'yoga',
+      'cycling':       'cycling',
+      'weightlifting': 'weightlifting',
+      'squat':         'squat',
+      'plank':         'plank',
+      'pushup':        'pushup',
+      'swimming':      'swimming',
+      'dancing':       'dancing',
+      'football':      'football',
+      'cricket':       'cricket',
+      'skipping':      'skipping',
+      'tai_chi':       'tai_chi',
+    };
+    return map[pose] ?? 'squat';
+  }
+
   /// Computes AI breathing and movement tempo based on exercise intensity
   static double exerciseIntensitySpeed(String slug) {
     final s = slug.toLowerCase();

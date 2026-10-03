@@ -90,6 +90,7 @@ export interface UserHealthContext {
   watchHeartRate?: number;     // current HR from smartwatch
   watchSteps?: number;         // today's steps
   watchSpo2?: number;          // current SpO2
+  watchBloodPressure?: string; // current Blood Pressure (e.g. '120/80')
   todayExercises?: string[];   // exercises done today
   recommendedExercises?: string[]; // today's plan exercises
   fitnessLevel?: string;       // beginner/intermediate/advanced
@@ -111,9 +112,10 @@ function buildPersonalContextBlock(ctx: UserHealthContext): string {
   if (ctx.physicalConsiderations) lines.push(`Physical Considerations: ${ctx.physicalConsiderations}`);
   if (ctx.currentDiet) lines.push(`Diet Type: ${ctx.currentDiet}`);
   
-  if (ctx.watchHeartRate || ctx.watchSteps || ctx.watchSpo2) {
+  if (ctx.watchHeartRate || ctx.watchSteps || ctx.watchSpo2 || ctx.watchBloodPressure) {
     lines.push('\n=== LIVE SMARTWATCH DATA ===');
     if (ctx.watchHeartRate) lines.push(`Heart Rate: ${ctx.watchHeartRate} bpm`);
+    if (ctx.watchBloodPressure) lines.push(`Blood Pressure: ${ctx.watchBloodPressure} mmHg`);
     if (ctx.watchSpo2) lines.push(`SpO2: ${ctx.watchSpo2}%`);
     if (ctx.watchSteps) lines.push(`Steps Today: ${ctx.watchSteps}`);
   }
@@ -138,10 +140,10 @@ function buildPersonalContextBlock(ctx: UserHealthContext): string {
   
   lines.push('\n=== INSTRUCTIONS ===');
   lines.push('Use ALL the above athlete data to give hyper-personalized, specific advice.');
-  lines.push('Reference their actual numbers (HR, BMI, lab values) in responses.');
+  lines.push('Reference their actual numbers (HR, BP, BMI, lab values) in responses.');
   lines.push('Contraindicate exercises that conflict with their physical considerations.');
   lines.push('Align diet advice with their diet type and lab markers.');
-  lines.push('If watch HR > 100 at rest, suggest recovery. If SpO2 < 95, flag it.');
+  lines.push('If watch HR > 100 at rest or BP > 135/85 at rest, suggest hydration and light breathing recovery. If SpO2 < 95, flag it.');
   
   return lines.join('\n');
 }

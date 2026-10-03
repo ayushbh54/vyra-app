@@ -457,9 +457,11 @@ class _AiChatScreenState extends State<AiChatScreen>
 
     final hr = prefs.getInt('live_heart_rate');
     final spo2 = prefs.getInt('live_spo2');
+    final bp = prefs.getString('live_blood_pressure');
     final steps = prefs.getInt('live_steps');
     if (hr != null && hr > 0) ctx['watchHeartRate'] = hr;
     if (spo2 != null && spo2 > 0) ctx['watchSpo2'] = spo2;
+    if (bp != null && bp != '--') ctx['watchBloodPressure'] = bp;
     if (steps != null) ctx['watchSteps'] = steps;
 
     try {

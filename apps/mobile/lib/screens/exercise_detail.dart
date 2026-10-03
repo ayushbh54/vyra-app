@@ -414,6 +414,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
   Color? _coachAuraColor;
 
   bool _isDanceMode = false;
+  String _exercisePosesJs = '';
 
   /// Returns the best camera angle for demonstrating this exercise
   String _getExerciseCameraOrbit(String slug) {
@@ -461,6 +462,22 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
     _orbitAngleString = _getExerciseCameraOrbit(widget.item.slug);
     _activeAngleLabel = 'Exercise View';
     _isDanceMode = false;
+    
+    // Set correct animation speed for this exercise
+    final initPose = AvatarCustomizationService.slugToAvatarPose(
+        widget.item.slug.toLowerCase());
+    _speedMultiplier = AvatarCustomizationService.poseToTimeScale(initPose);
+    
+    // Tell avatar service which exercise is active
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AvatarCustomizationService.instance
+          .setActiveExercisePose(widget.item.slug);
+    });
+
+    // Preload exercise bone manipulation JS from bundle for offline instant injection
+    rootBundle.loadString('assets/js/exercise_poses.js').then((js) {
+      if (mounted) setState(() => _exercisePosesJs = js);
+    }).catchError((_) {});
 
     _animCtrl = AnimationController(
       vsync: this,
@@ -555,46 +572,71 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
     });
   }
 
-  String _buildModelJs({required double timeScale, Color? outfit}) {
-    String topRgba = '';
-    if (outfit != null) {
-      final r = (outfit.r).toStringAsFixed(2);
-      final g = (outfit.g).toStringAsFixed(2);
-      final b = (outfit.b).toStringAsFixed(2);
-      topRgba = '[$r, $g, $b, 1.0]';
-    }
+  String _buildModelJs({
+    required double timeScale,
+    Color? outfit,
+    String poseKey = '',
+  }) {
+    final outfitJs = outfit != null
+        ? '''
+        if (mv.model && mv.model.materials) {
+          try {
+            for (var i = 0; i < mv.model.materials.length; i++) {
+              var m = mv.model.materials[i];
+              if (!m) continue;
+              try { m.pbrMetallicRoughness["metallicFactor"] = 0.0; } catch(e) {}
+              try { m.pbrMetallicRoughness["roughnessFactor"] = 0.85; } catch(e) {}
+            }
+          } catch(e) {}
+        }'''
+        : '''
+        if (mv.model && mv.model.materials) {
+          try {
+            for (var i = 0; i < mv.model.materials.length; i++) {
+              var m = mv.model.materials[i];
+              if (!m) continue;
+              try { m.pbrMetallicRoughness["metallicFactor"] = 0.0; } catch(e) {}
+              try { m.pbrMetallicRoughness["roughnessFactor"] = 0.85; } catch(e) {}
+            }
+          } catch(e) {}
+        }''';
+
+    final poseJs = poseKey.isNotEmpty
+        ? '''
+        $_exercisePosesJs
+        function applyVyraPose() {
+          if (typeof window.VyraExercisePose !== "undefined") {
+            window.VyraExercisePose.apply("$poseKey");
+          } else {
+            if (!document.getElementById("vyra-pose-script")) {
+              var s = document.createElement("script");
+              s.id = "vyra-pose-script";
+              s.src = "/assets/assets/js/exercise_poses.js";
+              s.onload = function() {
+                if (typeof window.VyraExercisePose !== "undefined") {
+                  window.VyraExercisePose.apply("$poseKey");
+                }
+              };
+              document.head.appendChild(s);
+            }
+          }
+        }
+        setTimeout(applyVyraPose, 400);'''
+        : '';
+
     return '''
     (function() {
       function apply() {
         var mv = document.querySelector('model-viewer');
         if (!mv) return;
         mv.timeScale = $timeScale;
-        mv.environmentImage = 'neutral';
-        if (mv.model && mv.model.materials) {
-          try {
-            for (var i = 0; i < mv.model.materials.length; i++) {
-              var mat = mv.model.materials[i];
-              if (!mat || !mat.name) continue;
-              if (mat.name === 'Alpha_Joints_MAT' || mat.name === 'Alpha_Body_MAT' || 
-                  mat.name === 'mixamorig:Hips' || mat.name.toLowerCase().includes('skin') ||
-                  mat.name.toLowerCase().includes('body')) {
-                try { mat.pbrMetallicRoughness['metallicFactor'] = 0.0; } catch(e) {}
-                try { mat.pbrMetallicRoughness['roughnessFactor'] = 0.85; } catch(e) {}
-              }
-              if (mat.name === 'Topmat' || mat.name === 'Ch21_body' || mat.name === 'Alpha_Surface_MAT') {
-                ${topRgba.isNotEmpty ? "try { mat.pbrMetallicRoughness.setBaseColorFactor($topRgba); } catch(e) {}" : ""}
-              }
-            }
-          } catch(e) {}
-        }
+        $outfitJs
+        $poseJs
       }
       var mv = document.querySelector('model-viewer');
       if (mv) {
-        if (mv.loaded) {
-          apply();
-        } else {
-          mv.addEventListener('load', apply, { once: true });
-        }
+        if (mv.loaded) { apply(); }
+        else { mv.addEventListener('load', apply, { once: true }); }
       }
     })();
     ''';
@@ -991,6 +1033,11 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                     // Female: only play in dance mode (idle = samba dance).
                     final shouldPlay = isFemale ? _isDanceMode : true;
                     final ts = _isDanceMode ? 1.8 : _speedMultiplier;
+                    
+                    final poseKey = _isDanceMode
+                        ? ''
+                        : AvatarCustomizationService.getExercisePoseKey(widget.item.slug);
+
                     return ModelViewer(
                       key: ValueKey(
                           '${_coachModelPath}_${_orbitAngleString}_${_speedMultiplier}_${_isDanceMode}_${_coachOutfitColor?.toARGB32()}'),
@@ -1011,6 +1058,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                       relatedJs: _buildModelJs(
                         timeScale: shouldPlay ? ts : 0.0,
                         outfit: _coachOutfitColor,
+                        poseKey: poseKey,
                       ),
                     );
                   }),

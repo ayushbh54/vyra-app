@@ -61,6 +61,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   int _activeMinutes = 0;
   String _liveHrZone = "Resting";
   int _liveRecoveryScore = 0;
+  String _liveBp = '--';
   DateTime? _lastAutoSavedAt;
   bool _isAutoSaving = false;
   String? _lastDataTimestamp;
@@ -68,6 +69,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   final _hrNotifier = ValueNotifier<int>(0);
   final _spo2Notifier = ValueNotifier<int>(0);
   final _stepsNotifier = ValueNotifier<int>(0);
+  final _bpNotifier = ValueNotifier<String>('--');
   
   late AnimationController _heartPulseController;
 
@@ -100,6 +102,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     _connectionSubscription?.cancel();
     _scanSubscription?.cancel();
     _heartPulseController.dispose();
+    _hrNotifier.dispose();
+    _spo2Notifier.dispose();
+    _stepsNotifier.dispose();
+    _bpNotifier.dispose();
     super.dispose();
   }
 
@@ -288,6 +294,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
       if (!mounted) return;
 
+      // Request higher MTU so HiWatch multi-byte packets stream without truncation
+      try {
+        await device.requestMtu(512);
+      } catch (_) {}
+
       // Discover GATT services & characteristics across vendor & standard profiles
       final services = await device.discoverServices();
 
@@ -324,6 +335,16 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               });
               _notifySubscriptions.add(sub);
             } catch (_) {}
+
+            // Immediate initial read for readable telemetry characteristics
+            if (c.properties.read) {
+              try {
+                final initData = await c.read();
+                if (initData.isNotEmpty) {
+                  _processIncomingWatchData(initData);
+                }
+              } catch (_) {}
+            }
           }
         }
       }
@@ -462,6 +483,16 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         }
         _liveRecoveryScore = (100 - (_liveHeartRate - 68).abs() * 0.4).clamp(55, 99).round();
       }
+      if (telemetry.bloodPressureSystolic != null && telemetry.bloodPressureDiastolic != null) {
+        final sys = telemetry.bloodPressureSystolic!;
+        final dia = telemetry.bloodPressureDiastolic!;
+        if (sys >= 60 && sys <= 220 && dia >= 40 && dia <= 140) {
+          _liveBp = '$sys/$dia';
+          _bpNotifier.value = _liveBp;
+          _lastSummary['bpSystolic'] = sys;
+          _lastSummary['bpDiastolic'] = dia;
+        }
+      }
       if (telemetry.bloodOxygenSpo2 != null && telemetry.bloodOxygenSpo2! >= 70) {
         _liveSpo2 = telemetry.bloodOxygenSpo2!;
         _spo2Notifier.value = _liveSpo2;
@@ -478,6 +509,17 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         _lastSummary['distanceMeters'] = _liveDistanceMeters;
         _lastSummary['heartRateBpm'] = _liveHeartRate;
         if (_liveSpo2 > 0) _lastSummary['bloodOxygenSpo2'] = _liveSpo2;
+        if (_liveBp != '--') {
+          final parts = _liveBp.split('/');
+          if (parts.length == 2) {
+            final s = int.tryParse(parts[0]);
+            final d = int.tryParse(parts[1]);
+            if (s != null && d != null) {
+              _lastSummary['bpSystolic'] = s;
+              _lastSummary['bpDiastolic'] = d;
+            }
+          }
+        }
       }
     });
 
@@ -490,6 +532,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       }
       if (telemetry.bloodOxygenSpo2 != null && telemetry.bloodOxygenSpo2! >= 70) {
         await prefs.setInt('live_spo2', telemetry.bloodOxygenSpo2!);
+      }
+      if (_liveBp != '--') {
+        await prefs.setString('live_blood_pressure', _liveBp);
       }
       if (telemetry.steps != null && telemetry.steps! > 0) {
         await prefs.setInt('live_steps', telemetry.steps!);
@@ -514,6 +559,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       if (currentSpo2 > 0) 'bloodOxygenSpo2': currentSpo2,
       if (currentDist > 0) 'distanceMeters': currentDist,
       if (_activeMinutes > 0) 'activeMinutes': _activeMinutes,
+      if (_lastSummary.containsKey('bpSystolic')) 'bpSystolic': _lastSummary['bpSystolic']!,
+      if (_lastSummary.containsKey('bpDiastolic')) 'bpDiastolic': _lastSummary['bpDiastolic']!,
     };
 
     if (!mounted) return;
@@ -1155,6 +1202,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           'caloriesBurned': currentKcal,
           if (_liveHeartRate > 0) 'heartRateBpm': _liveHeartRate,
           if (_liveSpo2 > 0) 'bloodOxygenSpo2': _liveSpo2,
+          if (_lastSummary.containsKey('bpSystolic')) 'bpSystolic': _lastSummary['bpSystolic']!,
+          if (_lastSummary.containsKey('bpDiastolic')) 'bpDiastolic': _lastSummary['bpDiastolic']!,
         };
       } else if (!_usePhoneSensors) {
         summary = await _healthService.fetchTodaySummary();
@@ -1670,7 +1719,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             const Divider(color: VColor.lineSoft, height: 1),
             const SizedBox(height: 10),
 
-            // Metrics Row 2: Calories, Distance, Recovery Score
+            // Metrics Row 2: Calories, Distance, Recovery Score, Blood Pressure
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -1708,6 +1757,26 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                       ],
                     ),
                     const Text("DISTANCE", style: TextStyle(color: VColor.textMid, fontSize: 9.5, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                // Blood Pressure
+                Column(
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.monitor_heart_outlined, color: Color(0xFFFFD166), size: 16),
+                        const SizedBox(width: 4),
+                        ValueListenableBuilder<String>(
+                          valueListenable: _bpNotifier,
+                          builder: (_, bp, __) => Text(
+                            bp,
+                            style: const TextStyle(color: Color(0xFFFFD166), fontSize: 15, fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Text("BLOOD PRESS.", style: TextStyle(color: VColor.textMid, fontSize: 9.5, fontWeight: FontWeight.w600)),
                   ],
                 ),
                 // Recovery Score

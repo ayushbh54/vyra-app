@@ -5,27 +5,27 @@ void main() {
   group('HiWatchProProtocol Command Builders', () {
     test('buildTurnOnRealTimeStepCommand produces exact FitPro byte sequence', () {
       final cmd = HiWatchProProtocol.buildTurnOnRealTimeStepCommand();
-      expect(cmd, equals([0xCD, 0x00, 0x07, 0x07, 0x01, 0x00, 0x00, 0x00, 0x00]));
+      expect(cmd, equals([0xCD, 0x00, 0x06, 0x15, 0x01, 0x06, 0x00, 0x01, 0x01]));
     });
 
     test('buildRequestLiveMetricsCommand produces immediate step query packet', () {
       final cmd = HiWatchProProtocol.buildRequestLiveMetricsCommand();
-      expect(cmd, equals([0xCD, 0x00, 0x04, 0x07, 0x01]));
+      expect(cmd, equals([0xCD, 0x00, 0x06, 0x15, 0x01, 0x06, 0x00, 0x01, 0x01]));
     });
 
     test('buildStartHeartRateMeasureCommand triggers continuous HR & SpO2 sensors', () {
       final cmd = HiWatchProProtocol.buildStartHeartRateMeasureCommand();
-      expect(cmd, equals([0xCD, 0x00, 0x05, 0x09, 0x01, 0x01]));
+      expect(cmd, equals([0xCD, 0x00, 0x04, 0x12, 0x24, 0x00, 0x01]));
     });
 
     test('buildDaFitStepQueryCommand produces DaFit / HryFine query packet', () {
       final cmd = HiWatchProProtocol.buildDaFitStepQueryCommand();
-      expect(cmd, equals([0xAB, 0x00, 0x04, 0xFF, 0x31]));
+      expect(cmd, equals([0xAB, 0x00, 0x04, 0xFF, 0x50, 0x00, 0x00]));
     });
 
     test('buildUniversalHeartbeatCommand produces keep-alive packet', () {
       final cmd = HiWatchProProtocol.buildUniversalHeartbeatCommand();
-      expect(cmd, equals([0xCD, 0x00, 0x03, 0x01]));
+      expect(cmd, equals([0xAB, 0x00, 0x04, 0xFF, 0x56, 0x00, 0x00]));
     });
 
     test('buildFindWatchCommand produces motor vibration packet', () {
@@ -37,11 +37,12 @@ void main() {
       final testDate = DateTime(2026, 9, 29, 14, 30, 45);
       final cmd = HiWatchProProtocol.buildSyncTimeCommand(testDate);
       expect(cmd, equals([
-        0xCD,
+        0xAB,
         0x00,
-        0x09,
-        0x01,
-        26, // 2026 % 100
+        0x08,
+        0xFF,
+        0x92,
+        26, // 2026 - 2000
         9,  // September
         29, // Day 29
         14, // 14 hours
@@ -128,6 +129,58 @@ void main() {
       final data = HiWatchProProtocol.parseNotifyPacket(packet);
       expect(data.heartRateBpm, equals(84));
       expect(data.bloodOxygenSpo2, equals(99));
+      expect(data.isEmpty, isFalse);
+    });
+
+    test('parses reverse-engineered APK FitPro packed vitals (HR, BP, SpO2)', () {
+      // APK Sport packet with Key 0x04: [CD 00 0E 15 01 04 T0 T1 T2 T3 HR Sys Dia SpO2]
+      final packet = [0xCD, 0x00, 0x0E, 0x15, 0x01, 0x04, 0x00, 0x00, 0x00, 0x00, 78, 122, 82, 99];
+      final data = HiWatchProProtocol.parseNotifyPacket(packet);
+      expect(data.heartRateBpm, equals(78));
+      expect(data.bloodPressureSystolic, equals(122));
+      expect(data.bloodPressureDiastolic, equals(82));
+      expect(data.bloodOxygenSpo2, equals(99));
+      expect(data.ackPacket, isNotNull);
+      expect(data.ackPacket![0], equals(0xDC));
+      expect(data.isEmpty, isFalse);
+    });
+
+    test('parses reverse-engineered APK FitPro 64-bit Real-Time Steps Stream (Key 0x0B)', () {
+      // 64-bit payload matching APK BaseReceiveData.Sport:
+      // steps = 7890 (0x1ED2), cal = 340 (11 bits), dist = 5200 (19 bits)
+      // binary: 12 bits offset, 4 bits mode, 16 bits steps, 11 bits cal, 2 bits flags, 19 bits dist
+      final binStr = '${100.toRadixString(2).padLeft(12, '0')}'
+          '${1.toRadixString(2).padLeft(4, '0')}'
+          '${7890.toRadixString(2).padLeft(16, '0')}'
+          '${340.toRadixString(2).padLeft(11, '0')}'
+          '00'
+          '${5200.toRadixString(2).padLeft(19, '0')}';
+      final payload = <int>[];
+      for (int i = 0; i < 64; i += 8) {
+        payload.add(int.parse(binStr.substring(i, i + 8), radix: 2));
+      }
+      final packet = [0xCD, 0x00, 0x0C, 0x15, 0x01, 0x0B, ...payload];
+      final data = HiWatchProProtocol.parseNotifyPacket(packet);
+      expect(data.steps, equals(7890));
+      expect(data.calories, equals(340));
+      expect(data.distanceMeters, equals(5200));
+      expect(data.isEmpty, isFalse);
+    });
+
+    test('parses reverse-engineered APK FitPro Day Summary (Key 0x0C)', () {
+      // APK Sport packet with Key 0x0C: [CD 00 12 15 01 0C Date(4B) Steps(4B) Dist(2B) Cal(2B)]
+      // steps = 10450 (0x000028D2), dist = 7800 (0x1E78), cal = 450 (0x01C2)
+      final payload = [
+        0x00, 0x00, 0x00, 0x00, // Date / record index
+        0x00, 0x00, 0x28, 0xD2, // Steps: 10450
+        0x1E, 0x78,             // Distance: 7800m
+        0x01, 0xC2,             // Calories: 450 kcal
+      ];
+      final packet = [0xCD, 0x00, 0x12, 0x15, 0x01, 0x0C, ...payload];
+      final data = HiWatchProProtocol.parseNotifyPacket(packet);
+      expect(data.steps, equals(10450));
+      expect(data.distanceMeters, equals(7800));
+      expect(data.calories, equals(450));
       expect(data.isEmpty, isFalse);
     });
 
