@@ -416,11 +416,60 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
   bool _isDanceMode = false;
   String _danceLabel = '💃 Dance';
 
+  /// Returns the best camera angle for demonstrating this exercise
+  String _getExerciseCameraOrbit(String slug) {
+    final s = slug.toLowerCase();
+    if (s.contains('plank') || s.contains('push') || s.contains('cobra') || s.contains('child')) {
+      return '20deg 110deg 3.5m'; // Looking down slightly - shows horizontal exercises
+    }
+    if (s.contains('squat') || s.contains('lunge') || s.contains('wall')) {
+      return '45deg 90deg 3.8m'; // 45° side angle - shows leg exercises
+    }
+    if (s.contains('yoga') || s.contains('stretch') || s.contains('warrior')) {
+      return '-30deg 80deg 3.5m'; // Slight right angle for yoga poses
+    }
+    if (s.contains('run') || s.contains('skip') || s.contains('jump')) {
+      return '30deg 82deg 3.0m'; // Dynamic forward-angled view
+    }
+    if (s.contains('box') || s.contains('punch')) {
+      return '-45deg 85deg 3.0m'; // Side view for boxing
+    }
+    if (s.contains('row') || s.contains('pull') || s.contains('deadlift')) {
+      return '90deg 85deg 3.5m'; // Side view for back exercises
+    }
+    if (s.contains('overhead') || s.contains('shoulder') || s.contains('press')) {
+      return '0deg 75deg 3.2m'; // Front view for overhead
+    }
+    return '0deg 85deg 3.5m'; // Default front view
+  }
+
+  /// Returns the action label for the current exercise (not dance)
+  String get _exerciseActionLabel {
+    final slug = widget.item.slug.toLowerCase();
+    final pose = AvatarCustomizationService.slugToAvatarPose(slug);
+    switch (pose) {
+      case 'running': return '🏃 Run Mode';
+      case 'boxing': return '🥊 Box Mode';
+      case 'yoga': return '🧘 Yoga Mode';
+      case 'squat': return '🏋️ Squat Mode';
+      case 'pushup': return '💪 Pushup Mode';
+      case 'plank': return '🔥 Plank Mode';
+      case 'cycling': return '🚴 Cycle Mode';
+      case 'swimming': return '🏊 Swim Mode';
+      case 'skipping': return '⚡ Skip Mode';
+      case 'football': return '⚽ Football Mode';
+      case 'cricket': return '🏏 Cricket Mode';
+      default: return '💪 Exercise Mode';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _orbitAngleString = '0deg 85deg 3.5m';
-    _activeAngleLabel = 'Front View';
+    _orbitAngleString = _getExerciseCameraOrbit(widget.item.slug);
+    _activeAngleLabel = 'Exercise View';
+    _isDanceMode = false;
+    _danceLabel = _exerciseActionLabel;
 
     _animCtrl = AnimationController(
       vsync: this,
@@ -454,7 +503,8 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
         
         // Set speed based on exercise intensity
         if (!_isDanceMode) {
-          _speedMultiplier = AvatarCustomizationService.exerciseIntensitySpeed(widget.item.slug.toLowerCase());
+          final pose = AvatarCustomizationService.slugToAvatarPose(widget.item.slug.toLowerCase());
+          _speedMultiplier = AvatarCustomizationService.poseToTimeScale(pose).clamp(0.3, 2.0);
         }
       });
       // Set avatar pose to match exercise
@@ -528,13 +578,20 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
         var mv = document.querySelector('model-viewer');
         if (!mv) return;
         mv.timeScale = $timeScale;
+        mv.environmentImage = 'neutral';
         if (mv.model && mv.model.materials) {
           try {
             for (var i = 0; i < mv.model.materials.length; i++) {
               var mat = mv.model.materials[i];
               if (!mat || !mat.name) continue;
-              if (mat.name === 'Topmat' || mat.name === 'Ch21_body') {
-                ${topRgba.isNotEmpty ? "mat.pbrMetallicRoughness.setBaseColorFactor($topRgba);" : ""}
+              if (mat.name === 'Alpha_Joints_MAT' || mat.name === 'Alpha_Body_MAT' || 
+                  mat.name === 'mixamorig:Hips' || mat.name.toLowerCase().includes('skin') ||
+                  mat.name.toLowerCase().includes('body')) {
+                try { mat.pbrMetallicRoughness['metallicFactor'] = 0.0; } catch(e) {}
+                try { mat.pbrMetallicRoughness['roughnessFactor'] = 0.85; } catch(e) {}
+              }
+              if (mat.name === 'Topmat' || mat.name === 'Ch21_body' || mat.name === 'Alpha_Surface_MAT') {
+                ${topRgba.isNotEmpty ? "try { mat.pbrMetallicRoughness.setBaseColorFactor($topRgba); } catch(e) {}" : ""}
               }
             }
           } catch(e) {}
@@ -588,14 +645,51 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
     );
   }
 
-  String get _currentPhaseName {
+  /// Returns a live coaching cue based on exercise type and animation progress
+  String get _currentExerciseCue {
+    final slug = widget.item.slug.toLowerCase();
+    final pose = AvatarCustomizationService.slugToAvatarPose(slug);
     final v = _animCtrl.value;
-    if (v < 0.40) {
-      return 'Phase 1: Eccentric (Control Down)';
-    } else if (v < 0.60) {
-      return 'Phase 2: Isometric (Peak Squeeze)';
-    } else {
-      return 'Phase 3: Concentric (Drive Up)';
+    
+    if (_isDanceMode) return '💃 Dance Mode — Feel the rhythm!';
+    
+    switch (pose) {
+      case 'yoga':
+        if (v < 0.33) return '🧘 Breathe in — expand';
+        if (v < 0.66) return '🧘 Hold — feel the stretch';
+        return '🧘 Breathe out — release';
+      case 'running':
+        if (v < 0.5) return '🏃 Drive forward — pump arms';
+        return '🏃 Stay tall — breathe steady';
+      case 'squat':
+        if (v < 0.4) return '⬇️ Lower slowly — chest up';
+        if (v < 0.6) return '💥 Hold at bottom';
+        return '⬆️ Drive up through heels';
+      case 'pushup':
+        if (v < 0.4) return '⬇️ Lower with control';
+        if (v < 0.6) return '💪 Hold — core tight';
+        return '⬆️ Push the floor away';
+      case 'plank':
+        return '🔥 Hold — brace core, breathe';
+      case 'boxing':
+        if (v < 0.5) return '🥊 Extend — snap the punch';
+        return '🛡️ Guard up — reset';
+      case 'cycling':
+        if (v < 0.5) return '🚴 Power stroke — push down';
+        return '🚴 Recovery stroke — pull up';
+      case 'skipping':
+        return '⚡ Stay light — wrists drive';
+      case 'swimming':
+        if (v < 0.5) return '🏊 Pull through — rotate hips';
+        return '🏊 Reach forward — glide';
+      case 'weightlifting':
+        if (v < 0.4) return '⬇️ Eccentric — control down';
+        if (v < 0.6) return '💥 Isometric — peak squeeze';
+        return '⬆️ Concentric — drive up';
+      default:
+        if (v < 0.40) return 'Phase 1: Control — eccentric';
+        if (v < 0.60) return 'Phase 2: Hold — peak squeeze';
+        return 'Phase 3: Drive — concentric';
     }
   }
 
@@ -628,9 +722,9 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
         _speedMultiplier = 1.8;
         _danceLabel = '🛑 Stop Dance';
       } else {
-        _speedMultiplier = AvatarCustomizationService.exerciseIntensitySpeed(
-            widget.item.slug.toLowerCase());
-        _danceLabel = '💃 Dance';
+        final pose = AvatarCustomizationService.slugToAvatarPose(widget.item.slug.toLowerCase());
+        _speedMultiplier = AvatarCustomizationService.poseToTimeScale(pose).clamp(0.3, 2.0);
+        _danceLabel = _exerciseActionLabel;
       }
     });
   }
@@ -904,17 +998,24 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                     ar: false,
                     autoRotate: false,
                     cameraControls: true,
-                    autoPlay: _isPlaying,
-                    shadowIntensity: 0.85,
+                    // CRITICAL FIX: female_coach.glb 'idle' IS a dance animation.
+                    // autoPlay must be FALSE during exercises (avatar shows neutral pose).
+                    // Only when user taps Dance button → autoPlay=true → dance plays.
+                    autoPlay: _isDanceMode,
+                    shadowIntensity: 1.0,
                     shadowSoftness: 0.8,
-                    exposure: 1.15,
+                    exposure: 1.4,
+                    environmentImage: 'neutral',
                     backgroundColor: const Color(0xFF0D0D12),
                     cameraOrbit: _orbitAngleString,
-                    animationName: AvatarCustomizationService
-                        .instance.currentMixamoAnim,
+                    // No animationName when exercise mode — shows clean neutral pose
+                    // When dance mode: female uses 'SambaDance', male uses 'idle'
+                    animationName: _isDanceMode
+                        ? (_coachModelPath.contains('female') ? 'SambaDance' : 'idle')
+                        : 'TPose',
                     loading: Loading.eager,
                     relatedJs: _buildModelJs(
-                      timeScale: _isPlaying ? (_isDanceMode ? 1.8 : _speedMultiplier) : 0.0,
+                      timeScale: _isDanceMode ? 1.8 : 0.0,
                       outfit: _coachOutfitColor,
                     ),
                   ),
@@ -969,7 +1070,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                             border: Border.all(color: VColor.line),
                           ),
                           child: Text(
-                            _currentPhaseName,
+                            _currentExerciseCue,
                             style: const TextStyle(
                               color: VColor.text,
                               fontSize: 11,
