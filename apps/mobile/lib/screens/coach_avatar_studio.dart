@@ -28,7 +28,7 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
   static const String _defaultFemaleName = 'Megan';
 
   String _selectedGender = 'male';
-  String _activeAnim = 'idle';
+  String _activeAnim = 'Idle';
   bool _isSpeaking = false;
   bool _isSelectedSaved = false;
   bool _isLoading = true;
@@ -83,7 +83,7 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
         _selectedGender = savedGender == 'female' ? 'female' : 'male';
         // Female GLB: 'SambaDance' or 'TPose' — use TPose as neutral default
         // Male GLB: 'idle' or 'Take 001' — use idle (breathing) as default
-        _activeAnim = _selectedGender == 'female' ? 'TPose' : 'idle';
+        _activeAnim = _selectedGender == 'female' ? '' : 'Idle';
         // Default: Remy (male) or Megan (female) until user personalizes
         _coachName = savedName ??
             (_selectedGender == 'female' ? _defaultFemaleName : _defaultMaleName);
@@ -176,7 +176,7 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
         : "Hello! I'm $_coachName, your fitness and wellness coach. Together we'll unlock your peak physical form.";
 
     // Trigger walk animation while speaking
-    setState(() => _activeAnim = 'walk');
+    setState(() => _activeAnim = 'Walk');
 
 
     await TtsService.speak(speechText);
@@ -184,7 +184,7 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
     if (mounted) {
       setState(() {
         _isSpeaking = false;
-        if (isMale) _activeAnim = 'idle';
+        if (isMale) _activeAnim = 'Idle';
       });
     }
   }
@@ -498,15 +498,16 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
 
     final availableAnims = isMale
         ? [
-            {'label': 'Idle Pose', 'anim': 'idle', 'icon': Icons.accessibility_new_rounded},
-            {'label': 'Running', 'anim': 'run', 'icon': Icons.directions_run_rounded},
-            {'label': 'Walking', 'anim': 'walk', 'icon': Icons.directions_walk_rounded},
-            {'label': 'Agree', 'anim': 'agree', 'icon': Icons.thumb_up_rounded},
-            {'label': 'Head Shake', 'anim': 'headShake', 'icon': Icons.do_not_disturb_alt_rounded},
+            // Soldier GLB animations (capital letters: 'Idle', 'Run', 'Walk', 'TPose')
+            {'label': 'Idle Stance', 'anim': 'Idle', 'icon': Icons.accessibility_new_rounded},
+            {'label': 'Running', 'anim': 'Run', 'icon': Icons.directions_run_rounded},
+            {'label': 'Walking', 'anim': 'Walk', 'icon': Icons.directions_walk_rounded},
+            {'label': 'T-Pose', 'anim': 'TPose', 'icon': Icons.accessibility_rounded},
           ]
         : [
-            {'label': 'Workout Dance', 'anim': 'SambaDance', 'icon': Icons.sports_gymnastics_rounded},
-            {'label': 'T-Pose Form', 'anim': 'TPose', 'icon': Icons.accessibility_rounded},
+            // Megan GLB: 'idle' = samba dance animation
+            {'label': 'Workout Dance', 'anim': 'idle', 'icon': Icons.sports_gymnastics_rounded},
+            {'label': 'Neutral Pose', 'anim': '', 'icon': Icons.accessibility_rounded},
           ];
 
     final physiqueOptions = [
@@ -1164,7 +1165,7 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
         HapticFeedback.selectionClick();
         setState(() {
           _selectedGender = gender;
-          _activeAnim = gender == 'female' ? 'TPose' : 'idle';
+          _activeAnim = gender == 'female' ? '' : 'Idle';
           _coachName = gender == 'female' ? 'Sara' : 'Alex';
           _isSelectedSaved = false;
         });

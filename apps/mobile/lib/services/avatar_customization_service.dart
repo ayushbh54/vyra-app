@@ -401,6 +401,43 @@ class AvatarCustomizationService extends ChangeNotifier {
     }
   }
 
+  /// Returns the animation clip name for a given exercise slug and avatar gender.
+  /// Male (Soldier GLB) has: 'Idle', 'Run', 'TPose', 'Walk'
+  /// Female (Megan GLB) has: 'idle' (samba dance) — exercise mode uses neutral bind pose
+  static String getExerciseAnimation(String exerciseSlug, {required bool isFemale}) {
+    if (isFemale) {
+      // Female: 'idle' = samba dance. For exercises → empty string = neutral bind pose
+      return '';
+    }
+    // Male Soldier GLB: map exercise → available animation
+    final pose = slugToAvatarPose(exerciseSlug.toLowerCase());
+    switch (pose) {
+      case 'running':
+      case 'skipping':
+      case 'football':
+      case 'cricket':
+        return 'Run';   // High-intensity cardio → Run
+      case 'boxing':
+      case 'cycling':
+      case 'swimming':
+        return 'Walk';  // Moderate rhythm → Walk
+      case 'yoga':
+      case 'plank':
+      case 'weightlifting':
+      case 'squat':
+      case 'pushup':
+      case 'dancing':
+      default:
+        return 'Idle';  // Strength/static/yoga → Idle
+    }
+  }
+
+  /// Returns dance animation name per gender.
+  /// Male dance: 'Run' at 1.8× speed (energetic). Female dance: 'idle' (actual samba).
+  static String getDanceAnimation({required bool isFemale}) {
+    return isFemale ? 'idle' : 'Run';
+  }
+
   /// Computes AI breathing and movement tempo based on exercise intensity
   static double exerciseIntensitySpeed(String slug) {
     final s = slug.toLowerCase();

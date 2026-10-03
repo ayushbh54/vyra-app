@@ -393,29 +393,18 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         return;
       }
       _telemetryTick++;
-      // 4-step rotation — covers all data types while keeping MCU buffer stable
       switch (_telemetryTick % 4) {
         case 0:
-          // Keep continuous step/telemetry streaming alive
-          await _broadcastWatchCommands([HiWatchProProtocol.buildTurnOnRealTimeStepCommand()]);
+          await _broadcastWatchCommands([HiWatchProProtocol.buildUniversalHeartbeatCommand()]);
           break;
         case 1:
-          // Request real-time heart rate & SpO2 measurement
-          await _broadcastWatchCommands([
-            HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
-            HiWatchProProtocol.buildLegacyHeartRateMeasureCommand(),
-          ]);
+          await _broadcastWatchCommands([HiWatchProProtocol.buildStartHeartRateMeasureCommand()]);
           break;
         case 2:
-          // Query live day sport summary (steps, distance, kcal)
-          await _broadcastWatchCommands([HiWatchProProtocol.buildSportKeyDayGetCommand()]);
+          await _broadcastWatchCommands([HiWatchProProtocol.buildRequestLiveMetricsCommand()]);
           break;
         case 3:
-          // Universal keepalive / heartbeat command
-          await _broadcastWatchCommands([
-            HiWatchProProtocol.buildUniversalHeartbeatCommand(),
-            HiWatchProProtocol.buildSportKeyGetCommand(),
-          ]);
+          await _broadcastWatchCommands([HiWatchProProtocol.buildDaFitStepQueryCommand()]);
           break;
       }
     });
@@ -435,6 +424,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
   void _processIncomingWatchData(List<int> bytes) {
     if (bytes.isEmpty) return;
+    // ignore: avoid_print
+    print('[WATCH-RAW] ${bytes.length}B: ${bytes.map((b) => "0x${b.toRadixString(16).padLeft(2, '0').toUpperCase()}").join(" ")}');
 
     final telemetry = HiWatchProProtocol.parseNotifyPacket(bytes);
 

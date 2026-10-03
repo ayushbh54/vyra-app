@@ -414,7 +414,6 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
   Color? _coachAuraColor;
 
   bool _isDanceMode = false;
-  String _danceLabel = '💃 Dance';
 
   /// Returns the best camera angle for demonstrating this exercise
   String _getExerciseCameraOrbit(String slug) {
@@ -445,21 +444,14 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
 
   /// Returns the action label for the current exercise (not dance)
   String get _exerciseActionLabel {
+    if (_isDanceMode) return '🛑 Stop Dance';
     final slug = widget.item.slug.toLowerCase();
-    final pose = AvatarCustomizationService.slugToAvatarPose(slug);
-    switch (pose) {
-      case 'running': return '🏃 Run Mode';
-      case 'boxing': return '🥊 Box Mode';
-      case 'yoga': return '🧘 Yoga Mode';
-      case 'squat': return '🏋️ Squat Mode';
-      case 'pushup': return '💪 Pushup Mode';
-      case 'plank': return '🔥 Plank Mode';
-      case 'cycling': return '🚴 Cycle Mode';
-      case 'swimming': return '🏊 Swim Mode';
-      case 'skipping': return '⚡ Skip Mode';
-      case 'football': return '⚽ Football Mode';
-      case 'cricket': return '🏏 Cricket Mode';
-      default: return '💪 Exercise Mode';
+    final isFemale = _coachModelPath.contains('female');
+    final anim = AvatarCustomizationService.getExerciseAnimation(slug, isFemale: isFemale);
+    switch (anim) {
+      case 'Run':  return '🏃 Running';
+      case 'Walk': return '🚶 Walking';
+      default:     return '🧘 Exercise';
     }
   }
 
@@ -469,7 +461,6 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
     _orbitAngleString = _getExerciseCameraOrbit(widget.item.slug);
     _activeAngleLabel = 'Exercise View';
     _isDanceMode = false;
-    _danceLabel = _exerciseActionLabel;
 
     _animCtrl = AnimationController(
       vsync: this,
@@ -720,11 +711,10 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
       _isDanceMode = !_isDanceMode;
       if (_isDanceMode) {
         _speedMultiplier = 1.8;
-        _danceLabel = '🛑 Stop Dance';
       } else {
-        final pose = AvatarCustomizationService.slugToAvatarPose(widget.item.slug.toLowerCase());
-        _speedMultiplier = AvatarCustomizationService.poseToTimeScale(pose).clamp(0.3, 2.0);
-        _danceLabel = _exerciseActionLabel;
+        final pose = AvatarCustomizationService.slugToAvatarPose(
+            widget.item.slug.toLowerCase());
+        _speedMultiplier = AvatarCustomizationService.poseToTimeScale(pose);
       }
     });
   }
@@ -924,7 +914,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _danceLabel,
+                            _exerciseActionLabel,
                             style: TextStyle(
                               color: _isDanceMode ? const Color(0xFFE91E63) : VColor.accent,
                               fontSize: 13,
@@ -987,38 +977,43 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                   ),
                 ),
 
-                // ── Realistic 3D Human Coach (Adobe Mixamo ModelViewer) ──
+                // ── Realistic 3D Human Coach ──
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: ModelViewer(
-                    key: ValueKey(
-                        '${_coachModelPath}_${_orbitAngleString}_${_speedMultiplier}_${_isPlaying}_${_isDanceMode}_${_coachOutfitColor?.toARGB32()}'),
-                    src: _coachModelPath,
-                    alt: '3D Coach $_coachName',
-                    ar: false,
-                    autoRotate: false,
-                    cameraControls: true,
-                    // CRITICAL FIX: female_coach.glb 'idle' IS a dance animation.
-                    // autoPlay must be FALSE during exercises (avatar shows neutral pose).
-                    // Only when user taps Dance button → autoPlay=true → dance plays.
-                    autoPlay: _isDanceMode,
-                    shadowIntensity: 1.0,
-                    shadowSoftness: 0.8,
-                    exposure: 1.4,
-                    environmentImage: 'neutral',
-                    backgroundColor: const Color(0xFF0D0D12),
-                    cameraOrbit: _orbitAngleString,
-                    // No animationName when exercise mode — shows clean neutral pose
-                    // When dance mode: female uses 'SambaDance', male uses 'idle'
-                    animationName: _isDanceMode
-                        ? (_coachModelPath.contains('female') ? 'SambaDance' : 'idle')
-                        : 'TPose',
-                    loading: Loading.eager,
-                    relatedJs: _buildModelJs(
-                      timeScale: _isDanceMode ? 1.8 : 0.0,
-                      outfit: _coachOutfitColor,
-                    ),
-                  ),
+                  child: Builder(builder: (context) {
+                    final isFemale = _coachModelPath.contains('female');
+                    final exerciseAnim = AvatarCustomizationService.getExerciseAnimation(
+                      widget.item.slug, isFemale: isFemale);
+                    final danceAnim = AvatarCustomizationService.getDanceAnimation(
+                      isFemale: isFemale);
+                    final currentAnim = _isDanceMode ? danceAnim : exerciseAnim;
+                    // Male: always autoPlay (Soldier has real exercise anims).
+                    // Female: only play in dance mode (idle = samba dance).
+                    final shouldPlay = isFemale ? _isDanceMode : true;
+                    final ts = _isDanceMode ? 1.8 : _speedMultiplier;
+                    return ModelViewer(
+                      key: ValueKey(
+                          '${_coachModelPath}_${_orbitAngleString}_${_speedMultiplier}_${_isDanceMode}_${_coachOutfitColor?.toARGB32()}'),
+                      src: _coachModelPath,
+                      alt: '3D Coach $_coachName',
+                      ar: false,
+                      autoRotate: false,
+                      cameraControls: true,
+                      autoPlay: shouldPlay,
+                      shadowIntensity: 1.0,
+                      shadowSoftness: 0.8,
+                      exposure: 1.4,
+                      environmentImage: 'neutral',
+                      backgroundColor: const Color(0xFF0D0D12),
+                      cameraOrbit: _orbitAngleString,
+                      animationName: currentAnim,
+                      loading: Loading.eager,
+                      relatedJs: _buildModelJs(
+                        timeScale: shouldPlay ? ts : 0.0,
+                        outfit: _coachOutfitColor,
+                      ),
+                    );
+                  }),
                 ),
 
                 // ── Top HUD: Drag hint & Coach name ──
