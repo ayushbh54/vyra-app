@@ -269,6 +269,23 @@ void main() {
         final r = HiWatchProProtocol.parseNotifyPacket(packet);
         expect(r.steps, isNull);
       });
+
+      test('keyId=0x02 (Ultra2 verified hardware record): reads 5,839 steps, 254 kcal, 7200m', () {
+        // CD 00 11 15 01 02 00 0C 32 26 00 01 16 CF 00 FE 04 48 1C 20
+        final packet = [
+          0xCD, 0x00, 0x11, 0x15, 0x01, 0x02, 0x00, 0x0C,
+          0x32, 0x26, 0x00, 0x01,
+          0x16, 0xCF, // 5,839 steps
+          0x00, 0xFE, // 254 kcal
+          0x04, 0x48, // 04:48 AM
+          0x1C, 0x20, // 7,200 m
+        ];
+        final r = HiWatchProProtocol.parseNotifyPacket(packet);
+        expect(r.steps, equals(5839));
+        expect(r.calories, equals(254));
+        expect(r.distanceMeters, equals(7200));
+        expect(r.ackPacket, isNotNull);
+      });
     });
 
     // ── ACK generation ─────────────────────────────────────────────────────

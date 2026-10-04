@@ -363,7 +363,7 @@ class HiWatchProProtocol {
         }
       }
 
-      // A2. APK FitPro Real-Time Continuous Steps Stream (Key 0x0B / 0x06: DataTransferOnTimeRecive)
+      // A2. APK FitPro Real-Time Continuous Steps Stream (Key 0x0B / 0x06 / 0x02: Sport Detail & Step Record)
       // Reverse-engineered from BaseReceiveData.Sport (64-bit packed):
       // Bits 0..11  (12 bits): offset
       // Bits 12..15 (4 bits):  mode
@@ -371,7 +371,7 @@ class HiWatchProProtocol {
       // Bits 32..42 (11 bits): calories
       // Bits 43..44 (2 bits):  flags
       // Bits 45..63 (19 bits): distance
-      if ((isTlv || cmdType == 0x15) && (keyId == 0x0B || keyId == 0x06)) {
+      if ((isTlv || cmdType == 0x15) && (keyId == 0x0B || keyId == 0x06 || keyId == 0x02)) {
         int? steps;
         int? kcal;
         int? dist;
@@ -382,13 +382,28 @@ class HiWatchProProtocol {
             : (payload.length >= 8 ? payload.sublist(0, 8) : null);
 
         if (record != null && record.length >= 8) {
-          final rawSteps = (record[2] << 8) | record[3];
-          final rawKcal = (record[4] << 3) | (record[5] >> 5);
-          final rawDist = ((record[5] & 0x07) << 16) | (record[6] << 8) | record[7];
+          if (keyId == 0x02) {
+            // Ultra2 / FitPro 8-byte Sport Record Detail (Verified from hardware probe):
+            // record[0..1]: steps (16-bit big-endian)
+            // record[2..3]: calories (16-bit big-endian)
+            // record[4..5]: time bucket (hour, minute)
+            // record[6..7]: distance in meters (16-bit big-endian)
+            final rawSteps = (record[0] << 8) | record[1];
+            final rawKcal = (record[2] << 8) | record[3];
+            final rawDist = (record[6] << 8) | record[7];
 
-          if (rawSteps > 0 && rawSteps <= 100000) steps = rawSteps;
-          if (rawKcal > 0 && rawKcal <= 15000) kcal = rawKcal;
-          if (rawDist > 0 && rawDist <= 500000) dist = rawDist;
+            if (rawSteps > 0 && rawSteps <= 100000) steps = rawSteps;
+            if (rawKcal > 0 && rawKcal <= 15000) kcal = rawKcal;
+            if (rawDist > 0 && rawDist <= 500000) dist = rawDist;
+          } else {
+            final rawSteps = (record[2] << 8) | record[3];
+            final rawKcal = (record[4] << 3) | (record[5] >> 5);
+            final rawDist = ((record[5] & 0x07) << 16) | (record[6] << 8) | record[7];
+
+            if (rawSteps > 0 && rawSteps <= 100000) steps = rawSteps;
+            if (rawKcal > 0 && rawKcal <= 15000) kcal = rawKcal;
+            if (rawDist > 0 && rawDist <= 500000) dist = rawDist;
+          }
 
           // Alternate APK packing where bits 0..11 is step and bits 16..31 is distance:
           if (steps == null) {

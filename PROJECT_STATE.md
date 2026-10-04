@@ -177,10 +177,18 @@ The smartwatch subsystem (`apps/mobile/lib/services/hiwatch_pro_service.dart`) i
    - `0xCD 0x00 0x09 ...`: Live HR and SpO2 telemetry
    - `0xCD 0x00 0x0E 0x15 0x01 0x04 ...`: APK Packed Vitals (HR, BP, SpO2)
    - `0xCD 0x00 0x0C 0x15 0x01 0x0B ...`: Real-Time 64-bit Step Stream
+   - `0xCD 0x00 0x11 0x15 0x01 0x02 ...`: **Ultra2 Hardware Verified Record Stream** — 8-byte bucketed sport history detail (`[steps_hi, steps_lo, kcal_hi, kcal_lo, hour, min, dist_hi, dist_lo]`). Verified live: streams 5,839+ steps with matching calories and distance. Requires ACK `[0xDC, 0x00, 0x05, 0x15, 0x01, 0x00, 0x10, 0x01]`.
    - `0xCD 0x00 0x0E 0x15 0x01 0x0C ...`: FitPro Day Summary — Correctly skips 4-byte date prefix `[Y, M, D, status]` to extract real steps, distance, and calories without clamping to 0.
    - `0xCD 0x00 len 0x12 subCmd ...`: Direct health measurement — parses subCmd 0x02 as Blood Pressure (Sys+Dia) instead of false HR/SpO2; isolates subCmd 0x06 step packet to prevent false HR spikes.
 
-4. **DaFit / Shenzhen Protocol (Header `0xAB` / `0xAA`):**
+4. **Physical Ultra2 Watch Profile (Field Verified via Watch Prober):**
+   - Device Name: `Ultra2` | MAC: `71:7E:FB:00:03:CB`
+   - Primary UART Service: `6e400801-b5a3-f393-e0a9-e50e24dcca9d`
+   - Write Characteristic: `6e400002-b5a3-f393-e0a9-e50e24dcca9d`
+   - Notify Characteristic: `6e400003-b5a3-f393-e0a9-e50e24dcca9d`
+   - Secondary Services: `ffff` (`ff22` write, `ff11` notify), `3802` (`4a02`)
+
+5. **DaFit / Shenzhen Protocol (Header `0xAB` / `0xAA`):**
    - Direct: `0xAB 0x51` (Steps), `0xAB 0x09` (Live HR & SpO2)
    - Length-Prefixed: `[0xAB, 0x00, len, 0xFF, cmd, payload...]` for modern Shenzhen firmwares
    - `0xAB 0x00 0x04 0xFF 0x56 0x00 0x00`: Universal keep-alive heartbeat command
