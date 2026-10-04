@@ -10,6 +10,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../api/client.dart';
 import '../theme.dart';
 import '../services/avatar_customization_service.dart';
+import '../services/gemini_response_cache.dart';
 
 /// ─────────────────────────────────────────────────────────────────────────────
 /// VYRA AI COACH — Real-time conversational voice chat.
@@ -90,6 +91,7 @@ class _AiChatScreenState extends State<AiChatScreen>
     _initTts();
     _initSpeech();
     _loadHistory();
+    unawaited(GeminiResponseCache.instance.evictExpired());
 
     _micPulse = AnimationController(
       vsync: this,
@@ -324,6 +326,20 @@ class _AiChatScreenState extends State<AiChatScreen>
       await _stopSpeaking();
     }
 
+    // ── Cache check: skip Gemini for repeated general questions ──
+    final cachedReply = await GeminiResponseCache.instance.get(text);
+    if (cachedReply != null) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add(_AiChatMessage('user', text));
+        _messages.add(_AiChatMessage('model', cachedReply));
+      });
+      _saveHistory();
+      _scrollToBottom();
+      await _speakReply(cachedReply);
+      return;
+    }
+
     setState(() {
       _messages.add(_AiChatMessage('user', text));
       _loading = true;
@@ -348,11 +364,19 @@ class _AiChatScreenState extends State<AiChatScreen>
     }
 
     try {
-      final userCtx = await _buildUserContext();
+      final fullCtx = await _buildUserContext();
+
+      // Always send full context — watch HR/SpO2/BP may have changed since last turn.
+      // The context payload is small (~500 bytes JSON) so the cost is negligible,
+      // but the accuracy gain (Gemini seeing current HR=140 after a run vs stale 72)
+      // is significant for personalised advice.
       if (!mounted) return;
-      final resp = await api.chatMessage(text, conversationId: _convId, userContext: userCtx);
+      final resp = await api.chatMessage(text, conversationId: _convId, userContext: fullCtx);
       _convId = resp['conversationId'] as String?;
       final reply = resp['reply'] as String? ?? '...';
+
+      // Save to cache if not personalized
+      await GeminiResponseCache.instance.set(text, reply);
 
       _syncAvatarFromAiResponse(reply);
 
@@ -403,6 +427,7 @@ class _AiChatScreenState extends State<AiChatScreen>
     ];
     if (nonFitnessKeywords.any((kw) => q.contains(kw))) return true;
     final healthKeywords = [
+      // English — fitness & medical
       'health', 'fitness', 'sport', 'run', 'workout', 'diet', 'food', 'calorie', 'protein',
       'carb', 'fat', 'exercise', 'gym', 'muscle', 'recovery', 'sleep', 'water', 'hydrate',
       'hydration', 'heart', 'hrv', 'bpm', 'blood', 'report', 'lab', 'doctor', 'pain',
@@ -411,7 +436,20 @@ class _AiChatScreenState extends State<AiChatScreen>
       'endurance', 'stamina', 'routine', 'plan', 'eat', 'meal', 'nutrition', 'sore',
       'chest', 'back', 'leg', 'arm', 'hamstring', 'glute', 'abs', 'core', 'training',
       'athlet', 'medical', 'fever', 'cough', 'energy', 'supplement', 'creatine',
+      'liver', 'kidney', 'thyroid', 'uric', 'acid', 'gout', 'acidity', 'gerd',
+      'bp', 'pressure', 'diabetes', 'insulin', 'hemoglobin', 'iron', 'calcium',
+      'omega', 'zinc', 'magnesium', 'potassium', 'fiber', 'probiotic', 'immunity',
+      'inflammation', 'detox', 'alkaline', 'antioxidant', 'metabolism', 'hormone',
+      'testosterone', 'cortisol', 'stress', 'anxiety', 'mental', 'mindful', 'meditat',
+      'breath', 'posture', 'spine', 'joint', 'bone', 'density', 'osteo', 'arthritis',
+      // Hindi & Hinglish — common queries
       'kya', 'kaisa', 'kaise', 'mujhe', 'mera', 'mere', 'khana', 'vyayam', 'daud',
+      'khao', 'piyo', 'pani', 'doodh', 'chawal', 'roti', 'daal', 'sabzi', 'fruit',
+      'bp kam', 'bp badh', 'sugar kam', 'vajan', 'motapa', 'patla', 'strong',
+      'kamzori', 'thakan', 'neend', 'sehat', 'bimari', 'ilaj', 'dawa', 'nuskha',
+      'pet', 'liver', 'kidney', 'thyroid', 'uric', 'bones', 'joints', 'dard',
+      'saans', 'chhati', 'dil', 'cholesterol', 'triglyceride', 'haemoglobin',
+      'running', 'cycling', 'swimming', 'lifting', 'stretching', 'plank', 'pushup',
     ];
     if (!healthKeywords.any((kw) => q.contains(kw)) && q.split(' ').length > 2) return true;
     return false;

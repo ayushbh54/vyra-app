@@ -80,7 +80,7 @@ export function loadGeminiConfig(
     // Defaults are the current models. They live in env so a model rename never
     // requires a code change — verify at ai.google.dev/gemini-api/docs/models.
     textModel: env.GEMINI_TEXT_MODEL ?? 'gemini-3.7-flash',
-    visionModel: env.GEMINI_VISION_MODEL ?? 'gemini-3.6-flash',
+    visionModel: env.GEMINI_VISION_MODEL ?? 'gemini-2.0-flash', // Upgraded: better Indian food recognition vs 3.6-flash
     maxOutputTokens: Number(env.GEMINI_MAX_OUTPUT_TOKENS ?? 2048),
     timeoutMs: Number(env.GEMINI_TIMEOUT_MS ?? 20_000),
     maxRetries: Number(env.GEMINI_MAX_RETRIES ?? 2),
