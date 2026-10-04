@@ -329,6 +329,7 @@ Defined in `AGENTS.md` and `GEMINI.md`:
 1. **Gemini's Role:** Map Maker & Code Fetcher ONLY ("Yahan ye hai, wahan wo hai"). Scans thousands of lines, broad searches, and heavy file reads using Google AI 100% quota. Does not diagnose or take architectural decisions.
 2. **Claude's Role:** Lead Architect, Decision Maker & Coder. Inspects only targeted 20-50 line slices fetched by Gemini. Identifies flaws, decides fixes, executes surgical edits (`replace_file_content`), and validates tests.
 3. **Execution Guardrails:** Never read without range (`EndLine - StartLine <= 150`), grep before view, and no `git push` without explicit user permission.
+4. **Pragmatic Lateral Engineering ("Dimaag Lagao" Principle):** Proactively identify and leverage local machine hardware and developer shortcuts (laptop Bluetooth BLE sniffing, ADB port tunnels, local mock bridges) to make testing and verification effortless without waiting for manual smartphone compilation.
 
 ---
 *End of Manifest — VYRA System Architecture Documented & Verified.*
