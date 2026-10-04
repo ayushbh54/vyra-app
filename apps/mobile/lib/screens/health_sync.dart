@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
+import 'dart:math';
 
 import '../theme.dart';
 import '../widgets/common.dart';
@@ -29,6 +30,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   static const _prefsHeartRateKey = 'vyra_health_last_hr';
   static const _prefsUsePhoneSensorsKey = 'vyra_use_phone_sensors';
   static const _prefsBleWatchNameKey = 'vyra_ble_watch_name';
+  static const _prefsBleWatchRemoteIdKey = 'vyra_ble_watch_remote_id';
 
   final HealthSyncService _healthService = HealthSyncService();
 
@@ -76,6 +78,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   final _spo2Notifier = ValueNotifier<int>(0);
   final _stepsNotifier = ValueNotifier<int>(0);
   final _bpNotifier = ValueNotifier<String>('--');
+  final _batteryNotifier = ValueNotifier<int?>(null);
+
+  bool _isMeasuringHr = false;
+  bool _isMeasuringBp = false;
+  int _measurementCountdown = 0;
+  Timer? _measurementTimer;
 
   /// Cached SharedPreferences — initialized once in _bootstrap.
   /// Used for instant (synchronous-feeling) live_heart_rate/live_spo2/live_steps persistence
@@ -113,10 +121,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     _connectionSubscription?.cancel();
     _scanSubscription?.cancel();
     _heartPulseController.dispose();
+    _measurementTimer?.cancel();
     _hrNotifier.dispose();
     _spo2Notifier.dispose();
     _stepsNotifier.dispose();
     _bpNotifier.dispose();
+    _batteryNotifier.dispose();
     super.dispose();
   }
 
@@ -133,11 +143,29 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         _pairedWatchName = savedWatchName;
       }
 
+      final savedRemoteId = prefs.getString(_prefsBleWatchRemoteIdKey);
+      if (savedRemoteId != null && savedRemoteId.isNotEmpty) {
+        unawaited(_autoReconnectSavedWatch(savedRemoteId));
+      }
+
       if (!mounted) return;
       setState(() {
         _usePhoneSensors = phoneSensors;
         _connected = granted || phoneSensors || _isRealBleConnected;
       });
+    } catch (_) {}
+  }
+
+  /// Silently and immediately reconnects to previously paired smartwatch hardware
+  Future<void> _autoReconnectSavedWatch(String remoteId) async {
+    if (_isRealBleConnected || _isConnecting) return;
+    try {
+      final isSupported = await FlutterBluePlus.isSupported;
+      if (!isSupported) return;
+      final adapterState = await FlutterBluePlus.adapterState.first;
+      if (adapterState != BluetoothAdapterState.on) return;
+      final device = BluetoothDevice.fromId(remoteId);
+      await _connectToRealWatch(device);
     } catch (_) {}
   }
 
@@ -271,10 +299,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       _pairedWatchName =
           device.platformName.isNotEmpty ? device.platformName : "HiWatch Pro";
 
-      // Save paired watch name
+      // Save paired watch name & remote ID for 1-second background auto-reconnect
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
       await prefs.setString(_prefsBleWatchNameKey, _pairedWatchName!);
+      await prefs.setString(_prefsBleWatchRemoteIdKey, device.remoteId.str);
 
       // Listen for disconnection — skip initial 'disconnected' emission that fires
       // before the connection handshake completes (prevents full screen rebuild/restart)
@@ -333,6 +362,30 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
         for (var c in s.characteristics) {
           final cUuid = c.uuid.toString().toLowerCase();
+
+          // Read & subscribe to Battery Level characteristic (0x2A19)
+          if (cUuid.contains('2a19')) {
+            try {
+              if (c.properties.read) {
+                unawaited(() async {
+                  final bVal = await c.read();
+                  if (bVal.isNotEmpty && bVal[0] <= 100) {
+                    _batteryNotifier.value = bVal[0];
+                  }
+                }());
+              }
+              if (c.properties.notify || c.properties.indicate) {
+                final sub = c.onValueReceived.listen((bytes) {
+                  if (bytes.isNotEmpty && bytes[0] <= 100) {
+                    _batteryNotifier.value = bytes[0];
+                  }
+                });
+                _notifySubscriptions.add(sub);
+                unawaited(c.setNotifyValue(true));
+              }
+            } catch (_) {}
+          }
+
           final isVendorChar = cUuid.contains('6e40') ||
               cUuid.contains('ff01') ||
               cUuid.contains('ff02') ||
@@ -582,6 +635,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         _liveHeartRate = telemetry.heartRateBpm!;
         _hrNotifier.value = _liveHeartRate;
         _lastSummary['heartRateBpm'] = _liveHeartRate;
+        if (_isMeasuringHr) {
+          _isMeasuringHr = false;
+          _measurementTimer?.cancel();
+          HapticFeedback.mediumImpact();
+        }
         if (_liveHeartRate < 60) {
           _liveHrZone = "Resting / Low";
         } else if (_liveHeartRate <= 100) {
@@ -603,6 +661,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           _bpNotifier.value = _liveBp;
           _lastSummary['bpSystolic'] = sys;
           _lastSummary['bpDiastolic'] = dia;
+          if (_isMeasuringBp) {
+            _isMeasuringBp = false;
+            _measurementTimer?.cancel();
+            HapticFeedback.mediumImpact();
+          }
         }
       }
       if (telemetry.bloodOxygenSpo2 != null &&
@@ -612,11 +675,14 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         _lastSummary['bloodOxygenSpo2'] = _liveSpo2;
       }
       if (telemetry.steps != null && telemetry.steps! > 0) {
-        _liveSteps = telemetry.steps!;
+        // Peak Memory Lock: Prevent older 20-minute historical bucket packets from decrementing total steps
+        _liveSteps = max(_liveSteps, telemetry.steps!);
         _stepsNotifier.value = _liveSteps;
-        _liveCalories = telemetry.calories ?? (_liveSteps * 0.04).round();
+        final calcKcal = (_liveSteps * 0.04).round();
+        _liveCalories = max(_liveCalories, telemetry.calories ?? calcKcal);
+        final calcDist = (_liveSteps * 0.75).round();
         _liveDistanceMeters =
-            telemetry.distanceMeters ?? (_liveSteps * 0.75).round();
+            max(_liveDistanceMeters, telemetry.distanceMeters ?? calcDist);
         _activeMinutes = (_liveSteps / 110).round();
 
         _lastSummary['steps'] = _liveSteps;
@@ -780,8 +846,14 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     _connectionSubscription?.cancel();
     await _connectedBleDevice?.disconnect();
 
+    _measurementTimer?.cancel();
+    _isMeasuringHr = false;
+    _isMeasuringBp = false;
+    _batteryNotifier.value = null;
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefsBleWatchNameKey);
+    await prefs.remove(_prefsBleWatchRemoteIdKey);
 
     if (!mounted) return;
 
@@ -798,6 +870,92 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Smartwatch disconnected.')),
+    );
+  }
+
+  /// Triggers a 15-second active optical pulse measurement with on-wrist feedback
+  Future<void> triggerManualHeartRateMeasurement() async {
+    if (_isMeasuringHr || !_isRealBleConnected) return;
+    setState(() {
+      _isMeasuringHr = true;
+      _measurementCountdown = 15;
+    });
+
+    _measurementTimer?.cancel();
+    _measurementTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_measurementCountdown <= 1) {
+        t.cancel();
+        setState(() => _isMeasuringHr = false);
+      } else {
+        setState(() => _measurementCountdown--);
+      }
+    });
+
+    await broadcastWatchCommands([
+      HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
+      HiWatchProProtocol.buildStartCombinedMeasureCommand(),
+    ]);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.favorite_rounded, color: Colors.redAccent, size: 16),
+            SizedBox(width: 8),
+            Text('Measuring pulse... Keep watch snug on your wrist'),
+          ],
+        ),
+        backgroundColor: VColor.surface,
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+
+  /// Triggers a 20-second blood pressure optical analysis sequence
+  Future<void> triggerManualBloodPressureMeasurement() async {
+    if (_isMeasuringBp || !_isRealBleConnected) return;
+    setState(() {
+      _isMeasuringBp = true;
+      _measurementCountdown = 20;
+    });
+
+    _measurementTimer?.cancel();
+    _measurementTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_measurementCountdown <= 1) {
+        t.cancel();
+        setState(() => _isMeasuringBp = false);
+      } else {
+        setState(() => _measurementCountdown--);
+      }
+    });
+
+    await broadcastWatchCommands([
+      HiWatchProProtocol.buildStartBloodPressureMeasureCommand(),
+      HiWatchProProtocol.buildBloodPressureMeasureCommand(),
+    ]);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.monitor_heart_rounded, color: Colors.blueAccent, size: 16),
+            SizedBox(width: 8),
+            Text('Measuring blood pressure... Keep arm relaxed'),
+          ],
+        ),
+        backgroundColor: VColor.surface,
+        duration: Duration(seconds: 4),
+      ),
     );
   }
 
@@ -1878,9 +2036,89 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                     fontWeight: FontWeight.w800,
                   ),
                 ),
+                const Spacer(),
+                ValueListenableBuilder<int?>(
+                  valueListenable: _batteryNotifier,
+                  builder: (_, battery, __) {
+                    if (battery == null) return const SizedBox.shrink();
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: VColor.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: VColor.line),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            battery > 20
+                                ? Icons.battery_std_rounded
+                                : Icons.battery_alert_rounded,
+                            color: battery > 20
+                                ? VColor.accentGreen
+                                : Colors.redAccent,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$battery%',
+                            style: const TextStyle(
+                              color: VColor.text,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
             const SizedBox(height: VSpace.md),
+
+            // Show manual measurement countdown banner when active
+            if (_isMeasuringHr || _isMeasuringBp)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: (_isMeasuringHr ? Colors.redAccent : Colors.blueAccent)
+                      .withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(VRadius.sm),
+                  border: Border.all(
+                    color: (_isMeasuringHr ? Colors.redAccent : Colors.blueAccent)
+                        .withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _isMeasuringHr ? Colors.redAccent : Colors.blueAccent,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _isMeasuringHr
+                            ? 'Measuring Pulse (${_measurementCountdown}s) — Keep watch snug on wrist...'
+                            : 'Measuring Blood Pressure (${_measurementCountdown}s) — Keep arm relaxed...',
+                        style: TextStyle(
+                          color: _isMeasuringHr ? Colors.redAccent : Colors.blueAccent,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             // Show waiting indicator when connected but no data yet
             if (_liveHeartRate == 0 && _liveSpo2 == 0)
@@ -2315,20 +2553,30 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             const SizedBox(height: 10),
 
             // Action Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
               children: [
                 OutlinedButton.icon(
-                  onPressed: () => sendRealBleCommand(
-                    HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
-                    "Measure Heart Rate",
-                  ),
+                  onPressed: _isMeasuringHr ? null : triggerManualHeartRateMeasurement,
                   icon: const Icon(Icons.favorite_rounded, size: 14),
-                  label: const Text("Measure HR",
-                      style: TextStyle(fontSize: 10.5)),
+                  label: Text(_isMeasuringHr ? "${_measurementCountdown}s" : "Measure HR",
+                      style: const TextStyle(fontSize: 10.5)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.redAccent,
                     side: const BorderSide(color: Colors.redAccent),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _isMeasuringBp ? null : triggerManualBloodPressureMeasurement,
+                  icon: const Icon(Icons.monitor_heart_rounded, size: 14),
+                  label: Text(_isMeasuringBp ? "${_measurementCountdown}s" : "Measure BP",
+                      style: const TextStyle(fontSize: 10.5)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.blueAccent,
+                    side: const BorderSide(color: Colors.blueAccent),
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                   ),
