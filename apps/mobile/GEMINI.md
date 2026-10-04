@@ -45,6 +45,23 @@ Whenever developing, testing, or debugging hardware, external APIs, sensors, or 
 3. **Frictionless Developer Experience:**
    - Always prioritize the path of least resistance for the user. Cut out tedious manual steps by automating local hardware/software bridges wherever possible.
 
+### 6. Zero-Guesswork Empirical Diagnostic Tooling Protocol ("Bina Tukke Lagaye Proactive Tool Banao")
+Whenever encountering unknown hardware, unverified proprietary protocols, reverse-engineered streams, stubborn bugs, or ambiguous multi-variable behavior:
+1. **Strict Ban on Guesswork ("Tukke Lagana Strictly Banned"):**
+   - NEVER make repeated speculative code edits hoping something sticks (e.g., guessing byte offsets, packet IDs, auth tokens, or timing delays).
+   - If an issue is not solved on the first grounded attempt, stop guessing immediately.
+2. **Proactive Diagnostic Tooling (Build Micro-Harness / Tester App / Probe Script):**
+   - Proactively design and construct a dedicated, lightweight diagnostic tool, test harness, standalone probe app, or sniffer script that runs independently.
+   - The tool must carry a comprehensive library of candidate presets, payloads, handshake variations, and boundary conditions to test systematically.
+3. **Ground-Truth Raw Packet & Stream Logging:**
+   - The tool must log raw byte traces, timestamps, and bi-directional TX/RX events so that the exact behavior of the target system is fully visible.
+   - Auto-detect winning combinations dynamically upon receiving valid responses, ACKs, or physiological telemetry.
+4. **Structured Forensic Verification Report:**
+   - The tool must generate an actionable, self-contained forensic verification report (hardware identifier, winning GATT/API signature, verified metrics, raw packet stream) that can be inspected directly.
+5. **Top-Tier Systems Thinking ("Top Level Thinking"):**
+   - Leverage deep systems engineering, protocol specifications, and web knowledge to anticipate edge cases and build the highest-quality diagnostic setup that extracts ground truth in a single decisive test.
+   - Once ground truth is proven by the tool, feed the verified signature back into the primary codebase for a 100% surgical, guaranteed fix.
+
 ---
 
 ## 🛠️ General Execution Guardrails
@@ -54,3 +71,4 @@ Whenever developing, testing, or debugging hardware, external APIs, sensors, or 
 4. **Preserve User Settings**: Never run `git push` without user explicitly saying "push kardo".
 5. **Deep Audit Standard**: Whenever an audit or bug check is requested, execute the full protocol (raw data tracing, collision analysis, boundaries, stream simulation, fuzz testing).
 6. **Lateral Engineering Standard:** Always proactively identify and propose local machine shortcuts (laptop Bluetooth, ADB bridges, local test harnesses, sniffer scripts) to make verification as simple and instant as possible.
+7. **Empirical Diagnostic Tooling Standard:** Never rely on guesswork for hardware, protocols, or complex integrations. Proactively design and build standalone test tools, harnesses, or probe modules that test candidate combinations systematically and extract verified ground truth.
