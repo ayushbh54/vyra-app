@@ -328,6 +328,10 @@ npm run test
 6. **Stationary Vitals Persistence:** Vitals update immediately independently of step cadence.
 7. **Immediate UI Gauge Restoration:** Restores last known vitals from persistent storage on screen load to eliminate blank `--` dials.
 8. **Multi-Characteristic Command Broadcast:** Commands broadcast simultaneously across all writable vendor UUIDs.
+9. **1-Second Instant Bluetooth Auto-Reconnect:** Automatically caches paired watch remote ID / MAC (`vyra_ble_watch_remote_id`) in SharedPreferences and attempts instant 1-second background reconnection upon app launch without requiring manual scans.
+10. **Peak Step Count Memory Lock:** Guarded incoming parsed step, calorie, and distance telemetry with `max()` peak retention, preventing older 20-minute historical packet dumps from regressing the daily aggregate.
+11. **Live Battery Level Monitoring (GATT 0x180F / 0x2A19):** Real-time battery percentage badge integrated directly into the live watch status card.
+12. **1-Tap Manual Pulse & BP Measurement Triggers:** Added interactive "Measure HR" and "Measure BP" action buttons with active countdown banners, optical sensor wake commands, and haptic feedback upon reading capture.
 
 ---
 
