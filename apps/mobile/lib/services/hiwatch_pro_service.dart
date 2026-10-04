@@ -297,10 +297,11 @@ class HiWatchProProtocol {
             // Blood Pressure record at bytes[12..17]: [T0..T3, Sys, Dia]
             final v1 = bytes[16];
             final v2 = bytes[17];
-            if (v1 >= 60 && v1 <= 220 && v2 >= 40 && v2 <= 140) {
-              sys = v1; dia = v2;
-            } else if (v2 >= 60 && v2 <= 220 && v1 >= 40 && v1 <= 140) {
-              sys = v2; dia = v1;
+            final higher = v1 >= v2 ? v1 : v2;
+            final lower = v1 < v2 ? v1 : v2;
+            if (higher >= 60 && higher <= 220 && lower >= 40 && lower <= 140) {
+              sys = higher;
+              dia = lower;
             }
           } else if (keyId == 0x14) {
             // SpO2 record at bytes[12..16]: [T0..T3, SpO2]
@@ -327,18 +328,20 @@ class HiWatchProProtocol {
           } else if (keyId == 0x05 && payload.length >= 6) {
             final v1 = payload[4];
             final v2 = payload[5];
-            if (v1 >= 60 && v1 <= 220 && v2 >= 40 && v2 <= 140) {
-              sys = v1; dia = v2;
-            } else if (v2 >= 60 && v2 <= 220 && v1 >= 40 && v1 <= 140) {
-              sys = v2; dia = v1;
+            final higher = v1 >= v2 ? v1 : v2;
+            final lower = v1 < v2 ? v1 : v2;
+            if (higher >= 60 && higher <= 220 && lower >= 40 && lower <= 140) {
+              sys = higher;
+              dia = lower;
             }
           } else if (keyId == 0x05 && payload.length >= 2) {
             final v1 = payload[0];
             final v2 = payload[1];
-            if (v1 >= 60 && v1 <= 220 && v2 >= 40 && v2 <= 140) {
-              sys = v1; dia = v2;
-            } else if (v2 >= 60 && v2 <= 220 && v1 >= 40 && v1 <= 140) {
-              sys = v2; dia = v1;
+            final higher = v1 >= v2 ? v1 : v2;
+            final lower = v1 < v2 ? v1 : v2;
+            if (higher >= 60 && higher <= 220 && lower >= 40 && lower <= 140) {
+              sys = higher;
+              dia = lower;
             }
           } else if (keyId == 0x14 && payload.length >= 5) {
             final rawSpo2 = payload[4];
