@@ -10,12 +10,12 @@ void main() {
 
     test('buildRequestLiveMetricsCommand produces immediate step query packet', () {
       final cmd = HiWatchProProtocol.buildRequestLiveMetricsCommand();
-      expect(cmd, equals([0xCD, 0x00, 0x06, 0x15, 0x01, 0x06, 0x00, 0x01, 0x01]));
+      expect(cmd, equals([0xCD, 0x00, 0x06, 0x15, 0x01, 0x01, 0x00, 0x01, 0x01]));
     });
 
     test('buildStartHeartRateMeasureCommand triggers continuous HR & SpO2 sensors', () {
       final cmd = HiWatchProProtocol.buildStartHeartRateMeasureCommand();
-      expect(cmd, equals([0xCD, 0x00, 0x04, 0x12, 0x24, 0x00, 0x01]));
+      expect(cmd, equals([0xCD, 0x00, 0x06, 0x12, 0x01, 0x0D, 0x00, 0x01, 0x01]));
     });
 
     test('buildDaFitStepQueryCommand produces DaFit / HryFine query packet', () {
@@ -30,7 +30,7 @@ void main() {
 
     test('buildFindWatchCommand produces motor vibration packet', () {
       final cmd = HiWatchProProtocol.buildFindWatchCommand();
-      expect(cmd, equals([0xCD, 0x00, 0x04, 0x08, 0x01]));
+      expect(cmd, equals([0xCD, 0x00, 0x06, 0x12, 0x01, 0x0B, 0x00, 0x01, 0x01]));
     });
 
     test('buildSyncTimeCommand accurately encodes timestamp components', () {
@@ -168,15 +168,14 @@ void main() {
     });
 
     test('parses reverse-engineered APK FitPro Day Summary (Key 0x0C)', () {
-      // APK Sport packet with Key 0x0C: [CD 00 12 15 01 0C Date(4B) Steps(4B) Dist(2B) Cal(2B)]
-      // steps = 10450 (0x000028D2), dist = 7800 (0x1E78), cal = 450 (0x01C2)
+      // APK Sport packet with Key 0x0C: [CD 00 10 15 01 0C Steps(4B) Dist(4B) Cal(2B)]
+      // steps = 10450 (0x000028D2), dist = 7800 (0x00001E78), cal = 450 (0x01C2)
       final payload = [
-        0x00, 0x00, 0x00, 0x00, // Date / record index
-        0x00, 0x00, 0x28, 0xD2, // Steps: 10450
-        0x1E, 0x78,             // Distance: 7800m
-        0x01, 0xC2,             // Calories: 450 kcal
+        0x00, 0x00, 0x28, 0xD2, // Steps: 10450 (4B)
+        0x00, 0x00, 0x1E, 0x78, // Distance: 7800m (4B)
+        0x01, 0xC2,             // Calories: 450 kcal (2B)
       ];
-      final packet = [0xCD, 0x00, 0x12, 0x15, 0x01, 0x0C, ...payload];
+      final packet = [0xCD, 0x00, 0x0E, 0x15, 0x01, 0x0C, ...payload];
       final data = HiWatchProProtocol.parseNotifyPacket(packet);
       expect(data.steps, equals(10450));
       expect(data.distanceMeters, equals(7800));

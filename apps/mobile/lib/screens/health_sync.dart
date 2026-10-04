@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -46,7 +47,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
   Timer? _livePollingTimer;
   Timer? _continuousDbSyncTimer;
-  
+
   String? _pairedWatchName;
   bool _isRealBleConnected = false;
   bool _isConnecting = false;
@@ -65,12 +66,22 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   DateTime? _lastAutoSavedAt;
   bool _isAutoSaving = false;
   String? _lastDataTimestamp;
+  int _packetsReceived = 0;
+  String? _lastRawPacketHex;
+
+  /// Official HiWatch Pro APK packet assembler for MTU fragmentation handling
+  final HiWatchPacketAssembler _packetAssembler = HiWatchPacketAssembler();
 
   final _hrNotifier = ValueNotifier<int>(0);
   final _spo2Notifier = ValueNotifier<int>(0);
   final _stepsNotifier = ValueNotifier<int>(0);
   final _bpNotifier = ValueNotifier<String>('--');
-  
+
+  /// Cached SharedPreferences — initialized once in _bootstrap.
+  /// Used for instant (synchronous-feeling) live_heart_rate/live_spo2/live_steps persistence
+  /// on every BLE notification, without the overhead of a repeated async SharedPreferences.getInstance().
+  SharedPreferences? _cachedPrefs;
+
   late AnimationController _heartPulseController;
 
   // Real BLE Scanner State
@@ -110,9 +121,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   }
 
   Future<void> _bootstrap() async {
-    await _restoreLastSyncInfo();
+    await restoreLastSyncInfo();
     try {
       final prefs = await SharedPreferences.getInstance();
+      _cachedPrefs = prefs; // cache for instant BLE telemetry persistence
       final phoneSensors = prefs.getBool(_prefsUsePhoneSensorsKey) ?? false;
       final savedWatchName = prefs.getString(_prefsBleWatchNameKey);
       final granted = await _healthService.hasPermissions();
@@ -137,8 +149,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     final locationStatus = await Permission.location.request();
 
     final bleGranted = (scanStatus.isGranted || scanStatus.isLimited) &&
-                       (connectStatus.isGranted || connectStatus.isLimited);
-    final locationGranted = locationStatus.isGranted || locationStatus.isLimited;
+        (connectStatus.isGranted || connectStatus.isLimited);
+    final locationGranted =
+        locationStatus.isGranted || locationStatus.isLimited;
 
     return bleGranted || locationGranted;
   }
@@ -150,7 +163,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('⚠️ Bluetooth and Location permissions are required to scan for watches.'),
+            content: Text(
+                '⚠️ Bluetooth and Location permissions are required to scan for watches.'),
             backgroundColor: VColor.warn,
           ),
         );
@@ -161,7 +175,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       if (!isSupported) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bluetooth LE is not supported on this phone.')),
+          const SnackBar(
+              content: Text('Bluetooth LE is not supported on this phone.')),
         );
         return;
       }
@@ -173,7 +188,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         } catch (_) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please enable Bluetooth in your phone settings.')),
+            const SnackBar(
+                content:
+                    Text('Please enable Bluetooth in your phone settings.')),
           );
           return;
         }
@@ -218,7 +235,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       if (!mounted) return;
       setState(() {
         _isConnecting = true;
-        _connectionStatusText = "Connecting to ${device.platformName.isNotEmpty ? device.platformName : 'Watch'}...";
+        _connectionStatusText =
+            "Connecting to ${device.platformName.isNotEmpty ? device.platformName : 'Watch'}...";
       });
 
       await FlutterBluePlus.stopScan();
@@ -250,7 +268,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       if (!mounted) return;
 
       _connectedBleDevice = device;
-      _pairedWatchName = device.platformName.isNotEmpty ? device.platformName : "HiWatch Pro";
+      _pairedWatchName =
+          device.platformName.isNotEmpty ? device.platformName : "HiWatch Pro";
 
       // Save paired watch name
       final prefs = await SharedPreferences.getInstance();
@@ -265,11 +284,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           hasSeenConnected = true;
           return;
         }
-        if (state == BluetoothConnectionState.disconnected && hasSeenConnected) {
+        if (state == BluetoothConnectionState.disconnected &&
+            hasSeenConnected) {
           // Small delay to debounce transient disconnects during BLE handshake
           Future.delayed(const Duration(milliseconds: 400), () {
             if (!mounted) return;
-            if (_isRealBleConnected) return; // reconnected in the meantime
+            if (device.isConnected) return; // physically reconnected in the meantime
             _livePollingTimer?.cancel();
             _continuousDbSyncTimer?.cancel();
             for (var sub in _notifySubscriptions) {
@@ -277,7 +297,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             }
             _notifySubscriptions.clear();
             // Flush any final unpersisted readings to database & backend immediately
-            _persistLiveWatchDataToDatabase();
+            persistLiveWatchDataToDatabase();
             if (!mounted) return;
             // Only update connection status — preserve telemetry values so the
             // last-known readings remain visible even after disconnect.
@@ -286,7 +306,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               _connectionStatusText = 'Disconnected';
             });
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Smartwatch disconnected: $_pairedWatchName')),
+              SnackBar(
+                  content: Text('Smartwatch disconnected: $_pairedWatchName')),
             );
           });
         }
@@ -321,71 +342,101 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               !isSystemGatt;
 
           // Collect dedicated writable command characteristics (avoid system service overwrites)
-          if ((c.properties.write || c.properties.writeWithoutResponse) && isVendorChar) {
+          if ((c.properties.write || c.properties.writeWithoutResponse) &&
+              isVendorChar) {
             _writeCharacteristics.add(c);
           }
 
-          // Subscribe to notify/indicate telemetry characteristics
+          // Subscribe to EVERY notify/indicate characteristic - Universal approach for unknown watches
           if (c.properties.notify || c.properties.indicate) {
-            _notifyCharacteristics.add(c);
-            try {
-              await c.setNotifyValue(true);
-              final sub = c.onValueReceived.listen((bytes) {
-                _processIncomingWatchData(bytes);
-              });
-              _notifySubscriptions.add(sub);
-            } catch (_) {}
-
-            // Immediate initial read for readable telemetry characteristics
-            if (c.properties.read) {
+            // Skip only the known non-data system chars
+            final isSkippable = cUuid ==
+                '00002a05-0000-1000-8000-00805f9b34fb'; // service changed
+            if (!isSkippable) {
+              _notifyCharacteristics.add(c);
               try {
-                final initData = await c.read();
-                if (initData.isNotEmpty) {
-                  _processIncomingWatchData(initData);
-                }
-              } catch (_) {}
+                final sub = c.onValueReceived.listen((bytes) {
+                  if (bytes.isNotEmpty) {
+                    debugPrint(
+                        '[ULTRA2-NOTIFY] char=$cUuid len=${bytes.length}: ${bytes.map((b) => "0x${b.toRadixString(16).padLeft(2, '0').toUpperCase()}").join(" ")}');
+                    processIncomingWatchData(bytes);
+                  }
+                });
+                _notifySubscriptions.add(sub);
+                await c.setNotifyValue(true);
+                // 50ms pacing prevents Android BluetoothGatt CCCD queue-jamming
+                await Future.delayed(const Duration(milliseconds: 50));
+              } catch (e) {
+                debugPrint('[ULTRA2] setNotify failed for $cUuid: $e');
+              }
+
+              // Immediate initial read for readable telemetry characteristics
+              if (c.properties.read) {
+                try {
+                  final initData = await c.read();
+                  if (initData.isNotEmpty) {
+                    processIncomingWatchData(initData);
+                  }
+                } catch (_) {}
+              }
             }
           }
         }
       }
 
-      // Sort write characteristics so primary vendor UUIDs (ff02, 6e40) are first
+      // Sort write characteristics so official HiWatch Pro UART write characteristic (6e400002) is first
       _writeCharacteristics.sort((a, b) {
         final aU = a.uuid.toString().toLowerCase();
         final bU = b.uuid.toString().toLowerCase();
-        if (aU.contains('ff02') || aU.contains('6e40')) return -1;
-        if (bU.contains('ff02') || bU.contains('6e40')) return 1;
+        // Priority 1: Official HiWatch Pro UART write characteristic (Profile.uartWriteCharacteristicUUID)
+        if (aU.contains('6e400002')) return -1;
+        if (bU.contains('6e400002')) return 1;
+        // Priority 2: Generic Nordic UART write (6e40)
+        if (aU.contains('6e40') && !aU.contains('ff02')) return -1;
+        if (bU.contains('6e40') && !bU.contains('ff02')) return 1;
+        // Priority 3: Fallback vendor write (ff02, etc.)
+        if (aU.contains('ff02')) return -1;
+        if (bU.contains('ff02')) return 1;
         return 0;
       });
 
-      // Initial gentle handshake with paced 150ms delays to prevent MCU buffer overrun
-      await _broadcastWatchCommands([
-        HiWatchProProtocol.buildSyncTimeCommand(),
-        HiWatchProProtocol.buildPairCommand(),
-        HiWatchProProtocol.buildIsBindingCommand(),
-        HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),
-        HiWatchProProtocol.buildSportKeyDayGetCommand(),
-        HiWatchProProtocol.buildSportKeyGetCommand(),
-        HiWatchProProtocol.buildStartHeartRateMeasureCommand(), // trigger HR+SpO2 immediately on connect
+      // Mark connection active immediately so handshake commands and early timer ticks are transmitted
+      _isRealBleConnected = true;
+      _connected = true;
+      _isConnecting = false;
+      _connectionStatusText = "Connected to $_pairedWatchName";
+
+      // Initial handshake: paced delay between commands to prevent MCU buffer overrun
+      // APK-verified sequence: sync time → pair → bind → enable all health streaming
+      await broadcastWatchCommands([
+        HiWatchProProtocol.buildHiWatchTimeSyncCommand(),   // Official HiWatchPro RTC Sync
+        HiWatchProProtocol.buildSyncTimeCommand(),          // DaFit RTC fallback
+        HiWatchProProtocol.buildPairCommand(),              // APK: getPair()
+        HiWatchProProtocol.buildIsBindingCommand(),         // APK: getIsBingding()
+        HiWatchProProtocol.buildTurnOnRealTimeStepCommand(), // APK: getTurnOnRealTimeStep(true)
+        HiWatchProProtocol.buildStartHeartRateMeasureCommand(), // APK: getSportHeartRateRecive(true)
+        HiWatchProProtocol.buildStartBloodPressureMeasureCommand(), // APK: getSportBloodRateRecive(true)
+        HiWatchProProtocol.buildStartCombinedMeasureCommand(),  // APK: getSportMeasureRecive(true)
+        HiWatchProProtocol.buildLegacyHeartRateMeasureCommand(), // APK: getSportMeasureHeartRecive(true)
+        HiWatchProProtocol.buildBloodPressureMeasureCommand(),  // APK: getSportMeasureBloodRecive(true)
+        HiWatchProProtocol.buildSpO2MeasureCommand(),       // APK: getSportMeasureSpoRecive(true)
+        HiWatchProProtocol.buildSportKeyDayGetCommand(),    // APK: getSportKeyDayGet(true)
+        HiWatchProProtocol.buildSportKeyGetCommand(),       // APK: getSportKeyGet(true)
       ]);
 
       // Start continuous real-time live telemetry polling stream (paced, cycling 1 command per tick)
-      _startContinuousLiveTelemetryStream();
+      startContinuousLiveTelemetryStream();
 
       // Start continuous database & local storage auto-persist (every 6 seconds - zero data loss)
-      _startContinuousDbSync();
+      startContinuousDbSync();
 
       if (!mounted) return;
-      setState(() {
-        _isRealBleConnected = true;
-        _isConnecting = false;
-        _connected = true;
-        _connectionStatusText = "Connected to $_pairedWatchName";
-      });
+      setState(() {});
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('⚡ $_pairedWatchName connected! Continuous live telemetry active.'),
+          content: Text(
+              '⚡ $_pairedWatchName connected! Continuous live telemetry active.'),
           backgroundColor: VColor.accentGreen,
         ),
       );
@@ -397,81 +448,140 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not connect: $e. Check if watch is connected to another phone.'),
+          content: Text(
+              'Could not connect: $e. Check if watch is connected to another phone.'),
           backgroundColor: VColor.crit,
         ),
       );
     }
   }
 
-  int _telemetryTick = 0;
+  int telemetryTick = 0;
 
-  void _startContinuousLiveTelemetryStream() {
+  /// Real-time telemetry stream — NO DELAY design:
+  /// 
+  /// BLE notifications (push): Watch sends data INSTANTLY whenever it has a reading.
+  /// We already subscribed to ALL notify characteristics in the connect flow,
+  /// so any data the watch pushes arrives in processIncomingWatchData() with zero delay.
+  ///
+  /// Measurement triggers (pull): Some watches need a command to START measuring.
+  /// We send HR + SpO2 + Steps commands every 1 second so data is always fresh.
+  void startContinuousLiveTelemetryStream() {
     _livePollingTimer?.cancel();
-    _livePollingTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
+
+    // ── IMMEDIATE: trigger all 3 sensors the moment we connect (no wait) ──
+    _sendRealTimeRefreshNow();
+
+    // ── SUSTAINED: every 1 second, re-trigger HR + SpO2 + Steps ──────────
+    // 1s interval ensures data never goes stale even if a packet is lost
+    _livePollingTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (!_isRealBleConnected) {
-        timer.cancel();
+        _livePollingTimer?.cancel();
         return;
       }
-      _telemetryTick++;
-      switch (_telemetryTick % 4) {
+      telemetryTick++;
+
+      // Round-robin: alternate between HR-only, SpO2-only, and Steps+keepalive
+      // so we never flood the BLE MTU but still cover all sensors every 3 seconds
+      switch (telemetryTick % 3) {
         case 0:
-          await _broadcastWatchCommands([HiWatchProProtocol.buildUniversalHeartbeatCommand()]);
+          // Heart Rate: APK getSportHeartRateRecive(true)
+          await broadcastWatchCommands([
+            HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
+          ]);
           break;
         case 1:
-          await _broadcastWatchCommands([HiWatchProProtocol.buildStartHeartRateMeasureCommand()]);
+          // SpO2: APK getSportMeasureSpoRecive(true) + combined measure
+          await broadcastWatchCommands([
+            HiWatchProProtocol.buildSpO2MeasureCommand(),
+            HiWatchProProtocol.buildStartCombinedMeasureCommand(),
+          ]);
           break;
         case 2:
-          await _broadcastWatchCommands([HiWatchProProtocol.buildRequestLiveMetricsCommand()]);
-          break;
-        case 3:
-          await _broadcastWatchCommands([HiWatchProProtocol.buildDaFitStepQueryCommand()]);
+          // Steps: APK getTurnOnRealTimeStep(true) + getSportKeyGet(true)
+          // + keep-alive heartbeat so watch stream stays open
+          await broadcastWatchCommands([
+            HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),
+            HiWatchProProtocol.buildSportKeyGetCommand(),
+            HiWatchProProtocol.buildUniversalHeartbeatCommand(),
+          ]);
           break;
       }
     });
   }
 
-  void _startContinuousDbSync() {
+  /// Sends all measurement triggers immediately — called right on connect.
+  Future<void> _sendRealTimeRefreshNow() async {
+    if (!_isRealBleConnected && _writeCharacteristics.isEmpty) return;
+    // Blast ALL sensor triggers at once for instant first reading
+    await broadcastWatchCommands([
+      HiWatchProProtocol.buildStartHeartRateMeasureCommand(),    // HR ON
+      HiWatchProProtocol.buildSpO2MeasureCommand(),              // SpO2 trigger
+      HiWatchProProtocol.buildStartCombinedMeasureCommand(),     // HR+SpO2+BP combined
+      HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),       // Steps streaming ON
+      HiWatchProProtocol.buildSportKeyGetCommand(),              // Request current steps
+      HiWatchProProtocol.buildLegacyHeartRateMeasureCommand(),   // Fallback HR trigger
+    ]);
+  }
+
+  void startContinuousDbSync() {
     _continuousDbSyncTimer?.cancel();
-    _continuousDbSyncTimer = Timer.periodic(const Duration(seconds: 6), (timer) async {
+    _continuousDbSyncTimer =
+        Timer.periodic(const Duration(seconds: 6), (timer) async {
       if (!_isRealBleConnected) {
         timer.cancel();
         return;
       }
-      await _persistLiveWatchDataToDatabase();
+      await persistLiveWatchDataToDatabase();
       if (!mounted) timer.cancel();
     });
   }
 
-  void _processIncomingWatchData(List<int> bytes) {
+  void processIncomingWatchData(List<int> bytes) {
     if (bytes.isEmpty) return;
     // ignore: avoid_print
-    print('[WATCH-RAW] ${bytes.length}B: ${bytes.map((b) => "0x${b.toRadixString(16).padLeft(2, '0').toUpperCase()}").join(" ")}');
+    print(
+        '[WATCH-RAW] ${bytes.length}B: ${bytes.map((b) => "0x${b.toRadixString(16).padLeft(2, '0').toUpperCase()}").join(" ")}');
 
-    final telemetry = HiWatchProProtocol.parseNotifyPacket(bytes);
+    final now = TimeOfDay.now();
+    _packetsReceived++;
+    _lastRawPacketHex = bytes
+        .map((b) => "0x${b.toRadixString(16).padLeft(2, '0').toUpperCase()}")
+        .join(' ');
+    _lastDataTimestamp =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${DateTime.now().second.toString().padLeft(2, '0')}';
+
+    // Reassemble multi-chunk packets per BaseReceiveData.java L143-165
+    final assembled = _packetAssembler.processChunk(bytes);
+    if (assembled == null) return;
+
+    final telemetry = HiWatchProProtocol.parseNotifyPacket(assembled);
 
     // Immediately ACK incoming HiWatch / FitPro packets so watch firmware
     // continues streaming real-time telemetry uninterrupted.
     if (telemetry.ackPacket != null) {
-      _sendWatchAck(telemetry.ackPacket!);
-    } else if (bytes[0] == 0xCD && bytes.length >= 4) {
-      final key = bytes[3];
-      final seq0 = bytes.length > 4 ? bytes[4] : 0;
-      final seq1 = bytes.length > 5 ? bytes[5] : 0;
-      _sendWatchAck(HiWatchProProtocol.buildReturnAckCommand(key, seq0, seq1));
+      sendWatchAck(telemetry.ackPacket!);
+    } else if (assembled[0] == 0xCD && assembled.length >= 4) {
+      final cmd = assembled[3];
+      final rawLen = assembled.length >= 3 ? ((assembled[1] << 8) | assembled[2]) : (assembled.length - 3);
+      final totalLen = (rawLen > 0 ? rawLen : assembled.length - 3) + 3;
+      sendWatchAck(HiWatchProProtocol.buildReturnAckCommand(cmd, (totalLen >> 8) & 0xFF, totalLen & 0xFF));
     }
 
-    if (telemetry.isEmpty) return;
+    if (telemetry.isEmpty) {
+      if (mounted) setState(() {});
+      return;
+    }
 
     if (!mounted) return;
-    
-    final now = TimeOfDay.now();
-    _lastDataTimestamp = '${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}:${DateTime.now().second.toString().padLeft(2,'0')}';
 
     setState(() {
-      if (telemetry.heartRateBpm != null && telemetry.heartRateBpm! >= 35 && telemetry.heartRateBpm! <= 220) {
+      if (telemetry.heartRateBpm != null &&
+          telemetry.heartRateBpm! >= 35 &&
+          telemetry.heartRateBpm! <= 220) {
         _liveHeartRate = telemetry.heartRateBpm!;
         _hrNotifier.value = _liveHeartRate;
+        _lastSummary['heartRateBpm'] = _liveHeartRate;
         if (_liveHeartRate < 60) {
           _liveHrZone = "Resting / Low";
         } else if (_liveHeartRate <= 100) {
@@ -481,9 +591,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         } else {
           _liveHrZone = "Peak Intensity";
         }
-        _liveRecoveryScore = (100 - (_liveHeartRate - 68).abs() * 0.4).clamp(55, 99).round();
+        _liveRecoveryScore =
+            (100 - (_liveHeartRate - 68).abs() * 0.4).clamp(55, 99).round();
       }
-      if (telemetry.bloodPressureSystolic != null && telemetry.bloodPressureDiastolic != null) {
+      if (telemetry.bloodPressureSystolic != null &&
+          telemetry.bloodPressureDiastolic != null) {
         final sys = telemetry.bloodPressureSystolic!;
         final dia = telemetry.bloodPressureDiastolic!;
         if (sys >= 60 && sys <= 220 && dia >= 40 && dia <= 140) {
@@ -493,61 +605,79 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           _lastSummary['bpDiastolic'] = dia;
         }
       }
-      if (telemetry.bloodOxygenSpo2 != null && telemetry.bloodOxygenSpo2! >= 70) {
+      if (telemetry.bloodOxygenSpo2 != null &&
+          telemetry.bloodOxygenSpo2! >= 70) {
         _liveSpo2 = telemetry.bloodOxygenSpo2!;
         _spo2Notifier.value = _liveSpo2;
+        _lastSummary['bloodOxygenSpo2'] = _liveSpo2;
       }
       if (telemetry.steps != null && telemetry.steps! > 0) {
         _liveSteps = telemetry.steps!;
         _stepsNotifier.value = _liveSteps;
         _liveCalories = telemetry.calories ?? (_liveSteps * 0.04).round();
-        _liveDistanceMeters = telemetry.distanceMeters ?? (_liveSteps * 0.75).round();
+        _liveDistanceMeters =
+            telemetry.distanceMeters ?? (_liveSteps * 0.75).round();
         _activeMinutes = (_liveSteps / 110).round();
 
         _lastSummary['steps'] = _liveSteps;
         _lastSummary['caloriesBurned'] = _liveCalories;
         _lastSummary['distanceMeters'] = _liveDistanceMeters;
-        _lastSummary['heartRateBpm'] = _liveHeartRate;
-        if (_liveSpo2 > 0) _lastSummary['bloodOxygenSpo2'] = _liveSpo2;
-        if (_liveBp != '--') {
-          final parts = _liveBp.split('/');
-          if (parts.length == 2) {
-            final s = int.tryParse(parts[0]);
-            final d = int.tryParse(parts[1]);
-            if (s != null && d != null) {
-              _lastSummary['bpSystolic'] = s;
-              _lastSummary['bpDiastolic'] = d;
-            }
-          }
-        }
       }
     });
 
-    // Persist live telemetry to SharedPreferences so the AI coach (ai_chat.dart)
-    // can include up-to-date watch readings in every message's userContext.
-    unawaited(() async {
-      final prefs = await SharedPreferences.getInstance();
-      if (telemetry.heartRateBpm != null && telemetry.heartRateBpm! >= 35 && telemetry.heartRateBpm! <= 220) {
-        await prefs.setInt('live_heart_rate', telemetry.heartRateBpm!);
+    // ── Instant persist to SharedPreferences (cached — no async init overhead) ──
+    // live_heart_rate, live_spo2, live_steps update the moment BLE notification arrives.
+    final prefs = _cachedPrefs;
+    if (prefs != null) {
+      if (telemetry.heartRateBpm != null &&
+          telemetry.heartRateBpm! >= 35 &&
+          telemetry.heartRateBpm! <= 220) {
+        unawaited(prefs.setInt('live_heart_rate', telemetry.heartRateBpm!));
       }
       if (telemetry.bloodOxygenSpo2 != null && telemetry.bloodOxygenSpo2! >= 70) {
-        await prefs.setInt('live_spo2', telemetry.bloodOxygenSpo2!);
+        unawaited(prefs.setInt('live_spo2', telemetry.bloodOxygenSpo2!));
       }
       if (_liveBp != '--') {
-        await prefs.setString('live_blood_pressure', _liveBp);
+        unawaited(prefs.setString('live_blood_pressure', _liveBp));
       }
       if (telemetry.steps != null && telemetry.steps! > 0) {
-        await prefs.setInt('live_steps', telemetry.steps!);
+        unawaited(prefs.setInt('live_steps', telemetry.steps!));
       }
-    }());
+    } else {
+      // First time: init cache then save
+      unawaited(() async {
+        final p = await SharedPreferences.getInstance();
+        _cachedPrefs = p;
+        if (telemetry.heartRateBpm != null && telemetry.heartRateBpm! >= 35) {
+          await p.setInt('live_heart_rate', telemetry.heartRateBpm!);
+        }
+        if (telemetry.bloodOxygenSpo2 != null && telemetry.bloodOxygenSpo2! >= 70) {
+          await p.setInt('live_spo2', telemetry.bloodOxygenSpo2!);
+        }
+        if (telemetry.steps != null && telemetry.steps! > 0) {
+          await p.setInt('live_steps', telemetry.steps!);
+        }
+      }());
+    }
   }
 
-  Future<void> _persistLiveWatchDataToDatabase() async {
-    final currentSteps = _liveSteps > 0 ? _liveSteps : (_lastSummary['steps']?.toInt() ?? 0);
-    final currentHr = _liveHeartRate > 0 ? _liveHeartRate : (_lastSummary['heartRateBpm']?.toInt() ?? 0);
-    final currentSpo2 = _liveSpo2 > 0 ? _liveSpo2 : (_lastSummary['bloodOxygenSpo2']?.toInt() ?? 0);
-    final currentKcal = _liveCalories > 0 ? _liveCalories : (_lastSummary['caloriesBurned']?.toInt() ?? (currentSteps > 0 ? (currentSteps * 0.04).round() : 0));
-    final currentDist = _liveDistanceMeters > 0 ? _liveDistanceMeters : (_lastSummary['distanceMeters']?.toInt() ?? (currentSteps > 0 ? (currentSteps * 0.75).round() : 0));
+  Future<void> persistLiveWatchDataToDatabase() async {
+    final currentSteps =
+        _liveSteps > 0 ? _liveSteps : (_lastSummary['steps']?.toInt() ?? 0);
+    final currentHr = _liveHeartRate > 0
+        ? _liveHeartRate
+        : (_lastSummary['heartRateBpm']?.toInt() ?? 0);
+    final currentSpo2 = _liveSpo2 > 0
+        ? _liveSpo2
+        : (_lastSummary['bloodOxygenSpo2']?.toInt() ?? 0);
+    final currentKcal = _liveCalories > 0
+        ? _liveCalories
+        : (_lastSummary['caloriesBurned']?.toInt() ??
+            (currentSteps > 0 ? (currentSteps * 0.04).round() : 0));
+    final currentDist = _liveDistanceMeters > 0
+        ? _liveDistanceMeters
+        : (_lastSummary['distanceMeters']?.toInt() ??
+            (currentSteps > 0 ? (currentSteps * 0.75).round() : 0));
 
     if (currentSteps == 0 && currentHr == 0 && currentSpo2 == 0) return;
 
@@ -559,8 +689,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       if (currentSpo2 > 0) 'bloodOxygenSpo2': currentSpo2,
       if (currentDist > 0) 'distanceMeters': currentDist,
       if (_activeMinutes > 0) 'activeMinutes': _activeMinutes,
-      if (_lastSummary.containsKey('bpSystolic')) 'bpSystolic': _lastSummary['bpSystolic']!,
-      if (_lastSummary.containsKey('bpDiastolic')) 'bpDiastolic': _lastSummary['bpDiastolic']!,
+      if (_lastSummary.containsKey('bpSystolic'))
+        'bpSystolic': _lastSummary['bpSystolic']!,
+      if (_lastSummary.containsKey('bpDiastolic'))
+        'bpDiastolic': _lastSummary['bpDiastolic']!,
     };
 
     if (!mounted) return;
@@ -573,7 +705,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
     // 2. Dual-Write: Local ReadingsHistoryService (Instant offline local audit record)
     try {
-      final formattedTime = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+      final formattedTime =
+          "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
       final entry = SavedReadingEntry(
         id: 'watch_${now.millisecondsSinceEpoch}',
         timestamp: now,
@@ -587,7 +720,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     } catch (_) {}
 
     // 3. Dual-Write: SharedPreferences Cache
-    await _persistSyncResult(now, payload);
+    await persistSyncResult(now, payload);
 
     if (mounted) {
       setState(() {
@@ -599,48 +732,45 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     }
   }
 
-  Future<void> _broadcastWatchCommands(List<List<int>> commandList) async {
-    if (!_isRealBleConnected) return;
+  Future<void> broadcastWatchCommands(List<List<int>> commandList) async {
+    if (_writeCharacteristics.isEmpty) return;
 
-    if (_writeCharacteristics.isNotEmpty) {
-      // Target the primary vendor command characteristic (first in sorted list)
-      final targetChar = _writeCharacteristics.first;
-      for (var cmd in commandList) {
+    for (final cmd in commandList) {
+      // Broadcast to ALL writable characteristics so watches listening on secondary UUIDs receive commands
+      for (final char in _writeCharacteristics) {
         try {
-          if (targetChar.properties.writeWithoutResponse) {
-            await targetChar.write(cmd, withoutResponse: true);
-          } else {
-            await targetChar.write(cmd, withoutResponse: false);
+          if (char.properties.writeWithoutResponse) {
+            await char.write(cmd, withoutResponse: true);
+          } else if (char.properties.write) {
+            await char.write(cmd, withoutResponse: false);
           }
-          await Future.delayed(const Duration(milliseconds: 50));
         } catch (_) {}
       }
-      return;
-    }
-
-    for (final char in _writeCharacteristics) {
-      for (final cmd in commandList) {
-        try {
-          await char.write(cmd, withoutResponse: true);
-          await Future.delayed(const Duration(milliseconds: 50));
-        } catch (_) {}
+      if (commandList.length > 1) {
+        await Future.delayed(const Duration(milliseconds: 100));
       }
     }
   }
 
   /// Sends an ACK packet back to the watch immediately (fire-and-forget) to keep
   /// the real-time streaming session alive. ACKs must not block data processing.
-  void _sendWatchAck(List<int> ackBytes) {
-    if (!_isRealBleConnected || _writeCharacteristics.isEmpty) return;
-    final targetChar = _writeCharacteristics.first;
+  void sendWatchAck(List<int> ackBytes) {
+    if (_writeCharacteristics.isEmpty) return;
     unawaited(() async {
-      try {
-        await targetChar.write(ackBytes, withoutResponse: true);
-      } catch (_) {}
+      for (final targetChar in _writeCharacteristics) {
+        try {
+          if (targetChar.properties.writeWithoutResponse) {
+            await targetChar.write(ackBytes, withoutResponse: true);
+          } else if (targetChar.properties.write) {
+            await targetChar.write(ackBytes, withoutResponse: false);
+          }
+        } catch (_) {}
+      }
     }());
   }
 
-  Future<void> _disconnectRealWatch() async {
+  Future<void> disconnectRealWatch() async {
+    _packetAssembler.reset();
     _livePollingTimer?.cancel();
     _continuousDbSyncTimer?.cancel();
     for (var sub in _notifySubscriptions) {
@@ -671,21 +801,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     );
   }
 
-  Future<void> _sendRealBleCommand(List<int> cmd, String actionLabel) async {
+  Future<void> sendRealBleCommand(List<int> cmd, String actionLabel) async {
     if (_writeCharacteristics.isNotEmpty) {
       try {
-        final c = _writeCharacteristics.first;
-        try {
-          if (c.properties.writeWithoutResponse) {
-            await c.write(cmd, withoutResponse: true);
-          } else {
-            await c.write(cmd, withoutResponse: false);
-          }
-        } catch (_) {
-          try {
-            await c.write(cmd, withoutResponse: false);
-          } catch (_) {}
-        }
+        await broadcastWatchCommands([cmd]);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -701,14 +820,15 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Watch is not actively connected via GATT.')),
+        const SnackBar(
+            content: Text('Watch is not actively connected via GATT.')),
       );
     }
   }
 
   // ─── Real BLE Device Discovery Modal ───────────────────────────────────────
 
-  void _openRealBleDiscoveryModal() {
+  void openRealBleDiscoveryModal() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -727,19 +847,29 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               });
             }
 
-            // Prioritize recognized smartwatches, then named devices, then all devices
-            final List<ScanResult> allDevices = List<ScanResult>.from(_scanResults);
+            // New filter - show all named BLE devices
+            final List<ScanResult> allDevices = _scanResults.where((r) {
+              final name = r.device.platformName.isNotEmpty
+                  ? r.device.platformName
+                  : r.advertisementData.advName;
+              return name.trim().isNotEmpty;
+            }).toList();
+
             allDevices.sort((a, b) {
-              final aName = (a.device.platformName.isNotEmpty ? a.device.platformName : a.advertisementData.advName).toLowerCase();
-              final bName = (b.device.platformName.isNotEmpty ? b.device.platformName : b.advertisementData.advName).toLowerCase();
-              final aMatch = aName.contains('hiwatch') || aName.contains('t800') || aName.contains('fitpro') || aName.contains('watch');
-              final bMatch = bName.contains('hiwatch') || bName.contains('t800') || bName.contains('fitpro') || bName.contains('watch');
+              final aName = (a.device.platformName.isNotEmpty
+                      ? a.device.platformName
+                      : a.advertisementData.advName)
+                  .toLowerCase();
+              final bName = (b.device.platformName.isNotEmpty
+                      ? b.device.platformName
+                      : b.advertisementData.advName)
+                  .toLowerCase();
+              final aMatch = HiWatchProProtocol.recognizedDeviceNames
+                  .any((n) => aName.contains(n.toLowerCase()));
+              final bMatch = HiWatchProProtocol.recognizedDeviceNames
+                  .any((n) => bName.contains(n.toLowerCase()));
               if (aMatch && !bMatch) return -1;
               if (!aMatch && bMatch) return 1;
-              final aHas = aName.trim().isNotEmpty;
-              final bHas = bName.trim().isNotEmpty;
-              if (aHas && !bHas) return -1;
-              if (!aHas && bHas) return 1;
               return b.rssi.compareTo(a.rssi);
             });
 
@@ -761,7 +891,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                               color: VColor.accent.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.bluetooth_searching_rounded, color: VColor.accent, size: 24),
+                            child: const Icon(Icons.bluetooth_searching_rounded,
+                                color: VColor.accent, size: 24),
                           ),
                           const SizedBox(width: 12),
                           Column(
@@ -776,9 +907,13 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                                 ),
                               ),
                               Text(
-                                _isScanning ? "Scanning nearby Bluetooth airwaves..." : "Scan completed",
+                                _isScanning
+                                    ? "Scanning nearby Bluetooth airwaves..."
+                                    : "Scan completed",
                                 style: TextStyle(
-                                  color: _isScanning ? VColor.accent : VColor.textLow,
+                                  color: _isScanning
+                                      ? VColor.accent
+                                      : VColor.textLow,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -797,7 +932,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
                   // Scanner Status Bar with Rescan Button
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: VColor.surfaceRaised,
                       borderRadius: BorderRadius.circular(VRadius.md),
@@ -812,24 +948,32 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                               const SizedBox(
                                 width: 14,
                                 height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: VColor.accent),
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: VColor.accent),
                               )
                             else
-                              const Icon(Icons.check_circle_rounded, color: VColor.accentGreen, size: 16),
+                              const Icon(Icons.check_circle_rounded,
+                                  color: VColor.accentGreen, size: 16),
                             const SizedBox(width: 8),
                             Text(
                               "${allDevices.length} devices found in room",
-                              style: const TextStyle(color: VColor.textMid, fontSize: 12, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                  color: VColor.textMid,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
                         TextButton.icon(
-                          onPressed: _isScanning ? null : () => _startRealBleScan(setModalState),
+                          onPressed: _isScanning
+                              ? null
+                              : () => _startRealBleScan(setModalState),
                           icon: const Icon(Icons.refresh_rounded, size: 16),
                           label: Text(_isScanning ? "Scanning..." : "Rescan"),
                           style: TextButton.styleFrom(
                             foregroundColor: VColor.accent,
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                           ),
                         ),
                       ],
@@ -843,17 +987,22 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                     decoration: BoxDecoration(
                       color: VColor.accentOrange.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(VRadius.md),
-                      border: Border.all(color: VColor.accentOrange.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: VColor.accentOrange.withValues(alpha: 0.3)),
                     ),
                     child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline_rounded, color: VColor.accentOrange, size: 18),
+                        Icon(Icons.info_outline_rounded,
+                            color: VColor.accentOrange, size: 18),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             "Watch screen ON rakhein. Agar watch 'HiWatch Pro' app se pehle se connected hai, toh watch settings me 'Reset' karein taaki Bluetooth airwaves me discoverable ho sake.",
-                            style: TextStyle(color: VColor.textMid, fontSize: 11.5, height: 1.3),
+                            style: TextStyle(
+                                color: VColor.textMid,
+                                fontSize: 11.5,
+                                height: 1.3),
                           ),
                         ),
                       ],
@@ -871,23 +1020,30 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (_isScanning) ...[
-                                  const CircularProgressIndicator(color: VColor.accent),
+                                  const CircularProgressIndicator(
+                                      color: VColor.accent),
                                   const SizedBox(height: 16),
                                   const Text(
                                     "Searching for HiWatch Pro / Bluetooth Smartwatches...",
-                                    style: TextStyle(color: VColor.textMid, fontSize: 13),
+                                    style: TextStyle(
+                                        color: VColor.textMid, fontSize: 13),
                                   ),
                                 ] else ...[
-                                  const Icon(Icons.bluetooth_disabled_rounded, color: VColor.textLow, size: 40),
+                                  const Icon(Icons.bluetooth_disabled_rounded,
+                                      color: VColor.textLow, size: 40),
                                   const SizedBox(height: 12),
                                   const Text(
                                     "No Bluetooth devices found nearby.",
-                                    style: TextStyle(color: VColor.text, fontSize: 14, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        color: VColor.text,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold),
                                   ),
                                   const SizedBox(height: 4),
                                   const Text(
                                     "Make sure Watch Bluetooth is on & tap 'Rescan' above.",
-                                    style: TextStyle(color: VColor.textLow, fontSize: 12),
+                                    style: TextStyle(
+                                        color: VColor.textLow, fontSize: 12),
                                   ),
                                 ],
                               ],
@@ -895,21 +1051,25 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                           )
                         : ListView.separated(
                             itemCount: allDevices.length,
-                            separatorBuilder: (_, __) => const Divider(color: VColor.lineSoft, height: 8),
+                            separatorBuilder: (_, __) => const Divider(
+                                color: VColor.lineSoft, height: 8),
                             itemBuilder: (context, index) {
                               final item = allDevices[index];
-                              final rawName = item.device.platformName.isNotEmpty
-                                  ? item.device.platformName
-                                  : item.advertisementData.advName;
+                              final rawName =
+                                  item.device.platformName.isNotEmpty
+                                      ? item.device.platformName
+                                      : item.advertisementData.advName;
                               final mac = item.device.remoteId.str;
                               final name = rawName.isNotEmpty
                                   ? rawName
                                   : "BLE Device (${mac.length > 8 ? mac.substring(mac.length - 8) : mac})";
-                              final isHiWatch = name.toLowerCase().contains('hiwatch') ||
-                                                name.toLowerCase().contains('t800') ||
-                                                name.toLowerCase().contains('fitpro') ||
-                                                name.toLowerCase().contains('watch');
-                              final isCurrent = _connectedBleDevice?.remoteId == item.device.remoteId;
+                              final isHiWatch =
+                                  HiWatchProProtocol.recognizedDeviceNames.any(
+                                          (n) => name.toLowerCase().contains(n.toLowerCase())) ||
+                                      name.toLowerCase().contains('watch') ||
+                                      name.toLowerCase().contains('band');
+                              final isCurrent = _connectedBleDevice?.remoteId ==
+                                  item.device.remoteId;
 
                               return InkWell(
                                 onTap: _isConnecting
@@ -920,14 +1080,18 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                                       },
                                 borderRadius: BorderRadius.circular(VRadius.md),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 12),
                                   decoration: BoxDecoration(
                                     color: isHiWatch
                                         ? VColor.accent.withValues(alpha: 0.08)
                                         : VColor.surfaceRaised,
-                                    borderRadius: BorderRadius.circular(VRadius.md),
+                                    borderRadius:
+                                        BorderRadius.circular(VRadius.md),
                                     border: Border.all(
-                                      color: isHiWatch ? VColor.accent : VColor.lineSoft,
+                                      color: isHiWatch
+                                          ? VColor.accent
+                                          : VColor.lineSoft,
                                       width: isHiWatch ? 1.5 : 1.0,
                                     ),
                                   ),
@@ -935,13 +1099,16 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                                     children: [
                                       Icon(
                                         Icons.watch_rounded,
-                                        color: isHiWatch ? VColor.accent : VColor.textMid,
+                                        color: isHiWatch
+                                            ? VColor.accent
+                                            : VColor.textMid,
                                         size: 28,
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Row(
                                               children: [
@@ -951,25 +1118,35 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                                                     style: const TextStyle(
                                                       color: VColor.text,
                                                       fontSize: 14,
-                                                      fontWeight: FontWeight.w700,
+                                                      fontWeight:
+                                                          FontWeight.w700,
                                                     ),
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                                 if (isHiWatch) ...[
                                                   const SizedBox(width: 6),
                                                   Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2),
                                                     decoration: BoxDecoration(
-                                                      color: VColor.accent.withValues(alpha: 0.2),
-                                                      borderRadius: BorderRadius.circular(VRadius.pill),
+                                                      color: VColor.accent
+                                                          .withValues(
+                                                              alpha: 0.2),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              VRadius.pill),
                                                     ),
                                                     child: const Text(
                                                       "WATCH DETECTED",
                                                       style: TextStyle(
                                                         color: VColor.accent,
                                                         fontSize: 8.5,
-                                                        fontWeight: FontWeight.w800,
+                                                        fontWeight:
+                                                            FontWeight.w800,
                                                       ),
                                                     ),
                                                   ),
@@ -977,17 +1154,26 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                                                 if (isCurrent) ...[
                                                   const SizedBox(width: 6),
                                                   Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2),
                                                     decoration: BoxDecoration(
-                                                      color: VColor.accentGreen.withValues(alpha: 0.2),
-                                                      borderRadius: BorderRadius.circular(VRadius.pill),
+                                                      color: VColor.accentGreen
+                                                          .withValues(
+                                                              alpha: 0.2),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              VRadius.pill),
                                                     ),
                                                     child: const Text(
                                                       "CONNECTED",
                                                       style: TextStyle(
-                                                        color: VColor.accentGreen,
+                                                        color:
+                                                            VColor.accentGreen,
                                                         fontSize: 8.5,
-                                                        fontWeight: FontWeight.w800,
+                                                        fontWeight:
+                                                            FontWeight.w800,
                                                       ),
                                                     ),
                                                   ),
@@ -997,7 +1183,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                                             const SizedBox(height: 2),
                                             Text(
                                               "MAC: $mac • RSSI: ${item.rssi} dBm",
-                                              style: const TextStyle(color: VColor.textLow, fontSize: 11),
+                                              style: const TextStyle(
+                                                  color: VColor.textLow,
+                                                  fontSize: 11),
                                             ),
                                           ],
                                         ),
@@ -1007,13 +1195,21 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                                             ? null
                                             : () async {
                                                 Navigator.of(ctx).pop();
-                                                await _connectToRealWatch(item.device);
+                                                await _connectToRealWatch(
+                                                    item.device);
                                               },
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: isHiWatch ? VColor.accent : VColor.surfaceHigh,
-                                          foregroundColor: isHiWatch ? Colors.black : VColor.text,
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                          backgroundColor: isHiWatch
+                                              ? VColor.accent
+                                              : VColor.surfaceHigh,
+                                          foregroundColor: isHiWatch
+                                              ? Colors.black
+                                              : VColor.text,
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 6),
+                                          textStyle: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold),
                                         ),
                                         child: const Text("PAIR"),
                                       ),
@@ -1035,9 +1231,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
   // ─── Direct Step Calibration from Watch Screen ────────────────────────────
 
-  Future<void> _calibrateStepsDialog() async {
+  Future<void> calibrateStepsDialog() async {
     final currentVal = _lastSummary['steps']?.toInt() ?? 0;
-    final controller = TextEditingController(text: currentVal > 0 ? currentVal.toString() : '');
+    final controller = TextEditingController(
+        text: currentVal > 0 ? currentVal.toString() : '');
 
     final entered = await showDialog<int>(
       context: context,
@@ -1048,7 +1245,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             children: [
               Icon(Icons.watch_rounded, color: VColor.accent),
               SizedBox(width: 8),
-              Text('Sync Watch Dial Steps', style: TextStyle(color: VColor.text, fontSize: 16)),
+              Text('Sync Watch Dial Steps',
+                  style: TextStyle(color: VColor.text, fontSize: 16)),
             ],
           ),
           content: Column(
@@ -1064,7 +1262,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                 controller: controller,
                 keyboardType: TextInputType.number,
                 autofocus: true,
-                style: const TextStyle(color: VColor.accent, fontSize: 24, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: VColor.accent,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold),
                 decoration: InputDecoration(
                   hintText: 'e.g. 5420',
                   hintStyle: const TextStyle(color: VColor.textLow),
@@ -1081,7 +1282,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(null),
-              child: const Text('Cancel', style: TextStyle(color: VColor.textLow)),
+              child:
+                  const Text('Cancel', style: TextStyle(color: VColor.textLow)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -1089,7 +1291,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                 Navigator.of(ctx).pop(parsed);
               },
               style: ElevatedButton.styleFrom(backgroundColor: VColor.accent),
-              child: const Text('Save & Sync', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              child: const Text('Save & Sync',
+                  style: TextStyle(
+                      color: Colors.black, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -1115,7 +1319,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     try {
       await widget.api.logTracking(updatedSummary, source: 'hiwatch_pro_dial');
       final now = DateTime.now();
-      await _persistSyncResult(now, updatedSummary);
+      await persistSyncResult(now, updatedSummary);
       if (mounted) {
         setState(() {
           _syncing = false;
@@ -1133,7 +1337,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     }
   }
 
-  Future<void> _enablePhoneSensors() async {
+  Future<void> enablePhoneSensors() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_prefsUsePhoneSensorsKey, true);
@@ -1152,26 +1356,48 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     );
   }
 
-  Future<void> _restoreLastSyncInfo() async {
+  Future<void> restoreLastSyncInfo() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      _cachedPrefs = prefs;
       final iso = prefs.getString(_prefsLastSyncedKey);
-      final steps = prefs.getInt(_prefsStepsKey);
+      final steps = prefs.getInt(_prefsStepsKey) ?? prefs.getInt('live_steps');
       final calories = prefs.getInt(_prefsCaloriesKey);
-      final hr = prefs.getInt(_prefsHeartRateKey);
+      final hr = prefs.getInt(_prefsHeartRateKey) ?? prefs.getInt('live_heart_rate');
+      final spo2 = prefs.getInt('live_spo2');
+      final bp = prefs.getString('live_blood_pressure');
       if (!mounted) return;
       setState(() {
         _lastSyncedAt = iso != null ? DateTime.tryParse(iso) : null;
+        if (hr != null && hr > 0) {
+          _liveHeartRate = hr;
+          _hrNotifier.value = hr;
+        }
+        if (spo2 != null && spo2 > 0) {
+          _liveSpo2 = spo2;
+          _spo2Notifier.value = spo2;
+        }
+        if (steps != null && steps > 0) {
+          _liveSteps = steps;
+          _stepsNotifier.value = steps;
+          _liveCalories = calories ?? (steps * 0.04).round();
+          _liveDistanceMeters = (steps * 0.75).round();
+        }
+        if (bp != null && bp.isNotEmpty) {
+          _liveBp = bp;
+          _bpNotifier.value = bp;
+        }
         _lastSummary = {
           if (steps != null) 'steps': steps,
           if (calories != null) 'caloriesBurned': calories,
           if (hr != null) 'heartRateBpm': hr,
+          if (spo2 != null) 'bloodOxygenSpo2': spo2,
         };
       });
     } catch (_) {}
   }
 
-  Future<void> _connectHealthPlatform() async {
+  Future<void> connectHealthPlatform() async {
     setState(() {
       _error = null;
     });
@@ -1186,7 +1412,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     });
   }
 
-  Future<void> _syncNow() async {
+  Future<void> syncNow() async {
     setState(() {
       _syncing = true;
       _error = null;
@@ -1196,14 +1422,17 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       Map<String, num> summary = {};
       if (_isRealBleConnected) {
         final currentSteps = _lastSummary['steps']?.toInt() ?? 0;
-        final currentKcal = _lastSummary['caloriesBurned']?.toInt() ?? (currentSteps > 0 ? (currentSteps * 0.04).round() : 0);
+        final currentKcal = _lastSummary['caloriesBurned']?.toInt() ??
+            (currentSteps > 0 ? (currentSteps * 0.04).round() : 0);
         summary = {
           'steps': currentSteps,
           'caloriesBurned': currentKcal,
           if (_liveHeartRate > 0) 'heartRateBpm': _liveHeartRate,
           if (_liveSpo2 > 0) 'bloodOxygenSpo2': _liveSpo2,
-          if (_lastSummary.containsKey('bpSystolic')) 'bpSystolic': _lastSummary['bpSystolic']!,
-          if (_lastSummary.containsKey('bpDiastolic')) 'bpDiastolic': _lastSummary['bpDiastolic']!,
+          if (_lastSummary.containsKey('bpSystolic'))
+            'bpSystolic': _lastSummary['bpSystolic']!,
+          if (_lastSummary.containsKey('bpDiastolic'))
+            'bpDiastolic': _lastSummary['bpDiastolic']!,
         };
       } else if (!_usePhoneSensors) {
         summary = await _healthService.fetchTodaySummary();
@@ -1217,16 +1446,19 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         if (!mounted) return;
         setState(() {
           _syncing = false;
-          _error = 'Data abhi available nahi hai. Watch screen se enter karne ke liye "Enter Steps from Watch" tap karein.';
+          _error =
+              'Data abhi available nahi hai. Watch screen se enter karne ke liye "Enter Steps from Watch" tap karein.';
         });
         return;
       }
 
-      final sourceTag = _isRealBleConnected ? 'hiwatch_pro_ble_gatt' : (_usePhoneSensors ? 'phone_sensors' : 'health_connect');
+      final sourceTag = _isRealBleConnected
+          ? 'hiwatch_pro_ble_gatt'
+          : (_usePhoneSensors ? 'phone_sensors' : 'health_connect');
 
       final apiError = await widget.api.logTracking(summary, source: sourceTag);
       final now = DateTime.now();
-      await _persistSyncResult(now, summary);
+      await persistSyncResult(now, summary);
 
       if (!mounted) return;
       setState(() {
@@ -1252,7 +1484,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     }
   }
 
-  Future<void> _persistSyncResult(DateTime when, Map<String, num> summary) async {
+  Future<void> persistSyncResult(
+      DateTime when, Map<String, num> summary) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefsLastSyncedKey, when.toIso8601String());
@@ -1260,15 +1493,17 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         await prefs.setInt(_prefsStepsKey, summary['steps']!.toInt());
       }
       if (summary.containsKey('caloriesBurned')) {
-        await prefs.setInt(_prefsCaloriesKey, summary['caloriesBurned']!.toInt());
+        await prefs.setInt(
+            _prefsCaloriesKey, summary['caloriesBurned']!.toInt());
       }
       if (summary.containsKey('heartRateBpm')) {
-        await prefs.setInt(_prefsHeartRateKey, summary['heartRateBpm']!.toInt());
+        await prefs.setInt(
+            _prefsHeartRateKey, summary['heartRateBpm']!.toInt());
       }
     } catch (_) {}
   }
 
-  String _formatLastSynced(DateTime dt) {
+  String formatLastSynced(DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
     if (diff.inMinutes < 1) return 'Just now';
@@ -1279,17 +1514,19 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     return '${dt.day}/${dt.month} $h:$m';
   }
 
-  void _showHiWatchSetupHelp() {
+  void showHiWatchSetupHelp() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: VColor.surfaceRaised,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VRadius.lg)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(VRadius.lg)),
         title: const Row(
           children: [
             Icon(Icons.watch_rounded, color: VColor.accent),
             SizedBox(width: 8),
-            Text("HiWatch Pro Connect Guide", style: TextStyle(color: VColor.text, fontSize: 16)),
+            Text("HiWatch Pro Connect Guide",
+                style: TextStyle(color: VColor.text, fontSize: 16)),
           ],
         ),
         content: const SingleChildScrollView(
@@ -1299,18 +1536,37 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             children: [
               Text(
                 "Physical Smartwatch ko connect karne ke steps:",
-                style: TextStyle(color: VColor.textMid, fontSize: 13, height: 1.4),
+                style:
+                    TextStyle(color: VColor.textMid, fontSize: 13, height: 1.4),
               ),
               SizedBox(height: 12),
-              Text("1. Phone ka Bluetooth & GPS ON karein.", style: TextStyle(color: VColor.text, fontSize: 13, fontWeight: FontWeight.bold)),
+              Text("1. Phone ka Bluetooth & GPS ON karein.",
+                  style: TextStyle(
+                      color: VColor.text,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold)),
               SizedBox(height: 6),
-              Text("2. Watch screen ko tap karke ON rakhein (agar screen band hoti hai toh watch advertise karna band kar sakti hai).", style: TextStyle(color: VColor.textMid, fontSize: 12)),
+              Text(
+                  "2. Watch screen ko tap karke ON rakhein (agar screen band hoti hai toh watch advertise karna band kar sakti hai).",
+                  style: TextStyle(color: VColor.textMid, fontSize: 12)),
               SizedBox(height: 6),
-              Text("3. ⚠️ IMPORTANT: Agar watch pehle se doosre phone ya 'HiWatch Pro' app se connected hai, toh watch settings me 'Reset' karein taaki Bluetooth unpair ho sake.", style: TextStyle(color: Colors.amberAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text(
+                  "3. ⚠️ IMPORTANT: Agar watch pehle se doosre phone ya 'HiWatch Pro' app se connected hai, toh watch settings me 'Reset' karein taaki Bluetooth unpair ho sake.",
+                  style: TextStyle(
+                      color: Colors.amberAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold)),
               SizedBox(height: 6),
-              Text("4. Niche 'Scan Nearby Smartwatch (BLE)' tap karein, jab aapki watch ka naam list me aaye toh 'PAIR' tap karein.", style: TextStyle(color: VColor.text, fontSize: 13, fontWeight: FontWeight.bold)),
+              Text(
+                  "4. Niche 'Scan Nearby Smartwatch (BLE)' tap karein, jab aapki watch ka naam list me aaye toh 'PAIR' tap karein.",
+                  style: TextStyle(
+                      color: VColor.text,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold)),
               SizedBox(height: 6),
-              Text("5. Agar Bluetooth me delay ho toh aap 'Enter Steps from Watch Screen' se direct real steps 1 second me save kar sakte hain.", style: TextStyle(color: VColor.accentGreen, fontSize: 12)),
+              Text(
+                  "5. Agar Bluetooth me delay ho toh aap 'Enter Steps from Watch Screen' se direct real steps 1 second me save kar sakte hain.",
+                  style: TextStyle(color: VColor.accentGreen, fontSize: 12)),
             ],
           ),
         ),
@@ -1318,7 +1574,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(),
             style: ElevatedButton.styleFrom(backgroundColor: VColor.accent),
-            child: const Text("Samajh Gaya", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            child: const Text("Samajh Gaya",
+                style: TextStyle(
+                    color: Colors.black, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1336,11 +1594,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         child: ListView(
           padding: const EdgeInsets.all(VSpace.md),
           children: [
-            _buildHeader(context),
+            buildHeader(context),
             const SizedBox(height: VSpace.lg),
-            RepaintBoundary(child: _buildHeroCard()),
+            RepaintBoundary(child: buildHeroCard()),
             const SizedBox(height: VSpace.md),
-            RepaintBoundary(child: _buildStatusCard()),
+            RepaintBoundary(child: buildStatusCard()),
             AnimatedSize(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
@@ -1348,19 +1606,19 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               child: _isRealBleConnected
                   ? Padding(
                       padding: const EdgeInsets.only(top: VSpace.md),
-                      child: _buildLiveGattCard(),
+                      child: buildLiveGattCard(),
                     )
                   : const SizedBox.shrink(),
             ),
             const SizedBox(height: VSpace.md),
-            _buildDevicesCard(),
+            buildDevicesCard(),
             if (_lastSummary.isNotEmpty) ...[
               const SizedBox(height: VSpace.md),
-              _buildSummaryCard(),
+              buildSummaryCard(),
             ],
             if (_error != null) ...[
               const SizedBox(height: VSpace.md),
-              VErrorView(message: _error!, onRetry: _syncNow),
+              VErrorView(message: _error!, onRetry: syncNow),
             ],
             const SizedBox(height: VSpace.md),
             const VDisclaimer(
@@ -1369,7 +1627,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               'use hota hai.',
             ),
             const SizedBox(height: VSpace.lg),
-            _buildPrimaryActions(),
+            buildPrimaryActions(),
             const SizedBox(height: VSpace.md),
           ],
         ),
@@ -1377,11 +1635,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget buildHeader(BuildContext context) {
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: VColor.text, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: VColor.text, size: 20),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         const Expanded(
@@ -1403,13 +1662,13 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         ),
         IconButton(
           icon: const Icon(Icons.help_outline_rounded, color: VColor.accent),
-          onPressed: _showHiWatchSetupHelp,
+          onPressed: showHiWatchSetupHelp,
         ),
       ],
     );
   }
 
-  Widget _buildHeroCard() {
+  Widget buildHeroCard() {
     return VCard(
       child: Padding(
         padding: const EdgeInsets.all(VSpace.md),
@@ -1420,22 +1679,29 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               children: [
                 const Icon(Icons.watch_rounded, color: VColor.accent, size: 28),
                 const SizedBox(width: VSpace.sm),
-                const Icon(Icons.bluetooth_connected_rounded, color: VColor.accentGreen, size: 24),
+                const Icon(Icons.bluetooth_connected_rounded,
+                    color: VColor.accentGreen, size: 24),
                 const SizedBox(width: VSpace.sm),
-                const Icon(Icons.favorite, color: VColor.accentOrange, size: 24),
+                const Icon(Icons.favorite,
+                    color: VColor.accentOrange, size: 24),
                 const Spacer(),
                 InkWell(
-                  onTap: _showHiWatchSetupHelp,
+                  onTap: showHiWatchSetupHelp,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: VColor.accent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(VRadius.pill),
-                      border: Border.all(color: VColor.accent.withValues(alpha: 0.5)),
+                      border: Border.all(
+                          color: VColor.accent.withValues(alpha: 0.5)),
                     ),
                     child: const Text(
                       "Setup Guide ℹ️",
-                      style: TextStyle(color: VColor.accent, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: VColor.accent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -1453,7 +1719,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             const SizedBox(height: VSpace.xs),
             const Text(
               'Apni physical HiWatch Pro (T800 / Watch 8/9 / FitPro) ko phone ke Bluetooth LE se direct scan aur pair karein.',
-              style: TextStyle(color: VColor.textMid, fontSize: 13, height: 1.45),
+              style:
+                  TextStyle(color: VColor.textMid, fontSize: 13, height: 1.45),
             ),
           ],
         ),
@@ -1461,15 +1728,19 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     );
   }
 
-  Widget _buildStatusCard() {
-    final dotColor = _isRealBleConnected ? VColor.accentGreen : (_connected ? VColor.accent : VColor.textLow);
+  Widget buildStatusCard() {
+    final dotColor = _isRealBleConnected
+        ? VColor.accentGreen
+        : (_connected ? VColor.accent : VColor.textLow);
     final statusText = _isConnecting
         ? _connectionStatusText
         : (_isRealBleConnected
             ? 'Connected: $_pairedWatchName'
             : (_usePhoneSensors
                 ? 'Smartphone Sensors Active'
-                : (_connected ? 'Connected to Health Connect' : 'No watch connected')));
+                : (_connected
+                    ? 'Connected to Health Connect'
+                    : 'No watch connected')));
 
     return VCard(
       child: Padding(
@@ -1479,7 +1750,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             Container(
               width: 10,
               height: 10,
-              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+              decoration:
+                  BoxDecoration(color: dotColor, shape: BoxShape.circle),
             ),
             const SizedBox(width: VSpace.sm),
             Expanded(
@@ -1498,8 +1770,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
-                        'Last synced: ${_formatLastSynced(_lastSyncedAt!)}',
-                        style: const TextStyle(color: VColor.textLow, fontSize: 12),
+                        'Last synced: ${formatLastSynced(_lastSyncedAt!)}',
+                        style: const TextStyle(
+                            color: VColor.textLow, fontSize: 12),
                       ),
                     ),
                 ],
@@ -1509,7 +1782,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               const SizedBox(
                 width: 16,
                 height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: VColor.accent),
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: VColor.accent),
               ),
           ],
         ),
@@ -1518,10 +1792,16 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   }
 
   /// Live Real Hardware GATT Biometrics Card with Continuous Live Telemetry & Zero Data Loss Indicator
-  Widget _buildLiveGattCard() {
-    final displaySteps = _liveSteps > 0 ? _liveSteps : (_lastSummary['steps']?.toInt() ?? 0);
-    final displayKcal = _liveCalories > 0 ? _liveCalories : (_lastSummary['caloriesBurned']?.toInt() ?? (displaySteps > 0 ? (displaySteps * 0.04).round() : 0));
-    final displayDistKm = _liveDistanceMeters > 0 ? (_liveDistanceMeters / 1000.0) : (displaySteps > 0 ? (displaySteps * 0.00075) : 0.0);
+  Widget buildLiveGattCard() {
+    final displaySteps =
+        _liveSteps > 0 ? _liveSteps : (_lastSummary['steps']?.toInt() ?? 0);
+    final displayKcal = _liveCalories > 0
+        ? _liveCalories
+        : (_lastSummary['caloriesBurned']?.toInt() ??
+            (displaySteps > 0 ? (displaySteps * 0.04).round() : 0));
+    final displayDistKm = _liveDistanceMeters > 0
+        ? (_liveDistanceMeters / 1000.0)
+        : (displaySteps > 0 ? (displaySteps * 0.00075) : 0.0);
 
     return VCard(
       child: Container(
@@ -1548,33 +1828,47 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                   tween: Tween(begin: 0.3, end: 1.0),
                   duration: const Duration(milliseconds: 800),
                   builder: (_, v, __) => Container(
-                    width: 8, height: 8,
+                    width: 8,
+                    height: 8,
                     decoration: BoxDecoration(
                       color: VColor.accentGreen.withValues(alpha: v),
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: VColor.accentGreen.withValues(alpha: v * 0.5), blurRadius: 6)],
+                      boxShadow: [
+                        BoxShadow(
+                            color:
+                                VColor.accentGreen.withValues(alpha: v * 0.5),
+                            blurRadius: 6)
+                      ],
                     ),
                   ),
                   onEnd: () => setState(() {}), // loops
                 ),
                 const SizedBox(width: 6),
-                const Text('LIVE', style: TextStyle(color: VColor.accentGreen, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                const Text('LIVE',
+                    style: TextStyle(
+                        color: VColor.accentGreen,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5)),
                 const Spacer(),
                 Text('Updated: ${_lastDataTimestamp ?? "waiting..."}',
-                  style: const TextStyle(color: VColor.textLow, fontSize: 10)),
+                    style:
+                        const TextStyle(color: VColor.textLow, fontSize: 10)),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.close, color: VColor.textLow, size: 18),
+                  icon:
+                      const Icon(Icons.close, color: VColor.textLow, size: 18),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  onPressed: _disconnectRealWatch,
+                  onPressed: disconnectRealWatch,
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.bluetooth_connected_rounded, color: VColor.accentGreen, size: 20),
+                const Icon(Icons.bluetooth_connected_rounded,
+                    color: VColor.accentGreen, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   _pairedWatchName ?? "HiWatch Pro",
@@ -1592,17 +1886,20 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             if (_liveHeartRate == 0 && _liveSpo2 == 0)
               Container(
                 margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: VColor.accent.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: VColor.accent.withValues(alpha: 0.25)),
+                  border:
+                      Border.all(color: VColor.accent.withValues(alpha: 0.25)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
-                      width: 10, height: 10,
+                      width: 10,
+                      height: 10,
                       child: CircularProgressIndicator(
                         strokeWidth: 1.5,
                         color: VColor.accent.withValues(alpha: 0.7),
@@ -1611,7 +1908,129 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                     const SizedBox(width: 8),
                     const Text(
                       'Requesting HR & SpO2 from watch...',
-                      style: TextStyle(color: VColor.accent, fontSize: 11, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                          color: VColor.accent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+
+            if (_isRealBleConnected)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 8),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.flash_on_rounded, size: 16),
+                        label: Text(
+                          _liveHeartRate > 0
+                              ? '⚡ Trigger Live Sensors (HR: $_liveHeartRate bpm)'
+                              : '⚡ Request Live Data Now (Wake Sensors)',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: VColor.accent,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                        ),
+                        onPressed: () async {
+                          HapticFeedback.mediumImpact();
+                          await broadcastWatchCommands([
+                            HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
+                            HiWatchProProtocol.buildStartBloodPressureMeasureCommand(),
+                            HiWatchProProtocol.buildStartCombinedMeasureCommand(),
+                            HiWatchProProtocol.buildSpO2MeasureCommand(),
+                            HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),
+                            HiWatchProProtocol.buildSportKeyGetCommand(),
+                            HiWatchProProtocol.buildLegacyHeartRateMeasureCommand(),
+                            HiWatchProProtocol.buildDaFitStepQueryCommand(),
+                            HiWatchProProtocol.buildUniversalHeartbeatCommand(),
+                          ]);
+                          // Write raw probe bytes that Ultra2-style watches respond to
+                          for (final char in _writeCharacteristics) {
+                            try {
+                              await char.write([0x01, 0x00, 0x35, 0x00],
+                                  withoutResponse: true);
+                            } catch (_) {}
+                            try {
+                              await char.write([0xBC, 0x60, 0x00, 0x01],
+                                  withoutResponse: true);
+                            } catch (_) {}
+                            try {
+                              await char.write(
+                                  [0xAB, 0x00, 0x04, 0xFF, 0x56, 0x00, 0x00],
+                                  withoutResponse: true);
+                            } catch (_) {}
+                          }
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('⚡ Hardware sensors triggered! Streaming live vitals...'),
+                              duration: Duration(seconds: 2),
+                              backgroundColor: VColor.surfaceRaised,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    // Live On-Device Diagnostic Strip
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: VColor.surfaceRaised,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _packetsReceived > 0
+                              ? VColor.accentGreen.withValues(alpha: 0.3)
+                              : VColor.line,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: _packetsReceived > 0
+                                  ? VColor.accentGreen
+                                  : VColor.warn,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Packets: $_packetsReceived',
+                            style: const TextStyle(
+                              color: VColor.textMid,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _lastRawPacketHex != null
+                                  ? 'Raw: ${_lastRawPacketHex!}'
+                                  : 'Awaiting raw bytes...',
+                              style: const TextStyle(
+                                color: VColor.textMuted,
+                                fontSize: 10,
+                                fontFamily: 'monospace',
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1628,8 +2047,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         ScaleTransition(
-                          scale: Tween(begin: 0.85, end: 1.25).animate(_heartPulseController),
-                          child: const Icon(Icons.favorite, color: Colors.redAccent, size: 18),
+                          scale: Tween(begin: 0.85, end: 1.25)
+                              .animate(_heartPulseController),
+                          child: const Icon(Icons.favorite,
+                              color: Colors.redAccent, size: 18),
                         ),
                         const SizedBox(width: 4),
                         ValueListenableBuilder<int>(
@@ -1643,19 +2064,25 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                             ),
                           ),
                         ),
-                        const Text(" bpm", style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                        const Text(" bpm",
+                            style:
+                                TextStyle(color: VColor.textLow, fontSize: 10)),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 1.5),
                       decoration: BoxDecoration(
                         color: Colors.redAccent.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(VRadius.pill),
                       ),
                       child: Text(
                         _liveHeartRate > 0 ? _liveHrZone : "RESTING",
-                        style: const TextStyle(color: Colors.redAccent, fontSize: 8.5, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w700),
                       ),
                     ),
                   ],
@@ -1666,7 +2093,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.water_drop_rounded, color: VColor.accent, size: 18),
+                        const Icon(Icons.water_drop_rounded,
+                            color: VColor.accent, size: 18),
                         const SizedBox(width: 4),
                         ValueListenableBuilder<int>(
                           valueListenable: _spo2Notifier,
@@ -1682,7 +2110,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                       ],
                     ),
                     const SizedBox(height: 2),
-                    const Text("BLOOD OXYGEN", style: TextStyle(color: VColor.textMid, fontSize: 10, fontWeight: FontWeight.bold)),
+                    const Text("BLOOD OXYGEN",
+                        style: TextStyle(
+                            color: VColor.textMid,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold)),
                   ],
                 ),
                 // Watch Steps
@@ -1691,12 +2123,15 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.directions_walk_rounded, color: VColor.accentOrange, size: 18),
+                        const Icon(Icons.directions_walk_rounded,
+                            color: VColor.accentOrange, size: 18),
                         const SizedBox(width: 4),
                         ValueListenableBuilder<int>(
                           valueListenable: _stepsNotifier,
                           builder: (_, steps, __) {
-                            final s = steps > 0 ? steps : (_lastSummary['steps']?.toInt() ?? 0);
+                            final s = steps > 0
+                                ? steps
+                                : (_lastSummary['steps']?.toInt() ?? 0);
                             return Text(
                               s == 0 ? '0' : '$s',
                               style: const TextStyle(
@@ -1710,7 +2145,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                       ],
                     ),
                     const SizedBox(height: 2),
-                    const Text("LIVE STEPS", style: TextStyle(color: VColor.textMid, fontSize: 10, fontWeight: FontWeight.bold)),
+                    const Text("LIVE STEPS",
+                        style: TextStyle(
+                            color: VColor.textMid,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold)),
                   ],
                 ),
               ],
@@ -1729,16 +2168,26 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 16),
+                        const Icon(Icons.local_fire_department_rounded,
+                            color: Colors.orangeAccent, size: 16),
                         const SizedBox(width: 4),
                         Text(
                           "$displayKcal",
-                          style: const TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.w800),
+                          style: const TextStyle(
+                              color: VColor.text,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800),
                         ),
-                        const Text(" kcal", style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                        const Text(" kcal",
+                            style:
+                                TextStyle(color: VColor.textLow, fontSize: 10)),
                       ],
                     ),
-                    const Text("CALORIES", style: TextStyle(color: VColor.textMid, fontSize: 9.5, fontWeight: FontWeight.w600)),
+                    const Text("CALORIES",
+                        style: TextStyle(
+                            color: VColor.textMid,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600)),
                   ],
                 ),
                 // Distance
@@ -1747,16 +2196,26 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.straighten_rounded, color: VColor.accentGreen, size: 16),
+                        const Icon(Icons.straighten_rounded,
+                            color: VColor.accentGreen, size: 16),
                         const SizedBox(width: 4),
                         Text(
                           displayDistKm.toStringAsFixed(2),
-                          style: const TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.w800),
+                          style: const TextStyle(
+                              color: VColor.text,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800),
                         ),
-                        const Text(" km", style: TextStyle(color: VColor.textLow, fontSize: 10)),
+                        const Text(" km",
+                            style:
+                                TextStyle(color: VColor.textLow, fontSize: 10)),
                       ],
                     ),
-                    const Text("DISTANCE", style: TextStyle(color: VColor.textMid, fontSize: 9.5, fontWeight: FontWeight.w600)),
+                    const Text("DISTANCE",
+                        style: TextStyle(
+                            color: VColor.textMid,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600)),
                   ],
                 ),
                 // Blood Pressure
@@ -1765,18 +2224,26 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.monitor_heart_outlined, color: Color(0xFFFFD166), size: 16),
+                        const Icon(Icons.monitor_heart_outlined,
+                            color: Color(0xFFFFD166), size: 16),
                         const SizedBox(width: 4),
                         ValueListenableBuilder<String>(
                           valueListenable: _bpNotifier,
                           builder: (_, bp, __) => Text(
                             bp,
-                            style: const TextStyle(color: Color(0xFFFFD166), fontSize: 15, fontWeight: FontWeight.w800),
+                            style: const TextStyle(
+                                color: Color(0xFFFFD166),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800),
                           ),
                         ),
                       ],
                     ),
-                    const Text("BLOOD PRESS.", style: TextStyle(color: VColor.textMid, fontSize: 9.5, fontWeight: FontWeight.w600)),
+                    const Text("BLOOD PRESS.",
+                        style: TextStyle(
+                            color: VColor.textMid,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600)),
                   ],
                 ),
                 // Recovery Score
@@ -1785,15 +2252,25 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.shield_rounded, color: VColor.accent, size: 16),
+                        const Icon(Icons.shield_rounded,
+                            color: VColor.accent, size: 16),
                         const SizedBox(width: 4),
                         Text(
-                          _liveRecoveryScore > 0 ? "$_liveRecoveryScore%" : "--",
-                          style: const TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.w800),
+                          _liveRecoveryScore > 0
+                              ? "$_liveRecoveryScore%"
+                              : "--",
+                          style: const TextStyle(
+                              color: VColor.text,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800),
                         ),
                       ],
                     ),
-                    const Text("RECOVERY", style: TextStyle(color: VColor.textMid, fontSize: 9.5, fontWeight: FontWeight.w600)),
+                    const Text("RECOVERY",
+                        style: TextStyle(
+                            color: VColor.textMid,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600)),
                   ],
                 ),
               ],
@@ -1842,39 +2319,46 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 OutlinedButton.icon(
-                  onPressed: () => _sendRealBleCommand(
+                  onPressed: () => sendRealBleCommand(
                     HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
                     "Measure Heart Rate",
                   ),
                   icon: const Icon(Icons.favorite_rounded, size: 14),
-                  label: const Text("Measure HR", style: TextStyle(fontSize: 10.5)),
+                  label: const Text("Measure HR",
+                      style: TextStyle(fontSize: 10.5)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.redAccent,
                     side: const BorderSide(color: Colors.redAccent),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () => _sendRealBleCommand(
+                  onPressed: () => sendRealBleCommand(
                     HiWatchProProtocol.buildFindWatchCommand(),
                     "Vibrate Watch",
                   ),
                   icon: const Icon(Icons.vibration_rounded, size: 14),
-                  label: const Text("Vibrate", style: TextStyle(fontSize: 10.5)),
+                  label:
+                      const Text("Vibrate", style: TextStyle(fontSize: 10.5)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: VColor.accentOrange,
                     side: const BorderSide(color: VColor.accentOrange),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: _syncNow,
+                  onPressed: syncNow,
                   icon: const Icon(Icons.cloud_upload_rounded, size: 14),
-                  label: const Text("Sync Now", style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
+                  label: const Text("Sync Now",
+                      style: TextStyle(
+                          fontSize: 10.5, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: VColor.accentGreen,
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   ),
                 ),
               ],
@@ -1885,7 +2369,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     );
   }
 
-  Widget _buildDevicesCard() {
+  Widget buildDevicesCard() {
     return VCard(
       child: Padding(
         padding: const EdgeInsets.all(VSpace.md),
@@ -1897,37 +2381,44 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               children: [
                 const VLabel('HARDWARE CONNECTIONS'),
                 InkWell(
-                  onTap: _openRealBleDiscoveryModal,
+                  onTap: openRealBleDiscoveryModal,
                   child: const Text(
                     "+ SCAN BLUETOOTH",
-                    style: TextStyle(color: VColor.accent, fontSize: 11, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                        color: VColor.accent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: VSpace.md),
-            _deviceRow(
+            deviceRow(
               icon: Icons.watch_rounded,
-              name: _isRealBleConnected ? _pairedWatchName! : 'HiWatch Pro / Bluetooth Watch',
-              detail: _isRealBleConnected ? 'Real BLE GATT Active' : 'Tap to scan nearby physical Bluetooth watches',
+              name: _isRealBleConnected
+                  ? _pairedWatchName!
+                  : 'HiWatch Pro / Bluetooth Watch',
+              detail: _isRealBleConnected
+                  ? 'Real BLE GATT Active'
+                  : 'Tap to scan nearby physical Bluetooth watches',
               active: _isRealBleConnected,
-              onTap: _openRealBleDiscoveryModal,
+              onTap: openRealBleDiscoveryModal,
             ),
             const Divider(color: VColor.line, height: 24),
-            _deviceRow(
+            deviceRow(
               icon: Icons.health_and_safety_rounded,
               name: 'Health Connect / Apple Health',
               detail: 'Wear OS, Galaxy Watch, Google Pixel Watch',
               active: _connected && !_isRealBleConnected && !_usePhoneSensors,
-              onTap: _connectHealthPlatform,
+              onTap: connectHealthPlatform,
             ),
             const Divider(color: VColor.line, height: 24),
-            _deviceRow(
+            deviceRow(
               icon: Icons.phone_android_rounded,
               name: 'Smartphone Internal Sensors',
               detail: 'Pedometer & Accelerometer',
               active: _usePhoneSensors,
-              onTap: _enablePhoneSensors,
+              onTap: enablePhoneSensors,
             ),
           ],
         ),
@@ -1935,7 +2426,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     );
   }
 
-  Widget _deviceRow({
+  Widget deviceRow({
     required IconData icon,
     required String name,
     required String detail,
@@ -1953,15 +2444,23 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(color: VColor.text, fontWeight: FontWeight.w600, fontSize: 13.5)),
-                Text(detail, style: const TextStyle(color: VColor.textLow, fontSize: 11.5)),
+                Text(name,
+                    style: const TextStyle(
+                        color: VColor.text,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5)),
+                Text(detail,
+                    style:
+                        const TextStyle(color: VColor.textLow, fontSize: 11.5)),
               ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: active ? VColor.accentGreen.withValues(alpha: 0.15) : VColor.surfaceRaised,
+              color: active
+                  ? VColor.accentGreen.withValues(alpha: 0.15)
+                  : VColor.surfaceRaised,
               borderRadius: BorderRadius.circular(VRadius.sm),
             ),
             child: Text(
@@ -1978,7 +2477,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     );
   }
 
-  Widget _buildSummaryCard() {
+  Widget buildSummaryCard() {
     final steps = _lastSummary['steps'];
     final calories = _lastSummary['caloriesBurned'];
     final hr = _lastSummary['heartRateBpm'];
@@ -1991,30 +2490,36 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _statChip('Steps', steps, VColor.accent),
-                _statChip('Kcal', calories, VColor.accentOrange),
-                _statChip('BPM', hr, VColor.accentGreen),
+                statChip('Steps', steps, VColor.accent),
+                statChip('Kcal', calories, VColor.accentOrange),
+                statChip('BPM', hr, VColor.accentGreen),
               ],
             ),
             const SizedBox(height: VSpace.md),
             InkWell(
-              onTap: _calibrateStepsDialog,
+              onTap: calibrateStepsDialog,
               borderRadius: BorderRadius.circular(VRadius.sm),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
                   color: VColor.surfaceRaised,
                   borderRadius: BorderRadius.circular(VRadius.sm),
-                  border: Border.all(color: VColor.accent.withValues(alpha: 0.3)),
+                  border:
+                      Border.all(color: VColor.accent.withValues(alpha: 0.3)),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.edit_note_rounded, size: 18, color: VColor.accent),
+                    Icon(Icons.edit_note_rounded,
+                        size: 18, color: VColor.accent),
                     SizedBox(width: 6),
                     Text(
                       'Enter Steps from Watch Screen (1-Tap Sync)',
-                      style: TextStyle(color: VColor.accent, fontSize: 12.5, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                          color: VColor.accent,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
@@ -2026,20 +2531,22 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     );
   }
 
-  Widget _statChip(String label, num? value, Color color) {
+  Widget statChip(String label, num? value, Color color) {
     return Column(
       children: [
         Text(
           value != null ? value.toStringAsFixed(0) : '—',
-          style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 18),
+          style: TextStyle(
+              color: color, fontWeight: FontWeight.w800, fontSize: 18),
         ),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: VColor.textLow, fontSize: 11)),
+        Text(label,
+            style: const TextStyle(color: VColor.textLow, fontSize: 11)),
       ],
     );
   }
 
-  Widget _buildPrimaryActions() {
+  Widget buildPrimaryActions() {
     return Column(
       children: [
         // 1. Direct Real Hardware Bluetooth Scan Button
@@ -2057,12 +2564,13 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(VRadius.md),
-                onTap: _openRealBleDiscoveryModal,
+                onTap: openRealBleDiscoveryModal,
                 child: const Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.bluetooth_searching_rounded, color: Colors.black, size: 22),
+                      Icon(Icons.bluetooth_searching_rounded,
+                          color: Colors.black, size: 22),
                       SizedBox(width: 8),
                       Text(
                         'Scan Nearby Smartwatch (Real BLE)',
@@ -2086,7 +2594,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           width: double.infinity,
           height: 50,
           child: OutlinedButton.icon(
-            onPressed: _calibrateStepsDialog,
+            onPressed: calibrateStepsDialog,
             icon: const Icon(Icons.edit_note_rounded, size: 20),
             label: const Text(
               'Enter Steps from Watch Screen',
@@ -2111,7 +2619,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           width: double.infinity,
           height: 48,
           child: OutlinedButton.icon(
-            onPressed: _enablePhoneSensors,
+            onPressed: enablePhoneSensors,
             icon: const Icon(Icons.phone_android_rounded, size: 18),
             label: Text(
               _usePhoneSensors
@@ -2140,7 +2648,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           width: double.infinity,
           height: 50,
           child: ElevatedButton.icon(
-            onPressed: (_connected && !_syncing) ? _syncNow : null,
+            onPressed: (_connected && !_syncing) ? syncNow : null,
             icon: const Icon(Icons.sync_rounded, size: 20),
             label: _syncing
                 ? const VLoading()

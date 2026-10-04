@@ -1,4 +1,4 @@
-# VYRA Mobile Rules — Hardcoded Model Delegation & Token Armor
+# VYRA Workspace Rules — Hardcoded Model Delegation & Token Armor
 
 ## 🛡️ STRICT TOKEN ARMOR & ROLE DELEGATION POLICY
 
@@ -25,6 +25,15 @@
   - Claude kabhi bhi 150+ lines ki file direct context mein dump nahi karega.
   - Claude hamesha targeted `view_file(StartLine, EndLine)` use karega (only 20-50 lines).
 
+### 4. Mandatory Deep Audit & Exhaustive Bug Hunting Protocol
+Whenever the user asks to **"audit"**, **"find bugs"**, or **"deep test"** any subsystem (Bluetooth, Avatar, AI Brains, Food Scan, Auth, Backend APIs, or State):
+1. **Zero Superficial Audits:** Never stop at shallow code-reading, syntax checks, or happy-path compilation. Always dig down to the lowest layer of raw data.
+2. **Raw Input/Output & Packet Tracing:** Trace exact bytes, bits, schemas, and payload shapes entering and leaving the system. Inspect parsing logic for collision bugs where status codes, headers, or frame bytes masquerade as payload values.
+3. **Boundary & Dead-Zone Verification:** Test minimum and maximum physiological/business boundaries, partial data states, zero values, and sensor disconnects to ensure fallback logic does not drop legitimate readings or emit phantom values.
+4. **Multi-Turn Continuous Stream Simulation:** Simulate sustained real-time usage (e.g., 30–50 consecutive turns or seconds of data streams) to catch state leaks, stale cache issues, timing anomalies, and dropouts.
+5. **Resilience & Fuzz Testing:** Inject corrupted, malformed, or noisy input bytes to guarantee that parsers and handlers never throw unhandled exceptions or crash.
+6. **Root Cause Precision:** Pinpoint the exact file, exact line number, and exact logical condition causing failure before proposing surgical fixes.
+
 ---
 
 ## 🛠️ General Execution Guardrails
@@ -32,3 +41,4 @@
 2. **Never Read Without Range**: Every `view_file` call from Claude MUST include `StartLine` and `EndLine` with `EndLine - StartLine <= 150`.
 3. **Grep Before View**: Always run `grep -n` to find exact lines before viewing.
 4. **Preserve User Settings**: Never run `git push` without user explicitly saying "push kardo".
+5. **Deep Audit Standard**: Whenever an audit or bug check is requested, execute the full protocol (raw data tracing, collision analysis, boundaries, stream simulation, fuzz testing).
