@@ -338,6 +338,7 @@ Defined in `AGENTS.md` and `GEMINI.md`:
 2. **Claude's Role:** Lead Architect, Decision Maker & Coder. Inspects only targeted 20-50 line slices fetched by Gemini. Identifies flaws, decides fixes, executes surgical edits (`replace_file_content`), and validates tests.
 3. **Execution Guardrails:** Never read without range (`EndLine - StartLine <= 150`), grep before view, and no `git push` without explicit user permission.
 4. **Pragmatic Lateral Engineering ("Dimaag Lagao" Principle):** Proactively identify and leverage local machine hardware and developer shortcuts (laptop Bluetooth BLE sniffing, ADB port tunnels, local mock bridges) to make testing and verification effortless without waiting for manual smartphone compilation.
+5. **Zero-Guesswork Empirical Diagnostic Tooling Protocol ("Bina Tukke Lagaye Proactive Tool Banao"):** Strictly ban speculative guessing on unknown hardware/APIs. Proactively architect standalone diagnostic test harnesses, probe apps, and micro-modules with multi-preset libraries, raw packet logging, auto-winning signature detection, and self-contained forensic reports to verify ground truth before modifying production code.
 
 ---
 *End of Manifest — VYRA System Architecture Documented & Verified.*
