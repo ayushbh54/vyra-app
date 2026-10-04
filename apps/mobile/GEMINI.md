@@ -34,6 +34,17 @@ Whenever the user asks to **"audit"**, **"find bugs"**, or **"deep test"** any s
 5. **Resilience & Fuzz Testing:** Inject corrupted, malformed, or noisy input bytes to guarantee that parsers and handlers never throw unhandled exceptions or crash.
 6. **Root Cause Precision:** Pinpoint the exact file, exact line number, and exact logical condition causing failure before proposing surgical fixes.
 
+### 5. Pragmatic Lateral Engineering & Proactive Testing Instinct ("Dimaag Lagao" Rule)
+Whenever developing, testing, or debugging hardware, external APIs, sensors, or complex user flows:
+1. **Lateral Hardware & Tool Utilization:**
+   - Proactively think beyond the mobile screen or theoretical code inspection.
+   - Proactively evaluate and leverage the developer laptop's native hardware and environment (macOS Bluetooth / CoreBluetooth, local USB interfaces, Python sniffers, ADB forward/reverse tunnels, local web/mock servers) to verify features directly with zero friction.
+2. **Proactive Shortcut Generation (Never Wait for User to Suggest):**
+   - Always ask: *"Is there a faster, cleverer, zero-friction way to test this right here on the developer's laptop before pushing or deploying to mobile?"*
+   - If external hardware (smartwatches, sensors, beacons) or third-party APIs are involved, proactively propose and create local bridge scripts, hardware sniffer utilities, or direct protocol emulators so testing happens with minimal user effort.
+3. **Frictionless Developer Experience:**
+   - Always prioritize the path of least resistance for the user. Cut out tedious manual steps by automating local hardware/software bridges wherever possible.
+
 ---
 
 ## 🛠️ General Execution Guardrails
@@ -42,3 +53,4 @@ Whenever the user asks to **"audit"**, **"find bugs"**, or **"deep test"** any s
 3. **Grep Before View**: Always run `grep -n` to find exact lines before viewing.
 4. **Preserve User Settings**: Never run `git push` without user explicitly saying "push kardo".
 5. **Deep Audit Standard**: Whenever an audit or bug check is requested, execute the full protocol (raw data tracing, collision analysis, boundaries, stream simulation, fuzz testing).
+6. **Lateral Engineering Standard:** Always proactively identify and propose local machine shortcuts (laptop Bluetooth, ADB bridges, local test harnesses, sniffer scripts) to make verification as simple and instant as possible.
