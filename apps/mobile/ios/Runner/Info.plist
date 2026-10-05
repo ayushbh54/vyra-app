@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Vyra</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>vyra</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Vyra needs your location to track outdoor runs, walks, pace, and route distance in real time.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Vyra needs your location in the background to accurately record outdoor running, walking routes, and total workout distance.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Vyra needs background location access to record continuous workouts and map your fitness activities.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Vyra needs Bluetooth access to connect to your smartwatch and sync real-time heart rate, steps, and health metrics.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Vyra needs Bluetooth access to connect and communicate with your smartwatch.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Vyra uses motion and pedometer sensors to measure your daily steps, active movement, and exercise intensity.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Vyra reads step count, active calories, and heart rate to synchronize your daily activity.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Vyra records workouts and health metrics to keep your fitness profile updated.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Vyra needs camera access to scan food barcodes and nutrition labels.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Vyra needs photo library access to upload meal photos and avatars.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Vyra needs photo library access to save workout summary cards and badges.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Vyra uses the microphone for AI fitness coaching and hands-free voice guidance.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Vyra uses speech recognition to understand voice commands during workouts.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+</dict>
+</plist>
