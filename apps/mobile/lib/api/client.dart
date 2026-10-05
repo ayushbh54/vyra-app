@@ -60,6 +60,20 @@ class VyraApi {
   String? _refreshToken;
   bool _isRefreshing = false;
 
+  bool _isWarmingUp = false;
+
+  /// Silently pings the Render cloud server in the background so cold containers
+  /// wake up before the athlete finishes typing or taps Sign In / Guest Access.
+  Future<void> warmUpServer() async {
+    if (_isWarmingUp) return;
+    _isWarmingUp = true;
+    try {
+      final uri = Uri.parse('$baseUrl/health');
+      await _http.get(uri).timeout(const Duration(seconds: 40));
+    } catch (_) {}
+    _isWarmingUp = false;
+  }
+
   // ---------------------------------------------------------------------------
   // Session
   // ---------------------------------------------------------------------------
@@ -129,13 +143,19 @@ class VyraApi {
     String path, {
     Map<String, dynamic>? body,
     String? cacheKey,
-    Duration timeout = const Duration(seconds: 15),
+    Duration? timeout,
+    int retryCount = 0,
   }) async {
     final uri = Uri.parse('$baseUrl$path');
     final headers = {
       'content-type': 'application/json',
       if (_token != null) 'authorization': 'Bearer $_token',
     };
+
+    // Render cloud cold-starts take 25-35s. Give auth & demo endpoints sufficient headroom.
+    final isAuthEndpoint = path.startsWith('/v1/auth') || path.startsWith('/v1/demo');
+    final effectiveTimeout = timeout ??
+        (isAuthEndpoint ? const Duration(seconds: 40) : const Duration(seconds: 15));
 
     try {
       final http.Response res = await switch (method) {
@@ -145,7 +165,7 @@ class VyraApi {
         'DELETE' => _http.delete(uri, headers: headers),
         _ => _http.get(uri, headers: headers),
       }
-          .timeout(timeout);
+          .timeout(effectiveTimeout);
 
       // Silent 401 Token Refresh Interception
       if (res.statusCode == 401 &&
@@ -213,6 +233,19 @@ class VyraApi {
     } on ApiException {
       rethrow;
     } catch (e) {
+      // Automatic 1-time retry for auth endpoints if server was cold-starting
+      if (isAuthEndpoint && retryCount == 0 && (e is TimeoutException || e is http.ClientException)) {
+        await Future.delayed(const Duration(milliseconds: 600));
+        return _request(
+          method,
+          path,
+          body: body,
+          cacheKey: cacheKey,
+          timeout: const Duration(seconds: 30),
+          retryCount: 1,
+        );
+      }
+
       // Network failure. Serve the cache if we have one.
       if (method == 'GET' && cacheKey != null) {
         final cached = await _readCache(cacheKey);
@@ -327,22 +360,69 @@ class VyraApi {
     return (j['onboardingStep'] as num?)?.toInt() ?? 0;
   }
 
-  /// Fast 1-Tap Guest Access: Immediately provisions a guest session with full token
+  /// Fast 1-Tap Guest Access: Immediately provisions a guest session with full token.
+  /// Uses a zero-friction offline-first architecture:
+  /// 1. Tries a fast 3.5s check with the cloud.
+  /// 2. If the cloud server is asleep (cold start) or device is offline, INSTANTLY grants
+  ///    a local guest session (<50ms) so the user is never blocked by network latency.
+  /// 3. Silently upgrades to a real cloud JWT in the background once Render finishes booting.
   Future<int> logInAsGuest() async {
-    final j = await _request('POST', '/v1/auth/guest');
-    await setToken(
-      '${j['accessToken']}',
-      refreshToken: j['refreshToken'] != null ? '${j['refreshToken']}' : null,
-    );
+    final prefs = await SharedPreferences.getInstance();
+
+    // 1. Fast cloud provisioning attempt (3.5s fast-path)
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final j = await _request(
+        'POST',
+        '/v1/auth/guest',
+        timeout: const Duration(seconds: 3, milliseconds: 500),
+      );
+      await setToken(
+        '${j['accessToken']}',
+        refreshToken: j['refreshToken'] != null ? '${j['refreshToken']}' : null,
+      );
       if (!prefs.containsKey('user_name')) {
         await prefs.setString('user_name', 'Athlete');
         await prefs.setString('profile_name', 'Athlete');
       }
+      await prefs.remove('is_local_guest');
       unawaited(getProfile());
+      return (j['onboardingStep'] as num?)?.toInt() ?? 0;
+    } catch (_) {
+      // 2. ⚡ INSTANT OFFLINE-FIRST FALLBACK:
+      // Cloud is cold/asleep or connection is offline. Never show an error!
+      // Immediately unlock the app with local guest session in <50ms.
+      final localId = 'guest_${DateTime.now().millisecondsSinceEpoch}';
+      final localToken = 'local_guest_$localId';
+      await setToken(localToken);
+      if (!prefs.containsKey('user_name')) {
+        await prefs.setString('user_name', 'Athlete');
+        await prefs.setString('profile_name', 'Athlete');
+      }
+      await prefs.setBool('is_local_guest', true);
+
+      // Background task: Silently sync with cloud once Render finishes waking up
+      unawaited(_backgroundUpgradeGuestToCloud(localId));
+
+      return 0; // Immediate access!
+    }
+  }
+
+  Future<void> _backgroundUpgradeGuestToCloud(String localId) async {
+    try {
+      final j = await _request(
+        'POST',
+        '/v1/auth/guest',
+        timeout: const Duration(seconds: 45),
+      );
+      final accessToken = '${j['accessToken']}';
+      final refreshToken = j['refreshToken'] != null ? '${j['refreshToken']}' : null;
+      // Only swap tokens if user is still on this local guest session
+      if (_token == 'local_guest_$localId') {
+        await setToken(accessToken, refreshToken: refreshToken);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('is_local_guest');
+      }
     } catch (_) {}
-    return (j['onboardingStep'] as num?)?.toInt() ?? 0;
   }
 
   /// Links a Google Account to the active athlete or guest session
@@ -693,7 +773,36 @@ class VyraApi {
   // ---------------------------------------------------------------------------
 
   Future<UserProfile> getProfile() async {
-    final j = await _request('GET', '/v1/me', cacheKey: 'profile.me');
+    Map<String, dynamic> j;
+    try {
+      j = await _request('GET', '/v1/me', cacheKey: 'profile.me');
+    } catch (e) {
+      if (_token != null && _token!.startsWith('local_guest_')) {
+        final prefs = await SharedPreferences.getInstance();
+        return UserProfile(
+          id: _token!,
+          displayHandle: 'guest_athlete',
+          name: prefs.getString('user_name') ?? 'Guest Athlete',
+          city: prefs.getString('user_city') ?? 'New Delhi',
+          primarySport: prefs.getString('primary_sport') ?? 'run',
+          weightKg: prefs.getDouble('user_weight') ?? 68.0,
+          heightCm: prefs.getDouble('user_height') ?? 172.0,
+          dob: prefs.getString('user_dob') ?? '2000-01-01',
+          gender: prefs.getString('user_gender') ?? 'prefer-not-to-say',
+          disabilityFlag: false,
+          accessibilityMode: false,
+          disabilityType: '',
+          hasPhysicalConsideration: false,
+          physicalConsiderationDetails: '',
+          medicalConditions: const [],
+          onboardingStep: 0,
+          followersCount: 0,
+          followingCount: 0,
+          activitiesCount: 0,
+        );
+      }
+      rethrow;
+    }
     final profile = UserProfile.fromJson(j);
     // Keep local SharedPreferences updated so Gemini AI context & 3D coach always have fresh user metrics
     try {

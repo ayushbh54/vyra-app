@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api/client.dart';
 import '../models/models.dart';
 import '../services/language_service.dart';
+import '../services/gemini_exercise_cache.dart';
 import '../theme.dart';
 import '../theme_manager.dart';
 import '../widgets/common.dart';
@@ -410,28 +411,8 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
       }
     } catch (_) {}
 
-    item ??= LibraryItem(
-      slug: entry.exerciseSlug,
-      name: entry.name,
-      category: 'exercise',
-      subcategory: 'session',
-      bodyParts: const ['core', 'glutes', 'legs'],
-      difficulty: 'beginner',
-      instructions: const [
-        'Form check: align your head, neck and spine comfortably.',
-        'Follow the animated movement guide on screen.',
-        'Breathe rhythmically — exhale during muscle contraction.',
-      ],
-      audioScript: 'Maintain proper alignment and steady rhythm throughout.',
-      defaultDurationSec: entry.durationSec > 0 ? entry.durationSec : 60,
-      equipment: const [],
-      contraindications: const [],
-      isSeatedFriendly: false,
-      isLowImpact: true,
-      isRecoveryFor: const [],
-      thumbnailUrl: '',
-      gifUrl: '',
-    );
+    item ??= await GeminiExerciseCacheService.instance
+        .getOrGenerate(entry.exerciseSlug, entry.name);
 
     if (!mounted) return;
     await pushScreen(context, entry.name, ExerciseDetailScreen(item: item));

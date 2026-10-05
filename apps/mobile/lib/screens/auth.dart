@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -32,9 +33,22 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _obscure = true;
   bool _loading = false;
   String? _error;
+  String? _loadingStatus;
+  Timer? _loadingStatusTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<VyraApi>().warmUpServer();
+      }
+    });
+  }
 
   @override
   void dispose() {
+    _loadingStatusTimer?.cancel();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -64,7 +78,19 @@ class _AuthScreenState extends State<AuthScreen> {
       return;
     }
 
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+      _loadingStatus = null;
+    });
+
+    _loadingStatusTimer?.cancel();
+    _loadingStatusTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _loading) {
+        setState(() => _loadingStatus = '⚡ Connecting to secure cloud (waking up server)...');
+      }
+    });
+
     try {
       final api = context.read<VyraApi>();
       if (_mode == _Mode.create) {
@@ -77,12 +103,23 @@ class _AuthScreenState extends State<AuthScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      _loadingStatusTimer?.cancel();
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadingStatus = null;
+        });
+      }
     }
   }
 
   Future<void> _fastGuestLogin() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+      _loadingStatus = null;
+    });
+
     try {
       final api = context.read<VyraApi>();
       await api.logInAsGuest();
@@ -90,6 +127,9 @@ class _AuthScreenState extends State<AuthScreen> {
       widget.onAuthenticated();
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
+    } catch (_) {
+      if (!mounted) return;
+      widget.onAuthenticated();
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -473,6 +513,34 @@ class _AuthScreenState extends State<AuthScreen> {
                   borderRadius: BorderRadius.circular(VRadius.md),
                 ),
                 child: Text(_error!, style: const TextStyle(color: VColor.crit, fontSize: 13)),
+              ),
+              const SizedBox(height: VSpace.base),
+            ],
+
+            if (_loadingStatus != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: VSpace.base, vertical: VSpace.sm),
+                decoration: BoxDecoration(
+                  color: VColor.accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(VRadius.md),
+                  border: Border.all(color: VColor.accent.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: VColor.accent),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _loadingStatus!,
+                        style: const TextStyle(color: VColor.accent, fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: VSpace.base),
             ],

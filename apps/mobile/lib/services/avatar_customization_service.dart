@@ -434,30 +434,25 @@ class AvatarCustomizationService extends ChangeNotifier {
 
   /// Returns dance animation name per gender.
   /// Male dance: 'Run' at 1.8× speed (energetic). Female dance: 'idle' (actual samba).
+  /// Returns the dance animation clip name per gender.
+  /// Confirmed from GLB binary JSON chunk analysis:
+  ///   male_coach.glb  → has: "Idle", "Run", "TPose", "Walk"
+  ///   female_coach.glb → has: "idle" (this IS the samba dance, 1 animation only)
   static String getDanceAnimation({required bool isFemale}) {
+    // female_coach.glb has exactly ONE animation named "idle" which is a samba dance
+    // male_coach.glb: use "Run" for energetic dance mode
     return isFemale ? 'idle' : 'Run';
   }
 
-  /// Maps exercise slug to bone-pose key matching POSES in exercise_poses.js
+  /// Returns the pose key to pass to VyraExercisePose.apply() in JS.
+  ///
+  /// The JS engine (exercise_poses.js v3.0) handles ALL resolution via a
+  /// 5-tier cascade: exact match → alias → keyword analysis → pose blending
+  /// → safe default. So we simply pass the raw normalised slug — no Dart
+  /// hard-coding needed. Future exercises from Gemini work automatically.
   static String getExercisePoseKey(String exerciseSlug) {
-    final pose = slugToAvatarPose(exerciseSlug.toLowerCase());
-    const map = <String, String>{
-      'running':       'running',
-      'boxing':        'boxing',
-      'yoga':          'yoga',
-      'cycling':       'cycling',
-      'weightlifting': 'weightlifting',
-      'squat':         'squat',
-      'plank':         'plank',
-      'pushup':        'pushup',
-      'swimming':      'swimming',
-      'dancing':       'dancing',
-      'football':      'football',
-      'cricket':       'cricket',
-      'skipping':      'skipping',
-      'tai_chi':       'tai_chi',
-    };
-    return map[pose] ?? 'squat';
+    // Normalise to lowercase with underscores — matches JS normalisation
+    return exerciseSlug.toLowerCase().replaceAll(RegExp(r'[\s\-]+'), '_').trim();
   }
 
   /// Computes AI breathing and movement tempo based on exercise intensity

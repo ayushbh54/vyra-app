@@ -499,7 +499,6 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
           (savedModel?.contains('female') ?? false);
       final savedOutfitColorInt = prefs.getInt('coach_outfit_color');
       final savedAuraColorInt = prefs.getInt('coach_aura_color');
-
       setState(() {
         _coachModelPath = savedModel ??
             (isFemale
@@ -1020,6 +1019,9 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                 ),
 
                 // ── Realistic 3D Human Coach ──
+                const Center(
+                  child: CircularProgressIndicator(color: VColor.accent, strokeWidth: 2),
+                ),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: Builder(builder: (context) {

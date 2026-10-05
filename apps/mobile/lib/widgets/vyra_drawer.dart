@@ -15,6 +15,7 @@ import '../screens/nearby_doctors.dart';
 import '../screens/pose_tracker.dart';
 import '../screens/profile.dart';
 import '../screens/settings.dart';
+import '../screens/smartwatch_diagnostic_screen.dart';
 import '../screens/water_reminder.dart';
 import '../theme.dart';
 import '../theme_manager.dart';
@@ -624,6 +625,19 @@ class _VyraDrawerState extends State<VyraDrawer> {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => HealthSyncScreen(api: context.read<VyraApi>()),
+                            ),
+                          );
+                        },
+                      ),
+                      _DrawerMenuItem(
+                        icon: Icons.biotech_rounded,
+                        iconBgColor: const Color(0xFF00D2FF), // Cyan
+                        title: 'Watch Protocol Prober (Tester Tool)',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const SmartwatchDiagnosticScreen(),
                             ),
                           );
                         },

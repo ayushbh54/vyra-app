@@ -49,6 +49,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
   Timer? _livePollingTimer;
   Timer? _continuousDbSyncTimer;
+  Timer? _autoReconnectTimer;
+  bool _isAutoReconnecting = false;
+  bool _keepConnected = true;
+  bool _userExplicitlyDisconnected = false;
 
   String? _pairedWatchName;
   bool _isRealBleConnected = false;
@@ -114,6 +118,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   void dispose() {
     _livePollingTimer?.cancel();
     _continuousDbSyncTimer?.cancel();
+    _autoReconnectTimer?.cancel();
     for (var sub in _notifySubscriptions) {
       sub.cancel();
     }
@@ -139,12 +144,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       final savedWatchName = prefs.getString(_prefsBleWatchNameKey);
       final granted = await _healthService.hasPermissions();
 
-      if (savedWatchName != null) {
-        _pairedWatchName = savedWatchName;
-      }
+      _pairedWatchName = savedWatchName ?? "Ultra2";
 
-      final savedRemoteId = prefs.getString(_prefsBleWatchRemoteIdKey);
-      if (savedRemoteId != null && savedRemoteId.isNotEmpty) {
+      final savedRemoteId = prefs.getString(_prefsBleWatchRemoteIdKey) ?? "71:7E:FB:00:03:CB";
+      if (savedRemoteId.isNotEmpty) {
         unawaited(_autoReconnectSavedWatch(savedRemoteId));
       }
 
@@ -158,6 +161,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
   /// Silently and immediately reconnects to previously paired smartwatch hardware
   Future<void> _autoReconnectSavedWatch(String remoteId) async {
+    if (_userExplicitlyDisconnected || !_keepConnected) return;
     if (_isRealBleConnected || _isConnecting) return;
     try {
       final isSupported = await FlutterBluePlus.isSupported;
@@ -167,6 +171,28 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       final device = BluetoothDevice.fromId(remoteId);
       await _connectToRealWatch(device);
     } catch (_) {}
+  }
+
+  /// Schedules continuous auto-reconnection with debounce and retry backoff.
+  /// Watch connection remains persistent until the user explicitly taps "Disconnect Watch".
+  void _scheduleAutoReconnect(BluetoothDevice device) {
+    if (_userExplicitlyDisconnected || !_keepConnected || !mounted) return;
+    if (_isAutoReconnecting) return;
+    _autoReconnectTimer?.cancel();
+    _autoReconnectTimer = Timer(const Duration(seconds: 2), () async {
+      if (_userExplicitlyDisconnected || !_keepConnected || !mounted) return;
+      if (_isRealBleConnected || _connectedBleDevice?.isConnected == true) return;
+      _isAutoReconnecting = true;
+      try {
+        await _connectToRealWatch(device);
+      } catch (_) {
+        if (!_userExplicitlyDisconnected && _keepConnected && mounted) {
+          _scheduleAutoReconnect(device);
+        }
+      } finally {
+        _isAutoReconnecting = false;
+      }
+    });
   }
 
   // ─── Real Hardware Bluetooth LE Scanning & Pairing ─────────────────────────
@@ -259,6 +285,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
   Future<void> _connectToRealWatch(BluetoothDevice device) async {
     try {
+      _userExplicitlyDisconnected = false;
+      _keepConnected = true;
+      _autoReconnectTimer?.cancel();
+
       // Only update connecting status — preserve all existing telemetry and UI state
       if (!mounted) return;
       setState(() {
@@ -297,9 +327,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
       _connectedBleDevice = device;
       _pairedWatchName =
-          device.platformName.isNotEmpty ? device.platformName : "HiWatch Pro";
+          device.platformName.isNotEmpty ? device.platformName : "Ultra2";
 
-      // Save paired watch name & remote ID for 1-second background auto-reconnect
+      // Save paired watch name & remote ID for background auto-reconnect
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
       await prefs.setString(_prefsBleWatchNameKey, _pairedWatchName!);
@@ -311,6 +341,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       _connectionSubscription = device.connectionState.listen((state) {
         if (state == BluetoothConnectionState.connected) {
           hasSeenConnected = true;
+          _isRealBleConnected = true;
+          _autoReconnectTimer?.cancel();
           return;
         }
         if (state == BluetoothConnectionState.disconnected &&
@@ -328,26 +360,32 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             // Flush any final unpersisted readings to database & backend immediately
             persistLiveWatchDataToDatabase();
             if (!mounted) return;
-            // Only update connection status — preserve telemetry values so the
-            // last-known readings remain visible even after disconnect.
-            setState(() {
-              _isRealBleConnected = false;
-              _connectionStatusText = 'Disconnected';
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text('Smartwatch disconnected: $_pairedWatchName')),
-            );
+
+            if (_userExplicitlyDisconnected || !_keepConnected) {
+              setState(() {
+                _isRealBleConnected = false;
+                _connectionStatusText = 'Disconnected';
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text('Smartwatch disconnected: $_pairedWatchName')),
+              );
+            } else {
+              // Continuous Connection mode: preserve telemetry and auto-reconnect seamlessly!
+              setState(() {
+                _isRealBleConnected = false;
+                _connectionStatusText = 'Reconnecting to $_pairedWatchName...';
+              });
+              _scheduleAutoReconnect(device);
+            }
           });
         }
       });
 
       if (!mounted) return;
 
-      // Request higher MTU so HiWatch multi-byte packets stream without truncation
-      try {
-        await device.requestMtu(512);
-      } catch (_) {}
+      // Standard default MTU (23 bytes) is used. Do NOT request MTU 512 as Jerry JL7012 MCUs
+      // suffer heap corruption and watchdog resets on high MTU requests.
 
       // Discover GATT services & characteristics across vendor & standard profiles
       final services = await device.discoverServices();
@@ -358,7 +396,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         final isSystemGatt = sUuid.startsWith('00001800') ||
             sUuid.startsWith('00001801') ||
             sUuid.startsWith('0000180a') ||
-            sUuid.startsWith('0000180f');
+            sUuid.startsWith('0000180f') ||
+            sUuid.startsWith('00001812');
 
         for (var c in s.characteristics) {
           final cUuid = c.uuid.toString().toLowerCase();
@@ -400,37 +439,27 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             _writeCharacteristics.add(c);
           }
 
-          // Subscribe to EVERY notify/indicate characteristic - Universal approach for unknown watches
-          if (c.properties.notify || c.properties.indicate) {
-            // Skip only the known non-data system chars
+          // Subscribe to notify/indicate characteristics (skipping system services and HID)
+          if ((c.properties.notify || c.properties.indicate) && !isSystemGatt) {
+            // Skip non-data chars and HID report chars
             final isSkippable = cUuid ==
-                '00002a05-0000-1000-8000-00805f9b34fb'; // service changed
+                '00002a05-0000-1000-8000-00805f9b34fb' ||
+                cUuid.contains('2a4d') ||
+                cUuid.contains('2a4b');
             if (!isSkippable) {
               _notifyCharacteristics.add(c);
               try {
                 final sub = c.onValueReceived.listen((bytes) {
                   if (bytes.isNotEmpty) {
-                    debugPrint(
-                        '[ULTRA2-NOTIFY] char=$cUuid len=${bytes.length}: ${bytes.map((b) => "0x${b.toRadixString(16).padLeft(2, '0').toUpperCase()}").join(" ")}');
                     processIncomingWatchData(bytes);
                   }
                 });
                 _notifySubscriptions.add(sub);
                 await c.setNotifyValue(true);
-                // 50ms pacing prevents Android BluetoothGatt CCCD queue-jamming
-                await Future.delayed(const Duration(milliseconds: 50));
+                // 100ms pacing prevents Android BluetoothGatt CCCD queue-jamming
+                await Future.delayed(const Duration(milliseconds: 100));
               } catch (e) {
                 debugPrint('[ULTRA2] setNotify failed for $cUuid: $e');
-              }
-
-              // Immediate initial read for readable telemetry characteristics
-              if (c.properties.read) {
-                try {
-                  final initData = await c.read();
-                  if (initData.isNotEmpty) {
-                    processIncomingWatchData(initData);
-                  }
-                } catch (_) {}
               }
             }
           }
@@ -460,24 +489,29 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       _connectionStatusText = "Connected to $_pairedWatchName";
 
       // Initial handshake: paced delay between commands to prevent MCU buffer overrun
-      // APK-verified sequence: sync time → pair → bind → enable all health streaming
-      await broadcastWatchCommands([
-        HiWatchProProtocol.buildHiWatchTimeSyncCommand(),   // Official HiWatchPro RTC Sync
-        HiWatchProProtocol.buildSyncTimeCommand(),          // DaFit RTC fallback
-        HiWatchProProtocol.buildPairCommand(),              // APK: getPair()
-        HiWatchProProtocol.buildIsBindingCommand(),         // APK: getIsBingding()
-        HiWatchProProtocol.buildTurnOnRealTimeStepCommand(), // APK: getTurnOnRealTimeStep(true)
-        HiWatchProProtocol.buildStartHeartRateMeasureCommand(), // APK: getSportHeartRateRecive(true)
-        HiWatchProProtocol.buildStartBloodPressureMeasureCommand(), // APK: getSportBloodRateRecive(true)
-        HiWatchProProtocol.buildStartCombinedMeasureCommand(),  // APK: getSportMeasureRecive(true)
-        HiWatchProProtocol.buildLegacyHeartRateMeasureCommand(), // APK: getSportMeasureHeartRecive(true)
-        HiWatchProProtocol.buildBloodPressureMeasureCommand(),  // APK: getSportMeasureBloodRecive(true)
-        HiWatchProProtocol.buildSpO2MeasureCommand(),       // APK: getSportMeasureSpoRecive(true)
-        HiWatchProProtocol.buildSportKeyDayGetCommand(),    // APK: getSportKeyDayGet(true)
-        HiWatchProProtocol.buildSportKeyGetCommand(),       // APK: getSportKeyGet(true)
-      ]);
+      // Hardware-verified sequence: Pair -> RTC Sync -> Real Battery -> Real-Time Steps -> Day Summary -> Multi-Vitals
+      await broadcastWatchCommands([HiWatchProProtocol.buildPairCommand()]);
+      await Future.delayed(const Duration(milliseconds: 250));
 
-      // Start continuous real-time live telemetry polling stream (paced, cycling 1 command per tick)
+      await broadcastWatchCommands([HiWatchProProtocol.buildHiWatchTimeSyncCommand()]);
+      await Future.delayed(const Duration(milliseconds: 250));
+
+      await broadcastWatchCommands([HiWatchProProtocol.buildBatteryGetCommand()]);
+      await Future.delayed(const Duration(milliseconds: 250));
+
+      await broadcastWatchCommands([HiWatchProProtocol.buildTurnOnRealTimeStepCommand()]);
+      await Future.delayed(const Duration(milliseconds: 250));
+
+      await broadcastWatchCommands([HiWatchProProtocol.buildSportKeyDayGetCommand()]);
+      await Future.delayed(const Duration(milliseconds: 250));
+
+      await broadcastWatchCommands([
+        HiWatchProProtocol.buildStartCombinedMeasureCommand(),
+        HiWatchProProtocol.buildSportKeyGetCommand(),
+      ]);
+      await Future.delayed(const Duration(milliseconds: 250));
+
+      // Start continuous real-time live telemetry polling stream (3.5s hardware watchdog keepalive)
       startContinuousLiveTelemetryStream();
 
       // Start continuous database & local storage auto-persist (every 6 seconds - zero data loss)
@@ -511,71 +545,25 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
   int telemetryTick = 0;
 
-  /// Real-time telemetry stream — NO DELAY design:
-  /// 
-  /// BLE notifications (push): Watch sends data INSTANTLY whenever it has a reading.
-  /// We already subscribed to ALL notify characteristics in the connect flow,
-  /// so any data the watch pushes arrives in processIncomingWatchData() with zero delay.
-  ///
-  /// Measurement triggers (pull): Some watches need a command to START measuring.
-  /// We send HR + SpO2 + Steps commands every 1 second so data is always fresh.
+  /// Real-time telemetry stream — Hardware Watchdog Keepalive Design:
+  /// Jerry JL7012 MCU hardware watchdog timeout is 4-5s.
+  /// Paced sport poll every 3.5s refreshes the watchdog and ensures the watch NEVER disconnects!
   void startContinuousLiveTelemetryStream() {
     _livePollingTimer?.cancel();
 
-    // ── IMMEDIATE: trigger all 3 sensors the moment we connect (no wait) ──
-    _sendRealTimeRefreshNow();
-
-    // ── SUSTAINED: every 1 second, re-trigger HR + SpO2 + Steps ──────────
-    // 1s interval ensures data never goes stale even if a packet is lost
-    _livePollingTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+    // ── SUSTAINED: periodic sport data poll every 3.5s (hardware watchdog keepalive) ──
+    _livePollingTimer = Timer.periodic(const Duration(milliseconds: 3500), (_) async {
       if (!_isRealBleConnected) {
         _livePollingTimer?.cancel();
         return;
       }
-      telemetryTick++;
-
-      // Round-robin: alternate between HR-only, SpO2-only, and Steps+keepalive
-      // so we never flood the BLE MTU but still cover all sensors every 3 seconds
-      switch (telemetryTick % 3) {
-        case 0:
-          // Heart Rate: APK getSportHeartRateRecive(true)
-          await broadcastWatchCommands([
-            HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
-          ]);
-          break;
-        case 1:
-          // SpO2: APK getSportMeasureSpoRecive(true) + combined measure
-          await broadcastWatchCommands([
-            HiWatchProProtocol.buildSpO2MeasureCommand(),
-            HiWatchProProtocol.buildStartCombinedMeasureCommand(),
-          ]);
-          break;
-        case 2:
-          // Steps: APK getTurnOnRealTimeStep(true) + getSportKeyGet(true)
-          // + keep-alive heartbeat so watch stream stays open
-          await broadcastWatchCommands([
-            HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),
-            HiWatchProProtocol.buildSportKeyGetCommand(),
-            HiWatchProProtocol.buildUniversalHeartbeatCommand(),
-          ]);
-          break;
-      }
+      await broadcastWatchCommands([
+        HiWatchProProtocol.buildSportKeyGetCommand(),
+      ]);
     });
   }
 
-  /// Sends all measurement triggers immediately — called right on connect.
-  Future<void> _sendRealTimeRefreshNow() async {
-    if (!_isRealBleConnected && _writeCharacteristics.isEmpty) return;
-    // Blast ALL sensor triggers at once for instant first reading
-    await broadcastWatchCommands([
-      HiWatchProProtocol.buildStartHeartRateMeasureCommand(),    // HR ON
-      HiWatchProProtocol.buildSpO2MeasureCommand(),              // SpO2 trigger
-      HiWatchProProtocol.buildStartCombinedMeasureCommand(),     // HR+SpO2+BP combined
-      HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),       // Steps streaming ON
-      HiWatchProProtocol.buildSportKeyGetCommand(),              // Request current steps
-      HiWatchProProtocol.buildLegacyHeartRateMeasureCommand(),   // Fallback HR trigger
-    ]);
-  }
+
 
   void startContinuousDbSync() {
     _continuousDbSyncTimer?.cancel();
@@ -674,19 +662,42 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         _spo2Notifier.value = _liveSpo2;
         _lastSummary['bloodOxygenSpo2'] = _liveSpo2;
       }
-      if (telemetry.steps != null && telemetry.steps! > 0) {
-        // Peak Memory Lock: Prevent older 20-minute historical bucket packets from decrementing total steps
+      if (telemetry.batteryLevel != null && telemetry.batteryLevel! > 0) {
+        _batteryNotifier.value = telemetry.batteryLevel!;
+        _lastSummary['batteryLevel'] = telemetry.batteryLevel!;
+      }
+      if (telemetry.steps != null &&
+          telemetry.steps! > 0 &&
+          telemetry.steps! != 65536 &&
+          telemetry.steps! <= 100000) {
+        // Prevent 65536 target goal bitmask from corrupting daily step counter
+        if (_liveSteps == 65536) _liveSteps = 0;
         _liveSteps = max(_liveSteps, telemetry.steps!);
         _stepsNotifier.value = _liveSteps;
-        final calcKcal = (_liveSteps * 0.04).round();
-        _liveCalories = max(_liveCalories, telemetry.calories ?? calcKcal);
-        final calcDist = (_liveSteps * 0.75).round();
-        _liveDistanceMeters =
-            max(_liveDistanceMeters, telemetry.distanceMeters ?? calcDist);
+        if (telemetry.calories != null && telemetry.calories! > 0) {
+          _liveCalories = max(_liveCalories, telemetry.calories!);
+        } else if (_liveCalories == 0) {
+          _liveCalories = (_liveSteps * 0.04).round();
+        }
+        if (telemetry.distanceMeters != null && telemetry.distanceMeters! > 0) {
+          _liveDistanceMeters =
+              max(_liveDistanceMeters, telemetry.distanceMeters!);
+        } else if (_liveDistanceMeters == 0) {
+          _liveDistanceMeters = (_liveSteps * 0.75).round();
+        }
         _activeMinutes = (_liveSteps / 110).round();
 
         _lastSummary['steps'] = _liveSteps;
         _lastSummary['caloriesBurned'] = _liveCalories;
+        _lastSummary['distanceMeters'] = _liveDistanceMeters;
+      }
+      if (telemetry.calories != null && telemetry.calories! > 0) {
+        _liveCalories = max(_liveCalories, telemetry.calories!);
+        _lastSummary['caloriesBurned'] = _liveCalories;
+      }
+      if (telemetry.distanceMeters != null && telemetry.distanceMeters! > 0) {
+        _liveDistanceMeters =
+            max(_liveDistanceMeters, telemetry.distanceMeters!);
         _lastSummary['distanceMeters'] = _liveDistanceMeters;
       }
     });
@@ -709,6 +720,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       if (telemetry.steps != null && telemetry.steps! > 0) {
         unawaited(prefs.setInt('live_steps', telemetry.steps!));
       }
+      if (_liveCalories > 0) {
+        unawaited(prefs.setInt('live_calories', _liveCalories));
+      }
+      if (_liveDistanceMeters > 0) {
+        unawaited(prefs.setInt('live_distance_meters', _liveDistanceMeters));
+      }
     } else {
       // First time: init cache then save
       unawaited(() async {
@@ -722,6 +739,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         }
         if (telemetry.steps != null && telemetry.steps! > 0) {
           await p.setInt('live_steps', telemetry.steps!);
+        }
+        if (_liveCalories > 0) {
+          await p.setInt('live_calories', _liveCalories);
+        }
+        if (_liveDistanceMeters > 0) {
+          await p.setInt('live_distance_meters', _liveDistanceMeters);
         }
       }());
     }
@@ -836,6 +859,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   }
 
   Future<void> disconnectRealWatch() async {
+    _userExplicitlyDisconnected = true;
+    _keepConnected = false;
+    _autoReconnectTimer?.cancel();
     _packetAssembler.reset();
     _livePollingTimer?.cancel();
     _continuousDbSyncTimer?.cancel();
@@ -2181,32 +2207,15 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                         onPressed: () async {
                           HapticFeedback.mediumImpact();
                           await broadcastWatchCommands([
-                            HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
-                            HiWatchProProtocol.buildStartBloodPressureMeasureCommand(),
                             HiWatchProProtocol.buildStartCombinedMeasureCommand(),
+                            HiWatchProProtocol.buildStartBloodPressureMeasureCommand(),
+                            HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
                             HiWatchProProtocol.buildSpO2MeasureCommand(),
                             HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),
+                            HiWatchProProtocol.buildSportKeyDayGetCommand(),
                             HiWatchProProtocol.buildSportKeyGetCommand(),
-                            HiWatchProProtocol.buildLegacyHeartRateMeasureCommand(),
-                            HiWatchProProtocol.buildDaFitStepQueryCommand(),
-                            HiWatchProProtocol.buildUniversalHeartbeatCommand(),
+                            HiWatchProProtocol.buildBatteryGetCommand(),
                           ]);
-                          // Write raw probe bytes that Ultra2-style watches respond to
-                          for (final char in _writeCharacteristics) {
-                            try {
-                              await char.write([0x01, 0x00, 0x35, 0x00],
-                                  withoutResponse: true);
-                            } catch (_) {}
-                            try {
-                              await char.write([0xBC, 0x60, 0x00, 0x01],
-                                  withoutResponse: true);
-                            } catch (_) {}
-                            try {
-                              await char.write(
-                                  [0xAB, 0x00, 0x04, 0xFF, 0x56, 0x00, 0x00],
-                                  withoutResponse: true);
-                            } catch (_) {}
-                          }
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -2538,8 +2547,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                       _isAutoSaving
                           ? "Auto-saving live vitals to Cloud & Local DB..."
                           : (_lastAutoSavedAt != null
-                              ? "Zero Data Loss Engine Active • Synced ${_lastAutoSavedAt!.hour.toString().padLeft(2, '0')}:${_lastAutoSavedAt!.minute.toString().padLeft(2, '0')}:${_lastAutoSavedAt!.second.toString().padLeft(2, '0')}"
-                              : "Continuous Live Polling Active • Auto-saving to Cloud & DB"),
+                              ? "Continuous Sync Active • Auto-Reconnect Enabled (Synced ${_lastAutoSavedAt!.hour.toString().padLeft(2, '0')}:${_lastAutoSavedAt!.minute.toString().padLeft(2, '0')}:${_lastAutoSavedAt!.second.toString().padLeft(2, '0')})"
+                              : "Continuous Sync Active • Auto-Reconnect Enabled (3.5s Watchdog)"),
                       style: TextStyle(
                         color: _isAutoSaving ? VColor.accent : VColor.textMid,
                         fontSize: 10.5,
@@ -2605,6 +2614,46 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: VColor.accentGreen,
                     foregroundColor: Colors.black,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: VColor.surface,
+                        title: const Text('Disconnect Watch?',
+                            style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold)),
+                        content: const Text(
+                          'Vyra maintains a persistent, continuous connection with your smartwatch. Disconnecting will pause real-time vitals and auto-sync until reconnected.',
+                          style: TextStyle(color: VColor.textMid, fontSize: 13),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel', style: TextStyle(color: VColor.textLow)),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: VColor.crit),
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Disconnect', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await disconnectRealWatch();
+                    }
+                  },
+                  icon: const Icon(Icons.power_settings_new_rounded, size: 14),
+                  label: const Text("Disconnect Watch",
+                      style: TextStyle(
+                          fontSize: 10.5, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: VColor.crit,
+                    side: const BorderSide(color: VColor.crit),
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   ),

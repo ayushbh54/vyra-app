@@ -324,9 +324,9 @@ void main() {
           equals([0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01]));
     });
 
-    test('buildUniversalHeartbeatCommand is keepalive [AB 00 04 FF 56 00 00]', () {
+    test('buildUniversalHeartbeatCommand uses safe native sport poll [CD 00 06 15 01 01 00 01 01]', () {
       expect(HiWatchProProtocol.buildUniversalHeartbeatCommand(),
-          equals([0xAB, 0x00, 0x04, 0xFF, 0x56, 0x00, 0x00]));
+          equals([0xCD, 0x00, 0x06, 0x15, 0x01, 0x01, 0x00, 0x01, 0x01]));
     });
 
     test('buildFindWatchCommand vibrates watch: [CD 00 06 12 01 0B 00 01 01]', () {

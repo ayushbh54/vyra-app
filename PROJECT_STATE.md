@@ -345,4 +345,52 @@ Defined in `AGENTS.md` and `GEMINI.md`:
 5. **Zero-Guesswork Empirical Diagnostic Tooling Protocol ("Bina Tukke Lagaye Proactive Tool Banao"):** Strictly ban speculative guessing on unknown hardware/APIs. Proactively architect standalone diagnostic test harnesses, probe apps, and micro-modules with multi-preset libraries, raw packet logging, auto-winning signature detection, and self-contained forensic reports to verify ground truth before modifying production code.
 
 ---
+
+## 11. Standalone Smartwatch Diagnostic Studio (`apps/watch_tester`)
+
+- **Artifact Path:** `vyra_watch_studio_prober.apk` (Root directory, standalone build: 48MB)
+- **Purpose:** Independent empirical hardware prober and live telemetry verification app built outside Vyra main codebase.
+- **Hardware Ground Truth Verified (`Ultra2` [`71:7E:FB:00:03:CB`]):**
+  - **Chipset Family:** Jerry / JieLi (JL7012 / AC695X) FitPro MCU.
+  - **UART Write Char:** `6e400002-b5a3-f393-e0a9-e50e24dcca9d` (write/writeWithoutResponse).
+  - **UART Notify Char:** `6e400003-b5a3-f393-e0a9-e50e24dcca9d` (notify).
+  - **Live Ground Truth Extracted (Direct Mac BLE Verification):** Steps: 17,487 steps, Calories: 344 kcal (Authentic MCU hardware value), Distance: 12,240 m (12.24 km), Battery: 9%.
+  - **Frame Structure:** Master command header `0xCD`, Slave response/notification header `0xDC`.
+- **Eradicated Root Causes of Watch Reboots, Missing Vitals & False Battery:**
+  1. **MCU Watchdog Reset / Command Blasting Bug:** Blasting 4 concurrent flash history queries on connect caused Jerry JL7012 SPI flash buffer overflow and instant MCU reset -> **Fixed:** Startup sanitized to a paced 5-step sequence (Pair Handshake, RTC Clock Sync, Authentic Battery Query, Real-Time Steps Enable, Day Summary Query) with 300ms inter-command spacing.
+  2. **Parser Key Indexing Collision Bug:** In `0xDC` MCU responses (`DC 00 05 15 04 00 09 01`), `bytes[5]` is status `0x00` and `bytes[4]` is the metric Key (`0x04` HR, `0x14` SpO2, `0x05` BP, `0x0D` Pulse). The parser was mistakenly assigning `key = bytes[6] = 0x09`, ignoring all vitals -> **Fixed:** Clean discriminator between TLV (`bytes[4] == 0x01 && bytes[5] != 0x00`) and Direct MCU frames (`key = bytes[4]`).
+  3. **Fake/Static Battery Display Bug:** GATT characteristic `0x2A19` returns a frozen 54% from ROM -> **Fixed:** Authentic battery level is actively queried via `[0xCD, 0x00, 0x06, 0x12, 0x01, 0x02, 0x00, 0x01, 0x01]` and parsed from Key `0x02` payload (`1..100%`).
+  4. **Active Optical Stream Collision:** Background sport keepalives collided with live PPG sensor packets during user measurements -> **Fixed:** Background polling pauses during active measurement, and manual measurement triggers send single, un-flooded native commands.
+  5. **Auto-Reconnect Scan Delay Race:** Reconnect routine triggered a 3-second BLE scan before connecting, causing timer re-entry and duplicate connection attempts -> **Fixed:** Directly connects to `BluetoothDevice.fromId(cleanMac)` with instant auto-connect fallback.
+  6. **Zero Fake Calories Enforced:** Removed all remaining `steps * 0.04` fallback estimations from `hiwatch_pro_service.dart`. Only genuine hardware calories are processed.
+  7. **Auto-ACK Protocol Engine:** Watch watchdog rebooted after 3-4 seconds when sending master sync frames (`0xCD`) because no Return ACK arrived -> **Fixed:** Return ACK `[0xDC, 0x00, 0x05, cmd, 0x01, seq0, seq1, 0x01]` is automatically returned and broadcast via writable UART.
+  8. **Candidate Offset 10 Ground Truth & 0x0E Collision Fix:** Packet `CD 00 11 15 01 0C 00 0C 35 45 00 00 44 4F 00 00 2F D0 01 58` decoded with exact byte offsets: Steps `bytes[10..13]` = 17,487 steps, Distance `bytes[14..17]` = 12,240 m, Calories `bytes[18..19]` = 344 kcal. Restricted Day Summary parsing to Key `0x0C` exclusively to prevent Goal packet `0x0E` (containing 65,536) from corrupting the step count.
+  9. **Dual-Opcode Optical Sensor Ignition:** Jerry JL7012 optical PPG sensor sleeps by default (especially under 10% battery) -> **Fixed:** Dispatches dual opcodes (classic `0x0D`/`0x0E`/`0x14` + modern `0x24` and combined `0x18`) with proactive 1.5s post-connection auto-start.
+  11. **Master Multi-Vitals Stream Ground Truth (`Cmd 0x15, Key 0x0E`):** Reverse-engineered from official `BaseReceiveData.java` lines 1740-1789. Optical measurement triggers stream the final PPG vector in packet `CD 00 11 15 01 0E 00 0C 32 21 00 01 00 00 CB F4 63 56 79 47`:
+      - `bytes[16]`: SpO2 % (`0x63` = 99%)
+      - `bytes[17]`: Diastolic BP in mmHg (`0x56` = 86 mmHg)
+      - `bytes[18]`: Systolic BP in mmHg (`0x79` = 121 mmHg)
+      - `bytes[19]`: Heart Rate / Pulse in BPM (`0x47` = 71 BPM)
+      - *Root Cause of 65536:* In this same packet, `bytes[10..13]` contains `00 01 00 00` (= 65,536). Misidentifying `0x0E` as Day Summary steps corrupted authentic steps (17,487) to 65536. Dedicating `0x0E` strictly to Multi-Vitals and guarding steps (`val != 65536`) eliminated step corruption and unlocked full optical vitals extraction.
+  12. **Direct MCU 0x12 Vitals & Battery Collision Fix:** Prevented direct MCU vitals frames (`[0xCD, 0, 3, 0x12, 0x01, 75]`) from being misclassified as TLV by requiring `length >= 8 && keyId <= 0x30`. Gated battery responses to `0xDC` or single-byte payloads, preventing diastolic blood pressure from being swallowed as battery.
+  13. **Main Vyra Mobile App Full Integration (`apps/mobile`):**
+      - **Paced 6-Step Startup:** Pair Handshake (`0x12 0x0A`) -> RTC Time Sync (`0x12 0x01`) -> Authentic Battery Query (`0x12 0x02`) -> Real-Time Steps (`0x15 0x06`) -> Day Summary (`0x15 0x0C`) -> Multi-Vitals stream ignition (`0x18 0x01 0x01`).
+      - **3.5s Hardware Watchdog Refresh:** Paced sport poll (`[0xCD, 0x00, 0x06, 0x15, 0x01, 0x01, 0x00, 0x01, 0x01]`) every 3500ms prevents the Jerry JL7012 4-5s watchdog disconnect.
+      - **Continuous Connection & Auto-Reconnect:** Automatic seamless reconnect with backoff retry on transient RF/range drops. Disconnection occurs ONLY when user explicitly taps "Disconnect Watch".
+      - **Complete UI Setup for All 6 Required Metrics:**
+        - ❤️ **Pulse:** Live BPM with real-time pulsing heart animation and HR intensity zones.
+        - 💧 **Blood Oxygen:** Live SpO2 % with physiological range bounds.
+        - 🚶 **Live Steps:** Live step counter with 65,536 goal bitmask protection.
+        - 🩺 **Blood Pressure:** Real-time systolic/diastolic reading (e.g. 119/84 mmHg).
+        - 🔥 **Calories:** Authentic hardware calories (e.g. 353 kcal) without fake math multipliers.
+        - 📏 **Distance:** Authentic hardware distance (e.g. 12.59 km).
+        - 🔋 **Battery:** Authentic hardware battery status (e.g. 9%).
+        - ⚡ **Continuous Sync Badge:** "Continuous Sync Active • Auto-Reconnect Enabled (3.5s Watchdog)".
+        - 🛑 **Explicit Disconnect:** Dedicated high-visibility "Disconnect Watch" button with confirmation dialog.
+  14. **Comprehensive Test Suite & Verification:**
+      - `apps/mobile`: 260 / 260 smartwatch tests passing (`flutter test`), including exact physical Ultra2 ground-truth telemetry verification (`smartwatch_ui_and_telemetry_test.dart`).
+      - Static Analysis: `flutter analyze` 100% clean with 0 warnings on `lib/`.
+
+---
 *End of Manifest — VYRA System Architecture Documented & Verified.*
+

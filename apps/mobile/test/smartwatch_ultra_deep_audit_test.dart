@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vyra/services/hiwatch_pro_service.dart';
 
@@ -296,6 +295,68 @@ void main() {
       expect(ack[5], equals(0x00)); // Seq hi
       expect(ack[6], equals(0x10)); // Seq lo
       expect(ack[7], equals(0x01)); // Trailer
+    });
+
+    test('buildBatteryGetCommand formats exactly as SendData.getBatteryValue()', () {
+      final cmd = HiWatchProProtocol.buildBatteryGetCommand();
+      expect(cmd, equals([0xCD, 0x00, 0x06, 0x12, 0x01, 0x02, 0x00, 0x01, 0x01]));
+    });
+  });
+
+  group('🔬 Test Suite 6: Physical Ultra2 Ground-Truth Telemetry Report Verification', () {
+    test('Exact Physical Ultra2 Multi-Vital Packet (Key 0x0E) decodes HR=75, BP=119/84, SpO2=99%', () {
+      // Raw byte stream captured live from physical Ultra2 watch:
+      // CD 00 11 15 01 0E 00 0C 5C C5 00 01 00 00 E1 78 63 54 77 4B
+      final packet = <int>[
+        0xCD, 0x00, 0x11, 0x15, 0x01, 0x0E, 0x00, 0x0C,
+        0x5C, 0xC5, 0x00, 0x01, 0x00, 0x00, 0xE1, 0x78,
+        0x63, // SpO2 = 99%
+        0x54, // Diastolic BP = 84 mmHg
+        0x77, // Systolic BP = 119 mmHg
+        0x4B, // Heart Rate = 75 BPM
+      ];
+
+      final telemetry = HiWatchProProtocol.parseNotifyPacket(packet);
+
+      expect(telemetry.heartRateBpm, equals(75), reason: 'Authentic physical pulse must decode to 75 BPM');
+      expect(telemetry.bloodPressureSystolic, equals(119), reason: 'Authentic systolic BP must decode to 119 mmHg');
+      expect(telemetry.bloodPressureDiastolic, equals(84), reason: 'Authentic diastolic BP must decode to 84 mmHg');
+      expect(telemetry.bloodOxygenSpo2, equals(99), reason: 'Authentic SpO2 must decode to 99%');
+      expect(telemetry.steps, isNull, reason: 'Key 0x0E goal bitmask 65536 must NEVER overwrite steps');
+      expect(telemetry.ackPacket, isNotNull, reason: 'Must emit Auto-ACK to keep BLE stream running');
+    });
+
+    test('Exact Physical Ultra2 Day Summary Packet (Key 0x0C) decodes Steps=17990, Kcal=353, Dist=12593m', () {
+      // Raw byte stream captured live from physical Ultra2 watch:
+      // CD 00 11 15 01 0C 00 0C 5C C5 00 00 46 46 00 00 31 31 01 61
+      final packet = <int>[
+        0xCD, 0x00, 0x11, 0x15, 0x01, 0x0C, 0x00, 0x0C,
+        0x5C, 0xC5,
+        0x00, 0x00, 0x46, 0x46, // Steps = 0x4646 = 17,990 steps
+        0x00, 0x00, 0x31, 0x31, // Distance = 0x3131 = 12,593 meters
+        0x01, 0x61,             // Calories = 0x0161 = 353 kcal
+      ];
+
+      final telemetry = HiWatchProProtocol.parseNotifyPacket(packet);
+
+      expect(telemetry.steps, equals(17990), reason: 'Must decode authentic 17,990 steps from watch MCU');
+      expect(telemetry.distanceMeters, equals(12593), reason: 'Must decode authentic 12,593 meters from watch MCU');
+      expect(telemetry.calories, equals(353), reason: 'Must decode authentic 353 kcal without fake multipliers');
+      expect(telemetry.ackPacket, isNotNull, reason: 'Must emit Auto-ACK for Day Summary');
+    });
+
+    test('Exact Physical Ultra2 Battery Response Packet decodes Battery=9%', () {
+      // Raw byte stream captured live: DC 00 05 12 02 00 09 01
+      final packet = <int>[0xDC, 0x00, 0x05, 0x12, 0x02, 0x00, 0x09, 0x01];
+
+      final telemetry = HiWatchProProtocol.parseNotifyPacket(packet);
+
+      expect(telemetry.batteryLevel, equals(9), reason: 'Must decode authentic 9% battery from watch MCU');
+    });
+
+    test('Keepalive Sport Poll uses safe native FitPro frame to prevent watchdog disconnects', () {
+      final cmd = HiWatchProProtocol.buildSportKeyGetCommand();
+      expect(cmd, equals([0xCD, 0x00, 0x06, 0x15, 0x01, 0x01, 0x00, 0x01, 0x01]));
     });
   });
 }

@@ -25,10 +25,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     defaultConfig {
         applicationId  = "com.vyra.app"
         minSdk         = 26       // Health Connect requires API 26+
@@ -65,6 +61,12 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             isDebuggable  = true
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

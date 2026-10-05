@@ -25,7 +25,7 @@ void main() {
 
     test('buildUniversalHeartbeatCommand produces keep-alive packet', () {
       final cmd = HiWatchProProtocol.buildUniversalHeartbeatCommand();
-      expect(cmd, equals([0xAB, 0x00, 0x04, 0xFF, 0x56, 0x00, 0x00]));
+      expect(cmd, equals([0xCD, 0x00, 0x06, 0x15, 0x01, 0x01, 0x00, 0x01, 0x01]));
     });
 
     test('buildFindWatchCommand produces motor vibration packet', () {
@@ -189,6 +189,24 @@ void main() {
       expect(emptyData.isEmpty, isTrue);
       expect(emptyData.heartRateBpm, isNull);
       expect(emptyData.steps, isNull);
+    });
+
+    test('parses Ultra2 direct optical pulse stream (0x12 0x0D)', () {
+      final packet = [0xDC, 0x00, 0x05, 0x12, 0x0D, 0x00, 0x48, 0x01];
+      final data = HiWatchProProtocol.parseNotifyPacket(packet);
+      expect(data.heartRateBpm, equals(72));
+    });
+
+    test('parses Ultra2 authentic battery response (0x12 0x02)', () {
+      final packet = [0xDC, 0x00, 0x05, 0x12, 0x02, 0x00, 0x55, 0x01];
+      final data = HiWatchProProtocol.parseNotifyPacket(packet);
+      expect(data.batteryLevel, equals(85));
+    });
+
+    test('parses Ultra2 single measurement SpO2 (0x12 0x24)', () {
+      final packet = [0xDC, 0x00, 0x06, 0x12, 0x24, 0x00, 0x02, 0x62];
+      final data = HiWatchProProtocol.parseNotifyPacket(packet);
+      expect(data.bloodOxygenSpo2, equals(98));
     });
   });
 }
