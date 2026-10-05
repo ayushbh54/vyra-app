@@ -433,6 +433,14 @@ class HiWatchProProtocol {
         }
       }
 
+      // ReturnAck frame guard: 0xDC packets are hardware ACKs from the watch.
+      // Except for the authentic battery response handled above, 0xDC frames NEVER
+      // carry sport/step/vital telemetry. Returning immediately prevents ACK sequence bytes
+      // (e.g. 0x01, 0x00, 0x09) from colliding with step parsers and emitting phantom 65545 steps.
+      if (header == 0xDC) {
+        return const HiWatchTelemetryData();
+      }
+
       // A2. APK FitPro Real-Time Continuous Steps Stream (Key 0x0B / 0x06 / 0x02: Sport Detail & Step Record)
       // Reverse-engineered from BaseReceiveData.Sport (64-bit packed):
       // Bits 0..11  (12 bits): offset
@@ -562,17 +570,22 @@ class HiWatchProProtocol {
       }
 
       // B. StrappedEquipment Real-Time Telemetry Stream (Cmd 0x15 fallback)
-      if (!isTlv && (cmdType == 0x15 || subCmd == 0x15)) {
+      if (header == 0xCD && !isTlv && (cmdType == 0x15 || subCmd == 0x15)) {
         int rawSteps = 0;
         int? kcal;
         int? distMeters;
 
-        if (bytes.length >= 7) {
+        // In length-prefixed FitPro packets, bytes[4] == 0x01 is the TLV keyCount, NEVER a 24-bit step MSB.
+        // (1 << 16) produces 65536, which masquerades as 65000+ phantom steps.
+        if (bytes.length >= 7 && bytes[4] != 0x01) {
           rawSteps = (bytes[4] << 16) | (bytes[5] << 8) | bytes[6];
         }
-        if (rawSteps == 0 && bytes.length >= 9) {
+        if (rawSteps == 0 && bytes.length >= 9 && bytes[6] != 0x01) {
           rawSteps = (bytes[6] << 16) | (bytes[7] << 8) | bytes[8];
         }
+
+        // Sentinel guards: 65530..65555 are protocol artifacts (0xFFFF, 65536 bitmask, 65545 ACK collision)
+        if (rawSteps >= 65530 && rawSteps <= 65555) rawSteps = 0;
 
         final steps = (rawSteps > 0 && rawSteps <= 100000) ? rawSteps : null;
 

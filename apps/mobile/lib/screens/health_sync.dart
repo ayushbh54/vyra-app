@@ -601,13 +601,14 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
   /// Real-time telemetry stream — Hardware Watchdog Keepalive Design:
   /// Jerry JL7012 MCU hardware watchdog timeout is 4-5s.
-  /// Paced sport poll every 4.0s refreshes the watchdog and ensures the watch NEVER disconnects!
-  /// Every 8th tick (~32s) also refreshes Day Summary (Steps/Dist/Calories) and Battery.
+  /// Paced Day Summary poll (cmd 0x15, key 0x0D) every 4.0s refreshes the watchdog
+  /// and continuously streams live increasing steps, calories, and distance directly from the watch!
+  /// Every 8th tick (~32s) also refreshes Battery.
   void startContinuousLiveTelemetryStream() {
     _livePollingTimer?.cancel();
     telemetryTick = 0;
 
-    // ── SUSTAINED: periodic sport data poll every 4.0s (hardware watchdog keepalive) ──
+    // ── SUSTAINED: periodic Day Summary sport data poll every 4.0s ──
     _livePollingTimer = Timer.periodic(const Duration(milliseconds: 4000), (_) async {
       if (!_isRealBleConnected) {
         _livePollingTimer?.cancel();
@@ -618,20 +619,16 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         return;
       }
       telemetryTick++;
-      // Primary keepalive: live sport key poll (key 0x01) — every tick
+
+      // Day Summary (Key 0x0D): Returns live steps, calories, and distance in one packet (Key 0x0C).
+      // Also acts as the hardware watchdog keepalive ping to prevent GATT disconnection.
       await broadcastWatchCommands([
-        [0xCD, 0x00, 0x06, 0x15, 0x01, 0x01, 0x00, 0x01, 0x01],
+        [0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01],
       ]);
 
-      // Every 8 ticks (~32s): refresh Day Summary (Steps / Distance / Calories) + Battery
+      // Every 8 ticks (~32s): refresh Battery (key 0x02 on cmd 0x12)
       if (telemetryTick % 8 == 0) {
         await Future.delayed(const Duration(milliseconds: 150));
-        // Day Summary: returns Steps, Distance, Calories in one packet (key 0x0C)
-        await broadcastWatchCommands([
-          [0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01],
-        ]);
-        await Future.delayed(const Duration(milliseconds: 150));
-        // Battery refresh (key 0x02 on cmd 0x12)
         await broadcastWatchCommands([
           [0xCD, 0x00, 0x06, 0x12, 0x01, 0x02, 0x00, 0x01, 0x01],
         ]);
@@ -744,11 +741,19 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       }
       if (telemetry.steps != null &&
           telemetry.steps! > 0 &&
-          telemetry.steps! != 65536 &&
+          !(telemetry.steps! >= 65530 && telemetry.steps! <= 65555) &&
           telemetry.steps! <= 100000) {
-        // Prevent 65536 target goal bitmask from corrupting daily step counter
-        if (_liveSteps == 65536) _liveSteps = 0;
-        _liveSteps = max(_liveSteps, telemetry.steps!);
+        // Automatically purge any previously cached/stuck 60k+ phantom steps
+        if (_liveSteps >= 60000) _liveSteps = 0;
+
+        // The watch's Day Summary is the single authoritative source of truth.
+        // Update live steps directly from the watch.
+        if (telemetry.steps! >= _liveSteps || _liveSteps == 0) {
+          _liveSteps = telemetry.steps!;
+        } else if (_liveSteps - telemetry.steps! > 1000) {
+          // If previous value was out-of-sync or rolling over, snap to real watch count
+          _liveSteps = telemetry.steps!;
+        }
         _stepsNotifier.value = _liveSteps;
         if (telemetry.calories != null && telemetry.calories! > 0) {
           _liveCalories = max(_liveCalories, telemetry.calories!);
@@ -1715,11 +1720,17 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           _liveSpo2 = spo2;
           _spo2Notifier.value = spo2;
         }
-        if (steps != null && steps > 0) {
+        if (steps != null && steps > 0 && steps < 60000) {
           _liveSteps = steps;
           _stepsNotifier.value = steps;
           _liveCalories = calories ?? (steps * 0.04).round();
           _liveDistanceMeters = (steps * 0.75).round();
+        } else if (steps != null && steps >= 60000) {
+          // Stale 65k corrupted value from earlier session — purge it immediately
+          _liveSteps = 0;
+          _stepsNotifier.value = 0;
+          _cachedPrefs?.remove(_prefsStepsKey);
+          _cachedPrefs?.remove('live_steps');
         }
         if (bp != null && bp.isNotEmpty) {
           _liveBp = bp;

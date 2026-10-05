@@ -135,5 +135,55 @@ void main() {
       expect(payload['bpSystolic'], equals(119));
       expect(payload['bpDiastolic'], equals(84));
     });
+
+    test('6️⃣ 🛡️ 0xDC Hardware ACK Collision Immunity — 65,545 phantom steps completely eliminated', () {
+      // Hardware sport poll ACK packet received every 4s:
+      final sportPollAck = <int>[0xDC, 0x00, 0x05, 0x15, 0x01, 0x00, 0x09, 0x01];
+      final res1 = HiWatchProProtocol.parseNotifyPacket(sportPollAck);
+      expect(res1.steps, isNull, reason: '0xDC Sport Poll ACK must NEVER emit steps (was causing 65545 bug)');
+
+      // Real-time steps toggle ACK:
+      final rtStepsAck = <int>[0xDC, 0x00, 0x05, 0x15, 0x06, 0x00, 0x09, 0x01];
+      final res2 = HiWatchProProtocol.parseNotifyPacket(rtStepsAck);
+      expect(res2.steps, isNull, reason: '0xDC RT Steps ACK must NEVER emit steps');
+
+      // Day summary toggle ACK:
+      final daySummaryAck = <int>[0xDC, 0x00, 0x05, 0x15, 0x0D, 0x00, 0x09, 0x01];
+      final res3 = HiWatchProProtocol.parseNotifyPacket(daySummaryAck);
+      expect(res3.steps, isNull, reason: '0xDC Day Summary ACK must NEVER emit steps');
+    });
+
+    test('7️⃣ 🏃 Live Physical Ultra2 Step Packet (21,917 steps) decodes accurately in real time', () {
+      // Captured directly from physical Ultra2 watch over Mac Bluetooth CoreBluetooth:
+      // CD 00 11 15 01 0C 00 0C 76 C5 00 00 55 9D 00 00 3B ED 01 AF
+      // 0x559D = 21,917 steps | 0x3BED = 15,341 m | 0x01AF = 431 kcal
+      final liveStepPacket = <int>[
+        0xCD, 0x00, 0x11, 0x15, 0x01, 0x0C, 0x00, 0x0C,
+        0x76, 0xC5, 0x00, 0x00, 0x55, 0x9D, 0x00, 0x00,
+        0x3B, 0xED, 0x01, 0xAF,
+      ];
+      final res = HiWatchProProtocol.parseNotifyPacket(liveStepPacket);
+      expect(res.steps, equals(21917), reason: 'Live steps must decode to 21,917');
+      expect(res.distanceMeters, equals(15341), reason: 'Live distance must decode to 15,341 m');
+      expect(res.calories, equals(431), reason: 'Live calories must decode to 431 kcal');
+    });
+
+    test('8️⃣ 🚶 Dynamic Increasing Steps Tracking — seamless incremental step updates while walking', () {
+      // Simulating user actively walking: 21,917 -> 21,950 -> 22,000 -> 22,100
+      final stepsList = [21917, 21950, 22000, 22100];
+      for (final s in stepsList) {
+        final b3 = (s >> 24) & 0xFF;
+        final b2 = (s >> 16) & 0xFF;
+        final b1 = (s >> 8) & 0xFF;
+        final b0 = s & 0xFF;
+        final pkt = <int>[
+          0xCD, 0x00, 0x11, 0x15, 0x01, 0x0C, 0x00, 0x0C,
+          0x76, 0xC5, b3, b2, b1, b0,
+          0x00, 0x00, 0x3B, 0xED, 0x01, 0xAF,
+        ];
+        final res = HiWatchProProtocol.parseNotifyPacket(pkt);
+        expect(res.steps, equals(s), reason: 'Dynamic step count $s must be preserved accurately');
+      }
+    });
   });
 }
