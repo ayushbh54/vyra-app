@@ -181,12 +181,20 @@ The smartwatch subsystem (`apps/mobile/lib/services/hiwatch_pro_service.dart`) i
    - `0xCD 0x00 0x0E 0x15 0x01 0x0C ...`: FitPro Day Summary — Correctly skips 4-byte date prefix `[Y, M, D, status]` to extract real steps, distance, and calories without clamping to 0.
    - `0xCD 0x00 len 0x12 subCmd ...`: Direct health measurement — parses subCmd 0x02 as Blood Pressure (Sys+Dia) instead of false HR/SpO2; isolates subCmd 0x06 step packet to prevent false HR spikes.
 
-4. **Physical Ultra2 Watch Profile (Field Verified via Watch Prober):**
+4. **Physical Ultra2 Watch Profile (Field Verified via Mac Terminal CoreBluetooth):**
    - Device Name: `Ultra2` | MAC: `71:7E:FB:00:03:CB`
    - Primary UART Service: `6e400801-b5a3-f393-e0a9-e50e24dcca9d`
    - Write Characteristic: `6e400002-b5a3-f393-e0a9-e50e24dcca9d`
    - Notify Characteristic: `6e400003-b5a3-f393-e0a9-e50e24dcca9d`
    - Secondary Services: `ffff` (`ff22` write, `ff11` notify), `3802` (`4a02`)
+   - **Verified Live Telemetry (October 2026):**
+     * Steps: 21,917 steps (dynamically increasing in real time while walking)
+     * Calories: 431 kcal
+     * Distance: 15,341 m
+     * Heart Rate: 78 BPM | Blood Pressure: 115/80 mmHg | SpO2: 97% | Battery: 9%
+   - **65,000+ Phantom Steps Elimination & 0xDC Hardware ACK Guard:**
+     * Root Cause: Periodic Sport Poll ACKs (`0xDC 0x00 0x05 0x15 0x01 0x00 0x09 0x01`) were falling through to fallback step parsers, treating status bytes `(0x01 << 16) | 0x09` as 65,545 steps, locking the step counter.
+     * Architectural Fix: Enforced strict `0xDC` ReturnAck guard to drop non-battery ACK payloads; shifted 4.0s keepalive polling to Day Summary (`0x15`, `0x0D`), which continuously streams live cumulative steps without packet collision.
 
 5. **DaFit / Shenzhen Protocol (Header `0xAB` / `0xAA`):**
    - Direct: `0xAB 0x51` (Steps), `0xAB 0x09` (Live HR & SpO2)
