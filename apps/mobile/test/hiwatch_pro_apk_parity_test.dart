@@ -39,8 +39,11 @@ void main() {
     });
 
     test('buildHiWatchTimeSyncCommand matches SendData.getSetTimesValue() RTC bit packing', () {
+      // Ground-truth verified format from live CoreBluetooth probe output:
+      //   [TX] Step 2: RTC Time Sync: CD 00 07 12 01 01 6A 8A F6 43  (10 bytes)
+      // The format is: CD 00 07 12 01 01 [B3 B2 B1 B0]  — NOT CD 00 09 with a 00 04 length prefix.
       // APK SendData.java getTemp() packing:
-      // year offset: (year - 2000) << 26
+      // year offset: ((year - 2000) & 0x3F) << 26
       // month: month << 22
       // day: day << 17
       // hour: hour << 12
@@ -48,10 +51,10 @@ void main() {
       // sec: sec
       final fixedDate = DateTime(2026, 10, 4, 15, 30, 45);
       final yearOffset = 2026 - 2000; // 26
-      final temp = (45) | (30 << 6) | (15 << 12) | (4 << 17) | (10 << 22) | (yearOffset << 26);
+      final temp = (45) | (30 << 6) | (15 << 12) | (4 << 17) | (10 << 22) | ((yearOffset & 0x3F) << 26);
 
       final expected = [
-        0xCD, 0x00, 0x09, 0x12, 0x01, 0x01, 0x00, 0x04,
+        0xCD, 0x00, 0x07, 0x12, 0x01, 0x01,
         (temp >> 24) & 0xFF,
         (temp >> 16) & 0xFF,
         (temp >> 8) & 0xFF,
@@ -59,6 +62,7 @@ void main() {
       ];
       final actual = HiWatchProProtocol.buildHiWatchTimeSyncCommand(fixedDate);
       expect(actual, equals(expected));
+      expect(actual.length, equals(10), reason: 'RTC sync packet must be exactly 10 bytes (CD 00 07 header)');
     });
 
     test('buildStartHeartRateMeasureCommand matches SendData.getSportHeartRateRecive(true)', () {

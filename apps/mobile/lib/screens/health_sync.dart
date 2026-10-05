@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import '../theme.dart';
@@ -43,6 +44,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
   // Real Bluetooth LE Smartwatch Hardware Connection State
   BluetoothDevice? _connectedBleDevice;
+  BluetoothCharacteristic? _activeWriteChar;
+  BluetoothCharacteristic? _activeNotifyChar;
   final List<BluetoothCharacteristic> _writeCharacteristics = [];
   final List<BluetoothCharacteristic> _notifyCharacteristics = [];
   final List<StreamSubscription<List<int>>> _notifySubscriptions = [];
@@ -86,6 +89,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
   bool _isMeasuringHr = false;
   bool _isMeasuringBp = false;
+  bool _isMeasuringSpo2 = false;
+  bool _isMeasuringAll = false;
   int _measurementCountdown = 0;
   Timer? _measurementTimer;
 
@@ -147,8 +152,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       _pairedWatchName = savedWatchName ?? "Ultra2";
 
       final savedRemoteId = prefs.getString(_prefsBleWatchRemoteIdKey) ?? "71:7E:FB:00:03:CB";
-      if (savedRemoteId.isNotEmpty) {
+      if (savedRemoteId.isNotEmpty && !Platform.isMacOS) {
         unawaited(_autoReconnectSavedWatch(savedRemoteId));
+      }
+
+      if (Platform.isMacOS) {
+        unawaited(_startAutoScanOnMac());
       }
 
       if (!mounted) return;
@@ -171,6 +180,44 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       final device = BluetoothDevice.fromId(remoteId);
       await _connectToRealWatch(device);
     } catch (_) {}
+  }
+
+  /// Automatically discovers and connects to Ultra2 / HiWatch on macOS via CoreBluetooth
+  Future<void> _startAutoScanOnMac() async {
+    if (_userExplicitlyDisconnected || !_keepConnected) return;
+    try {
+      final isSupported = await FlutterBluePlus.isSupported;
+      if (!isSupported) return;
+
+      FlutterBluePlus.adapterState.listen((state) async {
+        if (state == BluetoothAdapterState.on && !_isScanning && !_isRealBleConnected && !_isConnecting) {
+          _scanSubscription?.cancel();
+          _scanSubscription = FlutterBluePlus.onScanResults.listen((results) {
+            if (!mounted) return;
+            setState(() => _scanResults = results);
+            for (final r in results) {
+              final name = r.device.platformName.isNotEmpty
+                  ? r.device.platformName
+                  : r.advertisementData.advName;
+              final lower = name.toLowerCase();
+              if (lower.contains('ultra') || lower.contains('fitpro') || lower.contains('hiwatch')) {
+                if (!_isRealBleConnected && !_isConnecting && mounted) {
+                  debugPrint('[VYRA-BLE] 🎯 Auto-discovered watch on Mac: $name [${r.device.remoteId.str}]. Connecting...');
+                  _connectToRealWatch(r.device);
+                  break;
+                }
+              }
+            }
+          });
+          debugPrint('[VYRA-BLE] 📡 Starting automatic Mac CoreBluetooth scan for Ultra2...');
+          try {
+            await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+          } catch (_) {}
+        }
+      });
+    } catch (e) {
+      debugPrint('[VYRA-BLE] Auto-scan error on Mac: $e');
+    }
   }
 
   /// Schedules continuous auto-reconnection with debounce and retry backoff.
@@ -198,6 +245,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   // ─── Real Hardware Bluetooth LE Scanning & Pairing ─────────────────────────
 
   Future<bool> _requestBluetoothPermissions() async {
+    if (Platform.isMacOS) return true;
     final scanStatus = await Permission.bluetoothScan.request();
     final connectStatus = await Permission.bluetoothConnect.request();
     final locationStatus = await Permission.location.request();
@@ -312,6 +360,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       _notifySubscriptions.clear();
       _writeCharacteristics.clear();
       _notifyCharacteristics.clear();
+      _activeWriteChar = null;
+      _activeNotifyChar = null;
       await _connectedBleDevice?.disconnect();
 
       if (!mounted) return;
@@ -402,29 +452,6 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         for (var c in s.characteristics) {
           final cUuid = c.uuid.toString().toLowerCase();
 
-          // Read & subscribe to Battery Level characteristic (0x2A19)
-          if (cUuid.contains('2a19')) {
-            try {
-              if (c.properties.read) {
-                unawaited(() async {
-                  final bVal = await c.read();
-                  if (bVal.isNotEmpty && bVal[0] <= 100) {
-                    _batteryNotifier.value = bVal[0];
-                  }
-                }());
-              }
-              if (c.properties.notify || c.properties.indicate) {
-                final sub = c.onValueReceived.listen((bytes) {
-                  if (bytes.isNotEmpty && bytes[0] <= 100) {
-                    _batteryNotifier.value = bytes[0];
-                  }
-                });
-                _notifySubscriptions.add(sub);
-                unawaited(c.setNotifyValue(true));
-              }
-            } catch (_) {}
-          }
-
           final isVendorChar = cUuid.contains('6e40') ||
               cUuid.contains('ff01') ||
               cUuid.contains('ff02') ||
@@ -437,50 +464,65 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           if ((c.properties.write || c.properties.writeWithoutResponse) &&
               isVendorChar) {
             _writeCharacteristics.add(c);
+            if (cUuid.contains('6e400002') || cUuid.contains('fff2') || cUuid.contains('ae01')) {
+              _activeWriteChar = c;
+            }
           }
 
-          // Subscribe to notify/indicate characteristics (skipping system services and HID)
+          // Subscribe to notify characteristics — strictly exclude HID & dummy 0x2A19 battery
           if ((c.properties.notify || c.properties.indicate) && !isSystemGatt) {
-            // Skip non-data chars and HID report chars
-            final isSkippable = cUuid ==
-                '00002a05-0000-1000-8000-00805f9b34fb' ||
+            final isSkippable = cUuid == '00002a05-0000-1000-8000-00805f9b34fb' ||
                 cUuid.contains('2a4d') ||
-                cUuid.contains('2a4b');
+                cUuid.contains('2a4b') ||
+                cUuid.contains('2a19'); // Avoid dummy 54% battery descriptor
             if (!isSkippable) {
               _notifyCharacteristics.add(c);
-              try {
-                final sub = c.onValueReceived.listen((bytes) {
-                  if (bytes.isNotEmpty) {
-                    processIncomingWatchData(bytes);
-                  }
-                });
-                _notifySubscriptions.add(sub);
-                await c.setNotifyValue(true);
-                // 100ms pacing prevents Android BluetoothGatt CCCD queue-jamming
-                await Future.delayed(const Duration(milliseconds: 100));
-              } catch (e) {
-                debugPrint('[ULTRA2] setNotify failed for $cUuid: $e');
+              if (cUuid.contains('6e400003') || cUuid.contains('fff1') || cUuid.contains('ae02')) {
+                _activeNotifyChar = c;
               }
+            }
+          }
+        }
+
+        // Prioritize known UART service & characteristics (Jerry JL7012 / HiWatch Pro)
+        if (sUuid.contains('6e400801') || sUuid.contains('6e400001') || sUuid.contains('6e40')) {
+          for (final c in s.characteristics) {
+            final cUuid = c.uuid.toString().toLowerCase();
+            if (cUuid.contains('6e400002')) {
+              _activeWriteChar = c;
+            }
+            if (cUuid.contains('6e400003')) {
+              _activeNotifyChar = c;
             }
           }
         }
       }
 
-      // Sort write characteristics so official HiWatch Pro UART write characteristic (6e400002) is first
-      _writeCharacteristics.sort((a, b) {
-        final aU = a.uuid.toString().toLowerCase();
-        final bU = b.uuid.toString().toLowerCase();
-        // Priority 1: Official HiWatch Pro UART write characteristic (Profile.uartWriteCharacteristicUUID)
-        if (aU.contains('6e400002')) return -1;
-        if (bU.contains('6e400002')) return 1;
-        // Priority 2: Generic Nordic UART write (6e40)
-        if (aU.contains('6e40') && !aU.contains('ff02')) return -1;
-        if (bU.contains('6e40') && !bU.contains('ff02')) return 1;
-        // Priority 3: Fallback vendor write (ff02, etc.)
-        if (aU.contains('ff02')) return -1;
-        if (bU.contains('ff02')) return 1;
-        return 0;
-      });
+      // Fallbacks
+      _activeWriteChar ??= _writeCharacteristics.isNotEmpty ? _writeCharacteristics.first : null;
+      _activeNotifyChar ??= _notifyCharacteristics.isNotEmpty ? _notifyCharacteristics.first : null;
+
+      // Subscribe EXCLUSIVELY to active UART notify characteristic (and at most 1 fallback)
+      // Never write CCCD to 4+ descriptors on Jerry chipsets to prevent BLE controller crash
+      if (_activeNotifyChar != null) {
+        final sub = _activeNotifyChar!.onValueReceived.listen((bytes) {
+          if (bytes.isNotEmpty) {
+            processIncomingWatchData(bytes);
+          }
+        });
+        _notifySubscriptions.add(sub);
+        await _activeNotifyChar!.setNotifyValue(true);
+      } else {
+        for (final c in _notifyCharacteristics.take(1)) {
+          final sub = c.onValueReceived.listen((bytes) {
+            if (bytes.isNotEmpty) {
+              processIncomingWatchData(bytes);
+            }
+          });
+          _notifySubscriptions.add(sub);
+          await c.setNotifyValue(true);
+        }
+      }
 
       // Mark connection active immediately so handshake commands and early timer ticks are transmitted
       _isRealBleConnected = true;
@@ -489,29 +531,41 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       _connectionStatusText = "Connected to $_pairedWatchName";
 
       // Initial handshake: paced delay between commands to prevent MCU buffer overrun
-      // Hardware-verified sequence: Pair -> RTC Sync -> Real Battery -> Real-Time Steps -> Day Summary -> Multi-Vitals
-      await broadcastWatchCommands([HiWatchProProtocol.buildPairCommand()]);
-      await Future.delayed(const Duration(milliseconds: 250));
+      // Step 1: Pair Handshake (Ultra2 MCU acknowledges this with DC 00 05 12 0A ...)
+      await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x12, 0x01, 0x0A, 0x00, 0x01, 0x02]]);
+      await Future.delayed(const Duration(milliseconds: 300));
 
+      // Step 2: RTC Time Sync (Activates MCU day step counters)
       await broadcastWatchCommands([HiWatchProProtocol.buildHiWatchTimeSyncCommand()]);
-      await Future.delayed(const Duration(milliseconds: 250));
+      await Future.delayed(const Duration(milliseconds: 300));
 
-      await broadcastWatchCommands([HiWatchProProtocol.buildBatteryGetCommand()]);
-      await Future.delayed(const Duration(milliseconds: 250));
+      // Step 3: Query Authentic Device Battery Level (Avoids hardcoded 54% in GATT 0x2A19)
+      await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x12, 0x01, 0x02, 0x00, 0x01, 0x01]]);
+      await Future.delayed(const Duration(milliseconds: 300));
 
-      await broadcastWatchCommands([HiWatchProProtocol.buildTurnOnRealTimeStepCommand()]);
-      await Future.delayed(const Duration(milliseconds: 250));
+      // Step 4: Enable Real-Time Steps (Ultra2 MCU acknowledges with DC 00 05 15 06 ...)
+      await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x15, 0x01, 0x06, 0x00, 0x01, 0x01]]);
+      await Future.delayed(const Duration(milliseconds: 300));
 
-      await broadcastWatchCommands([HiWatchProProtocol.buildSportKeyDayGetCommand()]);
-      await Future.delayed(const Duration(milliseconds: 250));
+      // Step 5: Query Day Sport Summary (Delivers authentic Steps, Dist & Calories in 1 packet!)
+      await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01]]);
+      await Future.delayed(const Duration(milliseconds: 400));
 
-      await broadcastWatchCommands([
-        HiWatchProProtocol.buildStartCombinedMeasureCommand(),
-        HiWatchProProtocol.buildSportKeyGetCommand(),
-      ]);
-      await Future.delayed(const Duration(milliseconds: 250));
+      // Step 6: Query Flash Historical Vitals (Fetches previously recorded vitals from watch memory)
+      await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x15, 0x01, 0x04, 0x00, 0x01, 0x01]]);
+      await Future.delayed(const Duration(milliseconds: 300));
+      await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x15, 0x01, 0x05, 0x00, 0x01, 0x01]]);
+      await Future.delayed(const Duration(milliseconds: 300));
+      await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x15, 0x01, 0x14, 0x00, 0x01, 0x01]]);
 
-      // Start continuous real-time live telemetry polling stream (3.5s hardware watchdog keepalive)
+      // Proactive Auto-Vitals Trigger: 1.5s after connect, automatically wake optical PPG sensor
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted && _isRealBleConnected && _liveHeartRate == 0) {
+          triggerCombinedAllVitals();
+        }
+      });
+
+      // Start continuous real-time live telemetry polling stream (4.0s hardware watchdog keepalive)
       startContinuousLiveTelemetryStream();
 
       // Start continuous database & local storage auto-persist (every 6 seconds - zero data loss)
@@ -547,19 +601,41 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
   /// Real-time telemetry stream — Hardware Watchdog Keepalive Design:
   /// Jerry JL7012 MCU hardware watchdog timeout is 4-5s.
-  /// Paced sport poll every 3.5s refreshes the watchdog and ensures the watch NEVER disconnects!
+  /// Paced sport poll every 4.0s refreshes the watchdog and ensures the watch NEVER disconnects!
+  /// Every 8th tick (~32s) also refreshes Day Summary (Steps/Dist/Calories) and Battery.
   void startContinuousLiveTelemetryStream() {
     _livePollingTimer?.cancel();
+    telemetryTick = 0;
 
-    // ── SUSTAINED: periodic sport data poll every 3.5s (hardware watchdog keepalive) ──
-    _livePollingTimer = Timer.periodic(const Duration(milliseconds: 3500), (_) async {
+    // ── SUSTAINED: periodic sport data poll every 4.0s (hardware watchdog keepalive) ──
+    _livePollingTimer = Timer.periodic(const Duration(milliseconds: 4000), (_) async {
       if (!_isRealBleConnected) {
         _livePollingTimer?.cancel();
         return;
       }
+      // Never send background sport polls during active optical measurement to prevent packet collisions
+      if (_isMeasuringHr || _isMeasuringSpo2 || _isMeasuringBp || _isMeasuringAll) {
+        return;
+      }
+      telemetryTick++;
+      // Primary keepalive: live sport key poll (key 0x01) — every tick
       await broadcastWatchCommands([
-        HiWatchProProtocol.buildSportKeyGetCommand(),
+        [0xCD, 0x00, 0x06, 0x15, 0x01, 0x01, 0x00, 0x01, 0x01],
       ]);
+
+      // Every 8 ticks (~32s): refresh Day Summary (Steps / Distance / Calories) + Battery
+      if (telemetryTick % 8 == 0) {
+        await Future.delayed(const Duration(milliseconds: 150));
+        // Day Summary: returns Steps, Distance, Calories in one packet (key 0x0C)
+        await broadcastWatchCommands([
+          [0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01],
+        ]);
+        await Future.delayed(const Duration(milliseconds: 150));
+        // Battery refresh (key 0x02 on cmd 0x12)
+        await broadcastWatchCommands([
+          [0xCD, 0x00, 0x06, 0x12, 0x01, 0x02, 0x00, 0x01, 0x01],
+        ]);
+      }
     });
   }
 
@@ -822,11 +898,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   }
 
   Future<void> broadcastWatchCommands(List<List<int>> commandList) async {
-    if (_writeCharacteristics.isEmpty) return;
+    final targets = _activeWriteChar != null ? [_activeWriteChar!] : _writeCharacteristics;
+    if (targets.isEmpty) return;
 
     for (final cmd in commandList) {
-      // Broadcast to ALL writable characteristics so watches listening on secondary UUIDs receive commands
-      for (final char in _writeCharacteristics) {
+      for (final char in targets) {
         try {
           if (char.properties.writeWithoutResponse) {
             await char.write(cmd, withoutResponse: true);
@@ -844,17 +920,16 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   /// Sends an ACK packet back to the watch immediately (fire-and-forget) to keep
   /// the real-time streaming session alive. ACKs must not block data processing.
   void sendWatchAck(List<int> ackBytes) {
-    if (_writeCharacteristics.isEmpty) return;
+    final target = _activeWriteChar ?? (_writeCharacteristics.isNotEmpty ? _writeCharacteristics.first : null);
+    if (target == null) return;
     unawaited(() async {
-      for (final targetChar in _writeCharacteristics) {
-        try {
-          if (targetChar.properties.writeWithoutResponse) {
-            await targetChar.write(ackBytes, withoutResponse: true);
-          } else if (targetChar.properties.write) {
-            await targetChar.write(ackBytes, withoutResponse: false);
-          }
-        } catch (_) {}
-      }
+      try {
+        if (target.properties.writeWithoutResponse) {
+          await target.write(ackBytes, withoutResponse: true);
+        } else if (target.properties.write) {
+          await target.write(ackBytes, withoutResponse: false);
+        }
+      } catch (_) {}
     }());
   }
 
@@ -899,9 +974,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     );
   }
 
-  /// Triggers a 15-second active optical pulse measurement with on-wrist feedback
+  /// 1-Tap Trigger Manual Pulse (Heart Rate) Measurement
   Future<void> triggerManualHeartRateMeasurement() async {
-    if (_isMeasuringHr || !_isRealBleConnected) return;
+    if (_isMeasuringHr || _isMeasuringAll || !_isRealBleConnected) return;
     setState(() {
       _isMeasuringHr = true;
       _measurementCountdown = 15;
@@ -916,35 +991,76 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       if (_measurementCountdown <= 1) {
         t.cancel();
         setState(() => _isMeasuringHr = false);
+        broadcastWatchCommands([
+          [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0D, 0x00, 0x01, 0x00],
+          [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x00, 0x00],
+        ]);
       } else {
         setState(() => _measurementCountdown--);
       }
     });
 
-    await broadcastWatchCommands([
-      HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
-      HiWatchProProtocol.buildStartCombinedMeasureCommand(),
-    ]);
+    HapticFeedback.mediumImpact();
+    // Broadcast both 0x0D (HiWatch classic) and 0x24 (FitPro modern) to guarantee sensor ignition
+    await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x12, 0x01, 0x0D, 0x00, 0x01, 0x01]]);
+    await Future.delayed(const Duration(milliseconds: 150));
+    await broadcastWatchCommands([[0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x00, 0x01]]);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.favorite_rounded, color: Colors.redAccent, size: 16),
-            SizedBox(width: 8),
-            Text('Measuring pulse... Keep watch snug on your wrist'),
-          ],
-        ),
-        backgroundColor: VColor.surface,
-        duration: Duration(seconds: 4),
+        content: Text('Measuring Pulse — Keep watch snug on wrist...'),
+        duration: Duration(seconds: 3),
+        backgroundColor: VColor.surfaceRaised,
       ),
     );
   }
 
-  /// Triggers a 20-second blood pressure optical analysis sequence
+  /// 1-Tap Trigger Manual Blood Oxygen (SpO2) Measurement
+  Future<void> triggerManualOxygenMeasurement() async {
+    if (_isMeasuringSpo2 || _isMeasuringAll || !_isRealBleConnected) return;
+    setState(() {
+      _isMeasuringSpo2 = true;
+      _measurementCountdown = 20;
+    });
+
+    _measurementTimer?.cancel();
+    _measurementTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_measurementCountdown <= 1) {
+        t.cancel();
+        setState(() => _isMeasuringSpo2 = false);
+        broadcastWatchCommands([
+          [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x02, 0x00],
+          [0xCD, 0x00, 0x06, 0x12, 0x01, 0x14, 0x00, 0x01, 0x00],
+        ]);
+      } else {
+        setState(() => _measurementCountdown--);
+      }
+    });
+
+    HapticFeedback.mediumImpact();
+    // Broadcast both 0x24 (FitPro modern) and 0x14 to guarantee SpO2 sensor ignition
+    await broadcastWatchCommands([[0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x02, 0x01]]);
+    await Future.delayed(const Duration(milliseconds: 150));
+    await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x12, 0x01, 0x14, 0x00, 0x01, 0x01]]);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Measuring Blood Oxygen (SpO2) — Keep wrist steady...'),
+        duration: Duration(seconds: 3),
+        backgroundColor: VColor.surfaceRaised,
+      ),
+    );
+  }
+
+  /// 1-Tap Trigger Manual Blood Pressure Measurement
   Future<void> triggerManualBloodPressureMeasurement() async {
-    if (_isMeasuringBp || !_isRealBleConnected) return;
+    if (_isMeasuringBp || _isMeasuringAll || !_isRealBleConnected) return;
     setState(() {
       _isMeasuringBp = true;
       _measurementCountdown = 20;
@@ -959,28 +1075,66 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       if (_measurementCountdown <= 1) {
         t.cancel();
         setState(() => _isMeasuringBp = false);
+        broadcastWatchCommands([
+          [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0E, 0x00, 0x01, 0x00],
+          [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x01, 0x00],
+        ]);
       } else {
         setState(() => _measurementCountdown--);
       }
     });
 
-    await broadcastWatchCommands([
-      HiWatchProProtocol.buildStartBloodPressureMeasureCommand(),
-      HiWatchProProtocol.buildBloodPressureMeasureCommand(),
-    ]);
+    HapticFeedback.mediumImpact();
+    // Broadcast both 0x0E (HiWatch classic) and 0x24 (FitPro modern) to guarantee BP sensor ignition
+    await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x12, 0x01, 0x0E, 0x00, 0x01, 0x01]]);
+    await Future.delayed(const Duration(milliseconds: 150));
+    await broadcastWatchCommands([[0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x01, 0x01]]);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.monitor_heart_rounded, color: Colors.blueAccent, size: 16),
-            SizedBox(width: 8),
-            Text('Measuring blood pressure... Keep arm relaxed'),
-          ],
-        ),
-        backgroundColor: VColor.surface,
-        duration: Duration(seconds: 4),
+        content: Text('Measuring Blood Pressure — Keep arm completely still...'),
+        duration: Duration(seconds: 3),
+        backgroundColor: VColor.surfaceRaised,
+      ),
+    );
+  }
+
+  /// 1-Tap Trigger Combined All-in-One Vitals (HR + BP + SpO2 simultaneous)
+  Future<void> triggerCombinedAllVitals() async {
+    if (_isMeasuringAll || !_isRealBleConnected) return;
+    setState(() {
+      _isMeasuringAll = true;
+      _measurementCountdown = 25;
+    });
+
+    _measurementTimer?.cancel();
+    _measurementTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_measurementCountdown <= 1) {
+        t.cancel();
+        setState(() => _isMeasuringAll = false);
+        broadcastWatchCommands([
+          [0xCD, 0x00, 0x06, 0x12, 0x01, 0x18, 0x00, 0x01, 0x00],
+        ]);
+      } else {
+        setState(() => _measurementCountdown--);
+      }
+    });
+
+    HapticFeedback.heavyImpact();
+    // Start combined all-in-one health measurement (optical PPG sensor ignites green LED on watch)
+    await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x12, 0x01, 0x18, 0x00, 0x01, 0x01]]);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('⚡ Measuring all vitals (Pulse, BP, SpO2) — Keep wrist steady!'),
+        duration: Duration(seconds: 3),
+        backgroundColor: VColor.surfaceRaised,
       ),
     );
   }
@@ -2189,11 +2343,20 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        icon: const Icon(Icons.flash_on_rounded, size: 16),
+                        icon: _isMeasuringAll
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.black),
+                              )
+                            : const Icon(Icons.flash_on_rounded, size: 18),
                         label: Text(
-                          _liveHeartRate > 0
-                              ? '⚡ Trigger Live Sensors (HR: $_liveHeartRate bpm)'
-                              : '⚡ Request Live Data Now (Wake Sensors)',
+                          _isMeasuringAll
+                              ? "⚡ Measuring All Vitals (${_measurementCountdown}s)..."
+                              : _liveHeartRate > 0
+                                  ? '⚡ Trigger Live Sensors (HR: $_liveHeartRate bpm)'
+                                  : '⚡ Trigger Live Sensors (HR / BP / SpO2)',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
@@ -2204,27 +2367,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 10),
                         ),
-                        onPressed: () async {
-                          HapticFeedback.mediumImpact();
-                          await broadcastWatchCommands([
-                            HiWatchProProtocol.buildStartCombinedMeasureCommand(),
-                            HiWatchProProtocol.buildStartBloodPressureMeasureCommand(),
-                            HiWatchProProtocol.buildStartHeartRateMeasureCommand(),
-                            HiWatchProProtocol.buildSpO2MeasureCommand(),
-                            HiWatchProProtocol.buildTurnOnRealTimeStepCommand(),
-                            HiWatchProProtocol.buildSportKeyDayGetCommand(),
-                            HiWatchProProtocol.buildSportKeyGetCommand(),
-                            HiWatchProProtocol.buildBatteryGetCommand(),
-                          ]);
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('⚡ Hardware sensors triggered! Streaming live vitals...'),
-                              duration: Duration(seconds: 2),
-                              backgroundColor: VColor.surfaceRaised,
-                            ),
-                          );
-                        },
+                        onPressed: _isMeasuringAll
+                            ? null
+                            : () async {
+                                HapticFeedback.mediumImpact();
+                                await triggerCombinedAllVitals();
+                              },
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -2586,6 +2734,18 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.blueAccent,
                     side: const BorderSide(color: Colors.blueAccent),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _isMeasuringSpo2 ? null : triggerManualOxygenMeasurement,
+                  icon: const Icon(Icons.air_rounded, size: 14),
+                  label: Text(_isMeasuringSpo2 ? "${_measurementCountdown}s" : "Measure SpO2",
+                      style: const TextStyle(fontSize: 10.5)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.tealAccent,
+                    side: const BorderSide(color: Colors.tealAccent),
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                   ),

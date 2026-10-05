@@ -176,7 +176,9 @@ class HiWatchProProtocol {
       [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0B, 0x00, 0x01, 0x01];
 
   /// Official HiWatchPro / FitPro RTC time sync: SendData.getSetTimesValue()
-  /// getProtocol(18, 1, tempBytes) where temp packs year-2000, month, day, hour, min, sec
+  /// Ground-truth verified format from native CoreBluetooth probe:
+  ///   CD 00 07 12 01 01 [B3 B2 B1 B0] — exactly 10 bytes
+  /// temp packs: seconds(6b) | minutes(6b) | hours(5b) | day(5b) | month(4b) | year-2000(6b)
   static List<int> buildHiWatchTimeSyncCommand([DateTime? dt]) {
     final now = dt ?? DateTime.now();
     final yearOffset = now.year - 2000;
@@ -185,9 +187,9 @@ class HiWatchProProtocol {
         (now.hour << 12) |
         (now.day << 17) |
         (now.month << 22) |
-        (yearOffset << 26);
+        ((yearOffset & 0x3F) << 26);
     return [
-      0xCD, 0x00, 0x09, 0x12, 0x01, 0x01, 0x00, 0x04,
+      0xCD, 0x00, 0x07, 0x12, 0x01, 0x01,
       (temp >> 24) & 0xFF,
       (temp >> 16) & 0xFF,
       (temp >> 8) & 0xFF,
@@ -771,12 +773,9 @@ class HiWatchProProtocol {
       );
     }
 
-    // ── FORMAT: Single byte = raw heart rate (strictly non-protocol bytes) ──
-    if (bytes.length == 1 &&
-        bytes[0] >= 35 &&
-        bytes[0] <= 220 &&
-        !protocolHeaders.contains(bytes[0])) {
-      return HiWatchTelemetryData(heartRateBpm: bytes[0]);
+    // ── FORMAT: Single byte = battery percentage (0x2A19 GATT characteristic, NEVER heart rate) ──
+    if (bytes.length == 1 && bytes[0] <= 100) {
+      return HiWatchTelemetryData(batteryLevel: bytes[0]);
     }
 
     // ── FORMAT: [hr, spo2, steps_hi, steps_lo] — Generic BLE watch ─────────
