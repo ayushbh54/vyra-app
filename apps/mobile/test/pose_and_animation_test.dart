@@ -459,6 +459,138 @@ void main() {
       final pubspec = File('pubspec.yaml').readAsStringSync();
       expect(pubspec, contains('version: 2.0.0+6'));
     });
+
+    test('ARTIFIT 5-Gate Biomechanical Form Verification: Valid form = Green (isValid: true), Wrong form = Red (isValid: false) with exact faultJoints & warning', () {
+      final highConf = List<double>.filled(33, 0.95);
+
+      // 1. Valid form across all exercises -> Green AR points (isValid: true)
+      for (final slug in allVyraSlugs) {
+        final cfg = ExerciseConfig.resolve(slug, customTitle: slug);
+        final validPhases = cfg.isHold ? const [1.0] : const [0.0, 0.5, 1.0];
+        for (final phase in validPhases) {
+          final validPose = ExerciseConfig.computeAuraPose(cfg, phase);
+          final angle = cfg.startAngleDeg + (cfg.peakAngleDeg - cfg.startAngleDeg) * phase;
+          final res = ExerciseConfig.verifyBiomechanicalForm(
+            config: cfg,
+            humanLandmarks: validPose,
+            humanConf: highConf,
+            humanAngle: angle,
+            spineTiltDeg: 5.0,
+            symmetryDiff: 2.0,
+            leftTripletConf: 0.95,
+            rightTripletConf: 0.95,
+          );
+          expect(
+            res.isValid,
+            isTrue,
+            reason: 'Valid posture for $slug at phase $phase must be Green (isValid: true), got warning: ${res.warningMessage}',
+          );
+          expect(res.faultJoints, isEmpty);
+        }
+      }
+
+      // 2. Wrong Form: Standing upright during Floor Plank -> Red AR points (isValid: false)
+      final plankCfg = ExerciseConfig.resolve('plank', customTitle: 'Plank');
+      final standingPose = ExerciseConfig.computeAuraPose(
+        ExerciseConfig.resolve('bodyweight-squat'),
+        0.0,
+      );
+      final standingInPlankRes = ExerciseConfig.verifyBiomechanicalForm(
+        config: plankCfg,
+        humanLandmarks: standingPose,
+        humanConf: highConf,
+        humanAngle: 175.0,
+        spineTiltDeg: 4.0,
+        symmetryDiff: 2.0,
+        leftTripletConf: 0.95,
+        rightTripletConf: 0.95,
+      );
+      expect(standingInPlankRes.isValid, isFalse);
+      expect(standingInPlankRes.warningMessage, contains('Please do it correctly'));
+      expect(standingInPlankRes.faultJoints, containsAll([11, 12, 23, 24]));
+
+      // 3. Wrong Form: Excessive Spine Tilt during Squat -> Red AR points (isValid: false)
+      final squatCfg = ExerciseConfig.resolve('bodyweight-squat', customTitle: 'Bodyweight Squat');
+      final validSquatPeak = ExerciseConfig.computeAuraPose(squatCfg, 1.0);
+      final leaningSquatRes = ExerciseConfig.verifyBiomechanicalForm(
+        config: squatCfg,
+        humanLandmarks: validSquatPeak,
+        humanConf: highConf,
+        humanAngle: 90.0,
+        spineTiltDeg: 48.0, // Excessive lean > 38 deg
+        symmetryDiff: 2.0,
+        leftTripletConf: 0.95,
+        rightTripletConf: 0.95,
+      );
+      expect(leaningSquatRes.isValid, isFalse);
+      expect(leaningSquatRes.warningMessage, contains('Please do it correctly'));
+      expect(leaningSquatRes.faultJoints, containsAll([11, 12, 23, 24]));
+
+      // 4. Wrong Form: Squat Knee Cave / Valgus -> Red AR points on knees {25, 26}
+      final kneeCavePose = List<Offset>.from(validSquatPeak);
+      final midHipX = (kneeCavePose[23].dx + kneeCavePose[24].dx) * 0.5;
+      kneeCavePose[25] = Offset(midHipX - 0.01, kneeCavePose[25].dy);
+      kneeCavePose[26] = Offset(midHipX + 0.01, kneeCavePose[26].dy);
+      final kneeCaveRes = ExerciseConfig.verifyBiomechanicalForm(
+        config: squatCfg,
+        humanLandmarks: kneeCavePose,
+        humanConf: highConf,
+        humanAngle: 90.0,
+        spineTiltDeg: 8.0,
+        symmetryDiff: 2.0,
+        leftTripletConf: 0.95,
+        rightTripletConf: 0.95,
+      );
+      expect(kneeCaveRes.isValid, isFalse);
+      expect(kneeCaveRes.faultJoints, containsAll([25, 26]));
+
+      // 5. Wrong Form: Swinging elbows above shoulders during Bicep Curl -> Red AR points
+      final curlCfg = ExerciseConfig.resolve('bicep-curl', customTitle: 'Bicep Curl');
+      final badCurlPose = ExerciseConfig.computeAuraPose(curlCfg, 1.0);
+      badCurlPose[13] = Offset(badCurlPose[11].dx, badCurlPose[11].dy - 0.12); // Left elbow lifted above shoulder
+      final badCurlRes = ExerciseConfig.verifyBiomechanicalForm(
+        config: curlCfg,
+        humanLandmarks: badCurlPose,
+        humanConf: highConf,
+        humanAngle: 55.0,
+        spineTiltDeg: 5.0,
+        symmetryDiff: 2.0,
+        leftTripletConf: 0.95,
+        rightTripletConf: 0.95,
+      );
+      expect(badCurlRes.isValid, isFalse);
+      expect(badCurlRes.faultJoints, containsAll([11, 12, 13, 14]));
+
+      // 6. Wrong Form: Uneven Bilateral Movement (Moving only left arm on Push-up/Curl) -> Red AR points
+      final validCurlPose = ExerciseConfig.computeAuraPose(curlCfg, 1.0);
+      final unevenRes = ExerciseConfig.verifyBiomechanicalForm(
+        config: curlCfg,
+        humanLandmarks: validCurlPose,
+        humanConf: highConf,
+        humanAngle: 55.0,
+        spineTiltDeg: 5.0,
+        symmetryDiff: 105.0, // Right arm not curling at all!
+        leftTripletConf: 0.95,
+        rightTripletConf: 0.95,
+      );
+      expect(unevenRes.isValid, isFalse);
+      expect(unevenRes.warningMessage, contains('symmetrically'));
+
+      // 7. Recovery to Valid Range -> Immediately returns to Green (isValid: true)
+      final recoveredRes = ExerciseConfig.verifyBiomechanicalForm(
+        config: curlCfg,
+        humanLandmarks: validCurlPose,
+        humanConf: highConf,
+        humanAngle: 55.0,
+        spineTiltDeg: 5.0,
+        symmetryDiff: 2.0,
+        leftTripletConf: 0.95,
+        rightTripletConf: 0.95,
+      );
+      expect(recoveredRes.isValid, isTrue);
+      expect(recoveredRes.faultJoints, isEmpty);
+    });
   });
 }
+
 

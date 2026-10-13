@@ -391,6 +391,10 @@ class ExerciseConfig {
         rKneeDx = 0.155 - p * 0.060;
         lKneeDy = 0.25 + p * 0.05;
         rKneeDy = 0.25 + p * 0.05;
+        lAnkDx = -0.145 + p * 0.050;
+        rAnkDx = 0.145 - p * 0.050;
+        lAnkDy = 0.27 + p * 0.02;
+        rAnkDy = 0.27 + p * 0.02;
         break;
 
       case 'hinge_fold':
@@ -539,14 +543,37 @@ class ExerciseConfig {
         break;
 
       case 'plank_hold':
-        // Shoulder-Hip-Ankle straight alignment (~174.8° >= 162° - 16°)
-        final breathe = p * 0.015;
-        lShDy = -0.10 - breathe;
-        rShDy = -0.10 - breathe;
-        lHipDx = -0.095;
-        rHipDx = 0.095;
-        lHipDy = 0.12 - breathe * 0.5;
-        rHipDy = 0.12 - breathe * 0.5;
+        // Shoulder-Hip-Ankle horizontal prone floor alignment (~176.5° >= 162° - 16°)
+        final breathe = p * 0.012;
+        headDy = 0.02 - breathe;
+        lShDx = -0.22;
+        rShDx = -0.22;
+        lShDy = 0.08 - breathe;
+        rShDy = 0.08 - breathe;
+        lElbDx = -0.22;
+        rElbDx = -0.22;
+        lElbDy = 0.18;
+        rElbDy = 0.18;
+        lWriDx = -0.16;
+        rWriDx = -0.16;
+        lWriDy = 0.18;
+        rWriDy = 0.18;
+        lHipDx = 0.02;
+        rHipDx = 0.02;
+        lHipDy = 0.07 - breathe * 0.5;
+        rHipDy = 0.07 - breathe * 0.5;
+        lKneeDx = 0.16;
+        rKneeDx = 0.16;
+        lKneeDy = 0.08;
+        rKneeDy = 0.08;
+        lAnkDx = 0.28;
+        rAnkDx = 0.28;
+        lAnkDy = 0.09;
+        rAnkDy = 0.09;
+        lFootDx = 0.30;
+        rFootDx = 0.30;
+        lFootDy = 0.10;
+        rFootDy = 0.10;
         break;
 
       case 'lower_hold':
@@ -666,6 +693,253 @@ class ExerciseConfig {
 
     return (0.45 * spatialMatch + 0.55 * angleMatch).clamp(10.0, 99.5);
   }
+
+  /// Strict ARTIFIT-grade multi-joint biomechanical form verification.
+  /// Returns `isValid = true` (Green AR points) ONLY when required joints are visible,
+  /// body posture orientation matches the exercise, secondary stabilizer joints are not cheating,
+  /// bilateral symmetry is maintained, and the joint angle is inside the valid biomechanical corridor.
+  static FormVerificationResult verifyBiomechanicalForm({
+    required ExerciseConfig config,
+    required List<Offset> humanLandmarks,
+    required List<double> humanConf,
+    required double humanAngle,
+    required double spineTiltDeg,
+    required double symmetryDiff,
+    required double leftTripletConf,
+    required double rightTripletConf,
+  }) {
+    final activeIndices = <int>{
+      config.leftTriplet[0].index,
+      config.leftTriplet[1].index,
+      config.leftTriplet[2].index,
+      config.rightTriplet[0].index,
+      config.rightTriplet[1].index,
+      config.rightTriplet[2].index,
+    };
+
+    // 1. Active-Triplet Visibility Gate
+    final bestTripletConf = math.max(leftTripletConf, rightTripletConf);
+    final shoulderConf = (humanConf.length > 12)
+        ? math.max(humanConf[11], humanConf[12])
+        : 0.0;
+    final legConf = (humanConf.length > 28)
+        ? math.max(
+            math.min(humanConf[25], humanConf[27]),
+            math.min(humanConf[26], humanConf[28]),
+          )
+        : 0.0;
+
+    if (bestTripletConf < 0.36) {
+      return FormVerificationResult(
+        isValid: false,
+        faultJoints: activeIndices,
+        warningMessage:
+            '⚠️ Step back so your ${config.framingMode == "full_body" ? "full body (hips, knees & ankles)" : "active joints"} are clearly in frame',
+      );
+    }
+
+    if (config.framingMode == 'full_body' &&
+        (config.auraPattern == 'squat' ||
+            config.auraPattern == 'lunge' ||
+            config.auraPattern == 'lower_hold' ||
+            config.auraPattern == 'calf_raise') &&
+        (shoulderConf < 0.32 || legConf < 0.36)) {
+      return FormVerificationResult(
+        isValid: false,
+        faultJoints: {11, 12, 23, 24, 25, 26, 27, 28},
+        warningMessage:
+            '⚠️ Full body required for ${config.name} — Place phone so head to ankles are visible',
+      );
+    }
+
+    final pattern = config.auraPattern;
+    final hasTorso = humanConf.length > 24 &&
+        humanConf[11] >= 0.32 &&
+        humanConf[12] >= 0.32 &&
+        humanConf[23] >= 0.32 &&
+        humanConf[24] >= 0.32;
+    final hasKnees =
+        humanConf.length > 26 && (humanConf[25] >= 0.32 || humanConf[26] >= 0.32);
+
+    // 2. Anatomical Body-Posture Orientation Gate
+    if (hasTorso) {
+      final midShoulder = (humanLandmarks[11] + humanLandmarks[12]) * 0.5;
+      final midHip = (humanLandmarks[23] + humanLandmarks[24]) * 0.5;
+      final torsoDx = (midHip.dx - midShoulder.dx).abs();
+      final torsoDy = (midHip.dy - midShoulder.dy).abs();
+
+      // Floor / Horizontal posture check for Plank & Glute Bridge
+      if ((pattern == 'plank_hold' || pattern == 'bridge') &&
+          config.framingMode == 'floor' &&
+          hasKnees &&
+          humanConf.length > 28 &&
+          humanConf[27] >= 0.25 &&
+          humanConf[28] >= 0.25) {
+        final midKnee = (humanLandmarks[25] + humanLandmarks[26]) * 0.5;
+        final midAnkle = (humanLandmarks[27] + humanLandmarks[28]) * 0.5;
+        final fullLegDy = midAnkle.dy - midHip.dy;
+        final kneeDropDy = midKnee.dy - midHip.dy;
+        final isStandingUpright =
+            torsoDy > 0.18 && torsoDy > torsoDx * 1.5 && kneeDropDy > 0.17 && fullLegDy > 0.30;
+        if (isStandingUpright) {
+          return FormVerificationResult(
+            isValid: false,
+            faultJoints: {11, 12, 23, 24, 25, 26, 27, 28},
+            warningMessage:
+                '⚠️ Please do it correctly: You are standing upright! Get into floor position for ${config.name}',
+          );
+        }
+      }
+
+      // Upright Spine-Integrity Gate for Standing / Seated exercises
+      if (pattern == 'curl_row' ||
+          pattern == 'overhead_press' ||
+          pattern == 'lateral_raise' ||
+          pattern == 'calf_raise') {
+        if (spineTiltDeg > 26.0) {
+          return FormVerificationResult(
+            isValid: false,
+            faultJoints: {11, 12, 23, 24},
+            warningMessage:
+                '⚠️ Please do it correctly: Keep your back straight (${spineTiltDeg.toInt()}° lean) — do not swing torso!',
+          );
+        }
+      } else if (pattern == 'squat' ||
+          pattern == 'lunge' ||
+          pattern == 'lower_hold') {
+        if (spineTiltDeg > 38.0) {
+          return FormVerificationResult(
+            isValid: false,
+            faultJoints: {11, 12, 23, 24, 25, 26},
+            warningMessage:
+                '⚠️ Please do it correctly: Keep chest upright — bend your knees, do not bow your back!',
+          );
+        }
+        // Squat Knee-Valgus (Knee Cave) Check
+        if (pattern == 'squat' &&
+            humanAngle < 142.0 &&
+            humanConf[25] >= 0.38 &&
+            humanConf[26] >= 0.38) {
+          final hipSpan = (humanLandmarks[23].dx - humanLandmarks[24].dx).abs();
+          final kneeSpan = (humanLandmarks[25].dx - humanLandmarks[26].dx).abs();
+          if (hipSpan > 0.05 && kneeSpan < hipSpan * 0.62) {
+            return FormVerificationResult(
+              isValid: false,
+              faultJoints: {25, 26, 27, 28},
+              warningMessage:
+                  '⚠️ Please do it correctly: Push knees outward in line with your toes!',
+            );
+          }
+        }
+      }
+    }
+
+    // 3. Secondary Joint Isolation & Anti-Cheating Gate
+    if (pattern == 'curl_row' && humanConf.length > 16) {
+      // Elbows must remain below shoulders during curls (prevent shoulder swinging)
+      final lSwing = humanConf[11] >= 0.35 &&
+          humanConf[13] >= 0.35 &&
+          humanLandmarks[13].dy < humanLandmarks[11].dy + 0.02;
+      final rSwing = humanConf[12] >= 0.35 &&
+          humanConf[14] >= 0.35 &&
+          humanLandmarks[14].dy < humanLandmarks[12].dy + 0.02;
+      if (lSwing || rSwing) {
+        return FormVerificationResult(
+          isValid: false,
+          faultJoints: {11, 12, 13, 14, 15, 16},
+          warningMessage:
+              '⚠️ Please do it correctly: Keep elbows pinned to your sides — do not lift shoulders!',
+        );
+      }
+    } else if (pattern == 'overhead_press' &&
+        humanAngle > 115.0 &&
+        humanConf.length > 16) {
+      // Wrists must actually rise above elbows & shoulders during an overhead press
+      final lWristLow = humanConf[13] >= 0.35 &&
+          humanConf[15] >= 0.35 &&
+          humanLandmarks[15].dy > humanLandmarks[13].dy + 0.02;
+      final rWristLow = humanConf[14] >= 0.35 &&
+          humanConf[16] >= 0.35 &&
+          humanLandmarks[16].dy > humanLandmarks[14].dy + 0.02;
+      if (lWristLow || rWristLow) {
+        return FormVerificationResult(
+          isValid: false,
+          faultJoints: {11, 12, 13, 14, 15, 16},
+          warningMessage:
+              '⚠️ Please do it correctly: Press your hands straight overhead above your shoulders!',
+        );
+      }
+    }
+
+    // 4. Bilateral Symmetry Gate for Symmetric Exercises
+    const bilateralPatterns = <String>{
+      'squat',
+      'push_up',
+      'curl_row',
+      'overhead_press',
+      'lateral_raise',
+      'jumping_jack',
+      'bridge',
+      'calf_raise',
+    };
+    final excursionFromStart = (humanAngle - config.startAngleDeg).abs();
+    if (bilateralPatterns.contains(pattern) &&
+        leftTripletConf >= 0.42 &&
+        rightTripletConf >= 0.42 &&
+        excursionFromStart >= 18.0 &&
+        symmetryDiff > 34.0) {
+      return FormVerificationResult(
+        isValid: false,
+        faultJoints: activeIndices,
+        warningMessage:
+            '⚠️ Please do it correctly: Uneven movement (${symmetryDiff.toInt()}° difference) — Move both sides symmetrically!',
+      );
+    }
+
+    // 5. Valid Biomechanical Angular Range Gate
+    if (config.isHold) {
+      final inHoldZone = config.decreaseToPeak
+          ? humanAngle <= config.peakAngleDeg + 16.0
+          : humanAngle >= config.peakAngleDeg - 16.0;
+      if (!inHoldZone) {
+        return FormVerificationResult(
+          isValid: false,
+          faultJoints: activeIndices,
+          warningMessage:
+              '⚠️ Out of Hold Range (${humanAngle.toInt()}°) — Reach ${config.peakAngleDeg.toInt()}° target posture!',
+        );
+      }
+    } else {
+      final minValid = math.min(config.startAngleDeg, config.peakAngleDeg) - 26.0;
+      final maxValid = math.max(config.startAngleDeg, config.peakAngleDeg) + 24.0;
+      if (humanAngle < minValid || humanAngle > maxValid) {
+        return FormVerificationResult(
+          isValid: false,
+          faultJoints: activeIndices,
+          warningMessage:
+              '⚠️ Out of Range (${humanAngle.toInt()}°) — Return to valid ${config.name} range!',
+        );
+      }
+    }
+
+    return const FormVerificationResult(
+      isValid: true,
+      faultJoints: <int>{},
+      warningMessage: null,
+    );
+  }
+}
+
+class FormVerificationResult {
+  final bool isValid;
+  final Set<int> faultJoints;
+  final String? warningMessage;
+
+  const FormVerificationResult({
+    required this.isValid,
+    required this.faultJoints,
+    required this.warningMessage,
+  });
 }
 
 const List<ExerciseConfig> kSupportedExercises = [
@@ -977,7 +1251,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
 
   double _formScore = 96.0;
   String _feedbackMessage = 'Place phone steady in front of you & tap Start Tracking';
-  Color _repColor = VColor.accent;
+  Color _repColor = VColor.accentGreen;
 
   Timer? _assistedTimer;
   double _motionCycle = 0.0;
@@ -993,6 +1267,14 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
   String? _formWarning;
   int _consecutiveGoodReps = 0;
   DateTime _lastFrameTime = DateTime.now();
+
+  // ARTIFIT Strict Real-Time Biomechanical Verification State (Green = Valid, Red = Fault)
+  bool _isFormValid = true;
+  Set<int> _faultJoints = const <int>{};
+  bool _repInvalidatedByFault = false;
+  int _consecutiveValidPeakFrames = 0;
+  DateTime _lastWarningVoiceTime = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _shallowWarningUntil = DateTime.fromMillisecondsSinceEpoch(0);
 
   // Exact camera buffer dimensions in portrait space for 1:1 BoxFit.cover AR alignment
   double _frameWidth = 720.0;
@@ -1019,7 +1301,6 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
   double _cycleHumanMotion = 0.0;
   double _cycleMinAngle = 180.0;
   double _cycleMaxAngle = 0.0;
-  bool _auraCycleReachedPeak = false;
 
   late AnimationController _pulseController;
   final List<Offset> _landmarks = List.generate(33, (_) => Offset.zero);
@@ -1426,12 +1707,17 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
 
     final bestConf = math.max(lConf, rConf);
     _landmarkConfidence = math.max(bestConf, _zoneShoulderConf * 0.90);
-    _isBodyFramed = bestConf >= 0.22 || _zoneShoulderConf >= 0.28 || _zoneHeadConf >= 0.35;
+    _isBodyFramed = bestConf >= 0.36;
 
     if (!_isBodyFramed) {
       setState(() {
+        _isFormValid = false;
+        _faultJoints = activeTripletSet;
+        _repColor = VColor.crit;
+        _formWarning =
+            '⚠️ Step back so your ${_currentExercise.framingMode == "full_body" ? "full body (hips, knees & ankles)" : "active joints"} are clearly in frame';
         if (_isTrackingActive && !_isPaused) {
-          _feedbackMessage = 'Align your body with the glowing AR Aura in frame';
+          _feedbackMessage = _formWarning!;
         }
       });
       return;
@@ -1439,11 +1725,11 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
 
     double? lAngle;
     double? rAngle;
-    if (lConf >= 0.20) {
+    if (lConf >= 0.34) {
       lAngle = _compute3DCompensatedAngle(lt[0].index, lt[1].index, lt[2].index);
       _leftJointAngle = 0.40 * _leftJointAngle + 0.60 * lAngle;
     }
-    if (rConf >= 0.20) {
+    if (rConf >= 0.34) {
       rAngle = _compute3DCompensatedAngle(rt[0].index, rt[1].index, rt[2].index);
       _rightJointAngle = 0.40 * _rightJointAngle + 0.60 * rAngle;
     }
@@ -1478,10 +1764,58 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
       auraTargetAngle: _auraTargetAngle,
     );
 
+    // Run ARTIFIT-grade strict multi-joint form verification
+    final verification = ExerciseConfig.verifyBiomechanicalForm(
+      config: _currentExercise,
+      humanLandmarks: _landmarks,
+      humanConf: _landmarkConf,
+      humanAngle: smoothed,
+      spineTiltDeg: _spineTiltDeg,
+      symmetryDiff: symmetryDiff,
+      leftTripletConf: lConf,
+      rightTripletConf: rConf,
+    );
+
     setState(() {
       _currentJointAngle = smoothed;
+
+      if (!verification.isValid) {
+        _isFormValid = false;
+        _faultJoints = verification.faultJoints;
+        _formWarning = verification.warningMessage;
+        _repColor = VColor.crit;
+        if (_isTrackingActive && !_isPaused) {
+          _feedbackMessage =
+              verification.warningMessage ?? '⚠️ Incorrect form — please do it correctly!';
+          if (!_currentExercise.isHold) {
+            _repInvalidatedByFault = true;
+            _consecutiveValidPeakFrames = 0;
+          }
+          if (now.difference(_lastWarningVoiceTime).inMilliseconds >= 4200) {
+            _lastWarningVoiceTime = now;
+            HapticFeedback.heavyImpact();
+            _speak('Please do it correctly. ${_currentExercise.formHint}');
+          }
+        }
+        return;
+      }
+
+      // Form is valid in this frame — check if shallow half-rep red flash is still active
+      final inShallowFlash = now.isBefore(_shallowWarningUntil);
+      if (!inShallowFlash) {
+        _isFormValid = true;
+        _faultJoints = const <int>{};
+        _formWarning = null;
+        _repColor = VColor.accentGreen;
+      }
+
       if (!_isTrackingActive || _isPaused) return;
-      _evaluateBiomechanicalFrame(smoothed, dt, symmetryDiff: symmetryDiff);
+      _evaluateBiomechanicalFrame(
+        smoothed,
+        dt,
+        symmetryDiff: symmetryDiff,
+        activeTripletSet: activeTripletSet,
+      );
     });
   }
 
@@ -1489,6 +1823,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
     double angle,
     double dt, {
     double symmetryDiff = 0.0,
+    Set<int> activeTripletSet = const <int>{},
   }) {
     final spec = _currentExercise;
 
@@ -1496,7 +1831,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
       final inZone = spec.decreaseToPeak
           ? angle <= spec.peakAngleDeg + 16.0
           : angle >= spec.peakAngleDeg - 16.0;
-      if (inZone) {
+      if (inZone && _isFormValid) {
         _currentPhase = 'INFLECTION';
         _repColor = VColor.accentGreen;
         _formWarning = null;
@@ -1513,42 +1848,74 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
             return;
           }
         }
-        _feedbackMessage = '${spec.cueUp} (${_repCount}s / ${_targetReps}s)';
+        _feedbackMessage = '✓ Form Verified • Holding (${_repCount}s / ${_targetReps}s)';
       } else {
         _currentPhase = 'ECCENTRIC';
-        _repColor = VColor.warn;
-        _feedbackMessage = spec.cueDown;
+        _isFormValid = false;
+        _repColor = VColor.crit;
+        _faultJoints = activeTripletSet;
+        _formWarning = '⚠️ Hold posture broken — ${spec.cueDown}';
+        _feedbackMessage = _formWarning!;
       }
       return;
     }
 
-    // Dynamic Repetition State Machine (Hysteresis Phase-Locked + Shallow Half-Rep Guard)
-    const double tol = 3.5;
+    // Dynamic Repetition State Machine (Strict Peak Hold + Full ROM + Shallow Half-Rep Guard)
+    const double tol = 4.5;
+    final romSpan = math.max(25.0, (spec.startAngleDeg - spec.peakAngleDeg).abs());
+    final achievedRom = (_cycleMaxAngle - _cycleMinAngle).clamp(0.0, 180.0);
+
     if (spec.decreaseToPeak) {
       if (angle <= spec.peakAngleDeg + tol) {
+        _consecutiveValidPeakFrames++;
         _currentPhase = 'INFLECTION';
         _repColor = VColor.accentGreen;
         _eccentricExtremeAngle = null;
-        if (!_hasReachedInflection) {
+        if (!_hasReachedInflection &&
+            (_aiAssistedMode || _consecutiveValidPeakFrames >= 2) &&
+            !_repInvalidatedByFault) {
           _hasReachedInflection = true;
+          _isFormValid = true;
+          _faultJoints = const <int>{};
           _formWarning = null;
-          _feedbackMessage = 'Target depth locked (${angle.toInt()}°)! ${spec.cueUp}';
+          _feedbackMessage = '✓ Target depth verified (${angle.toInt()}°)! ${spec.cueUp}';
           HapticFeedback.lightImpact();
         }
       } else if (angle >= spec.startAngleDeg - tol) {
-        if (_hasReachedInflection) {
+        _consecutiveValidPeakFrames = 0;
+        if (_hasReachedInflection &&
+            !_repInvalidatedByFault &&
+            (_aiAssistedMode || achievedRom >= romSpan * 0.62)) {
           _hasReachedInflection = false;
           _eccentricExtremeAngle = null;
           _currentPhase = 'CONCENTRIC';
+          _cycleMinAngle = angle;
+          _cycleMaxAngle = angle;
           _onRepVerified(symmetryDiff: symmetryDiff);
         } else {
           if (_eccentricExtremeAngle != null &&
               (spec.startAngleDeg - _eccentricExtremeAngle!) >= 18.0) {
+            _isFormValid = false;
+            _repColor = VColor.crit;
+            _faultJoints = activeTripletSet;
+            _shallowWarningUntil =
+                DateTime.now().add(const Duration(milliseconds: 1600));
             _formWarning =
-                'Shallow half-rep (${_eccentricExtremeAngle!.toInt()}°) — reach ${spec.peakAngleDeg.toInt()}° for rep credit';
+                '⚠️ Incomplete Rep (${_eccentricExtremeAngle!.toInt()}°) — Go deeper to ${spec.peakAngleDeg.toInt()}° so rep counts!';
+            _feedbackMessage = _formWarning!;
             _consecutiveGoodReps = 0;
+            HapticFeedback.heavyImpact();
+            final now = DateTime.now();
+            if (now.difference(_lastWarningVoiceTime).inMilliseconds >= 3800) {
+              _lastWarningVoiceTime = now;
+              _speak('Incomplete rep. Please go full depth so it counts.');
+            }
           }
+          _hasReachedInflection = false;
+          _repInvalidatedByFault = false;
           _eccentricExtremeAngle = null;
+          _cycleMinAngle = angle;
+          _cycleMaxAngle = angle;
           _currentPhase = 'IDLE';
         }
       } else {
@@ -1557,35 +1924,63 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
           _eccentricExtremeAngle = _eccentricExtremeAngle == null
               ? angle
               : math.min(_eccentricExtremeAngle!, angle);
-          _feedbackMessage = spec.cueDown;
+          if (_formWarning == null) {
+            _feedbackMessage = '✓ In Range (Green) • ${spec.cueDown}';
+          }
         }
       }
     } else {
       // Angle increases to peak (e.g. lateral raise, shoulder press, glute bridge, jumping jacks)
       if (angle >= spec.peakAngleDeg - tol) {
+        _consecutiveValidPeakFrames++;
         _currentPhase = 'INFLECTION';
         _repColor = VColor.accentGreen;
         _eccentricExtremeAngle = null;
-        if (!_hasReachedInflection) {
+        if (!_hasReachedInflection &&
+            (_aiAssistedMode || _consecutiveValidPeakFrames >= 2) &&
+            !_repInvalidatedByFault) {
           _hasReachedInflection = true;
+          _isFormValid = true;
+          _faultJoints = const <int>{};
           _formWarning = null;
-          _feedbackMessage = 'Peak contraction (${angle.toInt()}°)! ${spec.cueDown}';
+          _feedbackMessage = '✓ Peak verified (${angle.toInt()}°)! ${spec.cueDown}';
           HapticFeedback.lightImpact();
         }
       } else if (angle <= spec.startAngleDeg + tol) {
-        if (_hasReachedInflection) {
+        _consecutiveValidPeakFrames = 0;
+        if (_hasReachedInflection &&
+            !_repInvalidatedByFault &&
+            (_aiAssistedMode || achievedRom >= romSpan * 0.62)) {
           _hasReachedInflection = false;
           _eccentricExtremeAngle = null;
           _currentPhase = 'CONCENTRIC';
+          _cycleMinAngle = angle;
+          _cycleMaxAngle = angle;
           _onRepVerified(symmetryDiff: symmetryDiff);
         } else {
           if (_eccentricExtremeAngle != null &&
               (_eccentricExtremeAngle! - spec.startAngleDeg) >= 18.0) {
+            _isFormValid = false;
+            _repColor = VColor.crit;
+            _faultJoints = activeTripletSet;
+            _shallowWarningUntil =
+                DateTime.now().add(const Duration(milliseconds: 1600));
             _formWarning =
-                'Shallow half-rep (${_eccentricExtremeAngle!.toInt()}°) — reach ${spec.peakAngleDeg.toInt()}° for rep credit';
+                '⚠️ Incomplete Rep (${_eccentricExtremeAngle!.toInt()}°) — Reach ${spec.peakAngleDeg.toInt()}° target range so rep counts!';
+            _feedbackMessage = _formWarning!;
             _consecutiveGoodReps = 0;
+            HapticFeedback.heavyImpact();
+            final now = DateTime.now();
+            if (now.difference(_lastWarningVoiceTime).inMilliseconds >= 3800) {
+              _lastWarningVoiceTime = now;
+              _speak('Incomplete rep. Please perform full range of motion.');
+            }
           }
+          _hasReachedInflection = false;
+          _repInvalidatedByFault = false;
           _eccentricExtremeAngle = null;
+          _cycleMinAngle = angle;
+          _cycleMaxAngle = angle;
           _currentPhase = 'IDLE';
         }
       } else {
@@ -1594,7 +1989,9 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
           _eccentricExtremeAngle = _eccentricExtremeAngle == null
               ? angle
               : math.max(_eccentricExtremeAngle!, angle);
-          _feedbackMessage = spec.cueUp;
+          if (_formWarning == null) {
+            _feedbackMessage = '✓ In Range (Green) • ${spec.cueUp}';
+          }
         }
       }
     }
@@ -1603,12 +2000,14 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
   void _onRepVerified({double symmetryDiff = 0.0}) {
     if (_repCount >= _targetReps) return;
     final now = DateTime.now();
-    if (now.difference(_lastRepTime).inMilliseconds < 450) {
+    if (now.difference(_lastRepTime).inMilliseconds < 500) {
       return; // Debounce high-frequency camera jitter
     }
     _lastRepTime = now;
     _repCount++;
     _consecutiveGoodReps++;
+    _isFormValid = true;
+    _faultJoints = const <int>{};
     _formWarning = null;
     _repColor = VColor.accentGreen;
     _formScore = (97.0 - symmetryDiff * 0.2).clamp(84.0, 99.5);
@@ -1617,9 +2016,9 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
     if (_repCount == _targetReps) {
       _completeWorkout();
     } else {
-      _feedbackMessage = 'Rep $_repCount/$_targetReps verified! ${_currentExercise.formHint}';
+      _feedbackMessage = '✓ Rep $_repCount/$_targetReps Verified! ${_currentExercise.formHint}';
       if (_consecutiveGoodReps % 3 == 0) {
-        _speak('$_repCount! Great form!');
+        _speak('$_repCount! Perfect form!');
       } else {
         _speak('$_repCount');
       }
@@ -1644,18 +2043,19 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
       _isTrackingActive = true;
       _isPaused = false;
       _cycleHumanMotion = 0.0;
-      _auraCycleReachedPeak = false;
+      _repInvalidatedByFault = false;
+      _consecutiveValidPeakFrames = 0;
       if (_repCount >= _targetReps) {
         _repCount = 0;
         _holdSeconds = 0.0;
       }
       _feedbackMessage = _isBodyFramed || _aiAssistedMode
-          ? 'Match the glowing AR Aura! ${_currentExercise.cueDown}'
-          : 'Align your body with the glowing AR Aura points & lines';
+          ? '✓ AR Form Verification Active — ${_currentExercise.cueDown}'
+          : '⚠️ Step into camera frame so AR points turn Green';
     });
 
     _speak(
-      'Starting ${_currentExercise.name}. Match the glowing AR aura. ${_currentExercise.cueDown}',
+      'Starting ${_currentExercise.name}. Only verified reps with proper form will count. ${_currentExercise.cueDown}',
     );
     _startAuraLoop();
   }
@@ -1678,11 +2078,15 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
             ? (0.88 + 0.10 * math.sin(_motionCycle))
             : (1.0 - math.cos(_motionCycle)) * 0.5; // Smooth cosine wave 0..1..0
 
-        // Update the AR Target Aura (Points + Joint Lines) for the current exercise
+        // Update the AR Target Aura reference pose
         _updateExerciseAuraLandmarks(phase01);
 
         if (_aiAssistedMode) {
           _isBodyFramed = true;
+          _isFormValid = true;
+          _faultJoints = const <int>{};
+          _formWarning = null;
+          _repColor = VColor.accentGreen;
           _landmarkConfidence = 0.96;
           _auraMatchScore = 97.5;
           for (int i = 0; i < 33; i++) {
@@ -1703,50 +2107,11 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
             _currentJointAngle = simAngle;
             _leftJointAngle = simAngle;
             _rightJointAngle = simAngle;
+            _cycleMinAngle = math.min(_cycleMinAngle, simAngle);
+            _cycleMaxAngle = math.max(_cycleMaxAngle, simAngle);
             _symmetryScore = 98.5;
             _spineTiltDeg = 4.0 + phase01 * 5.0;
             _evaluateBiomechanicalFrame(simAngle, 0.045);
-          }
-          return;
-        }
-
-        // Live Camera Human-to-Aura Matching Verification
-        if (_isTrackingActive && !_isPaused && _isBodyFramed) {
-          final spec = _currentExercise;
-          if (spec.isHold) {
-            if (_auraMatchScore >= 62.0) {
-              _evaluateBiomechanicalFrame(spec.peakAngleDeg, 0.045);
-            }
-          } else {
-            final romSpan = math.max(25.0, (spec.startAngleDeg - spec.peakAngleDeg).abs());
-            final achievedRom = (_cycleMaxAngle - _cycleMinAngle).clamp(0.0, 180.0);
-            // Peak phase of moving AR Aura
-            if (phase01 >= 0.80) {
-              if (!_auraCycleReachedPeak &&
-                  _auraMatchScore >= 62.0 &&
-                  _cycleHumanMotion >= 0.018 &&
-                  achievedRom >= romSpan * 0.38) {
-                _auraCycleReachedPeak = true;
-                _currentPhase = 'INFLECTION';
-                _repColor = VColor.accentGreen;
-                _formWarning = null;
-                _feedbackMessage =
-                    'Aura Peak Matched (${_auraMatchScore.toInt()}%)! ${spec.cueUp}';
-                HapticFeedback.lightImpact();
-              }
-            } else if (phase01 <= 0.20 && _auraCycleReachedPeak) {
-              _auraCycleReachedPeak = false;
-              // Verify rep if human moved along with the Aura cycle and achieved >= 45% ROM excursion
-              if (_cycleHumanMotion >= 0.032 &&
-                  achievedRom >= romSpan * 0.45 &&
-                  _auraMatchScore >= 58.0) {
-                _currentPhase = 'CONCENTRIC';
-                _onRepVerified(symmetryDiff: (100.0 - _symmetryScore).clamp(0.0, 30.0));
-              }
-              _cycleHumanMotion = 0.0;
-              _cycleMinAngle = _currentJointAngle;
-              _cycleMaxAngle = _currentJointAngle;
-            }
           }
         }
       });
@@ -1788,12 +2153,17 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
       _holdSeconds = 0.0;
       _currentPhase = 'IDLE';
       _hasReachedInflection = false;
-      _auraCycleReachedPeak = false;
+      _consecutiveValidPeakFrames = 0;
+      _repInvalidatedByFault = false;
+      _isFormValid = true;
+      _faultJoints = const <int>{};
+      _shallowWarningUntil = DateTime.fromMillisecondsSinceEpoch(0);
+      _repColor = VColor.accentGreen;
       _cycleHumanMotion = 0.0;
       _formWarning = null;
       _consecutiveGoodReps = 0;
       _formScore = 96.0;
-      _feedbackMessage = "Align with the AR Aura and tap 'Start Tracking'";
+      _feedbackMessage = "Stand in frame (Green AR points) and tap 'Start Tracking'";
     });
     _speak('Counter reset to zero');
   }
@@ -1913,13 +2283,18 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
       _currentPhase = 'IDLE';
       _currentJointAngle = ex.startAngleDeg;
       _hasReachedInflection = false;
-      _auraCycleReachedPeak = false;
+      _consecutiveValidPeakFrames = 0;
+      _repInvalidatedByFault = false;
+      _isFormValid = true;
+      _faultJoints = const <int>{};
+      _shallowWarningUntil = DateTime.fromMillisecondsSinceEpoch(0);
+      _repColor = VColor.accentGreen;
       _cycleHumanMotion = 0.0;
       _formWarning = null;
       _consecutiveGoodReps = 0;
       _motionCycle = 0.0;
       _updateExerciseAuraLandmarks(0.0);
-      _feedbackMessage = 'Selected ${ex.name}. Match the moving AR Aura!';
+      _feedbackMessage = 'Selected ${ex.name}. Keep AR points Green for verified reps!';
     });
     _startAuraLoop();
     _speak('Selected ${ex.name}');
@@ -1993,7 +2368,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
               ),
             ),
 
-          // 2. AR Moving Target Aura (Points + Joint Lines) & Human Live Skeleton Overlay
+          // 2. Clean ARTIFIT-Grade AR Skeleton Overlay (Green = Valid Form, Red = Wrong Form)
           IgnorePointer(
             child: CustomPaint(
               painter: _SkeletonOverlayPainter(
@@ -2002,6 +2377,8 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
                 confidences: _landmarkConf,
                 imageSize: Size(_frameWidth, _frameHeight),
                 color: _formWarning != null ? VColor.crit : _repColor,
+                isFormValid: _aiAssistedMode ? true : (_isFormValid && _formWarning == null),
+                faultJoints: _aiAssistedMode ? const <int>{} : _faultJoints,
                 jointAngle: _currentJointAngle,
                 leftAngle: _leftJointAngle,
                 rightAngle: _rightJointAngle,
@@ -2046,7 +2423,11 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.72),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: VColor.accent.withValues(alpha: 0.40)),
+                            border: Border.all(
+                              color: (!_aiAssistedMode && (!_isFormValid || _formWarning != null))
+                                  ? VColor.crit.withValues(alpha: 0.75)
+                                  : VColor.accentGreen.withValues(alpha: 0.50),
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2057,9 +2438,11 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
                                     width: 8,
                                     height: 8,
                                     decoration: BoxDecoration(
-                                      color: (_isBodyFramed || _aiAssistedMode)
-                                          ? VColor.accentGreen
-                                          : VColor.warn,
+                                      color: (!_aiAssistedMode && (!_isFormValid || _formWarning != null))
+                                          ? VColor.crit
+                                          : ((_isBodyFramed || _aiAssistedMode)
+                                              ? VColor.accentGreen
+                                              : VColor.warn),
                                       shape: BoxShape.circle,
                                     ),
                                   ),
@@ -2081,13 +2464,17 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                (_isBodyFramed || _aiAssistedMode)
-                                    ? '✅ AR 3D Lock (${(_landmarkConfidence * 100).clamp(86, 99).toInt()}%) • Sym ${_symmetryScore.toInt()}%'
-                                    : '📱 Step back slightly so AR points lock on body',
+                                (!_aiAssistedMode && (!_isFormValid || _formWarning != null))
+                                    ? '🔴 WRONG FORM — Fix posture to turn AR Green'
+                                    : ((_isBodyFramed || _aiAssistedMode)
+                                        ? '🟢 AR VERIFIED (${(_landmarkConfidence * 100).clamp(86, 99).toInt()}%) • Sym ${_symmetryScore.toInt()}%'
+                                        : '📱 Step back slightly so AR points lock on body'),
                                 style: TextStyle(
-                                  color: (_isBodyFramed || _aiAssistedMode)
-                                      ? VColor.accentGreen
-                                      : const Color(0xFFFBBF24),
+                                  color: (!_aiAssistedMode && (!_isFormValid || _formWarning != null))
+                                      ? const Color(0xFFFF6B6B)
+                                      : ((_isBodyFramed || _aiAssistedMode)
+                                          ? VColor.accentGreen
+                                          : const Color(0xFFFBBF24)),
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -2512,6 +2899,8 @@ class _SkeletonOverlayPainter extends CustomPainter {
   final List<double> confidences;
   final Size imageSize;
   final Color color;
+  final bool isFormValid;
+  final Set<int> faultJoints;
   final double jointAngle;
   final double leftAngle;
   final double rightAngle;
@@ -2532,6 +2921,8 @@ class _SkeletonOverlayPainter extends CustomPainter {
     required this.confidences,
     required this.imageSize,
     required this.color,
+    required this.isFormValid,
+    required this.faultJoints,
     required this.jointAngle,
     required this.leftAngle,
     required this.rightAngle,
@@ -2547,14 +2938,14 @@ class _SkeletonOverlayPainter extends CustomPainter {
     required this.rightTripletIndices,
   });
 
-  // Left-side anatomical bones (Cyan #00E5FF)
+  // Left-side anatomical bones
   static const List<(int, int)> _leftBones = [
     (11, 13), (13, 15), (15, 19), // Left arm & hand
     (11, 23), // Left torso
     (23, 25), (25, 27), (27, 31), // Left leg & foot
   ];
 
-  // Right-side anatomical bones (Neon Emerald #34FF8C)
+  // Right-side anatomical bones
   static const List<(int, int)> _rightBones = [
     (12, 14), (14, 16), (16, 20), // Right arm & hand
     (12, 24), // Right torso
@@ -2585,21 +2976,19 @@ class _SkeletonOverlayPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // ARTIFIT Color System:
+    // - Normal Green (#22C55E / #34FF8C) when user is in valid exercise range & proper form
+    // - Crimson Red (#FF3B30 / #EF4444) when user is doing wrong form or out of range
+    const validGreen = Color(0xFF22C55E);
+    const peakBrightGreen = Color(0xFF34FF8C);
+    const wrongRed = Color(0xFFFF3B30);
+
     final isInflection = phase == 'INFLECTION';
-    final isMatched = isInflection || auraMatchScore >= 68.0;
-    const leftColor = Color(0xFF00E5FF);
-    const rightColor = Color(0xFF34FF8C);
-    final auraPrimary = isMatched
-        ? const Color(0xFF34FF8C)
-        : const Color(0xFF38BDF8);
-    final auraSecondary = isMatched
-        ? const Color(0xFF10B981)
-        : const Color(0xFFA855F7);
+    final primaryArColor = !isFormValid
+        ? wrongRed
+        : (isInflection ? peakBrightGreen : validGreen);
 
-    // 1. ALWAYS DRAW THE MOVING AR TARGET AURA (Points + Joint Lines Only)
-    _drawMovingTargetAura(canvas, size, auraPrimary, auraSecondary);
-
-    // Check if live human anatomical landmarks are visible
+    // Check if live human anatomical landmarks are visible in the camera frame
     bool anyVisible = false;
     double minX = size.width, minY = size.height, maxX = 0, maxY = 0;
 
@@ -2613,30 +3002,14 @@ class _SkeletonOverlayPainter extends CustomPainter {
         if (pt.dy > maxY) maxY = pt.dy;
       }
     }
-    if (!anyVisible) return;
 
-    // 2. Draw AR Sync Tethers between Human Joints and Moving Target Aura Joints
-    if (!aiAssistedMode && auraLandmarks.length >= 33) {
-      for (final idx in [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]) {
-        if (confidences[idx] < 0.24) continue;
-        final humanPt = _toCanvas(landmarks[idx], size);
-        final auraPt = _toCanvas(auraLandmarks[idx], size);
-        final dist = (humanPt - auraPt).distance;
-        if (dist > 6.0 && dist < 180.0) {
-          final closeMatch = dist < 42.0;
-          final tetherPaint = Paint()
-            ..color = (closeMatch ? rightColor : const Color(0xFFFBBF24))
-                .withValues(alpha: 0.45)
-            ..strokeWidth = closeMatch ? 2.0 : 1.5
-            ..strokeCap = StrokeCap.round;
-          canvas.drawLine(humanPt, auraPt, tetherPaint);
-        }
-      }
+    // If no human is visible yet (or in AI Assisted Demo Mode), show clean reference guide
+    if (!anyVisible || aiAssistedMode) {
+      _drawMovingTargetAura(canvas, size, primaryArColor, validGreen);
+      if (!anyVisible) return;
     }
 
-    final bridgeColor = isInflection ? rightColor : Colors.white;
-
-    // 3. Draw AR Cyber Bounding Box Corner Reticles around detected human body
+    // 1. Clean ARTIFIT Corner Frame Reticles around detected human body (Green = Valid, Red = Wrong)
     const pad = 26.0;
     final boxRect = Rect.fromLTRB(
       (minX - pad).clamp(12.0, size.width - 24.0),
@@ -2645,13 +3018,11 @@ class _SkeletonOverlayPainter extends CustomPainter {
       (maxY + pad).clamp(90.0, size.height - 40.0),
     );
     if (boxRect.width > 50 && boxRect.height > 80) {
-      _drawArCornerReticles(canvas, boxRect, isMatched ? rightColor : leftColor);
+      _drawArCornerReticles(canvas, boxRect, primaryArColor);
     }
 
-    // If in AI Assisted Mode, _drawMovingTargetAura already rendered the full Aura points & lines;
-    // draw the Dual Joint Protractors on top.
     if (!aiAssistedMode) {
-      // 4. Draw Central Spine & Core Axis (Mid-Shoulder -> Mid-Hip + Neck -> Nose)
+      // 2. Clean Central Spine Axis (Mid-Shoulder -> Mid-Hip + Neck -> Head)
       if (confidences[11] >= 0.22 &&
           confidences[12] >= 0.22 &&
           confidences[23] >= 0.22 &&
@@ -2659,55 +3030,57 @@ class _SkeletonOverlayPainter extends CustomPainter {
         final midShoulder = _toCanvas((landmarks[11] + landmarks[12]) * 0.5, size);
         final midHip = _toCanvas((landmarks[23] + landmarks[24]) * 0.5, size);
         final spinePaint = Paint()
-          ..color = Colors.amberAccent.withValues(alpha: 0.82)
-          ..strokeWidth = 2.8
+          ..color = primaryArColor.withValues(alpha: 0.78)
+          ..strokeWidth = 2.6
           ..strokeCap = StrokeCap.round;
         canvas.drawLine(midShoulder, midHip, spinePaint);
 
-        final corePt = (midShoulder + midHip) * 0.5;
-        canvas.drawCircle(corePt, 5.0, Paint()..color = Colors.amberAccent);
-
         if (confidences[0] >= 0.22) {
           final nosePt = _toCanvas(landmarks[0], size);
-          canvas.drawLine(midShoulder, nosePt, spinePaint..color = Colors.white70);
+          canvas.drawLine(midShoulder, nosePt, spinePaint);
         }
       }
 
-      // 5. Draw Human Anatomical Bones (Bridge, Left Chain, Right Chain)
-      _drawBoneChain(canvas, size, _bridgeBones, bridgeColor);
-      _drawBoneChain(canvas, size, _leftBones, leftColor);
-      _drawBoneChain(canvas, size, _rightBones, rightColor);
+      // 3. Draw Clean ARTIFIT Anatomical Bone Chains (Green when valid, Red when wrong)
+      _drawBoneChain(canvas, size, _bridgeBones, primaryArColor);
+      _drawBoneChain(canvas, size, _leftBones, primaryArColor);
+      _drawBoneChain(canvas, size, _rightBones, primaryArColor);
 
-      // 6. Draw Human 33-Landmark High-Precision Anatomical Nodes
+      // 4. Draw Clean ARTIFIT AR Joint Points (Green normal vs Red on wrong form)
       final dotFill = Paint()..color = Colors.white;
-      for (final idx in [0, 2, 5, 7, 8, 11, 12, 13, 14, 15, 16, 19, 20, 23, 24, 25, 26, 27, 28, 31, 32]) {
+      for (final idx in _keyJoints) {
         final conf = confidences[idx];
         if (conf < 0.22) continue;
         final pt = _toCanvas(landmarks[idx], size);
-        final isLeft = idx.isOdd;
-        final nodeColor = idx == 0 ? Colors.amberAccent : (isLeft ? leftColor : rightColor);
-        final radius = (idx <= 8) ? 3.5 : 5.5;
+        final isFaultJoint = !isFormValid && (faultJoints.isEmpty || faultJoints.contains(idx));
+        final nodeColor = !isFormValid
+            ? (isFaultJoint ? wrongRed : const Color(0xFFFF6B6B))
+            : primaryArColor;
+        final radius = idx == 0 ? 5.0 : 5.5;
 
+        // Soft outer AR glow
         canvas.drawCircle(
           pt,
-          radius + 4.0,
+          isFaultJoint ? radius + 6.5 : radius + 4.0,
           Paint()
-            ..color = nodeColor.withValues(alpha: 0.30)
+            ..color = nodeColor.withValues(alpha: isFaultJoint ? 0.42 : 0.26)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
         );
-        canvas.drawCircle(pt, radius, dotFill);
+        // Crisp white inner joint core
+        canvas.drawCircle(pt, radius * 0.72, dotFill);
+        // Clean Green or Red outer AR ring
         canvas.drawCircle(
           pt,
-          radius + 2.2,
+          radius + 1.8,
           Paint()
             ..color = nodeColor
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.2,
+            ..strokeWidth = isFaultJoint ? 2.8 : 2.2,
         );
       }
     }
 
-    // 7. Draw Dual Geometric Joint Angle Protractors (Left & Right Active Triplets)
+    // 5. Draw Clean Geometric Joint Angle Protractors (Green when valid, Red when wrong)
     if (leftTripletIndices.length == 3) {
       _drawJointProtractor(
         canvas,
@@ -2717,7 +3090,7 @@ class _SkeletonOverlayPainter extends CustomPainter {
         leftTripletIndices[2],
         leftAngle,
         'L',
-        isMatched ? rightColor : leftColor,
+        primaryArColor,
       );
     }
     if (rightTripletIndices.length == 3 &&
@@ -2730,12 +3103,12 @@ class _SkeletonOverlayPainter extends CustomPainter {
         rightTripletIndices[2],
         rightAngle,
         'R',
-        rightColor,
+        primaryArColor,
       );
     }
   }
 
-  /// Renders the Moving AR Target Aura using ONLY glowing points and joint lines
+  /// Renders the clean reference skeleton when in AI Assisted Mode or waiting for user to step in frame
   void _drawMovingTargetAura(
     Canvas canvas,
     Size size,
@@ -2745,20 +3118,14 @@ class _SkeletonOverlayPainter extends CustomPainter {
     if (auraLandmarks.length < 33) return;
 
     final outerAuraGlow = Paint()
-      ..color = auraPrimary.withValues(alpha: 0.26)
-      ..strokeWidth = 14.0
+      ..color = auraPrimary.withValues(alpha: 0.22)
+      ..strokeWidth = 10.0
       ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9);
-
-    final midAuraGlow = Paint()
-      ..color = auraSecondary.withValues(alpha: 0.42)
-      ..strokeWidth = 6.5
-      ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
     final coreAuraLine = Paint()
-      ..color = Colors.white.withValues(alpha: 0.86)
-      ..strokeWidth = 2.4
+      ..color = auraPrimary.withValues(alpha: 0.88)
+      ..strokeWidth = 3.2
       ..strokeCap = StrokeCap.round;
 
     final allAuraBones = <(int, int)>[
@@ -2767,110 +3134,62 @@ class _SkeletonOverlayPainter extends CustomPainter {
       ..._rightBones,
     ];
 
-    // Draw Aura Central Spine (Neck -> Mid-Shoulder -> Mid-Hip)
     final auraMidSh = _toCanvas((auraLandmarks[11] + auraLandmarks[12]) * 0.5, size);
     final auraMidHip = _toCanvas((auraLandmarks[23] + auraLandmarks[24]) * 0.5, size);
     final auraHead = _toCanvas(auraLandmarks[0], size);
     canvas.drawLine(auraMidSh, auraMidHip, outerAuraGlow);
     canvas.drawLine(auraMidSh, auraMidHip, coreAuraLine);
-    canvas.drawLine(auraMidSh, auraHead, midAuraGlow);
     canvas.drawLine(auraMidSh, auraHead, coreAuraLine);
 
-    // Draw all Aura Joint Lines
     for (final (aIdx, bIdx) in allAuraBones) {
       final p1 = _toCanvas(auraLandmarks[aIdx], size);
       final p2 = _toCanvas(auraLandmarks[bIdx], size);
       canvas.drawLine(p1, p2, outerAuraGlow);
-      canvas.drawLine(p1, p2, midAuraGlow);
       canvas.drawLine(p1, p2, coreAuraLine);
     }
 
-    // Draw all Aura Joint Points (Nodes + Glowing Rings)
     for (final idx in _keyJoints) {
       final pt = _toCanvas(auraLandmarks[idx], size);
-      final isHead = idx == 0;
-      final r = isHead ? 7.0 : 5.5;
-
-      // Outer Aura Halo on Joint Point
-      canvas.drawCircle(
-        pt,
-        r + 6.0,
-        Paint()
-          ..color = auraPrimary.withValues(alpha: 0.34)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-      );
-      // Crisp Joint Ring
+      final r = idx == 0 ? 5.5 : 5.0;
       canvas.drawCircle(
         pt,
         r + 2.0,
         Paint()
           ..color = auraPrimary
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0,
+          ..strokeWidth = 2.2,
       );
-      // Bright Core Joint Point
       canvas.drawCircle(
         pt,
-        r * 0.65,
+        r * 0.68,
         Paint()..color = Colors.white,
       );
     }
-
-    // Floating "AR TARGET AURA" badge above Aura Head
-    final auraBadgeText = auraMatchScore >= 65.0
-        ? '⚡ AURA SYNC ${auraMatchScore.toInt()}% (LOCKED)'
-        : '✨ MATCH MOVING AR AURA • ${auraMatchScore.toInt()}%';
-    final tp = TextPainter(
-      text: TextSpan(
-        text: auraBadgeText,
-        style: TextStyle(
-          color: auraPrimary,
-          fontSize: 10.5,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.5,
-          shadows: const [Shadow(color: Colors.black, blurRadius: 6)],
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    final badgePos = Offset(
-      (auraHead.dx - tp.width * 0.5).clamp(16.0, size.width - tp.width - 16.0),
-      (auraHead.dy - 36.0).clamp(115.0, size.height - 60.0),
-    );
-    final pill = RRect.fromRectAndRadius(
-      Rect.fromLTWH(badgePos.dx - 8, badgePos.dy - 4, tp.width + 16, tp.height + 8),
-      const Radius.circular(10),
-    );
-    canvas.drawRRect(pill, Paint()..color = const Color(0xBB090D16));
-    canvas.drawRRect(
-      pill,
-      Paint()
-        ..color = auraPrimary.withValues(alpha: 0.70)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2,
-    );
-    tp.paint(canvas, badgePos);
   }
 
   void _drawBoneChain(Canvas canvas, Size size, List<(int, int)> bones, Color chainColor) {
     final glowPaint = Paint()
-      ..color = chainColor.withValues(alpha: 0.26)
-      ..strokeWidth = 10.0
+      ..color = chainColor.withValues(alpha: 0.24)
+      ..strokeWidth = 8.5
       ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
 
     final linePaint = Paint()
-      ..color = chainColor.withValues(alpha: 0.90)
-      ..strokeWidth = 3.8
+      ..color = chainColor.withValues(alpha: 0.92)
+      ..strokeWidth = 3.6
       ..strokeCap = StrokeCap.round;
 
     for (final (aIdx, bIdx) in bones) {
       if (confidences[aIdx] < 0.22 || confidences[bIdx] < 0.22) continue;
+      final bool boneHasFault = !isFormValid &&
+          (faultJoints.isEmpty || faultJoints.contains(aIdx) || faultJoints.contains(bIdx));
+      final boneColor = !isFormValid
+          ? (boneHasFault ? const Color(0xFFFF3B30) : const Color(0xFFFF6B6B))
+          : chainColor;
       final p1 = _toCanvas(landmarks[aIdx], size);
       final p2 = _toCanvas(landmarks[bIdx], size);
-      canvas.drawLine(p1, p2, glowPaint);
-      canvas.drawLine(p1, p2, linePaint);
+      canvas.drawLine(p1, p2, glowPaint..color = boneColor.withValues(alpha: 0.24));
+      canvas.drawLine(p1, p2, linePaint..color = boneColor.withValues(alpha: 0.92));
     }
   }
 
@@ -2901,18 +3220,16 @@ class _SkeletonOverlayPainter extends CustomPainter {
       sweep -= 2 * math.pi;
     }
 
-    final arcRect = Rect.fromCircle(center: pB, radius: 26.0);
-    // Protractor filled sector
+    final arcRect = Rect.fromCircle(center: pB, radius: 24.0);
     canvas.drawArc(
       arcRect,
       angBA,
       sweep,
       true,
       Paint()
-        ..color = accentColor.withValues(alpha: 0.24)
+        ..color = accentColor.withValues(alpha: 0.22)
         ..style = PaintingStyle.fill,
     );
-    // Protractor outer ring arc
     canvas.drawArc(
       arcRect,
       angBA,
@@ -2921,17 +3238,16 @@ class _SkeletonOverlayPainter extends CustomPainter {
       Paint()
         ..color = accentColor
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.0,
+        ..strokeWidth = 2.8,
     );
 
-    // Floating AR Pill Badge next to vertex
     final labelText = '$sidePrefix ${angleVal.toInt()}°';
     final tp = TextPainter(
       text: TextSpan(
         text: labelText,
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 11.5,
+          fontSize: 11.0,
           fontWeight: FontWeight.w900,
           shadows: [Shadow(color: Colors.black, blurRadius: 4)],
         ),
@@ -2939,7 +3255,7 @@ class _SkeletonOverlayPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout();
 
-    final badgeOffset = sidePrefix == 'L' ? const Offset(-54, -14) : const Offset(18, -14);
+    final badgeOffset = sidePrefix == 'L' ? const Offset(-52, -14) : const Offset(16, -14);
     final pillRect = RRect.fromRectAndRadius(
       Rect.fromLTWH(
         pB.dx + badgeOffset.dx - 6,
@@ -2965,9 +3281,9 @@ class _SkeletonOverlayPainter extends CustomPainter {
 
   void _drawArCornerReticles(Canvas canvas, Rect r, Color reticleColor) {
     final p = Paint()
-      ..color = reticleColor.withValues(alpha: 0.75)
+      ..color = reticleColor.withValues(alpha: 0.85)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
+      ..strokeWidth = 2.6
       ..strokeCap = StrokeCap.round;
     const len = 18.0;
 
@@ -2984,15 +3300,17 @@ class _SkeletonOverlayPainter extends CustomPainter {
     canvas.drawLine(r.bottomRight, r.bottomRight + const Offset(-len, 0), p);
     canvas.drawLine(r.bottomRight, r.bottomRight + const Offset(0, -len), p);
 
-    // Top-Left AR Telemetry Header Tag
+    final statusText = isFormValid
+        ? '✓ AR FORM VERIFIED • GOAL ${targetPeakAngle.toInt()}°'
+        : '⚠️ WRONG FORM / OUT OF RANGE — DO NOT COUNT';
     final headerTp = TextPainter(
       text: TextSpan(
-        text: 'AURA SYNC ${auraMatchScore.toInt()}% • AR LOCK ${(overallConfidence * 100).clamp(85, 99).toInt()}% • GOAL ${targetPeakAngle.toInt()}°',
+        text: statusText,
         style: TextStyle(
           color: reticleColor,
           fontSize: 9.5,
           fontWeight: FontWeight.w900,
-          letterSpacing: 0.6,
+          letterSpacing: 0.5,
           shadows: const [Shadow(color: Colors.black, blurRadius: 6)],
         ),
       ),
@@ -3004,4 +3322,5 @@ class _SkeletonOverlayPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _SkeletonOverlayPainter oldDelegate) => true;
 }
+
 
