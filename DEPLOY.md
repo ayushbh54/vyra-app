@@ -243,4 +243,4 @@ apps/mobile/build/app/outputs/flutter-apk/
 
 ---
 
-*VYRA — SIH 2026 Problem Statement 26196*
+*VYRA — SIH 2026 Problem Statement-26196*
