@@ -395,7 +395,7 @@ class WatchHardwareProfile {
         keepaliveIntervalMs: 4500,
         createdAt: DateTime.now(),
       );
-    } else if (hasBleSig && !hasJerry && !hasDaFit && fallbackWriteCharUuid.isEmpty) {
+    } else if (hasBleSig && !hasJerry && !hasDaFit) {
       return WatchHardwareProfile(
         profileId: 'auto_sig_${remoteId.replaceAll(":", "_")}',
         deviceName: deviceName.isNotEmpty ? deviceName : 'BLE HR Watch',

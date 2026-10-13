@@ -160,49 +160,34 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       // Load persistent active smartwatch hardware profile
       _activeProfile = await WatchHardwareProfile.loadFromPrefs(prefs: prefs);
 
-      // Purge any stale Galaxy Watch4 / encrypted test profile from Prober so Ultra2 / HiWatch Pro is never hijacked
+      // Purge any stale test dummy profiles so real watches connect cleanly
       if (_activeProfile != null &&
           (_activeProfile!.remoteId.toUpperCase().contains('C41BDCB4') ||
-              _activeProfile!.deviceName.toLowerCase().contains('galaxy'))) {
-        _activeProfile = WatchHardwareProfile.defaultUltra2Profile(
-          remoteId: Platform.isIOS
-              ? "CC12D46C-4F33-7E3A-2E34-F8777DE988D2"
-              : "71:7E:FB:00:03:CB",
-        );
-        await _activeProfile!.saveToPrefs(prefs: prefs);
-        savedWatchName = "Ultra2";
-        await prefs.setString(_prefsBleWatchNameKey, "Ultra2");
-        await prefs.setString(_prefsBleWatchRemoteIdKey, _activeProfile!.remoteId);
+              _activeProfile!.remoteId == "71:7E:FB:00:03:CB" ||
+              _activeProfile!.remoteId == "CC12D46C-4F33-7E3A-2E34-F8777DE988D2")) {
+        _activeProfile = null;
+        await prefs.remove(WatchHardwareProfile.prefsActiveProfileKey);
+        await prefs.remove(_prefsBleWatchRemoteIdKey);
+        await prefs.remove(_prefsBleWatchNameKey);
+        savedWatchName = null;
       }
 
-      _pairedWatchName = (savedWatchName != null &&
-              savedWatchName.isNotEmpty &&
-              !savedWatchName.toLowerCase().contains('galaxy') &&
-              savedWatchName != 'Smartwatch')
-          ? savedWatchName
-          : "Ultra2";
-
-      if (_activeProfile != null &&
-          !_activeProfile!.deviceName.toLowerCase().contains('galaxy') &&
-          _activeProfile!.deviceName != 'Smartwatch') {
-        _pairedWatchName = _activeProfile!.deviceName;
-        debugPrint('[VYRA-PROFILE] ⚡ Loaded active profile: ${_activeProfile!.profileId} (${_activeProfile!.protocolType.name})');
-      }
-
-      String targetId = _activeProfile?.remoteId ?? prefs.getString(_prefsBleWatchRemoteIdKey) ?? "";
-      if (targetId.toUpperCase().contains('C41BDCB4')) {
+      final savedRemoteId = prefs.getString(_prefsBleWatchRemoteIdKey) ?? "";
+      String targetId = _activeProfile?.remoteId ?? savedRemoteId;
+      if (targetId.toUpperCase().contains('C41BDCB4') ||
+          targetId == "71:7E:FB:00:03:CB" ||
+          targetId == "CC12D46C-4F33-7E3A-2E34-F8777DE988D2") {
         targetId = "";
       }
-      if (Platform.isAndroid) {
-        if (targetId.isEmpty) targetId = "71:7E:FB:00:03:CB";
-      } else if (Platform.isIOS) {
-        // On iOS CoreBluetooth, MAC addresses with ':' are invalid; use verified Ultra2 UUID
-        if (targetId.isEmpty || targetId.contains(':')) {
-          targetId = "CC12D46C-4F33-7E3A-2E34-F8777DE988D2";
+
+      if (targetId.isNotEmpty) {
+        _pairedWatchName = savedWatchName ?? _activeProfile?.deviceName ?? "Smartwatch";
+        if (!Platform.isMacOS) {
+          unawaited(_autoReconnectSavedWatch(targetId));
         }
-      }
-      if (targetId.isNotEmpty && !Platform.isMacOS) {
-        unawaited(_autoReconnectSavedWatch(targetId));
+      } else {
+        _pairedWatchName = null;
+        _connectionStatusText = "Disconnected";
       }
 
       if (Platform.isMacOS) {
@@ -524,12 +509,14 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
       if (!mounted) return;
 
-      // Connect to physical hardware
-      await device.connect(
-        license: License.nonprofit,
-        timeout: const Duration(seconds: 15),
-        autoConnect: false,
-      );
+      // Connect to physical hardware (skip if already connected at OS level)
+      if (!device.isConnected) {
+        await device.connect(
+          license: License.nonprofit,
+          timeout: const Duration(seconds: 15),
+          autoConnect: false,
+        );
+      }
 
       if (!mounted) return;
 
@@ -592,11 +579,15 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
       if (!mounted) return;
 
-      // Standard default MTU (23 bytes) is used. Do NOT request MTU 512 as Jerry JL7012 MCUs
-      // suffer heap corruption and watchdog resets on high MTU requests.
+      // Allow BLE GATT connection to stabilize before discovering services
+      await Future.delayed(const Duration(milliseconds: 250));
 
       // Discover GATT services & characteristics across vendor & standard profiles
-      final services = await device.discoverServices();
+      var services = await device.discoverServices();
+      if (services.isEmpty) {
+        await Future.delayed(const Duration(milliseconds: 300));
+        services = await device.discoverServices();
+      }
 
       // Dynamic Smartwatch Hardware Profile Auto-Adaptation:
       // Always inspect discovered services when connecting to a different watch or if no profile exists.
@@ -686,18 +677,17 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                 cUuid.contains('2a19'); // Avoid dummy 54% battery descriptor
             if (!isSkippable) {
               _notifyCharacteristics.add(c);
-              if (_activeNotifyChar == null &&
-                  (cUuid.contains('6e400003') ||
-                      cUuid.contains('fff1') ||
-                      cUuid.contains('ae02') ||
-                      cUuid.contains('fee2') ||
-                      cUuid.contains('fee3') ||
-                      cUuid.contains('fec8') ||
-                      cUuid.contains('ff03') ||
-                      cUuid.contains('ffd2') ||
-                      cUuid.contains('ffe1') ||
-                      cUuid.contains('2a37') ||
-                      cUuid.contains('2fb6a5aa'))) {
+              final isVendorNotify = cUuid.contains('6e400003') ||
+                  cUuid.contains('fff1') ||
+                  cUuid.contains('ae02') ||
+                  cUuid.contains('fee2') ||
+                  cUuid.contains('fee3') ||
+                  cUuid.contains('fec8') ||
+                  cUuid.contains('ff03') ||
+                  cUuid.contains('ffd2') ||
+                  cUuid.contains('ffe1') ||
+                  cUuid.contains('2fb6a5aa');
+              if (_activeNotifyChar == null && isVendorNotify) {
                 _activeNotifyChar = c;
               }
             }
@@ -721,12 +711,20 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       _activeWriteChar ??= _writeCharacteristics.isNotEmpty ? _writeCharacteristics.first : null;
       _activeNotifyChar ??= _notifyCharacteristics.isNotEmpty ? _notifyCharacteristics.first : null;
 
-      // Subscribe ONLY to primary notify characteristic for HiWatch Pro / Ultra2 so its BLE queue is never congested
+      // Subscribe to primary vendor notify characteristic AND standard SIG Heart Rate (0x2A37) if present
       final subscribedUuids = <String>{};
       final targetNotifyList = <BluetoothCharacteristic>[];
       if (_activeNotifyChar != null) {
         targetNotifyList.add(_activeNotifyChar!);
         subscribedUuids.add(_activeNotifyChar!.uuid.toString().toLowerCase());
+      }
+      for (final c in _notifyCharacteristics) {
+        final u = c.uuid.toString().toLowerCase();
+        if (u.contains('2a37') && !subscribedUuids.contains(u)) {
+          targetNotifyList.add(c);
+          subscribedUuids.add(u);
+          break;
+        }
       }
       if (_activeProfile?.protocolType != WatchProtocolType.hiwatchCd) {
         for (final c in _notifyCharacteristics) {
@@ -843,12 +841,6 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         });
       }
 
-      // Proactive Auto-Vitals Trigger: 1.5s after connect, automatically wake optical PPG sensor
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted && _isRealBleConnected && _liveHeartRate == 0) {
-          triggerCombinedAllVitals();
-        }
-      });
 
       // Start continuous real-time live telemetry polling stream (4.0s hardware watchdog keepalive)
       startContinuousLiveTelemetryStream();
@@ -963,10 +955,6 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         _livePollingTimer?.cancel();
         return;
       }
-      // Never send background sport polls during active optical measurement to prevent packet collisions
-      if (_isMeasuringHr || _isMeasuringSpo2 || _isMeasuringBp || _isMeasuringAll) {
-        return;
-      }
       telemetryTick++;
 
       if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
@@ -988,21 +976,22 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         // Standard BLE SIG updates autonomously via notifications; no vendor keepalive poll needed
       } else {
         // Default: HiWatch / Jerry JL7012 MCU hardware watchdog timeout is 4-5s.
-        // Day Summary (Key 0x0D): Returns live steps, calories, and distance in one packet (Key 0x0C).
+        // Day Summary (Key 0x0D): Returns live steps, calories, and distance in one packet (Key 0x0C)
+        // and prevents hardware watchdog resets.
         await broadcastWatchCommands([
           [0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01],
         ]);
 
-        // Every 3 ticks (~12s): re-trigger continuous HR PPG sensor keepalive on Ultra2 / HiWatch Pro
-        if (telemetryTick % 3 == 0) {
+        // When not actively measuring vitals, re-trigger continuous HR PPG sensor keepalive
+        if (!_isMeasuringHr && !_isMeasuringAll && telemetryTick % 3 == 0) {
           await Future.delayed(const Duration(milliseconds: 150));
           await broadcastWatchCommands([
             [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0D, 0x00, 0x01, 0x01],
           ]);
         }
 
-        // Every 8 ticks (~32s): refresh Battery (key 0x02 on cmd 0x12)
-        if (telemetryTick % 8 == 0) {
+        // When not measuring, refresh Battery (key 0x02 on cmd 0x12)
+        if (!_isMeasuringAll && telemetryTick % 8 == 0) {
           await Future.delayed(const Duration(milliseconds: 150));
           await broadcastWatchCommands([
             [0xCD, 0x00, 0x06, 0x12, 0x01, 0x02, 0x00, 0x01, 0x01],
@@ -1325,30 +1314,19 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   }
 
   Future<void> broadcastWatchCommands(List<List<int>> commandList) async {
-    final targets = <BluetoothCharacteristic>[];
-    if (_activeWriteChar != null) {
-      targets.add(_activeWriteChar!);
-    }
-    for (final c in _writeCharacteristics) {
-      if (targets.length >= 2) break;
-      if (targets.every((t) => t.uuid != c.uuid)) {
-        targets.add(c);
-      }
-    }
-    if (targets.isEmpty) return;
+    final target = _activeWriteChar ?? (_writeCharacteristics.isNotEmpty ? _writeCharacteristics.first : null);
+    if (target == null) return;
 
     for (final cmd in commandList) {
-      for (final char in targets) {
-        try {
-          if (char.properties.writeWithoutResponse) {
-            await char.write(cmd, withoutResponse: true);
-          } else if (char.properties.write) {
-            await char.write(cmd, withoutResponse: false);
-          }
-        } catch (_) {}
-      }
+      try {
+        if (target.properties.writeWithoutResponse) {
+          await target.write(cmd, withoutResponse: true);
+        } else if (target.properties.write) {
+          await target.write(cmd, withoutResponse: false);
+        }
+      } catch (_) {}
       if (commandList.length > 1) {
-        await Future.delayed(const Duration(milliseconds: 90));
+        await Future.delayed(const Duration(milliseconds: 120));
       }
     }
   }
@@ -1428,34 +1406,37 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       if (_measurementCountdown <= 1) {
         t.cancel();
         setState(() => _isMeasuringHr = false);
-        broadcastWatchCommands([
-          [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0D, 0x00, 0x01, 0x00],
-          [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x00, 0x00],
-          [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x0A, 0x00],
-          [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x09, 0x00],
-        ]);
+        if (_activeProfile?.protocolType == WatchProtocolType.dafitAb) {
+          broadcastWatchCommands([
+            [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x09, 0x00],
+          ]);
+        } else if (_activeProfile?.protocolType != WatchProtocolType.wearOsCompanion &&
+            _activeProfile?.protocolType != WatchProtocolType.bleSig) {
+          broadcastWatchCommands([
+            [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0D, 0x00, 0x01, 0x00],
+          ]);
+        }
       } else {
         setState(() => _measurementCountdown--);
       }
     });
 
     HapticFeedback.mediumImpact();
-    // Broadcast FitPro/HiWatch (0xCD) + DaFit/MoYoung (0xAB) + Ultra2 (0xBC) HR ignition commands
-    await broadcastWatchCommands([
-      [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0D, 0x00, 0x01, 0x01],
-      [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x00, 0x01],
-      [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x0A, 0x01],
-      [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x09, 0x01],
-      [0xAB, 0x09, 0x54, 0x63],
-      [0xBC, 0x60, 0x01],
-    ]);
-
-    if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
+    if (_activeProfile?.protocolType == WatchProtocolType.dafitAb) {
+      await broadcastWatchCommands([
+        [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x09, 0x01],
+      ]);
+    } else if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
       Future.delayed(const Duration(milliseconds: 2800), () {
         if (mounted && _isRealBleConnected && _isMeasuringHr) {
           _pollWearOsCompanionBridge(includeVitals: true);
         }
       });
+    } else if (_activeProfile?.protocolType != WatchProtocolType.bleSig) {
+      // Default: HiWatch Pro / Ultra2
+      await broadcastWatchCommands([
+        [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0D, 0x00, 0x01, 0x01],
+      ]);
     }
 
     if (!mounted) return;
@@ -1485,33 +1466,38 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       if (_measurementCountdown <= 1) {
         t.cancel();
         setState(() => _isMeasuringSpo2 = false);
-        broadcastWatchCommands([
-          [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x02, 0x00],
-          [0xCD, 0x00, 0x06, 0x12, 0x01, 0x14, 0x00, 0x01, 0x00],
-          [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x12, 0x00],
-          [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x11, 0x00],
-        ]);
+        if (_activeProfile?.protocolType == WatchProtocolType.dafitAb) {
+          broadcastWatchCommands([
+            [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x12, 0x00],
+          ]);
+        } else if (_activeProfile?.protocolType != WatchProtocolType.wearOsCompanion &&
+            _activeProfile?.protocolType != WatchProtocolType.bleSig) {
+          broadcastWatchCommands([
+            [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x02, 0x00],
+          ]);
+        }
       } else {
         setState(() => _measurementCountdown--);
       }
     });
 
     HapticFeedback.mediumImpact();
-    // Broadcast FitPro/HiWatch (0xCD) + DaFit/MoYoung (0xAB) SpO2 sensor ignition
-    await broadcastWatchCommands([
-      [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x02, 0x01],
-      [0xCD, 0x00, 0x06, 0x12, 0x01, 0x14, 0x00, 0x01, 0x01],
-      [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x12, 0x01],
-      [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x11, 0x01],
-      [0xAB, 0x09, 0x54, 0x63],
-    ]);
-
-    if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
+    if (_activeProfile?.protocolType == WatchProtocolType.dafitAb) {
+      await broadcastWatchCommands([
+        [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x12, 0x01],
+      ]);
+    } else if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
       Future.delayed(const Duration(milliseconds: 3000), () {
         if (mounted && _isRealBleConnected && _isMeasuringSpo2) {
           _pollWearOsCompanionBridge(includeVitals: true);
         }
       });
+    } else if (_activeProfile?.protocolType != WatchProtocolType.bleSig) {
+      // Default: HiWatch Pro / Ultra2 SpO2 ignition
+      await broadcastWatchCommands([
+        [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x02, 0x01],
+        [0xCD, 0x00, 0x06, 0x12, 0x01, 0x14, 0x00, 0x01, 0x01],
+      ]);
     }
 
     if (!mounted) return;
@@ -1541,33 +1527,37 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       if (_measurementCountdown <= 1) {
         t.cancel();
         setState(() => _isMeasuringBp = false);
-        broadcastWatchCommands([
-          [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0E, 0x00, 0x01, 0x00],
-          [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x01, 0x00],
-          [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x22, 0x00],
-          [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x21, 0x00],
-        ]);
+        if (_activeProfile?.protocolType == WatchProtocolType.dafitAb) {
+          broadcastWatchCommands([
+            [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x21, 0x00],
+          ]);
+        } else if (_activeProfile?.protocolType != WatchProtocolType.wearOsCompanion &&
+            _activeProfile?.protocolType != WatchProtocolType.bleSig) {
+          broadcastWatchCommands([
+            [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0E, 0x00, 0x01, 0x00],
+          ]);
+        }
       } else {
         setState(() => _measurementCountdown--);
       }
     });
 
     HapticFeedback.mediumImpact();
-    // Broadcast FitPro/HiWatch (0xCD) + DaFit/MoYoung (0xAB) BP sensor ignition
-    await broadcastWatchCommands([
-      [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0E, 0x00, 0x01, 0x01],
-      [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x01, 0x01],
-      [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x22, 0x01],
-      [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x21, 0x01],
-      [0xAB, 0x09, 0x54, 0x63],
-    ]);
-
-    if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
+    if (_activeProfile?.protocolType == WatchProtocolType.dafitAb) {
+      await broadcastWatchCommands([
+        [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x21, 0x01],
+      ]);
+    } else if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
       Future.delayed(const Duration(milliseconds: 3000), () {
         if (mounted && _isRealBleConnected && _isMeasuringBp) {
           _pollWearOsCompanionBridge(includeVitals: true);
         }
       });
+    } else if (_activeProfile?.protocolType != WatchProtocolType.bleSig) {
+      // Default: HiWatch Pro / Ultra2 BP ignition
+      await broadcastWatchCommands([
+        [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0E, 0x00, 0x01, 0x01],
+      ]);
     }
 
     if (!mounted) return;
@@ -1596,32 +1586,37 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       }
       if (_measurementCountdown <= 1) {
         t.cancel();
-        setState(() => _isMeasuringAll = false);
-        broadcastWatchCommands([
-          [0xCD, 0x00, 0x06, 0x12, 0x01, 0x18, 0x00, 0x01, 0x00],
-          [0xAB, 0x00, 0x04, 0xFF, 0x32, 0x80, 0x00],
-        ]);
+        if (_activeProfile?.protocolType == WatchProtocolType.dafitAb) {
+          broadcastWatchCommands([
+            [0xAB, 0x00, 0x04, 0xFF, 0x32, 0x80, 0x00],
+          ]);
+        } else if (_activeProfile?.protocolType != WatchProtocolType.wearOsCompanion &&
+            _activeProfile?.protocolType != WatchProtocolType.bleSig) {
+          broadcastWatchCommands([
+            [0xCD, 0x00, 0x06, 0x12, 0x01, 0x18, 0x00, 0x01, 0x00],
+          ]);
+        }
       } else {
         setState(() => _measurementCountdown--);
       }
     });
 
     HapticFeedback.heavyImpact();
-    // Start combined all-in-one health measurement across FitPro (0xCD), DaFit (0xAB), and Ultra2 (0xBC)
-    await broadcastWatchCommands([
-      [0xCD, 0x00, 0x06, 0x12, 0x01, 0x18, 0x00, 0x01, 0x01],
-      [0xAB, 0x00, 0x04, 0xFF, 0x32, 0x80, 0x01],
-      [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x0A, 0x01],
-      [0xAB, 0x09, 0x54, 0x63],
-      [0xBC, 0x60, 0x01],
-    ]);
-
-    if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
+    if (_activeProfile?.protocolType == WatchProtocolType.dafitAb) {
+      await broadcastWatchCommands([
+        [0xAB, 0x00, 0x04, 0xFF, 0x32, 0x80, 0x01],
+      ]);
+    } else if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
       Future.delayed(const Duration(milliseconds: 3200), () {
         if (mounted && _isRealBleConnected && _isMeasuringAll) {
           _pollWearOsCompanionBridge(includeVitals: true);
         }
       });
+    } else if (_activeProfile?.protocolType != WatchProtocolType.bleSig) {
+      // Default: HiWatch Pro / Ultra2 multi-vital ignition
+      await broadcastWatchCommands([
+        [0xCD, 0x00, 0x06, 0x12, 0x01, 0x18, 0x00, 0x01, 0x01],
+      ]);
     }
 
     if (!mounted) return;

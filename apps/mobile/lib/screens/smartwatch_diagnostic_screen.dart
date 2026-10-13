@@ -298,12 +298,14 @@ class _SmartwatchDiagnosticScreenState
       // Clean up previous sessions
       _cleanupConnection();
 
-      // Connect with 15s timeout
-      await device.connect(
-        license: License.nonprofit,
-        timeout: const Duration(seconds: 15),
-        autoConnect: false,
-      );
+      // Connect with 15s timeout (skip if already connected at OS level)
+      if (!device.isConnected) {
+        await device.connect(
+          license: License.nonprofit,
+          timeout: const Duration(seconds: 15),
+          autoConnect: false,
+        );
+      }
 
       _connectedDevice = device;
       _connSub = device.connectionState.listen((state) {
@@ -315,13 +317,8 @@ class _SmartwatchDiagnosticScreenState
         }
       });
 
-      // Request MTU 512 for full frames
-      try {
-        final mtu = await device.requestMtu(512);
-        _addLog(LogType.info, "Negotiated MTU: $mtu");
-      } catch (e) {
-        _addLog(LogType.info, "MTU request: $e (defaulting)");
-      }
+      // Allow BLE GATT connection to stabilize
+      await Future.delayed(const Duration(milliseconds: 200));
 
       // Discover Services
       _addLog(LogType.info, "Discovering GATT Services...");

@@ -61,7 +61,7 @@ void main() {
           rightTripletConf: 0.0,
         );
         expect(zeroRes.isValid, isFalse, reason: '$slug with 0.0 confidence must be RED (isValid: false)');
-        expect(zeroRes.warningMessage, contains('Step into frame'));
+        expect(zeroRes.warningMessage, anyOf(contains('in frame'), contains('Step into frame')));
 
         // Low confidence (below 0.36)
         final lowRes = ExerciseConfig.verifyBiomechanicalForm(

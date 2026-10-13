@@ -297,7 +297,7 @@ class HiWatchProProtocol {
         header != 0x04 &&
         !(header == 0x01 && bytes.length >= 5) &&
         bytes.length >= 2 &&
-        bytes.length <= 8) {
+        bytes.length <= 20) {
       final flags = bytes[0];
       final is16Bit = (flags & 0x01) != 0;
       final hr = is16Bit && bytes.length >= 3 ? (bytes[1] | (bytes[2] << 8)) : bytes[1];

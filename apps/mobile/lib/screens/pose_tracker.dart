@@ -808,7 +808,7 @@ class ExerciseConfig {
           pattern == 'lunge' ||
           pattern == 'lower_hold') {
         if (spineTiltDeg > 38.0) {
-          return FormVerificationResult(
+          return const FormVerificationResult(
             isValid: false,
             faultJoints: {11, 12, 23, 24, 25, 26},
             warningMessage:
@@ -823,7 +823,7 @@ class ExerciseConfig {
           final hipSpan = (humanLandmarks[23].dx - humanLandmarks[24].dx).abs();
           final kneeSpan = (humanLandmarks[25].dx - humanLandmarks[26].dx).abs();
           if (hipSpan > 0.05 && kneeSpan < hipSpan * 0.62) {
-            return FormVerificationResult(
+            return const FormVerificationResult(
               isValid: false,
               faultJoints: {25, 26, 27, 28},
               warningMessage:
@@ -844,7 +844,7 @@ class ExerciseConfig {
           humanConf[14] >= 0.35 &&
           humanLandmarks[14].dy < humanLandmarks[12].dy + 0.02;
       if (lSwing || rSwing) {
-        return FormVerificationResult(
+        return const FormVerificationResult(
           isValid: false,
           faultJoints: {11, 12, 13, 14, 15, 16},
           warningMessage:
@@ -862,7 +862,7 @@ class ExerciseConfig {
           humanConf[16] >= 0.35 &&
           humanLandmarks[16].dy > humanLandmarks[14].dy + 0.02;
       if (lWristLow || rWristLow) {
-        return FormVerificationResult(
+        return const FormVerificationResult(
           isValid: false,
           faultJoints: {11, 12, 13, 14, 15, 16},
           warningMessage:
