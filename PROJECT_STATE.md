@@ -161,9 +161,19 @@ In `male_coach.glb` (`mixamorig5`) and `female_coach.glb` (`mixamorig`), every b
      10. `jumping-jacks` (`auraPattern: 'jumping_jack'`, Shoulder Arc `13.8° → 167.0°`)
      11. `high-knees` (`auraPattern: 'knee_drive'`, Alternating Hip Flexion `170.0° → 68.7°`)
      12. `calf-raise` (`auraPattern: 'calf_raise'`, Ankle Plantarflexion `94.1° → 161.6°`)
-     13. `plank` (`auraPattern: 'plank_hold'`, Core Alignment Hold `~174.8°`)
+     13. `plank` (`auraPattern: 'plank_hold'`, Core Alignment Hold `~176.5°`)
      14. `wall-sit` (`auraPattern: 'lower_hold'`, Isometric Knee Hold `~104.5°`)
      15. `box-breathing` (`auraPattern: 'breath_hold'`, Meditative Breath Hold `~97.8°`)
+4. **ARTIFIT-Grade Camera AR Workout Verification (Zero False Rep Counting):**
+   - **5-Gate Strict Biomechanical Form Verification (`ExerciseConfig.verifyBiomechanicalForm`):**
+     - *Gate 1: Active-Triplet Joint Visibility* (`bestTripletConf >= 0.36`, leg/shoulder visibility checks).
+     - *Gate 2: Anatomical Body-Posture Orientation* (rejects standing upright during floor planks/bridges; enforces vertical spine limit `<= 26°` for upper-body isolation and `<= 38°` for squats/lunges; detects Knee Valgus / Cave).
+     - *Gate 3: Secondary Joint Cheating Prevention* (rejects elbow/shoulder swinging during bicep curls, drops wrists below shoulders in overhead presses).
+     - *Gate 4: Bilateral Symmetry Enforcer* (requires symmetric movement `<= 34°` difference across bilateral exercises).
+     - *Gate 5: Biomechanical Angular Corridor & 2-Frame Peak Hold* (rejects shallow half-reps `< 62% ROM` and requires 2 consecutive valid frames at true peak).
+   - **Ultra-Clean ARTIFIT AR Visuals (Dynamic Red vs. Green Points):**
+     - **Normal Green (`#22C55E` / `#34FF8C`)**: AR points and bone lines stay crisp green when user's form and posture are valid.
+     - **Crimson Red (`#FF3B30`)**: AR points and bone lines immediately flash red with glowing warning rings on `faultJoints` whenever user cheats or performs wrong form, with real-time audio guidance (`"⚠️ Please do it correctly: ..."`), and completely blocks the rep from counting until proper posture is restored.
 
 ---
 
@@ -192,6 +202,7 @@ In `male_coach.glb` (`mixamorig5`) and `female_coach.glb` (`mixamorig`), every b
    - **Paced 6-Step Startup:** Pair Handshake (`0x12 0x0A`) → RTC Clock Sync (`0x12 0x01`) → Authentic Battery Query (`0x12 0x02`) → Real-Time Steps (`0x15 0x06`) → Day Summary (`0x15 0x0C`) → Multi-Vitals Stream Ignition (`0x18 0x01 0x01`).
    - **Master Multi-Vitals Stream (`Cmd 0x15, Key 0x0E`):** Extracts `bytes[16]` SpO2 %, `bytes[17]` Diastolic BP, `bytes[18]` Systolic BP, and `bytes[19]` Heart Rate BPM while guarding `bytes[10..13]` (`65,536` goal bitmask) from corrupting step counts.
    - **Day Summary (`Cmd 0x15, Key 0x0C`):** Extracts authentic hardware steps (`bytes[10..13]`), distance (`bytes[14..17]`), and calories (`bytes[18..19]`) with `3.5s` watchdog keepalive and automatic `0xDC` Return-ACK responses.
+   - **Hardware Watchdog & Link Resilience:** Dedicated 4s keepalive ping (`[0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01]`) prevents Jerry JL7012 4.5s watchdog timeout during active measurements; single-route GATT write buffer avoids ring buffer overruns; Android BLE 250ms discovery stabilization delay prevents status 133 GATT errors.
 2. **Family B (`WatchProtocolType.dafitAb`):**
    - Supports Fire-Boltt, Noise ColorFit, boAt, Fastrack, Titan, DaFit/MoYoung (`0xAB` protocol: `0x51 0x08` steps/kcal/dist, `0x31` vitals, `0x32 0x80` Measure All, `0x91` battery) and FitCloudPro (`0xFE`/`0xEA`).
 3. **Family C (`WatchProtocolType.bleSig`):**
