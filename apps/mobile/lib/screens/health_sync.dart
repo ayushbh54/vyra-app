@@ -3062,119 +3062,139 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
             // Metrics Row 1: Heart Rate + Zone, SpO2, Steps
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 // Heart Rate
-                Column(
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ScaleTransition(
-                          scale: Tween(begin: 0.85, end: 1.25)
-                              .animate(_heartPulseController),
-                          child: const Icon(Icons.favorite,
-                              color: Colors.redAccent, size: 18),
-                        ),
-                        const SizedBox(width: 4),
-                        ValueListenableBuilder<int>(
-                          valueListenable: _hrNotifier,
-                          builder: (_, hr, __) => Text(
-                            hr == 0 ? '--' : '$hr',
-                            style: const TextStyle(
-                              color: VColor.text,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
+                Expanded(
+                  child: Column(
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ScaleTransition(
+                              scale: Tween(begin: 0.85, end: 1.25)
+                                  .animate(_heartPulseController),
+                              child: const Icon(Icons.favorite,
+                                  color: Colors.redAccent, size: 18),
                             ),
-                          ),
+                            const SizedBox(width: 4),
+                            ValueListenableBuilder<int>(
+                              valueListenable: _hrNotifier,
+                              builder: (_, hr, __) => Text(
+                                hr == 0 ? '--' : '$hr',
+                                style: const TextStyle(
+                                  color: VColor.text,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                            const Text(" bpm",
+                                style:
+                                    TextStyle(color: VColor.textLow, fontSize: 10)),
+                          ],
                         ),
-                        const Text(" bpm",
-                            style:
-                                TextStyle(color: VColor.textLow, fontSize: 10)),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(VRadius.pill),
                       ),
-                      child: Text(
-                        _liveHeartRate > 0 ? _liveHrZone : "RESTING",
-                        style: const TextStyle(
-                            color: Colors.redAccent,
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w700),
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(VRadius.pill),
+                        ),
+                        child: Text(
+                          _liveHeartRate > 0 ? _liveHrZone : "RESTING",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w700),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 // SpO2
-                Column(
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.water_drop_rounded,
-                            color: VColor.accent, size: 18),
-                        const SizedBox(width: 4),
-                        ValueListenableBuilder<int>(
-                          valueListenable: _spo2Notifier,
-                          builder: (_, spo2, __) => Text(
-                            spo2 == 0 ? '--' : '$spo2%',
-                            style: const TextStyle(
-                              color: VColor.text,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
+                Expanded(
+                  child: Column(
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.water_drop_rounded,
+                                color: VColor.accent, size: 18),
+                            const SizedBox(width: 4),
+                            ValueListenableBuilder<int>(
+                              valueListenable: _spo2Notifier,
+                              builder: (_, spo2, __) => Text(
+                                spo2 == 0 ? '--' : '$spo2%',
+                                style: const TextStyle(
+                                  color: VColor.text,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    const Text("BLOOD OXYGEN",
-                        style: TextStyle(
-                            color: VColor.textMid,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold)),
-                  ],
+                      ),
+                      const SizedBox(height: 2),
+                      const Text("BLOOD OXYGEN",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: VColor.textMid,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
                 // Watch Steps
-                Column(
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.directions_walk_rounded,
-                            color: VColor.accentOrange, size: 18),
-                        const SizedBox(width: 4),
-                        ValueListenableBuilder<int>(
-                          valueListenable: _stepsNotifier,
-                          builder: (_, steps, __) {
-                            final s = steps > 0
-                                ? steps
-                                : (_lastSummary['steps']?.toInt() ?? 0);
-                            return Text(
-                              s == 0 ? '0' : '$s',
-                              style: const TextStyle(
-                                color: VColor.text,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            );
-                          },
+                Expanded(
+                  child: Column(
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.directions_walk_rounded,
+                                color: VColor.accentOrange, size: 18),
+                            const SizedBox(width: 4),
+                            ValueListenableBuilder<int>(
+                              valueListenable: _stepsNotifier,
+                              builder: (_, steps, __) {
+                                final s = steps > 0
+                                    ? steps
+                                    : (_lastSummary['steps']?.toInt() ?? 0);
+                                return Text(
+                                  s == 0 ? '0' : '$s',
+                                  style: const TextStyle(
+                                    color: VColor.text,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    const Text("LIVE STEPS",
-                        style: TextStyle(
-                            color: VColor.textMid,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold)),
-                  ],
+                      ),
+                      const SizedBox(height: 2),
+                      const Text("LIVE STEPS",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: VColor.textMid,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -3184,118 +3204,149 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
             // Metrics Row 2: Calories, Distance, Recovery Score, Blood Pressure
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 // Calories
-                Column(
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.local_fire_department_rounded,
-                            color: Colors.orangeAccent, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          "$displayKcal",
-                          style: const TextStyle(
-                              color: VColor.text,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800),
+                Expanded(
+                  child: Column(
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.local_fire_department_rounded,
+                                color: Colors.orangeAccent, size: 15),
+                            const SizedBox(width: 3),
+                            Text(
+                              "$displayKcal",
+                              style: const TextStyle(
+                                  color: VColor.text,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800),
+                            ),
+                            const Text(" kcal",
+                                style:
+                                    TextStyle(color: VColor.textLow, fontSize: 9.5)),
+                          ],
                         ),
-                        const Text(" kcal",
-                            style:
-                                TextStyle(color: VColor.textLow, fontSize: 10)),
-                      ],
-                    ),
-                    const Text("CALORIES",
-                        style: TextStyle(
-                            color: VColor.textMid,
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w600)),
-                  ],
+                      ),
+                      const SizedBox(height: 2),
+                      const Text("CALORIES",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: VColor.textMid,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
                 // Distance
-                Column(
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.straighten_rounded,
-                            color: VColor.accentGreen, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          displayDistKm.toStringAsFixed(2),
-                          style: const TextStyle(
-                              color: VColor.text,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800),
+                Expanded(
+                  child: Column(
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.straighten_rounded,
+                                color: VColor.accentGreen, size: 15),
+                            const SizedBox(width: 3),
+                            Text(
+                              displayDistKm.toStringAsFixed(2),
+                              style: const TextStyle(
+                                  color: VColor.text,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800),
+                            ),
+                            const Text(" km",
+                                style:
+                                    TextStyle(color: VColor.textLow, fontSize: 9.5)),
+                          ],
                         ),
-                        const Text(" km",
-                            style:
-                                TextStyle(color: VColor.textLow, fontSize: 10)),
-                      ],
-                    ),
-                    const Text("DISTANCE",
-                        style: TextStyle(
-                            color: VColor.textMid,
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w600)),
-                  ],
+                      ),
+                      const SizedBox(height: 2),
+                      const Text("DISTANCE",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: VColor.textMid,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
                 // Blood Pressure
-                Column(
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.monitor_heart_outlined,
-                            color: Color(0xFFFFD166), size: 16),
-                        const SizedBox(width: 4),
-                        ValueListenableBuilder<String>(
-                          valueListenable: _bpNotifier,
-                          builder: (_, bp, __) => Text(
-                            bp,
-                            style: const TextStyle(
-                                color: Color(0xFFFFD166),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800),
-                          ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.monitor_heart_outlined,
+                                color: Color(0xFFFFD166), size: 15),
+                            const SizedBox(width: 3),
+                            ValueListenableBuilder<String>(
+                              valueListenable: _bpNotifier,
+                              builder: (_, bp, __) => Text(
+                                bp,
+                                style: const TextStyle(
+                                    color: Color(0xFFFFD166),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const Text("BLOOD PRESS.",
-                        style: TextStyle(
-                            color: VColor.textMid,
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w600)),
-                  ],
+                      ),
+                      const SizedBox(height: 2),
+                      const Text("BLOOD PRESS.",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: VColor.textMid,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
                 // Recovery Score
-                Column(
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.shield_rounded,
-                            color: VColor.accent, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          _liveRecoveryScore > 0
-                              ? "$_liveRecoveryScore%"
-                              : "--",
-                          style: const TextStyle(
-                              color: VColor.text,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800),
+                Expanded(
+                  child: Column(
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.shield_rounded,
+                                color: VColor.accent, size: 15),
+                            const SizedBox(width: 3),
+                            Text(
+                              _liveRecoveryScore > 0
+                                  ? "$_liveRecoveryScore%"
+                                  : "--",
+                              style: const TextStyle(
+                                  color: VColor.text,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const Text("RECOVERY",
-                        style: TextStyle(
-                            color: VColor.textMid,
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w600)),
-                  ],
+                      ),
+                      const SizedBox(height: 2),
+                      const Text("RECOVERY",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: VColor.textMid,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
               ],
             ),

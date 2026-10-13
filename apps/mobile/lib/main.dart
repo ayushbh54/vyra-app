@@ -337,12 +337,16 @@ class _HomeShellState extends State<HomeShell> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    _titles[_index],
-                    style: TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).brightness == Brightness.dark ? VColor.text : const Color(0xFF0F172A),
+                  Expanded(
+                    child: Text(
+                      _titles[_index],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).brightness == Brightness.dark ? VColor.text : const Color(0xFF0F172A),
+                      ),
                     ),
                   ),
                 ],

@@ -1493,12 +1493,9 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
 
   InputImage? _buildInputImage(CameraImage image) {
     final camera = _cameras[_selectedCameraIndex];
-    // On iOS, camera_avfoundation already delivers portrait-rotated CVPixelBuffers (width < height),
-    // so rotation0deg reflects the actual pixel buffer orientation.
-    final rotation = Platform.isIOS
-        ? InputImageRotation.rotation0deg
-        : (InputImageRotationValue.fromRawValue(camera.sensorOrientation) ??
-            InputImageRotation.rotation90deg);
+    // Dynamic sensor rotation compensation for both iOS and Android portrait UX
+    final rotation = InputImageRotationValue.fromRawValue(camera.sensorOrientation) ??
+        InputImageRotation.rotation90deg;
 
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
     if (image.planes.isEmpty) return null;
@@ -1596,9 +1593,9 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
     final dt = (now.difference(_lastFrameTime).inMilliseconds / 1000.0).clamp(0.0, 0.25);
     _lastFrameTime = now;
 
-    // On iOS, CVPixelBuffer is already portrait (imgW < imgH). On Android, sensor buffer is landscape (imgW > imgH).
-    final normW = Platform.isIOS ? imgW : math.min(imgW, imgH);
-    final normH = Platform.isIOS ? imgH : math.max(imgW, imgH);
+    // In mobile portrait UX, width is always smaller dimension and height is larger dimension.
+    final normW = math.min(imgW, imgH);
+    final normH = math.max(imgW, imgH);
     if (normW > 0 && normH > 0) {
       _frameWidth = normW;
       _frameHeight = normH;
@@ -2469,6 +2466,8 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
                                     : ((_isBodyFramed || _aiAssistedMode)
                                         ? '🟢 AR VERIFIED (${(_landmarkConfidence * 100).clamp(86, 99).toInt()}%) • Sym ${_symmetryScore.toInt()}%'
                                         : '📱 Step back slightly so AR points lock on body'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: (!_aiAssistedMode && (!_isFormValid || _formWarning != null))
                                       ? const Color(0xFFFF6B6B)
@@ -2561,13 +2560,12 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
                       border: Border.all(color: Colors.white12),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildZoneLockChip('HEAD', _zoneHeadConf),
-                        _buildZoneLockChip('SHLDR', _zoneShoulderConf),
-                        _buildZoneLockChip('ARMS', _zoneArmConf),
-                        _buildZoneLockChip('CORE', _zoneCoreConf),
-                        _buildZoneLockChip('LEGS', _zoneLegConf),
+                        Expanded(child: Center(child: _buildZoneLockChip('HEAD', _zoneHeadConf))),
+                        Expanded(child: Center(child: _buildZoneLockChip('SHLDR', _zoneShoulderConf))),
+                        Expanded(child: Center(child: _buildZoneLockChip('ARMS', _zoneArmConf))),
+                        Expanded(child: Center(child: _buildZoneLockChip('CORE', _zoneCoreConf))),
+                        Expanded(child: Center(child: _buildZoneLockChip('LEGS', _zoneLegConf))),
                       ],
                     ),
                   ),
@@ -2726,59 +2724,65 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
 
           // Main Rep / Hold Counter + Form Score + Bilateral Joint Angle
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildMetricColumn(
-                label: 'AURA SYNC',
-                value: '${_auraMatchScore.toInt()}%',
-                valueColor: _auraMatchScore >= 65.0 ? VColor.accentGreen : VColor.accent,
-                sub: 'Form ${_formScore.toInt()}% • $_currentPhase',
+              Expanded(
+                child: _buildMetricColumn(
+                  label: 'AURA SYNC',
+                  value: '${_auraMatchScore.toInt()}%',
+                  valueColor: _auraMatchScore >= 65.0 ? VColor.accentGreen : VColor.accent,
+                  sub: 'Form ${_formScore.toInt()}% • $_currentPhase',
+                ),
               ),
 
               // Center Circular Counter
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 96,
-                    height: 96,
-                    child: CircularProgressIndicator(
-                      value: progress,
-                      strokeWidth: 8,
-                      backgroundColor: Colors.white12,
-                      valueColor: AlwaysStoppedAnimation<Color>(_repColor),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 90,
+                      height: 90,
+                      child: CircularProgressIndicator(
+                        value: progress,
+                        strokeWidth: 8,
+                        backgroundColor: Colors.white12,
+                        valueColor: AlwaysStoppedAnimation<Color>(_repColor),
+                      ),
                     ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '$_repCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          height: 1.0,
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$_repCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                            height: 1.0,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '/ $_targetReps ${_currentExercise.isHold ? "SEC" : "REPS"}',
-                        style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                        Text(
+                          '/ $_targetReps ${_currentExercise.isHold ? "SEC" : "REPS"}',
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
 
-              _buildMetricColumn(
-                label: '3D JOINT ANGLE',
-                value: '${_currentJointAngle.toInt()}°',
-                valueColor: _currentPhase == 'INFLECTION' ? VColor.accentGreen : VColor.accent,
-                sub: 'L:${_leftJointAngle.toInt()}° R:${_rightJointAngle.toInt()}°',
+              Expanded(
+                child: _buildMetricColumn(
+                  label: '3D JOINT ANGLE',
+                  value: '${_currentJointAngle.toInt()}°',
+                  valueColor: _currentPhase == 'INFLECTION' ? VColor.accentGreen : VColor.accent,
+                  sub: 'L:${_leftJointAngle.toInt()}° R:${_rightJointAngle.toInt()}°',
+                ),
               ),
             ],
           ),
@@ -2848,9 +2852,12 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
     required String sub,
   }) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white54,
             fontSize: 9.5,
@@ -2859,17 +2866,22 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
           ),
         ),
         const SizedBox(height: 3),
-        Text(
-          value,
-          style: TextStyle(
-            color: valueColor,
-            fontSize: 21,
-            fontWeight: FontWeight.w900,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 21,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
         const SizedBox(height: 2),
         Text(
           sub,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(color: Colors.white54, fontSize: 10),
         ),
       ],
