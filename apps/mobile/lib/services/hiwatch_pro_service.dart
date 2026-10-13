@@ -49,6 +49,7 @@ class HiWatchProProtocol {
     "HiWatch Ultra",
     "HiWatchUltra",
     "HiWatch Plus",
+    "HiWatch",
     "FitPro",
     "T800 Ultra",
     "T800",
@@ -65,6 +66,72 @@ class HiWatchProProtocol {
     "HK9 Pro",
     "DT900",
     "DT NO.1",
+    "Fire-Boltt",
+    "FireBoltt",
+    "BSW",
+    "Noise",
+    "ColorFit",
+    "NoiseFit",
+    "boAt",
+    "Storm",
+    "Xtend",
+    "Wave",
+    "Lunar",
+    "DaFit",
+    "MoYoung",
+    "Fastrack",
+    "Reflex",
+    "Titan",
+    "Pebble",
+    "Boult",
+    "Crown",
+    "Drift",
+    "Zebronics",
+    "Zeb-Fit",
+    "pTron",
+    "Amazfit",
+    "Zepp",
+    "Mi Band",
+    "Xiaomi",
+    "Redmi",
+    "Realme",
+    "OnePlus",
+    "HryFine",
+    "FitCloud",
+    "Laxasfit",
+    "GloryFit",
+    "WearFit",
+    "JYouPro",
+    "Yoho",
+    "IWO",
+    "HW",
+    "W26",
+    "M4",
+    "M5",
+    "M6",
+    "M7",
+    "M8",
+    "Y68",
+    "D20",
+    "FD68",
+    "Galaxy Watch",
+    "Galaxy",
+    "Samsung",
+    "SM-R",
+    "K5PZ",
+    "Pixel Watch",
+    "Wear OS",
+    "TicWatch",
+    "Fossil",
+    "Garmin",
+    "Fitbit",
+    "Huawei",
+    "Honor",
+    "Apple Watch",
+    "CMF",
+    "Smart Watch",
+    "SmartWatch",
+    "Watch",
     "FK",
     "ID",
   ];
@@ -82,6 +149,8 @@ class HiWatchProProtocol {
     0xBC, // Ultra2
     0xCD, // FitPro / HiWatch
     0xDC, // FitPro ACK
+    0xFE, // FitCloudPro / Realtek
+    0xEA, // Realtek / GloryFit
   };
 
   // ─── Command Packet Builders ─────────────────────────────────────────────────
@@ -727,7 +796,7 @@ class HiWatchProProtocol {
       return HiWatchTelemetryData(ackPacket: ack);
     }
 
-    // 3. DaFit / Shenzhen protocol (0xAB or 0xAA)
+    // 3. DaFit / Shenzhen / MoYoung protocol (0xAB or 0xAA)
     if ((header == 0xAB || header == 0xAA) && bytes.length >= 4) {
       final cmd = bytes[1];
       if ((cmd == 0x51 || cmd == 0x07 || cmd == 0x08) && bytes.length >= 5) {
@@ -736,34 +805,147 @@ class HiWatchProProtocol {
         int? kcal = bytes.length >= 7 ? (bytes[5] << 8) | bytes[6] : null;
         if (kcal != null && (kcal <= 0 || kcal > 15000)) kcal = null;
         kcal ??= steps != null ? (steps * 0.04).round() : null;
+        int? dist = bytes.length >= 9 ? (bytes[7] << 8) | bytes[8] : null;
+        if (dist != null && (dist <= 0 || dist > 500000)) dist = null;
         return HiWatchTelemetryData(
           steps: steps,
           calories: kcal,
+          distanceMeters: dist,
         );
       } else if (cmd == 0x09 || cmd == 0x31) {
         final hr = bytes[2];
         final spo2 = bytes.length >= 4 ? bytes[3] : null;
         return HiWatchTelemetryData(
           heartRateBpm: (hr >= 40 && hr <= 200) ? hr : null,
-          bloodOxygenSpo2: (spo2 != null && spo2 >= 75 && spo2 <= 100) ? spo2 : null,
+          bloodOxygenSpo2: (spo2 != null && spo2 >= 70 && spo2 <= 100) ? spo2 : null,
         );
+      } else if (cmd == 0x91 && bytes.length >= 4) {
+        final bat = bytes.lastWhere((b) => b >= 1 && b <= 100, orElse: () => 0);
+        if (bat > 0) return HiWatchTelemetryData(batteryLevel: bat);
       } else if (cmd == 0x00 && bytes.length >= 6) {
         // Length-prefixed 0xAB packet: [0xAB, 0x00, len, target, cmd, payload...]
         final subCmd = (bytes[3] == 0xFF && bytes.length > 4) ? bytes[4] : bytes[3];
         final pOffset = (bytes[3] == 0xFF && bytes.length > 5) ? 5 : 4;
-        if ((subCmd == 0x51 || subCmd == 0x52) && bytes.length >= pOffset + 3) {
-          final rawSteps = (bytes[pOffset] << 16) | (bytes[pOffset + 1] << 8) | bytes[pOffset + 2];
-          return HiWatchTelemetryData(steps: (rawSteps > 0 && rawSteps <= 100000) ? rawSteps : null);
+        if ((subCmd == 0x51 || subCmd == 0x52 || subCmd == 0x08) && bytes.length >= pOffset + 3) {
+          // MoYoung daily summary often has subType 0x08 at bytes[pOffset] followed by 3-byte steps, 3-byte kcal, 3-byte dist
+          final hasSubType08 = bytes[pOffset] == 0x08 && bytes.length >= pOffset + 4;
+          final sIdx = hasSubType08 ? pOffset + 1 : pOffset;
+          final rawSteps = (bytes[sIdx] << 16) | (bytes[sIdx + 1] << 8) | bytes[sIdx + 2];
+          final steps = (rawSteps > 0 && rawSteps <= 100000) ? rawSteps : null;
+          int? kcal;
+          int? dist;
+          if (hasSubType08 && bytes.length >= sIdx + 6) {
+            final rawKcal = (bytes[sIdx + 3] << 16) | (bytes[sIdx + 4] << 8) | bytes[sIdx + 5];
+            if (rawKcal > 0 && rawKcal <= 15000) kcal = rawKcal;
+          } else if (bytes.length >= sIdx + 5) {
+            final rawKcal = (bytes[sIdx + 3] << 8) | bytes[sIdx + 4];
+            if (rawKcal > 0 && rawKcal <= 15000) kcal = rawKcal;
+          }
+          if (hasSubType08 && bytes.length >= sIdx + 9) {
+            final rawDist = (bytes[sIdx + 6] << 16) | (bytes[sIdx + 7] << 8) | bytes[sIdx + 8];
+            if (rawDist > 0 && rawDist <= 500000) dist = rawDist;
+          }
+          return HiWatchTelemetryData(
+            steps: steps,
+            calories: kcal,
+            distanceMeters: dist,
+          );
         } else if ((subCmd == 0x09 || subCmd == 0x31) && bytes.length >= pOffset + 1) {
-          final hr = bytes[pOffset];
+          final firstByte = bytes[pOffset];
+          // Check if firstByte is a MoYoung measurement subType:
+          // 0x09/0x0A = Heart Rate, 0x11/0x12 = SpO2, 0x21/0x22 = Blood Pressure (Sys, Dia)
+          if (firstByte < 40 && bytes.length >= pOffset + 2) {
+            final val1 = bytes[pOffset + 1];
+            final val2 = bytes.length >= pOffset + 3 ? bytes[pOffset + 2] : null;
+            if (firstByte == 0x09 || firstByte == 0x0A || firstByte == 0x00) {
+              return HiWatchTelemetryData(
+                heartRateBpm: (val1 >= 40 && val1 <= 200) ? val1 : null,
+                bloodOxygenSpo2: (val2 != null && val2 >= 70 && val2 <= 100) ? val2 : null,
+              );
+            } else if (firstByte == 0x11 || firstByte == 0x12) {
+              return HiWatchTelemetryData(
+                bloodOxygenSpo2: (val1 >= 70 && val1 <= 100) ? val1 : null,
+              );
+            } else if ((firstByte == 0x21 || firstByte == 0x22) && val2 != null) {
+              final sys = max(val1, val2);
+              final dia = min(val1, val2);
+              if (sys >= 60 && sys <= 220 && dia >= 40 && dia <= 140) {
+                return HiWatchTelemetryData(
+                  bloodPressureSystolic: sys,
+                  bloodPressureDiastolic: dia,
+                );
+              }
+            }
+          }
+          final hr = firstByte;
           final spo2 = bytes.length >= pOffset + 2 ? bytes[pOffset + 1] : null;
           return HiWatchTelemetryData(
             heartRateBpm: (hr >= 40 && hr <= 200) ? hr : null,
             bloodOxygenSpo2: (spo2 != null && spo2 >= 70 && spo2 <= 100) ? spo2 : null,
           );
+        } else if (subCmd == 0x32 && bytes.length >= pOffset + 2) {
+          // DaFit One-Key Measure All: [0xAB, 0x00, len, 0xFF, 0x32, 0x80, hr, spo2, sys, dia]
+          final vIdx = (bytes[pOffset] == 0x80 || bytes[pOffset] == 0x00) ? pOffset + 1 : pOffset;
+          if (bytes.length > vIdx) {
+            final hr = bytes[vIdx];
+            final spo2 = bytes.length > vIdx + 1 ? bytes[vIdx + 1] : null;
+            final sys = bytes.length > vIdx + 2 ? bytes[vIdx + 2] : null;
+            final dia = bytes.length > vIdx + 3 ? bytes[vIdx + 3] : null;
+            return HiWatchTelemetryData(
+              heartRateBpm: (hr >= 40 && hr <= 200) ? hr : null,
+              bloodOxygenSpo2: (spo2 != null && spo2 >= 70 && spo2 <= 100) ? spo2 : null,
+              bloodPressureSystolic: (sys != null && sys >= 60 && sys <= 220) ? sys : null,
+              bloodPressureDiastolic: (dia != null && dia >= 40 && dia <= 140) ? dia : null,
+            );
+          }
+        } else if (subCmd == 0x91 && bytes.length >= pOffset + 1) {
+          for (int i = bytes.length - 1; i >= pOffset; i--) {
+            if (bytes[i] >= 1 && bytes[i] <= 100) {
+              return HiWatchTelemetryData(batteryLevel: bytes[i]);
+            }
+          }
         }
       }
       // If specific 0xAB patterns did not match, fall through to broad scan
+    }
+
+    // 3B. FitCloudPro / Realtek / GloryFit protocol (0xFE or 0xEA)
+    if ((header == 0xFE || header == 0xEA) && bytes.length >= 5) {
+      final hasTwoByteMagic = (bytes[0] == 0xFE && bytes[1] == 0xEA);
+      final cmd = hasTwoByteMagic ? bytes[2] : bytes[1];
+      final pIdx = hasTwoByteMagic ? 4 : 2;
+      if ((cmd == 0x01 || cmd == 0x51 || cmd == 0x08) && bytes.length >= pIdx + 3) {
+        final rawSteps = (bytes[pIdx] << 16) | (bytes[pIdx + 1] << 8) | bytes[pIdx + 2];
+        final steps = (rawSteps > 0 && rawSteps <= 100000) ? rawSteps : null;
+        int? kcal = bytes.length >= pIdx + 5 ? (bytes[pIdx + 3] << 8) | bytes[pIdx + 4] : null;
+        if (kcal != null && (kcal <= 0 || kcal > 15000)) kcal = null;
+        return HiWatchTelemetryData(steps: steps, calories: kcal);
+      } else if (cmd == 0x02 || cmd == 0x09 || cmd == 0x10 || cmd == 0x31) {
+        int? hr;
+        int? spo2;
+        int? sys;
+        int? dia;
+        for (int i = pIdx; i < bytes.length; i++) {
+          final v = bytes[i];
+          if (hr == null && v >= 40 && v <= 200) {
+            hr = v;
+          } else if (spo2 == null && hr != null && v >= 70 && v <= 100) {
+            spo2 = v;
+          } else if (sys == null && spo2 != null && v >= 60 && v <= 220) {
+            sys = v;
+          } else if (dia == null && sys != null && v >= 40 && v <= 140) {
+            dia = v;
+          }
+        }
+        if (hr != null || spo2 != null || sys != null) {
+          return HiWatchTelemetryData(
+            heartRateBpm: hr,
+            bloodOxygenSpo2: spo2,
+            bloodPressureSystolic: sys,
+            bloodPressureDiastolic: dia,
+          );
+        }
+      }
     }
 
     // 4. Format [0x02, hr, spo2, ...] — used by some HiWatch FitPro variants

@@ -232,11 +232,12 @@ void main() {
       expect(d.heartRateBpm, equals(80));
     });
 
-    // ── Protocol 5: Generic Single Byte & Length-Prefixed ──────────────────
-    test('Generic Single Byte: [76] bpm', () {
+    // ── Protocol 5: Generic Single Byte Battery (Not HR Masquerading) ───────
+    test('Generic Single Byte: [76] battery % (not HR)', () {
       final pkt = [76];
       final d = HiWatchProProtocol.parseNotifyPacket(pkt);
-      expect(d.heartRateBpm, equals(76));
+      expect(d.batteryLevel, equals(76));
+      expect(d.heartRateBpm, isNull);
     });
 
     test('Generic Format [0x02, hr=75, spo2=98]', () {

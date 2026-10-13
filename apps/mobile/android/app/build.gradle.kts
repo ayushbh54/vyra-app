@@ -26,7 +26,7 @@ android {
     }
 
     defaultConfig {
-        applicationId  = "com.vyra.app"
+        applicationId  = "com.ayush.vyra.fitness"
         minSdk         = 26       // Health Connect requires API 26+
         targetSdk      = flutter.targetSdkVersion
         versionCode    = flutter.versionCode

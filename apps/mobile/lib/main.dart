@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -6,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import 'api/client.dart';
 import 'dart:math' as math;
+import 'screens/health_sync.dart';
 import 'screens/ai_chat.dart';
 import 'screens/auth.dart';
 import 'screens/challenges_hub.dart';
@@ -159,6 +161,11 @@ class _BootstrapState extends State<_Bootstrap> {
   Widget build(BuildContext context) {
     if (_checking) {
       return const Scaffold(body: Center(child: VLoading(label: 'Starting VYRA')));
+    }
+
+    // Direct Smartwatch Hub on macOS desktop for live hardware testing with native Mac Bluetooth
+    if (Platform.isMacOS) {
+      return HealthSyncScreen(api: context.read<VyraApi>());
     }
 
     if (_signedIn && _onboardingDone) return const HomeShell();

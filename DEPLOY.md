@@ -1,246 +1,182 @@
-# VYRA — Build & Deploy Guide
+# 🚀 VYRA — Build & Deployment Guide
 
-Complete step-by-step instructions to produce a working APK for the SIH jury
-and deploy the API to Render.com.
-
----
-
-## Prerequisites
-
-| Tool | Version | Install |
-|------|---------|---------|
-| Flutter | 3.47+ | `brew install flutter` |
-| Android Studio | Hedgehog+ | https://developer.android.com/studio |
-| Android SDK | API 34 | Via Android Studio SDK Manager |
-| Node.js | 18+ | `/opt/homebrew/bin/node` already present |
-| psql | any | For running DB migrations |
+This guide provides step-by-step instructions to build and deploy every component of the **VYRA Ecosystem**:
+1. **Android Release APK** (`com.ayush.vyra.fitness` v`2.0.0+6`)
+2. **iOS Release Build** (`com.ayush.vyra.fitness` v`2.0.0+6` — `VYRA Fitness`)
+3. **Backend Micro-Engine API** (Render.com + PostgreSQL)
+4. **3D Web Portal & Admin Console** (Vercel)
+5. **Local Development Environment**
 
 ---
 
-## Part 1 — Release APK
+## 🛠️ Prerequisites
 
-### Step 1 — Install Android SDK (first time only)
+| Requirement | Recommended Version | Notes |
+| :--- | :--- | :--- |
+| **Flutter SDK** | `3.24+` / `3.47+` | Required for Android & iOS mobile builds |
+| **Node.js** | `20.11+` | Required for the backend API and shared TypeScript packages |
+| **Android SDK** | API Level `34+` | Required for Android APK compilation |
+| **Xcode** | `16+` (macOS only) | Required for iOS physical device or simulator builds |
+| **PostgreSQL (`psql`)** | `15+` (Optional) | Optional locally (API automatically falls back to in-memory store) |
 
-1. Open **Android Studio → More Actions → SDK Manager**
-2. Under **SDK Platforms**, check **Android 14 (API 34)**
-3. Under **SDK Tools**, check:
-   - **Android SDK Build-Tools 34**
-   - **Android SDK Command-line Tools**
-   - **Android Emulator**
-4. Click **Apply → OK**
+---
 
-`local.properties` already points to:
+## 📱 Part 1 — Android Release APK (`com.ayush.vyra.fitness`)
+
+### Option A: 1-Command Build Script
+From the repository root, run:
+```bash
+./build-apk.sh
 ```
-sdk.dir=/Users/ayushsinghbhadoria/Library/Android/sdk
-flutter.sdk=/opt/homebrew/share/flutter
-```
+This script installs dependencies and compiles a release APK pre-configured with the live backend (`https://vyra-app.onrender.com`).
 
-### Step 2 — Accept SDK licenses
-
+### Option B: Manual Flutter Build
 ```bash
 cd apps/mobile
-flutter doctor --android-licenses   # type 'y' for each prompt
+flutter pub get
+
+# Single universal release APK:
+flutter build apk --release \
+  --dart-define=VYRA_API_URL=https://vyra-app.onrender.com
+
+# Or split-per-ABI (smaller download size for modern ARM64 phones):
+flutter build apk --release --split-per-abi \
+  --dart-define=VYRA_API_URL=https://vyra-app.onrender.com
 ```
 
-### Step 3 — (Optional but recommended) Create a release keystore
+### APK Output Locations
+- **Universal APK:** `apps/mobile/build/app/outputs/flutter-apk/app-release.apk`
+- **ARM64 Phone APK:** `apps/mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`
 
-> Skip this for the SIH demo — the app will sign with the debug key.
-> For production / Play Store, create a real keystore:
-
+### Install on Connected Android Phone
 ```bash
-keytool -genkey -v \
-  -keystore apps/mobile/android/app/vyra-release.jks \
-  -alias vyra \
-  -keyalg RSA -keysize 2048 \
-  -validity 10000
-```
-
-Then create `apps/mobile/android/key.properties`:
-```properties
-storePassword=YOUR_STORE_PASSWORD
-keyPassword=YOUR_KEY_PASSWORD
-keyAlias=vyra
-storeFile=vyra-release.jks
-```
-
-> **Never commit `key.properties` or the `.jks` file to git.**
-
-### Step 4 — Build the APK
-
-For jury demo (uses debug signing, fastest):
-```bash
-cd apps/mobile
-flutter build apk \
-  --release \
-  --dart-define=VYRA_API_URL=https://vyra-api.onrender.com
-```
-
-Output: `build/app/outputs/flutter-apk/app-release.apk`
-
-For a split-arch APK (smaller file, preferred for side-loading):
-```bash
-flutter build apk \
-  --release \
-  --split-per-abi \
-  --dart-define=VYRA_API_URL=https://vyra-api.onrender.com
-```
-
-Output files:
-- `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`  ← use this on modern phones
-- `build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk`
-- `build/app/outputs/flutter-apk/app-x86_64-release.apk`
-
-### Step 5 — Install on jury device
-
-```bash
-# With USB cable connected:
-adb install build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-
-# Or share the .apk file directly via Google Drive / AirDrop
-```
-
-### Step 6 — Test on emulator (local backend)
-
-```bash
-# Terminal 1 — start backend
-cd /path/to/vyra
-set -a && source .env && set +a
-node services/api/dist/index.js
-
-# Terminal 2 — run on emulator (10.0.2.2 = host machine from emulator)
-cd apps/mobile
-flutter run --dart-define=VYRA_API_URL=http://10.0.2.2:4000
+adb install -r apps/mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 ```
 
 ---
 
-## Part 2 — Render Backend Deploy
+## 🍎 Part 2 — iOS Release Build (`VYRA Fitness`)
 
-### Step 1 — Push to GitHub
+The iOS app uses the unique bundle identifier **`com.ayush.vyra.fitness`** (Display Name: **`VYRA Fitness`**, Version: **`2.0.0+6`**) so it installs cleanly alongside other apps without bundle collisions.
 
+### 1. Build Release `.app` Bundle
 ```bash
-git init          # if not already a git repo
-git add .
-git commit -m "VYRA Phase 5 — production ready"
-git remote add origin https://github.com/YOUR_USERNAME/vyra.git
-git push -u origin main
+cd apps/mobile
+flutter pub get
+flutter build ios --release \
+  --dart-define=VYRA_API_URL=https://vyra-app.onrender.com
+```
+Output bundle: `apps/mobile/build/ios/iphoneos/Runner.app`
+
+### 2. Install onto a Connected iPhone
+```bash
+# List connected iOS devices to find your Device UDID:
+xcrun devicectl list devices
+
+# Install the compiled release bundle:
+xcrun devicectl device install app \
+  --device <YOUR_DEVICE_UDID> \
+  build/ios/iphoneos/Runner.app
 ```
 
-### Step 2 — Connect to Render
+---
 
-1. Go to https://dashboard.render.com
-2. Click **New → Blueprint**
-3. Connect your GitHub repo
-4. Render auto-detects `render.yaml` and creates:
-   - **Web Service:** `vyra-api`
+## ☁️ Part 3 — Backend API Deployment (Render.com)
+
+### 1. Deploy with `render.yaml` Blueprint
+1. Open the [Render Dashboard](https://dashboard.render.com) and click **New → Blueprint**.
+2. Connect your GitHub repository (`https://github.com/ayushbh54/vyra-app`).
+3. Render automatically reads `render.yaml` at the root and provisions:
+   - **Web Service:** `vyra-api` (Node.js + TypeScript)
    - **PostgreSQL Database:** `vyra-db`
-5. Click **Apply**
 
-### Step 3 — Set environment variables
+### 2. Configure Environment Variables
+In **Render Dashboard → `vyra-api` → Environment**, configure:
 
-In Render Dashboard → `vyra-api` → **Environment**:
+| Variable | Description |
+| :--- | :--- |
+| `GEMINI_API_KEY` | Primary Google Gemini API key ([Google AI Studio](https://aistudio.google.com)) |
+| `GEMINI_CHAT_API_KEY` | Optional dedicated key for AI Coach Chat quota |
+| `GEMINI_FOOD_API_KEY` | Optional dedicated key for Food Photo Vision Scanner quota |
+| `GEMINI_LAB_API_KEY` | Optional dedicated key for Clinical Lab Report OCR quota |
+| `ALLOWED_ORIGINS` | `*` (or comma-separated frontend origins) |
 
-| Key | Value |
-|-----|-------|
-| `GEMINI_API_KEY` | Your Gemini API key from https://aistudio.google.com |
-| `GEMINI_CHAT_API_KEY` | Same or separate key for AI Chat quota |
-| `GEMINI_FOOD_API_KEY` | Same or separate key for Food Scan quota |
-| `GEMINI_LAB_API_KEY` | Same or separate key for Lab Report quota |
-| `ALLOWED_ORIGINS` | `*` for demo, or comma-separated domains for production |
+*(Note: `JWT_SECRET` and `HEALTH_ENCRYPTION_KEY_V1` are automatically generated by Render via `render.yaml`.)*
 
-> `JWT_SECRET` and `HEALTH_ENCRYPTION_KEY_V1` are auto-generated by Render.
-
-### Step 4 — Run database migrations
-
-After first deploy, open the Render **Shell** tab on `vyra-api` and run:
-
+### 3. Run Database Migrations (When Using PostgreSQL)
 ```bash
 chmod +x services/api/db/migrate.sh
 DATABASE_URL="$DATABASE_URL" bash services/api/db/migrate.sh
 ```
 
-Or run locally with the Render DB's external connection string:
+### 4. Verify Live Health Endpoint
 ```bash
-export DATABASE_URL="postgresql://vyra:...@..."
-bash services/api/db/migrate.sh
-```
-
-### Step 5 — Verify
-
-```bash
-curl https://vyra-api.onrender.com/health
-# Expected: {"ok":true}
-```
-
-### Step 6 — Rebuild APK with live URL
-
-```bash
-cd apps/mobile
-flutter build apk \
-  --release \
-  --split-per-abi \
-  --dart-define=VYRA_API_URL=https://vyra-api.onrender.com
+curl https://vyra-app.onrender.com/health
+# Expected response: {"ok":true}
 ```
 
 ---
 
-## Part 3 — Quick Reference
+## 🌐 Part 4 — Web Portal Deployment (Vercel)
 
-### Local dev startup (all-in-one)
+The interactive 3D Web Portal and Superadmin Console are located in `public/` and configured via `vercel.json`.
 
-```bash
-# From project root:
-set -a && source .env && set +a
-node services/api/dist/index.js &
-
-cd apps/mobile
-flutter run --dart-define=VYRA_API_URL=http://10.0.2.2:4000
-```
-
-### Rebuild TypeScript after changes
-
-```bash
-cd services/api && npm run build
-```
-
-### Key API endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
-| POST | `/v1/demo/session` | One-tap demo login |
-| POST | `/v1/auth/signup` | Real account |
-| POST | `/v1/auth/login` | Login |
-| GET | `/v1/today` | Today's dashboard |
-| POST | `/v1/activities` | Upload GPS activity |
-| GET | `/v1/leaderboard` | Tier leaderboard |
-| POST | `/v1/food/scan` | AI food photo scan |
-| POST | `/v1/lab-report/analyse` | AI blood test scan |
-| POST | `/v1/chat/message` | AI coach chat |
-| GET | `/v1/feed` | Social activity feed |
-
-### APK file location after build
-
-```
-apps/mobile/build/app/outputs/flutter-apk/
-├── app-arm64-v8a-release.apk   ← install this on phones
-├── app-armeabi-v7a-release.apk
-└── app-x86_64-release.apk      ← install this on emulator
-```
+### Deploy to Vercel
+1. Import the repository in the [Vercel Dashboard](https://vercel.com/new).
+2. Vercel automatically detects `vercel.json` (`"outputDirectory": "public"`).
+3. Available routes once deployed:
+   - `/` → Unified 3D Athlete & Admin Portal (`public/index.html`)
+   - `/portal` → 3D Athlete Studio (`public/portal.html`)
+   - `/admin` → Enterprise Superadmin Console (`public/admin.html`)
 
 ---
 
-## Troubleshooting
+## 💻 Part 5 — Local Development & API Reference
 
-| Problem | Fix |
-|---------|-----|
-| `Unable to locate Android SDK` | Run Android Studio, install SDK via SDK Manager |
-| `flutter doctor --android-licenses` hangs | Open Android Studio first, then retry |
-| Render build fails: `Cannot find module '@vyra/types'` | Check `buildCommand` in render.yaml — types must build first |
-| `Health Connect not installed` | App gracefully degrades — steps show `--` |
-| APK installs but API calls fail | Check `VYRA_API_URL` dart-define; ensure backend is up |
-| `GEMINI_API_KEY` not set on Render | Add it in Render Dashboard → Environment |
+### Start Everything Locally
+```bash
+# 1. Build shared types and backend API
+npm run build
+
+# 2. Copy environment template and start API on http://localhost:4000
+cp .env.example .env
+npm start
+
+# 3. Run backend unit test suite (175 tests)
+npm test --prefix services/api
+
+# 4. Run Flutter mobile test suite
+cd apps/mobile && flutter test
+```
+
+### Core REST API Endpoints
+
+| Method | Endpoint | Purpose |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Service liveness check |
+| `POST` | `/v1/demo/session` | Instant 1-tap guest athlete session |
+| `POST` | `/v1/auth/signup` | Create athlete account |
+| `POST` | `/v1/auth/login` | Authenticate athlete or admin |
+| `GET` | `/v1/today` | Chrono-adaptive daily dashboard & schedule |
+| `POST` | `/v1/chat/message` | Context-aware AI Health & Fitness Coach |
+| `POST` | `/v1/food/scan` | ICMR-NIN Indian Food Vision Scanner |
+| `POST` | `/v1/lab-report/analyse` | Clinical Blood Report OCR & Safety Guardrails |
+| `POST` | `/v1/exercises/generate` | Dynamic Gemini Exercise & Routine Generator |
+| `GET` | `/v1/leaderboard` | Consistency-weighted social leaderboard |
+| `GET` | `/v1/feed` | Community social feed & kudos |
+
+---
+
+## 🔧 Troubleshooting
+
+| Symptom | Resolution |
+| :--- | :--- |
+| `Unable to locate Android SDK` | Install Android SDK Platform 34 via Android Studio → SDK Manager |
+| `Cannot find module '@vyra/types'` | Run `npm run build:types` from the repository root before building `services/api` |
+| Mobile app cannot reach local backend on Android Emulator | Pass `--dart-define=VYRA_API_URL=http://10.0.2.2:4000` |
+| iOS install fails with bundle conflict | Confirmed fixed: `VYRA Fitness` uses unique bundle ID `com.ayush.vyra.fitness` |
 
 ---
 
 *VYRA — SIH 2026 Problem Statement-26196*
+

@@ -83,16 +83,17 @@ void main() {
       expect(d.bloodOxygenSpo2, equals(97));
     });
 
-    // ── Single-byte raw HR ────────────────────────────────────────────────
-    test('Single byte [78] → treated as HR bpm', () {
+    // ── Single-byte battery level (not HR) ────────────────────────────────
+    test('Single byte [78] → treated as battery level (not HR bpm)', () {
       final d = HiWatchProProtocol.parseNotifyPacket([78]);
-      expect(d.heartRateBpm, equals(78));
+      expect(d.batteryLevel, equals(78));
+      expect(d.heartRateBpm, isNull);
     });
 
-    test('Single byte [0xCD] → NOT treated as HR (protocol header excluded)', () {
+    test('Single byte [0xCD] → NOT treated as HR or battery', () {
       final d = HiWatchProProtocol.parseNotifyPacket([0xCD]);
-      // 0xCD = 205, in HR range, but excluded as protocol header
       expect(d.heartRateBpm, isNull);
+      expect(d.batteryLevel, isNull);
     });
   });
 

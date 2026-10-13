@@ -419,6 +419,20 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
     if (mounted) _load();
   }
 
+  Future<void> _verifyExerciseWithCamera(PlanEntry entry) async {
+    final verified = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PoseTrackerScreen(
+          initialExerciseSlug: entry.exerciseSlug,
+          initialExerciseName: entry.name,
+        ),
+      ),
+    );
+    if (verified == true && mounted) {
+      await _complete(entry);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = ThemeManager.instance.isDark;
@@ -1323,23 +1337,45 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Start button
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF0284C7),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+              // Start button + AI Selfie Camera Verify button
+              Row(
+                children: [
+                  Expanded(
+                    flex: 5,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF0284C7),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () => _openExercise(nextExercise),
+                      icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                      label: const Text(
+                        'Start Workout',
+                        style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
+                      ),
+                    ),
                   ),
-                  onPressed: () => _openExercise(nextExercise),
-                  icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                  label: const Text(
-                    'Start Workout',
-                    style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 4,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF0891B2),
+                        side: const BorderSide(color: Color(0xFF0891B2), width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () => _verifyExerciseWithCamera(nextExercise),
+                      icon: const Icon(Icons.camera_front_rounded, size: 17),
+                      label: const Text(
+                        'AI Verify',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
@@ -1441,6 +1477,9 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
   Widget _buildServicesGrid(BuildContext context) {
     final isDark = ThemeManager.instance.isDark;
     final textPrimary = isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A);
+    final activeEntry = (_data != null && _data!.plan.entries.isNotEmpty)
+        ? _data!.plan.entries.first
+        : null;
 
     final services = [
       (
@@ -1448,9 +1487,15 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
         Icons.camera_enhance_rounded,
         const Color(0xFFCFFAFE), // Cyan bg
         const Color(0xFF0891B2), // Cyan icon
-        () => Navigator.of(context).push(
+        () {
+          if (activeEntry != null) {
+            _verifyExerciseWithCamera(activeEntry);
+          } else {
+            Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const PoseTrackerScreen()),
-            ),
+            );
+          }
+        },
       ),
       (
         'Blood Bank',

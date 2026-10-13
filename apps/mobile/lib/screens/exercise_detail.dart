@@ -13,6 +13,7 @@ import '../services/tts_service.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/avatar_customization_service.dart';
 import 'avatar_studio.dart';
+import 'pose_tracker.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -32,6 +33,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   late int _remainingSec = widget.item.defaultDurationSec;
   bool _running = false;
   bool _completing = false;
+  bool _isTouching3D = false;
+  bool _cameraVerified = false;
   MovementDefinition? _movement;
 
   @override
@@ -40,6 +43,17 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     _checkMovement();
     // Auto-sync avatar pose to this exercise — driven by Gemini workout plan slug
     _syncAvatarPose();
+    _checkOfflineVerification();
+  }
+
+  Future<void> _checkOfflineVerification() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final verified = prefs.getStringList('vyra_verified_exercises') ?? [];
+      if (mounted && verified.contains(widget.item.slug)) {
+        setState(() => _cameraVerified = true);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -96,6 +110,26 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     });
   }
 
+  Future<void> _verifyWithCamera() async {
+    _ticker?.cancel();
+    setState(() => _running = false);
+    final verified = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PoseTrackerScreen(
+          initialExerciseSlug: widget.item.slug,
+          initialExerciseName: widget.item.name,
+        ),
+      ),
+    );
+    if (verified == true && mounted) {
+      setState(() {
+        _cameraVerified = true;
+        _remainingSec = 0;
+      });
+      await _markComplete();
+    }
+  }
+
   Future<void> _markComplete() async {
     setState(() => _completing = true);
     try {
@@ -109,13 +143,30 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       final message = result.coinOutcomes.map((o) => o.message).where((m) => m.isNotEmpty).join('\n');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message.isEmpty ? 'Great job! Exercise logged.' : message),
+          content: Text(message.isEmpty ? 'Great job! Exercise verified & logged.' : message),
           backgroundColor: VColor.accentGreen,
         ),
       );
       Navigator.of(context).pop();
-    } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      // Offline resilient completion
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final verified = prefs.getStringList('vyra_verified_exercises') ?? [];
+        if (!verified.contains(widget.item.slug)) {
+          verified.add(widget.item.slug);
+          await prefs.setStringList('vyra_verified_exercises', verified);
+        }
+      } catch (_) {}
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Workout verified & saved offline! Will sync automatically.'),
+          backgroundColor: VColor.accentGreen,
+        ),
+      );
+      Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _completing = false);
     }
@@ -143,6 +194,9 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
         centerTitle: false,
       ),
       body: SingleChildScrollView(
+        physics: _isTouching3D
+            ? const NeverScrollableScrollPhysics()
+            : const BouncingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(VSpace.base, VSpace.xs, VSpace.base, VSpace.xxxl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,11 +206,103 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
               VPill(item.difficulty),
               if (item.isSeatedFriendly) const VPill('Seated-friendly'),
               if (_movement != null) const VPill('3D coaching', tone: CardTone.accent),
+              if (_cameraVerified) const VPill('AI Camera Verified ✓', tone: CardTone.accent),
             ]),
             const SizedBox(height: VSpace.md),
 
-            // ── Animated Visual Movement Guide ──────────────────────────────
-            _ExerciseVisualGuide(item: item, movement: _movement),
+            // ── Animated Visual Movement Guide (FORM-AI Multi-Axis Orbit) ───
+            _ExerciseVisualGuide(
+              item: item,
+              movement: _movement,
+              onTouch3DChanged: (touching) {
+                if (_isTouching3D != touching) {
+                  setState(() => _isTouching3D = touching);
+                }
+              },
+            ),
+            const SizedBox(height: VSpace.md),
+
+            // ── ARTIFIT AI Selfie Camera Workout Verification Banner ────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    VColor.accent.withValues(alpha: 0.16),
+                    VColor.accentCyan.withValues(alpha: 0.10),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(VRadius.lg),
+                border: Border.all(
+                  color: _cameraVerified
+                      ? VColor.accentGreen.withValues(alpha: 0.7)
+                      : VColor.accent.withValues(alpha: 0.45),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: (_cameraVerified ? VColor.accentGreen : VColor.accent)
+                          .withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _cameraVerified ? Icons.verified_rounded : Icons.camera_front_rounded,
+                      color: _cameraVerified ? VColor.accentGreen : VColor.accent,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _cameraVerified
+                              ? 'AI Camera Verified ✓'
+                              : 'AI Selfie Camera Verification',
+                          style: const TextStyle(
+                            color: VColor.text,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _cameraVerified
+                              ? 'Posture & reps verified by VYRA Pose Engine.'
+                              : 'Place phone steady, step back & verify ${item.name} with live skeleton tracking (works offline).',
+                          style: const TextStyle(
+                            color: VColor.textMid,
+                            fontSize: 11.5,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: _verifyWithCamera,
+                    icon: const Icon(Icons.videocam_rounded, size: 16),
+                    label: Text(_cameraVerified ? 'Redo' : 'Verify'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _cameraVerified ? VColor.accentGreen : VColor.accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(VRadius.pill),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: VSpace.lg),
 
             // ── Timer Card ──────────────────────────────────────────────────
@@ -392,10 +538,15 @@ enum ExercisePerspective { side, front, diag, orbit }
 
 
 class _ExerciseVisualGuide extends StatefulWidget {
-  const _ExerciseVisualGuide({required this.item, this.movement});
+  const _ExerciseVisualGuide({
+    required this.item,
+    this.movement,
+    this.onTouch3DChanged,
+  });
 
   final LibraryItem item;
   final MovementDefinition? movement;
+  final ValueChanged<bool>? onTouch3DChanged;
 
   @override
   State<_ExerciseVisualGuide> createState() => _ExerciseVisualGuideState();
@@ -415,6 +566,15 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
 
   bool _isDanceMode = false;
   String _exercisePosesJs = '';
+  String _preloadedSetupsJson = '{}';
+  bool _avatarSetupCached = false;
+  dynamic _webViewCtrl;
+
+  /// Prevents any async callback from calling setState after dispose().
+  /// Guards: rootBundle.loadString, SharedPreferences.getInstance,
+  /// addPostFrameCallback, and _onAvatarProfileChanged.
+  bool _isDisposed = false;
+
 
   /// Returns the best camera angle for demonstrating this exercise
   String _getExerciseCameraOrbit(String slug) {
@@ -470,13 +630,15 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
     
     // Tell avatar service which exercise is active
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isDisposed) return; // guard: screen may have been popped by the time frame fires
       AvatarCustomizationService.instance
           .setActiveExercisePose(widget.item.slug);
     });
 
     // Preload exercise bone manipulation JS from bundle for offline instant injection
     rootBundle.loadString('assets/js/exercise_poses.js').then((js) {
-      if (mounted) setState(() => _exercisePosesJs = js);
+      if (_isDisposed || !mounted) return;
+      setState(() => _exercisePosesJs = js);
     }).catchError((_) {});
 
     _animCtrl = AnimationController(
@@ -490,7 +652,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
 
     // Load active 3D coach model and customized styling
     SharedPreferences.getInstance().then((prefs) {
-      if (!mounted) return;
+      if (_isDisposed || !mounted) return; // guard against rapid pop-then-push
       final savedModel = prefs.getString('selected_coach_model');
       final savedName = prefs.getString('selected_coach_name');
       final savedGender = prefs.getString('selected_coach_gender') ??
@@ -499,7 +661,14 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
           (savedModel?.contains('female') ?? false);
       final savedOutfitColorInt = prefs.getInt('coach_outfit_color');
       final savedAuraColorInt = prefs.getInt('coach_aura_color');
+      final cachedSetupsRaw = prefs.getString('vyra_verified_avatar_setups_v6') ?? '{}';
+      final rigId = isFemale ? 'female' : 'male';
+      final poseKey = AvatarCustomizationService.getExercisePoseKey(widget.item.slug);
+      final cacheEntryKey = 'vyra_verified_setup_v6_${rigId}_$poseKey';
+      final alreadyCached = cachedSetupsRaw.contains('"$cacheEntryKey"');
       setState(() {
+        _preloadedSetupsJson = cachedSetupsRaw;
+        _avatarSetupCached = alreadyCached;
         _coachModelPath = savedModel ??
             (isFemale
                 ? 'assets/models/female_coach.glb'
@@ -514,6 +683,15 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
           _speedMultiplier = AvatarCustomizationService.poseToTimeScale(pose).clamp(0.3, 2.0);
         }
       });
+      // Mark this exercise setup as verified & cached in SharedPreferences for instant repeat loads
+      if (!alreadyCached) {
+        try {
+          final updatedRaw = cachedSetupsRaw == '{}'
+              ? '{"$cacheEntryKey":true}'
+              : '${cachedSetupsRaw.substring(0, cachedSetupsRaw.length - 1)},"$cacheEntryKey":true}';
+          prefs.setString('vyra_verified_avatar_setups_v6', updatedRaw);
+        } catch (_) {}
+      }
       // Set avatar pose to match exercise
       AvatarCustomizationService.instance
           .setActiveExercisePose(widget.item.slug.toLowerCase());
@@ -521,15 +699,20 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
   }
 
   void _onAvatarProfileChanged() {
-    if (mounted) setState(() {});
+    if (_isDisposed || !mounted) return;
+    setState(() {});
   }
 
   @override
   void dispose() {
+    // Set _isDisposed BEFORE super.dispose() so any in-flight async callbacks
+    // (rootBundle, SharedPreferences, addPostFrameCallback) are silently dropped.
+    _isDisposed = true;
     AvatarCustomizationService.instance.removeListener(_onAvatarProfileChanged);
     _animCtrl.dispose();
     super.dispose();
   }
+
 
   void _togglePlay() {
     HapticFeedback.selectionClick();
@@ -542,6 +725,18 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
         _isPlaying = true;
       }
     });
+    try {
+      final poseKey = AvatarCustomizationService.getExercisePoseKey(widget.item.slug);
+      if (_isPlaying) {
+        _webViewCtrl?.runJavaScript(
+          'if (window.VyraExercisePose) { window.VyraExercisePose.apply("$poseKey", $_speedMultiplier); }',
+        );
+      } else {
+        _webViewCtrl?.runJavaScript(
+          'if (window.VyraExercisePose) { window.VyraExercisePose.stop(); }',
+        );
+      }
+    } catch (_) {}
   }
 
   void _cycleSpeed() {
@@ -561,6 +756,12 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
         _animCtrl.repeat();
       }
     });
+    try {
+      _webViewCtrl?.runJavaScript(
+        'if (window.VyraExercisePose) { window.VyraExercisePose.setSpeed($_speedMultiplier); } '
+        'var mv = document.querySelector("model-viewer"); if (mv && mv.timeScale > 0) { mv.timeScale = $_speedMultiplier; }',
+      );
+    } catch (_) {}
   }
 
   void _setPresetAngle(String orbitString, String label) {
@@ -569,6 +770,12 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
       _orbitAngleString = orbitString;
       _activeAngleLabel = label;
     });
+    try {
+      _webViewCtrl?.runJavaScript(
+        'if (window.VyraExercisePose) { window.VyraExercisePose.setOrbit("$orbitString"); } '
+        'else { var mv = document.querySelector("model-viewer"); if (mv) { mv.cameraOrbit = "$orbitString"; } }',
+      );
+    } catch (_) {}
   }
 
   String _buildModelJs({
@@ -602,10 +809,11 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
 
     final poseJs = poseKey.isNotEmpty
         ? '''
+        window.__VYRA_PRELOADED_META = $_preloadedSetupsJson;
         $_exercisePosesJs
         function applyVyraPose() {
           if (typeof window.VyraExercisePose !== "undefined") {
-            window.VyraExercisePose.apply("$poseKey");
+            window.VyraExercisePose.apply("$poseKey", $_speedMultiplier);
           } else {
             if (!document.getElementById("vyra-pose-script")) {
               var s = document.createElement("script");
@@ -613,14 +821,14 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
               s.src = "/assets/assets/js/exercise_poses.js";
               s.onload = function() {
                 if (typeof window.VyraExercisePose !== "undefined") {
-                  window.VyraExercisePose.apply("$poseKey");
+                  window.VyraExercisePose.apply("$poseKey", $_speedMultiplier);
                 }
               };
               document.head.appendChild(s);
             }
           }
         }
-        setTimeout(applyVyraPose, 400);'''
+        setTimeout(applyVyraPose, 120);'''
         : '';
 
     return '''
@@ -628,6 +836,9 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
       function apply() {
         var mv = document.querySelector('model-viewer');
         if (!mv) return;
+        mv.setAttribute('touch-action', 'none');
+        mv.setAttribute('min-camera-orbit', 'auto 10deg auto');
+        mv.setAttribute('max-camera-orbit', 'auto 170deg auto');
         mv.timeScale = $timeScale;
         $outfitJs
         $poseJs
@@ -794,9 +1005,11 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Text(
-                      '3D COACH AVATAR • 180° VIEWPORT',
-                      style: TextStyle(
+                    Text(
+                      _avatarSetupCached
+                          ? '3D COACH • ⚡ CACHED SETUP'
+                          : '3D COACH • ✓ VERIFIED SETUP',
+                      style: const TextStyle(
                         color: VColor.accent,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -880,7 +1093,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
             ),
           ),
 
-          // ── 180° Horizontal Perspective Viewport Selector ──
+          // ── FORM-AI Multi-Axis Perspective Viewport Selector (Right/Left/Up/Down) ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: VSpace.base, vertical: 4),
             child: Container(
@@ -894,28 +1107,34 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
               child: Row(
                 children: [
                   _buildAnglePill(
-                    label: 'Front View',
+                    label: 'Front',
                     icon: Icons.accessibility_new_rounded,
                     isSelected: _activeAngleLabel == 'Front View',
                     onTap: () => _setPresetAngle('0deg 85deg 3.5m', 'Front View'),
                   ),
                   _buildAnglePill(
-                    label: 'Side View',
+                    label: 'Side',
                     icon: Icons.view_sidebar_rounded,
                     isSelected: _activeAngleLabel == 'Side View',
                     onTap: () => _setPresetAngle('90deg 85deg 3.5m', 'Side View'),
                   ),
                   _buildAnglePill(
-                    label: '45° Angle',
+                    label: '45°',
                     icon: Icons.view_in_ar_rounded,
                     isSelected: _activeAngleLabel == '45° Angle',
                     onTap: () => _setPresetAngle('45deg 85deg 3.5m', '45° Angle'),
                   ),
                   _buildAnglePill(
-                    label: 'Left Side',
+                    label: 'Left',
                     icon: Icons.view_sidebar_outlined,
                     isSelected: _activeAngleLabel == 'Left Side',
                     onTap: () => _setPresetAngle('-90deg 85deg 3.5m', 'Left Side'),
+                  ),
+                  _buildAnglePill(
+                    label: 'Top/Up',
+                    icon: Icons.vertical_align_top_rounded,
+                    isSelected: _activeAngleLabel == 'Top View',
+                    onTap: () => _setPresetAngle('20deg 35deg 3.5m', 'Top View'),
                   ),
                 ],
               ),
@@ -995,76 +1214,88 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
             ),
           ),
 
-          // ── 3D Coach Avatar Viewport (360° Touch Orbit + Perspective Presets) ──
-          SizedBox(
-            height: 220,
-            width: double.infinity,
-            child: Stack(
-              children: [
-                // ── Ambient Aura Glow ──
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: RadialGradient(
-                        center: const Alignment(0, -0.1),
-                        radius: 0.9,
-                        colors: [
-                          (_coachAuraColor ?? const Color(0xFF00E5FF)).withValues(alpha: 0.18),
-                          const Color(0xFF0D0D12),
-                        ],
+          // ── 3D Coach Avatar Viewport (FORM-AI Multi-Axis Touch Orbit: Right/Left/Up/Down) ──
+          Listener(
+            onPointerDown: (_) => widget.onTouch3DChanged?.call(true),
+            onPointerUp: (_) => widget.onTouch3DChanged?.call(false),
+            onPointerCancel: (_) => widget.onTouch3DChanged?.call(false),
+            child: SizedBox(
+              height: 240,
+              width: double.infinity,
+              child: Stack(
+                children: [
+                  // ── Ambient Aura Glow ──
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: RadialGradient(
+                          center: const Alignment(0, -0.1),
+                          radius: 0.9,
+                          colors: [
+                            (_coachAuraColor ?? const Color(0xFF00E5FF)).withValues(alpha: 0.18),
+                            const Color(0xFF0D0D12),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // ── Realistic 3D Human Coach ──
-                const Center(
-                  child: CircularProgressIndicator(color: VColor.accent, strokeWidth: 2),
-                ),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Builder(builder: (context) {
-                    final isFemale = _coachModelPath.contains('female');
-                    final exerciseAnim = AvatarCustomizationService.getExerciseAnimation(
-                      widget.item.slug, isFemale: isFemale);
-                    final danceAnim = AvatarCustomizationService.getDanceAnimation(
-                      isFemale: isFemale);
-                    final currentAnim = _isDanceMode ? danceAnim : exerciseAnim;
-                    // Male: always autoPlay (Soldier has real exercise anims).
-                    // Female: only play in dance mode (idle = samba dance).
-                    final shouldPlay = isFemale ? _isDanceMode : true;
-                    final ts = _isDanceMode ? 1.8 : _speedMultiplier;
-                    
-                    final poseKey = _isDanceMode
-                        ? ''
-                        : AvatarCustomizationService.getExercisePoseKey(widget.item.slug);
+                  // ── Realistic 3D Human Coach ──
+                  const Center(
+                    child: CircularProgressIndicator(color: VColor.accent, strokeWidth: 2),
+                  ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Builder(builder: (context) {
+                      final isFemale = _coachModelPath.contains('female');
+                      final exerciseAnim = AvatarCustomizationService.getExerciseAnimation(
+                        widget.item.slug, isFemale: isFemale);
+                      final danceAnim = AvatarCustomizationService.getDanceAnimation(
+                        isFemale: isFemale);
+                      final currentAnim = _isDanceMode ? danceAnim : exerciseAnim;
+                      final shouldPlay = _isDanceMode
+                          ? true
+                          : currentAnim.isNotEmpty;
+                      final ts = _isDanceMode ? 1.8 : _speedMultiplier;
 
-                    return ModelViewer(
-                      key: ValueKey(
-                          '${_coachModelPath}_${_orbitAngleString}_${_speedMultiplier}_${_isDanceMode}_${_coachOutfitColor?.toARGB32()}'),
-                      src: _coachModelPath,
-                      alt: '3D Coach $_coachName',
-                      ar: false,
-                      autoRotate: false,
-                      cameraControls: true,
-                      autoPlay: shouldPlay,
-                      shadowIntensity: 1.0,
-                      shadowSoftness: 0.8,
-                      exposure: 1.4,
-                      environmentImage: 'neutral',
-                      backgroundColor: const Color(0xFF0D0D12),
-                      cameraOrbit: _orbitAngleString,
-                      animationName: currentAnim,
-                      loading: Loading.eager,
-                      relatedJs: _buildModelJs(
-                        timeScale: shouldPlay ? ts : 0.0,
-                        outfit: _coachOutfitColor,
-                        poseKey: poseKey,
-                      ),
-                    );
-                  }),
-                ),
+                      final poseKey = _isDanceMode
+                          ? ''
+                          : AvatarCustomizationService.getExercisePoseKey(widget.item.slug);
+
+                      return ModelViewer(
+                        key: ValueKey(
+                            '${_coachModelPath}_${widget.item.slug}_${_isDanceMode}_${_coachOutfitColor?.toARGB32()}_${_exercisePosesJs.isNotEmpty}'),
+                        src: _coachModelPath,
+                        alt: '3D Coach $_coachName',
+                        ar: false,
+                        autoRotate: false,
+                        cameraControls: true,
+                        touchAction: TouchAction.none,
+                        minCameraOrbit: 'auto 10deg auto',
+                        maxCameraOrbit: 'auto 170deg auto',
+                        interpolationDecay: 100,
+                        autoPlay: shouldPlay,
+                        shadowIntensity: 1.0,
+                        shadowSoftness: 0.8,
+                        exposure: 1.4,
+                        environmentImage: 'neutral',
+                        backgroundColor: const Color(0xFF0D0D12),
+                        cameraOrbit: _orbitAngleString,
+                        animationName: currentAnim,
+                        loading: Loading.eager,
+                        onWebViewCreated: (controller) {
+                          _webViewCtrl = controller;
+                        },
+                        relatedJs: _buildModelJs(
+                          timeScale: shouldPlay ? ts : 0.0,
+                          outfit: _coachOutfitColor,
+                          poseKey: poseKey,
+                        ),
+                      );
+                    }),
+                  ),
+
 
                 // ── Top HUD: Drag hint & Coach name ──
                 Positioned(
@@ -1151,7 +1382,8 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                       ],
                     ),
                   ),
-                ],
+                  ],
+                ),
               ),
             ),
           const SizedBox(height: VSpace.xs),

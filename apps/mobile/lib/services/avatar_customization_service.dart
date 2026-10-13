@@ -288,36 +288,59 @@ class AvatarCustomizationService extends ChangeNotifier {
   static String slugToAvatarPose(String slug) {
     final s = slug.toLowerCase().replaceAll(RegExp(r'[\s_-]+'), '_');
 
-    // Running / Cardio
-    if (_matchAny(s, ['run', 'jog', 'sprint', 'marathon', 'treadmill', 'dash'])) { return 'running'; }
+    // Pre-check specific multi-word slugs that would collide with short substrings
+    // e.g. 'crunch' contains 'run', 'box_breathing'/'box_squat' contain 'box'
+    if (_matchAny(s, [
+      'box_breathing', 'four_seven_eight', 'anulom_vilom', 'breath_awareness',
+      'lions_breath', 'body_scan', 'sleep_prep', 'cat_cow', 'seated_forward_fold',
+      'supine_twist', 'legs_up_wall', 'hip_flexor_stretch', 'neck_release',
+      'wrist_mobility', 'ankle_circles', 'shoulder_pendulum', 'cheek_lift',
+      'jaw_release', 'scalp_massage',
+    ])) {
+      return 'yoga';
+    }
+    if (_matchAny(s, ['box_squat', 'bodyweight_squat', 'goblet_squat', 'wall_sit', 'calf_raise', 'reverse_lunge', 'lunge'])) {
+      return 'squat';
+    }
+    if (_matchAny(s, [
+      'crunch', 'core_activation', 'seated_torso_twist', 'glute_bridge',
+      'dead_bug', 'bird_dog', 'plank', 'side_plank', 'hollow_hold',
+      'ab_wheel', 'leg_raise', 'mountain_climb', 'flutter_kick', 'russian_twist',
+    ])) {
+      return 'plank';
+    }
+
+    // Running / Walking (use word-boundary aware checks so 'crunch'/'trunk' never match 'run')
+    final tokens = s.split('_').where((t) => t.isNotEmpty).toSet();
+    if (tokens.intersection({'run', 'running', 'jog', 'jogging', 'sprint', 'sprinting', 'marathon', 'treadmill', 'dash', 'walk', 'walking'}).isNotEmpty ||
+        _matchAny(s, ['march_in_place', 'seated_march', 'high_knees'])) {
+      return 'running';
+    }
 
     // Cycling
     if (_matchAny(s, ['cycl', 'bike', 'bicycle', 'spin', 'stationary_bike'])) { return 'cycling'; }
 
     // Boxing / MMA
-    if (_matchAny(s, ['box', 'punch', 'kickbox', 'mma', 'jab', 'cross', 'uppercut', 'sparring'])) { return 'boxing'; }
+    if (tokens.intersection({'box', 'boxing', 'punch', 'kickbox', 'kickboxing', 'mma', 'jab', 'cross', 'uppercut', 'sparring'}).isNotEmpty) {
+      return 'boxing';
+    }
 
-    // Yoga / Stretching / Pilates
+    // Yoga / Stretching / Pilates / Tai Chi
     if (_matchAny(s, ['yoga', 'stretch', 'pilates', 'tree_pose', 'downward', 'warrior', 'cobra',
-        'child_pose', 'meditation', 'pranayama', 'surya', 'namaste'])) { return 'yoga'; }
-
-    // Weightlifting / Strength
-    if (_matchAny(s, ['deadlift', 'bench_press', 'overhead_press', 'barbell', 'dumbbell',
-        'pull_up', 'chin_up', 'lat_pulldown', 'row', 'shoulder_press', 'bicep_curl',
-        'tricep', 'chest_fly', 'cable', 'machine', 'weightlift', 'power_clean',
-        'snatch', 'clean_jerk'])) { return 'weightlifting'; }
-
-    // Squat
-    if (_matchAny(s, ['squat', 'goblet', 'wall_sit', 'sumo', 'hack_squat', 'leg_press',
-        'front_squat', 'box_squat'])) { return 'squat'; }
-
-    // Plank / Core
-    if (_matchAny(s, ['plank', 'side_plank', 'hollow_hold', 'ab_wheel', 'leg_raise',
-        'mountain_climb', 'flutter_kick', 'russian_twist', 'bird_dog', 'dead_bug'])) { return 'plank'; }
+        'child_pose', 'meditation', 'pranayama', 'surya', 'namaste', 'tai_chi', 'mobility'])) { return 'yoga'; }
 
     // Push-up
-    if (_matchAny(s, ['push_up', 'pushup', 'push-up', 'diamond_push', 'wide_push',
-        'decline_push', 'incline_push', 'clap_push', 'pike_push'])) { return 'pushup'; }
+    if (_matchAny(s, ['push_up', 'pushup', 'diamond_push', 'wide_push',
+        'decline_push', 'incline_push', 'clap_push', 'pike_push', 'knee_push', 'wall_push'])) { return 'pushup'; }
+
+    // Weightlifting / Strength / Upper Body
+    if (_matchAny(s, ['deadlift', 'bench_press', 'overhead_press', 'barbell', 'dumbbell',
+        'pull_up', 'chin_up', 'lat_pulldown', 'row', 'shoulder_press', 'bicep_curl',
+        'tricep', 'chest_fly', 'lateral_raise', 'arm_circle', 'cable', 'machine',
+        'weightlift', 'power_clean', 'snatch', 'clean_jerk', 'dip'])) { return 'weightlifting'; }
+
+    // Squat
+    if (_matchAny(s, ['squat', 'goblet', 'sumo', 'hack_squat', 'leg_press', 'front_squat'])) { return 'squat'; }
 
     // Swimming
     if (_matchAny(s, ['swim', 'freestyle', 'breaststroke', 'backstroke', 'butterfly',
@@ -328,17 +351,18 @@ class AvatarCustomizationService extends ChangeNotifier {
         'hip_hop', 'bhangra'])) { return 'dancing'; }
 
     // Football / Soccer
-    if (_matchAny(s, ['football', 'soccer', 'kick', 'penalty', 'dribble'])) { return 'football'; }
+    if (_matchAny(s, ['football', 'soccer', 'penalty', 'dribble'])) { return 'football'; }
 
     // Cricket
     if (_matchAny(s, ['cricket', 'batting', 'bowling', 'fielding'])) { return 'cricket'; }
 
-    // Skipping / Jump rope
+    // Skipping / Jump rope / HIIT
     if (_matchAny(s, ['skip', 'jump_rope', 'rope_skip', 'jumping_jack', 'jump',
-        'box_jump', 'burpee'])) { return 'skipping'; }
+        'box_jump', 'burpee', 'tabata', 'hiit'])) { return 'skipping'; }
 
-    // Default: running for any unrecognized cardio/general exercise
-    return 'running';
+    // Safe default: 'squat' (athletic pose mode) instead of 'running' so unknown exercises
+    // never trigger the soldier 'Run' locomotion clip!
+    return 'squat';
   }
 
   static bool _matchAny(String slug, List<String> keywords) =>
@@ -404,33 +428,50 @@ class AvatarCustomizationService extends ChangeNotifier {
   /// Returns the animation clip name for a given exercise slug and avatar gender.
   /// Male (Soldier GLB) has: 'Idle', 'Run', 'TPose', 'Walk'
   /// Female (Megan GLB) has: 'idle' (samba dance) — exercise mode uses neutral bind pose
+  ///
+  /// FIX v5.0: ONLY genuine running/jogging/sprinting returns 'Run' and ONLY
+  /// genuine walking returns 'Walk'. ALL other exercises (55+ strength, cardio,
+  /// plyometric, core, yoga, mobility, breathing, and sport exercises) return ''
+  /// so Three.js AnimationMixer stays paused and `exercise_poses.js` v5.0 drives
+  /// the exact exercise-specific two-phase biomechanical bone animation.
   static String getExerciseAnimation(String exerciseSlug, {required bool isFemale}) {
     if (isFemale) {
-      // Female: 'idle' = samba dance. For exercises → empty string = neutral bind pose
       return '';
     }
-    // Male Soldier GLB: map exercise → available animation
-    final pose = slugToAvatarPose(exerciseSlug.toLowerCase());
-    switch (pose) {
-      case 'running':
-      case 'skipping':
-      case 'football':
-      case 'cricket':
-        return 'Run';   // High-intensity cardio → Run
-      case 'boxing':
-      case 'cycling':
-      case 'swimming':
-        return 'Walk';  // Moderate rhythm → Walk
-      case 'yoga':
-      case 'plank':
-      case 'weightlifting':
-      case 'squat':
-      case 'pushup':
-      case 'dancing':
-      default:
-        return 'Idle';  // Strength/static/yoga → Idle
+    final s = exerciseSlug.toLowerCase().replaceAll(RegExp(r'[\s\-]+'), '_').trim();
+    final tokens = s.split('_').where((t) => t.isNotEmpty).toSet();
+
+    // Only pure running/jogging/sprinting uses the baked 'Run' clip
+    const runSlugs = {
+      'running', 'run', 'jogging', 'jog', 'sprinting', 'sprint',
+      'treadmill', 'treadmill_run', 'marathon', '5k_run', '10k_run',
+    };
+    if (runSlugs.contains(s) ||
+        (tokens.intersection({'run', 'running', 'jog', 'jogging', 'sprint', 'sprinting', 'treadmill'}).isNotEmpty &&
+         !s.contains('crunch') &&
+         !s.contains('trunk') &&
+         !s.contains('march') &&
+         !s.contains('high_knee'))) {
+      return 'Run';
     }
+
+    // Only pure walking uses the baked 'Walk' clip
+    const walkSlugs = {
+      'walking', 'walk', 'brisk_walk', 'treadmill_walk', 'stroll', 'hiking', 'hike',
+    };
+    if (walkSlugs.contains(s) ||
+        (tokens.intersection({'walk', 'walking', 'hike', 'hiking'}).isNotEmpty &&
+         !s.contains('lunge') &&
+         !s.contains('walkout') &&
+         !s.contains('wall_walk') &&
+         !s.contains('farmer'))) {
+      return 'Walk';
+    }
+
+    // Every other exercise in VYRA is driven 100% by exercise_poses.js v5.0!
+    return '';
   }
+
 
   /// Returns dance animation name per gender.
   /// Male dance: 'Run' at 1.8× speed (energetic). Female dance: 'idle' (actual samba).

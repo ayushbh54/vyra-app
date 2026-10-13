@@ -357,16 +357,16 @@ void main() {
       expect(r.bloodOxygenSpo2, equals(95));
     });
 
-    test('Single byte valid HR packet', () {
+    test('Single byte = battery level (not masquerading as HR)', () {
       final r = HiWatchProProtocol.parseNotifyPacket([75]);
-      expect(r.heartRateBpm, equals(75));
+      expect(r.batteryLevel, equals(75));
+      expect(r.heartRateBpm, isNull);
     });
 
-    test('Single byte = protocol header byte → NOT treated as HR', () {
-      // 0xCD = -51 unsigned — excluded by the check
-      // But 0xCD = 205 which is > 200, so already excluded by range
-      final r = HiWatchProProtocol.parseNotifyPacket([0xAB]); // 171 > 200 → outside HR range
+    test('Single byte = protocol header byte → NOT treated as HR or battery', () {
+      final r = HiWatchProProtocol.parseNotifyPacket([0xAB]); // 171 > 100 → outside battery and HR range
       expect(r.heartRateBpm, isNull);
+      expect(r.batteryLevel, isNull);
     });
   });
 

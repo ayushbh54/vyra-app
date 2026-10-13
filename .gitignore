@@ -27,12 +27,25 @@ build/
 .packages
 pubspec.lock.old
 
-# Android build & IDE
+# Android & iOS build / IDE
 apps/mobile/android/.gradle/
 apps/mobile/android/local.properties
 apps/mobile/android/app/build/
+apps/mobile/ios/Pods/
+apps/mobile/ios/.symlinks/
+apps/mobile/ios/Flutter/ephemeral/
 *.iml
 .idea/
+
+# Local AI Agent Rules & Scratch Artifacts
+AGENTS.md
+GEMINI.md
+**/AGENTS.md
+**/GEMINI.md
+apps/watch_tester/
+*.pptx
+*.pdf
+*.mp4
 
 # OS / Editor
 .DS_Store

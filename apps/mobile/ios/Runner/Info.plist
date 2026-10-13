@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Vyra</string>
+	<string>VYRA Fitness</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>vyra</string>
+	<string>vyra_fitness</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -43,7 +43,7 @@
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Vyra records workouts and health metrics to keep your fitness profile updated.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Vyra needs camera access to scan food barcodes and nutrition labels.</string>
+	<string>Vyra uses the selfie camera for real-time AI pose tracking, rep counting, posture coaching, and food scanning.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Vyra needs photo library access to upload meal photos and avatars.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
