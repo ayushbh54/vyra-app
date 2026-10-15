@@ -1282,7 +1282,7 @@ class _ExerciseVisualGuideState extends State<_ExerciseVisualGuide> with SingleT
                         environmentImage: 'neutral',
                         backgroundColor: const Color(0xFF0D0D12),
                         cameraOrbit: _orbitAngleString,
-                        animationName: currentAnim,
+                        animationName: currentAnim.isEmpty ? null : currentAnim,
                         loading: Loading.eager,
                         onWebViewCreated: (controller) {
                           _webViewCtrl = controller;

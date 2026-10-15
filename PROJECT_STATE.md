@@ -242,3 +242,6 @@ cd apps/mobile && flutter test
 | **AI Camera Pose Tracker (`v6.0`)** | All 107 Exercises across 15 Biomechanical Archetypes + 15 AR Moving Target Aura Patterns | **107 / 107 PASS** |
 | **Smartwatch Telemetry & Fuzz Suite** | 260+ BLE unit tests + 3,000 malformed RF fuzz packets + physical `Ultra2` & `iPhone` verification | **PASS** |
 | **Flutter Static Analysis** | `flutter analyze` across modified mobile screens, services, and tests | **No issues found** |
+| **iOS Release Build & UI Auto-Fit** | Built & installed native Release bundle (`com.ayush.vyra.fitness`) on physical iPhone 15; universal `FittedBox`/`Expanded` responsive UI; iOS portrait camera AR coordinate normalization | **VERIFIED & INSTALLED** |
+| **Female 3D Avatar Optimization & WebGL Stability** | Repacked `female_coach.glb` from 55MB to 3.8MB with 100% bone/mesh parity; stabilized `ModelViewer` key lifecycle and null animation handling; resolved Android WebView green error page & context loss | **VERIFIED & PASS** |
+| **Culinary Intelligence Recipe Engine (`v2.0`)** | Replaced hardcoded "chop raw egg" boilerplate with `AiRecipeService` 3-tier cascade (Backend -> On-Device Gemini -> Intelligent Culinary Rules for Eggs, Meat, Paneer, Oats, Dal, Rice & Sabzi) | **9 / 9 PASS** |

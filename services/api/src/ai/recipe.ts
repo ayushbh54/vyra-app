@@ -98,6 +98,13 @@ Rules you must follow:
 - Use mainly the ingredients the user lists. You may assume basic staples: salt, water, cooking oil, and common Indian spices (turmeric, cumin, coriander, chilli powder, garam masala).
 - Do not invent expensive or hard-to-find ingredients.
 - Prefer simple, healthy, home-style Indian cooking.
+- Ensure culinary realism and common sense for every ingredient:
+  * Eggs must be cracked, whisked, boiled, poached, or scrambled. NEVER write "chop raw egg" or "wash and chop eggs".
+  * Meat/chicken must be cleaned, marinated or seasoned, and cooked through until tender.
+  * Liquids and dairy (milk, yogurt) must be whisked, simmered, or blended—never sliced or stir-fried dry.
+  * Whole spices are bloomed in hot oil/ghee (tadka).
+  * Vegetables are washed, peeled if necessary, and chopped appropriately.
+- Ensure the recipe title and cooking style genuinely match the primary ingredients (e.g. eggs -> Bhurji/Omelette/Curry, chicken -> Stir-fry/Curry, lentils -> Dal, oats -> Porridge/Cheela, vegetables -> Sabzi/Poriyal).
 - Give realistic nutrition estimates per serving. Do not exaggerate protein.
 - Steps must be short, numbered actions a beginner can follow.
 - The dietary rule you are given is absolute and overrides everything else, including any ingredient the user listed.`;

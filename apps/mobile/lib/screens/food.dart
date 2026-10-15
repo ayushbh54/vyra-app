@@ -13,6 +13,7 @@ import 'barcode_scan.dart';
 import 'diet_chart.dart';
 import 'food_scan.dart';
 import 'water_reminder.dart';
+import '../services/ai_recipe_service.dart';
 
 /// TAB 2 — FOOD
 ///
@@ -110,48 +111,13 @@ class _FoodScreenState extends State<FoodScreen> {
     String? err;
     final api = context.read<VyraApi>();
 
-    for (int attempt = 0; attempt < 2; attempt++) {
-      try {
-        if (attempt > 0) {
-          await Future.delayed(const Duration(milliseconds: 1500));
-        }
-        res = await api.generateRecipe(_ingredients);
-        err = null;
-        break;
-      } on ApiException catch (e) {
-        if (e.status == 429) {
-          if (attempt == 0) continue;
-          err = 'Recipe AI is currently cooling down. Please wait a few moments and try again.';
-        } else {
-          err = e.message;
-          break;
-        }
-      } catch (_) {
-        err = 'Could not generate recipe right now. Please check your network connection.';
-        break;
-      }
-    }
-
-    if (res == null) {
-      res = Recipe(
-        title: '${_ingredients.first} Capsicum Sabzi',
-        ingredients: _ingredients.map((i) => (name: i, quantity: '1 portion')).toList(),
-        steps: [
-          'Step 1: Wash and chop ${_ingredients.join(", ")} into medium-sized pieces.',
-          'Step 2: Heat 2 tsp oil in a kadai/pan on medium flame.',
-          'Step 3: Add cumin seeds, let them splutter for 30 seconds.',
-          'Step 4: Add ${_ingredients.first}, stir-fry for 3-4 minutes.',
-          'Step 5: Add turmeric, red chilli powder, coriander powder, salt. Mix well.',
-          'Step 6: Cover and cook on low flame for 8-10 minutes until tender.',
-          'Step 7: Garnish with fresh coriander. Serve hot with roti or rice.'
-        ],
-        cookTimeMin: 15,
-        containsEgg: false,
-        containsMeat: false,
-        nutrition: {'calories': 180, 'proteinG': 5, 'carbsG': 25, 'fatG': 8},
-        disclaimer: ''
+    try {
+      res = await AiRecipeService.instance.generateRecipe(
+        ingredients: _ingredients,
+        api: api,
       );
-      err = null;
+    } catch (e) {
+      err = 'Could not generate recipe right now. Please try again.';
     }
 
     if (!mounted) return;
@@ -161,6 +127,7 @@ class _FoodScreenState extends State<FoodScreen> {
       _generating = false;
     });
   }
+
 
   Future<void> _logSugar([double? directGrams]) async {
     final text = _sugarController.text.trim();

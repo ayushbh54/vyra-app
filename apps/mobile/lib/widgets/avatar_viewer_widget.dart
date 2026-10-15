@@ -211,16 +211,16 @@ class _AvatarViewerWidgetState extends State<AvatarViewerWidget> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: ModelViewer(
-                  // Key includes all style variables so model re-tints smoothly on change
-                  key: ValueKey(
-                      '${widget.modelPath}_${widget.animationName}_${_speed.timeScale}_${widget.outfitColor?.toARGB32()}_${widget.auraColor?.toARGB32()}'),
+                  // Key is tied strictly to the asset and animation clip so changing colors/speed
+                  // does NOT destroy and recreate the native Android WebView or cause loopback server crashes.
+                  key: ValueKey('${widget.modelPath}_${widget.animationName}'),
                   src: widget.modelPath,
                   alt: widget.coachName ?? '3D Athletic Coach',
                   ar: false,
                   autoRotate: false,
                   cameraControls: true,
-                  autoPlay: widget.autoPlay,
-                  animationName: widget.animationName,
+                  autoPlay: widget.autoPlay && widget.animationName.isNotEmpty,
+                  animationName: widget.animationName.isEmpty ? null : widget.animationName,
                   shadowIntensity: 0.85,
                   shadowSoftness: 0.8,
                   exposure: 1.15,

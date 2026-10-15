@@ -81,9 +81,9 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
     if (mounted) {
       setState(() {
         _selectedGender = savedGender == 'female' ? 'female' : 'male';
-        // Female GLB: 'SambaDance' or 'TPose' — use TPose as neutral default
-        // Male GLB: 'idle' or 'Take 001' — use idle (breathing) as default
-        _activeAnim = _selectedGender == 'female' ? '' : 'Idle';
+        // Female GLB: 'idle' (samba workout dance)
+        // Male GLB: 'Idle' (athletic breathing stance)
+        _activeAnim = _selectedGender == 'female' ? 'idle' : 'Idle';
         // Default: Remy (male) or Megan (female) until user personalizes
         _coachName = savedName ??
             (_selectedGender == 'female' ? _defaultFemaleName : _defaultMaleName);
@@ -1166,8 +1166,8 @@ class _CoachAvatarStudioScreenState extends State<CoachAvatarStudioScreen> {
         HapticFeedback.selectionClick();
         setState(() {
           _selectedGender = gender;
-          _activeAnim = gender == 'female' ? '' : 'Idle';
-          _coachName = gender == 'female' ? 'Sara' : 'Alex';
+          _activeAnim = gender == 'female' ? 'idle' : 'Idle';
+          _coachName = gender == 'female' ? 'Megan' : 'Remy';
           _isSelectedSaved = false;
         });
       },
