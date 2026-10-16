@@ -245,3 +245,5 @@ cd apps/mobile && flutter test
 | **iOS Release Build & UI Auto-Fit** | Built & installed native Release bundle (`com.ayush.vyra.fitness`) on physical iPhone 15; universal `FittedBox`/`Expanded` responsive UI; iOS portrait camera AR coordinate normalization | **VERIFIED & INSTALLED** |
 | **Female 3D Avatar Optimization & WebGL Stability** | Repacked `female_coach.glb` from 55MB to 3.8MB with 100% bone/mesh parity; stabilized `ModelViewer` key lifecycle and null animation handling; resolved Android WebView green error page & context loss | **VERIFIED & PASS** |
 | **Culinary Intelligence Recipe Engine (`v2.0`)** | Replaced hardcoded "chop raw egg" boilerplate with `AiRecipeService` 3-tier cascade (Backend -> On-Device Gemini -> Intelligent Culinary Rules for Eggs, Meat, Paneer, Oats, Dal, Rice & Sabzi) | **9 / 9 PASS** |
+| **Android Cleartext Whitelist & Deterministic Keystore** | Whitelisted 127.0.0.1 loopback HTTP in AndroidManifest & network_security_config.xml; bundled deterministic keystore for 1-tap in-place updates; upgraded to version 2.0.0+7 | **VERIFIED & PASS** |
+

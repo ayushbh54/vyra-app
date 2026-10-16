@@ -45,12 +45,23 @@ android {
                 storePassword  = keystoreProperties["storePassword"] as String
             }
         }
+        val bundledKeystore = file("debug.keystore")
+        if (bundledKeystore.exists()) {
+            create("vyraDeterministic") {
+                keyAlias      = "androiddebugkey"
+                keyPassword   = "android"
+                storeFile     = bundledKeystore
+                storePassword = "android"
+            }
+        }
     }
 
     buildTypes {
         release {
             signingConfig = if (keystorePropertiesFile.exists())
                 signingConfigs.getByName("release")
+            else if (signingConfigs.findByName("vyraDeterministic") != null)
+                signingConfigs.getByName("vyraDeterministic")
             else
                 signingConfigs.getByName("debug")   // demo build — debug key
 
