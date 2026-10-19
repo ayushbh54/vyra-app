@@ -87,6 +87,37 @@ class _RecordScreenState extends State<RecordScreen> {
   // ── Misc ───────────────────────────────────────────────────────────────────
   String? _locationError;
   bool    _saving = false;
+  ll.LatLng? _initialLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchInitialGps();
+  }
+
+  Future<void> _fetchInitialGps() async {
+    try {
+      final serviceOn = await Geolocator.isLocationServiceEnabled();
+      if (!serviceOn) return;
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.whileInUse || perm == LocationPermission.always) {
+        final pos = await Geolocator.getLastKnownPosition() ??
+            await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+            );
+        if (mounted) {
+          final latLng = ll.LatLng(pos.latitude, pos.longitude);
+          setState(() => _initialLocation = latLng);
+          _mapController.move(latLng, 15.0);
+        }
+      }
+    } catch (_) {
+      // Non-fatal fallback
+    }
+  }
 
   // ── MapController needs to be disposed ────────────────────────────────────
   @override
@@ -347,61 +378,66 @@ class _RecordScreenState extends State<RecordScreen> {
     final points = _fixes.map((p) => ll.LatLng(p.latitude, p.longitude)).toList();
     final center = points.isNotEmpty
         ? points.last
-        : const ll.LatLng(28.6139, 77.2090); // Delhi fallback
+        : (_initialLocation ?? const ll.LatLng(28.6139, 77.2090)); // Live GPS or Delhi fallback
 
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: center,
-        initialZoom: 15,
-        // When user manually pans, stop auto-following
-        onPositionChanged: (_, hasGesture) {
-          if (hasGesture && _followUser) {
-            setState(() => _followUser = false);
-          }
-        },
-      ),
-      children: [
-        // Clean OSM tile layer - free, high-res, zero watermark
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.vyra.app',
+    return Container(
+      color: const Color(0xFF0F172A), // Dark slate placeholder, prevents white flashing
+      child: FlutterMap(
+        mapController: _mapController,
+        options: MapOptions(
+          initialCenter: center,
+          initialZoom: 15,
+          // When user manually pans, stop auto-following
+          onPositionChanged: (_, hasGesture) {
+            if (hasGesture && _followUser) {
+              setState(() => _followUser = false);
+            }
+          },
         ),
-        // START marker (green dot)
-        if (points.isNotEmpty)
-          MarkerLayer(markers: [
-            Marker(
-              point: points.first,
-              width: 20, height: 20,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: VColor.accentGreen,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: VColor.bg, width: 3),
-                  boxShadow: const [BoxShadow(color: VColor.accentGreenGlow, blurRadius: 8)],
+        children: [
+          // High-performance CartoDB Voyager tiles with OSM fallback & verified User-Agent
+          TileLayer(
+            urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+            fallbackUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            subdomains: const ['a', 'b', 'c', 'd'],
+            userAgentPackageName: 'com.ayush.vyra.fitness',
+          ),
+          // START marker (green dot)
+          if (points.isNotEmpty)
+            MarkerLayer(markers: [
+              Marker(
+                point: points.first,
+                width: 20, height: 20,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: VColor.accentGreen,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: VColor.bg, width: 3),
+                    boxShadow: const [BoxShadow(color: VColor.accentGreenGlow, blurRadius: 8)],
+                  ),
                 ),
               ),
-            ),
-          ]),
-        // Route polyline — cyan glow stroke
-        if (points.length > 1) ...[
-          PolylineLayer(polylines: [
-            // Glow layer
-            Polyline(points: points, color: VColor.accentGlow, strokeWidth: 10),
-            // Main line
-            Polyline(points: points, color: VColor.accent, strokeWidth: 4),
-          ]),
+            ]),
+          // Route polyline — cyan glow stroke
+          if (points.length > 1) ...[
+            PolylineLayer(polylines: [
+              // Glow layer
+              Polyline(points: points, color: VColor.accentGlow, strokeWidth: 10),
+              // Main line
+              Polyline(points: points, color: VColor.accent, strokeWidth: 4),
+            ]),
+          ],
+          // Current position marker (pulsing cyan dot)
+          if (points.isNotEmpty || _initialLocation != null)
+            MarkerLayer(markers: [
+              Marker(
+                point: points.isNotEmpty ? points.last : _initialLocation!,
+                width: 22, height: 22,
+                child: _PulsingDot(),
+              ),
+            ]),
         ],
-        // Current position marker (pulsing cyan dot)
-        if (points.isNotEmpty)
-          MarkerLayer(markers: [
-            Marker(
-              point: points.last,
-              width: 22, height: 22,
-              child: _PulsingDot(),
-            ),
-          ]),
-      ],
+      ),
     );
   }
 

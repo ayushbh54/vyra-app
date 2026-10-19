@@ -118,18 +118,22 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                   child: const Icon(Icons.camera_alt_rounded, color: VColor.accent, size: 22),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'AI Workout Verification',
-                      style: TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'Verify daily proof for "${challenge.title}"',
-                      style: const TextStyle(color: VColor.textLow, fontSize: 12),
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'AI Workout Verification',
+                        style: TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Verify daily proof for "${challenge.title}"',
+                        style: const TextStyle(color: VColor.textLow, fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -156,8 +160,13 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                 ),
                 title: Row(
                   children: [
-                    const Text('Live AI Camera Form Verification',
-                        style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold, fontSize: 14)),
+                    const Expanded(
+                      child: Text(
+                        'Live AI Camera Form Verification',
+                        style: TextStyle(color: VColor.text, fontWeight: FontWeight.bold, fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

@@ -207,8 +207,10 @@ class _ActivityCard extends StatelessWidget {
                     ),
                     children: [
                       TileLayer(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.vyra.app',
+                        urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                        fallbackUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        subdomains: const ['a', 'b', 'c', 'd'],
+                        userAgentPackageName: 'com.ayush.vyra.fitness',
                       ),
                       PolylineLayer(polylines: [
                         Polyline(points: points, color: VColor.accent, strokeWidth: 4),

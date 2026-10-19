@@ -187,12 +187,15 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Customize Workout Timing',
-                  style: TextStyle(
-                    color: isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    'Customize Workout Timing',
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(

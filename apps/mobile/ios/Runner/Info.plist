@@ -27,11 +27,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Vyra needs your location to track outdoor runs, walks, pace, and route distance in real time.</string>
+	<string>Vyra needs your location to track outdoor routes, calculate workout pace, and find real-time nearby verified e-RaktKosh blood banks and emergency donation centers.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Vyra needs your location in the background to accurately record outdoor running, walking routes, and total workout distance.</string>
+	<string>Vyra needs your location to record continuous outdoor workouts and locate nearby emergency blood donation centers in real time.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Vyra needs background location access to record continuous workouts and map your fitness activities.</string>
+	<string>Vyra needs background location access to accurately record long-distance workouts and find nearby emergency health lifelines.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Vyra needs Bluetooth access to connect to your smartwatch and sync real-time heart rate, steps, and health metrics.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>

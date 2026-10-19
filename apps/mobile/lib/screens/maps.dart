@@ -30,6 +30,7 @@ class _MapsScreenState extends State<MapsScreen> {
   void initState() {
     super.initState();
     _load();
+    _centerOnMe();
   }
 
   Future<void> _load() async {
@@ -73,26 +74,31 @@ class _MapsScreenState extends State<MapsScreen> {
     return SafeArea(
       child: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: const MapOptions(
-              initialCenter: ll.LatLng(28.6139, 77.2090), // Delhi — re-centres once location resolves
-              initialZoom: 12,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.vyra.app',
+          Container(
+            color: const Color(0xFF0F172A),
+            child: FlutterMap(
+              mapController: _mapController,
+              options: const MapOptions(
+                initialCenter: ll.LatLng(28.6139, 77.2090), // Delhi — re-centres once location resolves
+                initialZoom: 12,
               ),
-              for (final activity in routes)
-                PolylineLayer(polylines: [
-                  Polyline(
-                    points: activity.route.map((p) => ll.LatLng(p.lat, p.lng)).toList(),
-                    color: VColor.accent,
-                    strokeWidth: 3,
-                  ),
-                ]),
-            ],
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                  fallbackUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  subdomains: const ['a', 'b', 'c', 'd'],
+                  userAgentPackageName: 'com.ayush.vyra.fitness',
+                ),
+                for (final activity in routes)
+                  PolylineLayer(polylines: [
+                    Polyline(
+                      points: activity.route.map((p) => ll.LatLng(p.lat, p.lng)).toList(),
+                      color: VColor.accent,
+                      strokeWidth: 3,
+                    ),
+                  ]),
+              ],
+            ),
           ),
           Positioned(
             top: VSpace.base, left: VSpace.base, right: VSpace.base,

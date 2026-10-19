@@ -523,13 +523,16 @@ class VHeaderBadge extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          label.toUpperCase(),
-          style: TextStyle(
-            color: accentColor,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
+        Flexible(
+          child: Text(
+            label.toUpperCase(),
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: accentColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
           ),
         ),
       ],

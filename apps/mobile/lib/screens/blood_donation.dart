@@ -13,9 +13,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../api/client.dart';
 import '../theme.dart';
 
 enum EligibilityStatus { eligible, notEligible, unknown }
@@ -33,6 +36,23 @@ class BloodCenterItem {
     required this.category,
     required this.component,
   });
+
+  factory BloodCenterItem.fromJson(Map<String, dynamic> j) {
+    final lat = (j['lat'] as num?)?.toDouble() ?? 28.6667;
+    final lng = (j['lng'] as num?)?.toDouble() ?? 77.4784;
+    return BloodCenterItem(
+      name: (j['centerName'] ?? j['name'] ?? 'District Blood Center').toString(),
+      hospital: (j['hospitalName'] ?? j['hospital'] ?? 'Civil Hospital').toString(),
+      address: (j['address'] ?? 'Hospital Complex').toString(),
+      contact: (j['contactNumber'] ?? j['contact'] ?? '104').toString(),
+      hours: (j['hours'] ?? '24×7 Emergency Service').toString(),
+      latlng: LatLng(lat, lng),
+      distanceKm: (j['distanceKm'] as num?)?.toDouble() ?? 2.0,
+      unitsAvailable: (j['unitsAvailable'] as num?)?.toInt() ?? 15,
+      category: (j['category'] ?? 'Govt.').toString(),
+      component: (j['component'] ?? 'Whole Blood').toString(),
+    );
+  }
 
   final String name;
   final String hospital;
@@ -56,6 +76,18 @@ class BloodCampItem {
     required this.contact,
     required this.distanceKm,
   });
+
+  factory BloodCampItem.fromJson(Map<String, dynamic> j) {
+    return BloodCampItem(
+      title: (j['campName'] ?? j['title'] ?? 'Voluntary Blood Donation Camp').toString(),
+      organizer: (j['organizer'] ?? 'Indian Red Cross Society').toString(),
+      address: (j['address'] ?? 'Community Centre').toString(),
+      date: (j['date'] ?? 'This Saturday, 10:00 AM').toString(),
+      time: (j['time'] ?? '10:00 AM - 04:30 PM').toString(),
+      contact: (j['contactPhone'] ?? j['contact'] ?? '0120-2762606').toString(),
+      distanceKm: (j['distanceKm'] as num?)?.toDouble() ?? 1.5,
+    );
+  }
 
   final String title;
   final String organizer;
@@ -87,9 +119,12 @@ class _BloodDonationScreenState extends State<BloodDonationScreen> with SingleTi
   final String _selectedGroup = 'O+';
   bool _isThalassemiaPledged = true;
 
-  static const LatLng _centre = LatLng(28.6667, 77.4784); // Ghaziabad / Delhi NCR
+  LatLng _centre = const LatLng(28.6667, 77.4784); // Defaults to Delhi-NCR, updates with live GPS
+  bool _loadingLocation = false;
+  bool _loadingCenters = false;
+  bool _hasLiveGps = false;
 
-  final List<BloodCenterItem> _centers = const [
+  List<BloodCenterItem> _centers = const [
     BloodCenterItem(
       name: 'District Combined Hospital Blood Center',
       hospital: 'Sanjay Nagar Combined Hospital',
@@ -140,7 +175,7 @@ class _BloodDonationScreenState extends State<BloodDonationScreen> with SingleTi
     ),
   ];
 
-  final List<BloodCampItem> _camps = const [
+  List<BloodCampItem> _camps = const [
     BloodCampItem(
       title: 'Mega Voluntary Blood Donation Camp 2026',
       organizer: 'Indian Red Cross Society & National Youth Council',
@@ -165,6 +200,110 @@ class _BloodDonationScreenState extends State<BloodDonationScreen> with SingleTi
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initLiveGpsAndCenters();
+    });
+  }
+
+  Future<void> _initLiveGpsAndCenters() async {
+    if (!mounted) return;
+    setState(() => _loadingLocation = true);
+
+    try {
+      final serviceOn = await Geolocator.isLocationServiceEnabled();
+      if (serviceOn) {
+        var perm = await Geolocator.checkPermission();
+        if (perm == LocationPermission.denied) {
+          perm = await Geolocator.requestPermission();
+        }
+        if (perm == LocationPermission.whileInUse || perm == LocationPermission.always) {
+          final pos = await Geolocator.getLastKnownPosition() ??
+              await Geolocator.getCurrentPosition(
+                locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+              );
+          if (mounted) {
+            final userLoc = LatLng(pos.latitude, pos.longitude);
+            setState(() {
+              _centre = userLoc;
+              _hasLiveGps = true;
+              _loadingLocation = false;
+            });
+            _mapController.move(userLoc, 13.0);
+          }
+        }
+      }
+    } catch (_) {
+      // Non-fatal fallback
+    } finally {
+      if (mounted) setState(() => _loadingLocation = false);
+    }
+
+    await _fetchApiSetuData();
+  }
+
+  Future<void> _fetchApiSetuData() async {
+    if (!mounted) return;
+    setState(() => _loadingCenters = true);
+
+    try {
+      final api = context.read<VyraApi>();
+      final res = await api.searchNearbyBloodCenters(
+        lat: _centre.latitude,
+        lng: _centre.longitude,
+        bloodGroup: _selectedGroup,
+        component: _selectedComponent,
+        radiusKm: 25,
+      );
+
+      final dynamic rawList = res['bloodCenters'];
+      if (rawList is List && rawList.isNotEmpty) {
+        final parsed = rawList
+            .map((item) => BloodCenterItem.fromJson(Map<String, dynamic>.from(item as Map)))
+            .toList();
+        if (mounted) {
+          setState(() {
+            _centers = parsed;
+          });
+        }
+      }
+
+      final campsRaw = await api.getNearbyBloodCamps();
+      if (campsRaw.isNotEmpty && mounted) {
+        setState(() {
+          _camps = campsRaw
+              .map((item) => BloodCampItem.fromJson(Map<String, dynamic>.from(item as Map)))
+              .toList();
+        });
+      }
+    } catch (_) {
+      // Offline fallback: recalculate distance of curated list from user location
+      if (_hasLiveGps) {
+        final updated = _centers.map((c) {
+          final distM = Geolocator.distanceBetween(
+            _centre.latitude,
+            _centre.longitude,
+            c.latlng.latitude,
+            c.latlng.longitude,
+          );
+          return BloodCenterItem(
+            name: c.name,
+            hospital: c.hospital,
+            address: c.address,
+            contact: c.contact,
+            hours: c.hours,
+            latlng: c.latlng,
+            distanceKm: double.parse((distM / 1000).toStringAsFixed(1)),
+            unitsAvailable: c.unitsAvailable,
+            category: c.category,
+            component: c.component,
+          );
+        }).toList();
+        updated.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+        if (mounted) setState(() => _centers = updated);
+      }
+    } finally {
+      if (mounted) setState(() => _loadingCenters = false);
+    }
   }
 
   @override
@@ -200,10 +339,30 @@ class _BloodDonationScreenState extends State<BloodDonationScreen> with SingleTi
               ),
             ),
             const SizedBox(width: 10),
-            const Text('e-RaktKosh Lifeline', style: TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.bold)),
+            const Expanded(
+              child: Text(
+                'e-RaktKosh Lifeline',
+                style: TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Refresh Live Location & Centers',
+            icon: _loadingLocation || _loadingCenters
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: VColor.accent),
+                  )
+                : Icon(
+                    _hasLiveGps ? Icons.my_location_rounded : Icons.location_searching_rounded,
+                    color: _hasLiveGps ? VColor.accent : VColor.accentOrange,
+                  ),
+            onPressed: (_loadingLocation || _loadingCenters) ? null : _initLiveGpsAndCenters,
+          ),
           IconButton(
             tooltip: 'My Digital Donor Card',
             icon: const Icon(Icons.badge_outlined, color: VColor.accent),
@@ -351,7 +510,10 @@ class _BloodDonationScreenState extends State<BloodDonationScreen> with SingleTi
                 child: FilterChip(
                   label: Text(comp),
                   selected: isSel,
-                  onSelected: (val) => setState(() => _selectedComponent = comp),
+                  onSelected: (val) {
+                    setState(() => _selectedComponent = comp);
+                    _fetchApiSetuData();
+                  },
                   selectedColor: const Color(0xFFDC2626).withValues(alpha: 0.25),
                   backgroundColor: VColor.surface,
                   labelStyle: TextStyle(
@@ -370,45 +532,111 @@ class _BloodDonationScreenState extends State<BloodDonationScreen> with SingleTi
   }
 
   Widget _buildMapSection() {
-    return Container(
-      height: 220,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(VRadius.lg),
-        border: Border.all(color: VColor.line),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(VRadius.lg),
-        child: FlutterMap(
-          mapController: _mapController,
-          options: const MapOptions(
-            initialCenter: _centre,
-            initialZoom: 12.0,
-          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.vyra.app',
+            Icon(
+              _hasLiveGps ? Icons.gps_fixed_rounded : Icons.location_searching_rounded,
+              size: 13,
+              color: _hasLiveGps ? VColor.good : VColor.accentOrange,
             ),
-            MarkerLayer(
-              markers: [
-                // User Location
-                const Marker(
-                  point: _centre,
-                  child: Icon(Icons.my_location_rounded, color: VColor.accent, size: 28),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Text(
+                _hasLiveGps
+                    ? 'LIVE GPS RADAR: NEAREST BLOOD BANKS'
+                    : 'GPS RADAR: DELHI-NCR FALLBACK',
+                style: TextStyle(
+                  color: _hasLiveGps ? VColor.good : VColor.accentOrange,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
                 ),
-                // Centers
-                ..._centers.map((c) => Marker(
-                      point: c.latlng,
-                      child: GestureDetector(
-                        onTap: () => _showCenterDetailSheet(c),
-                        child: const Icon(Icons.local_hospital_rounded, color: Color(0xFFDC2626), size: 28),
-                      ),
-                    )),
-              ],
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            if (_loadingCenters)
+              const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFDC2626)),
+              ),
           ],
         ),
-      ),
+        const SizedBox(height: 6),
+        Container(
+          height: 220,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(VRadius.lg),
+            border: Border.all(color: VColor.line),
+            color: const Color(0xFF0F172A),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(VRadius.lg),
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: _centre,
+                initialZoom: 12.0,
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                  fallbackUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  subdomains: const ['a', 'b', 'c', 'd'],
+                  userAgentPackageName: 'com.ayush.vyra.fitness',
+                ),
+                MarkerLayer(
+                  markers: [
+                    // User Location with high-visibility pulsing styling
+                    Marker(
+                      point: _centre,
+                      width: 32,
+                      height: 32,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: VColor.accent.withValues(alpha: 0.3),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: VColor.accent, width: 2),
+                          boxShadow: const [
+                            BoxShadow(color: VColor.accentGlow, blurRadius: 8),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.my_location_rounded, color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ),
+                    // Centers
+                    ..._centers.map((c) => Marker(
+                          point: c.latlng,
+                          width: 32,
+                          height: 32,
+                          child: GestureDetector(
+                            onTap: () => _showCenterDetailSheet(c),
+                            child: Container(
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFDC2626),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(color: Color(0x66DC2626), blurRadius: 6),
+                                ],
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.local_hospital_rounded, color: Colors.white, size: 18),
+                              ),
+                            ),
+                          ),
+                        )),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -492,7 +720,13 @@ class _BloodDonationScreenState extends State<BloodDonationScreen> with SingleTi
                     const SizedBox(width: 4),
                     Text('${center.distanceKm} km away', style: const TextStyle(color: VColor.accent, fontSize: 11.5, fontWeight: FontWeight.w600)),
                     const SizedBox(width: 12),
-                    Text(center.hours, style: const TextStyle(color: VColor.textLow, fontSize: 11)),
+                    Flexible(
+                      child: Text(
+                        center.hours,
+                        style: const TextStyle(color: VColor.textLow, fontSize: 11),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -524,8 +758,13 @@ class _BloodDonationScreenState extends State<BloodDonationScreen> with SingleTi
                 children: [
                   Icon(Icons.shield_moon_rounded, color: Color(0xFFA855F7), size: 24),
                   SizedBox(width: 10),
-                  Text('e-RaktKosh Thalassemia Care Network',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                  Expanded(
+                    child: Text(
+                      'e-RaktKosh Thalassemia Care Network',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -660,8 +899,14 @@ class _BloodDonationScreenState extends State<BloodDonationScreen> with SingleTi
             children: [
               const Icon(Icons.event, size: 14, color: VColor.textLow),
               const SizedBox(width: 4),
-              Text('${camp.date} • ${camp.time}', style: const TextStyle(color: VColor.textLow, fontSize: 11.5)),
-              const Spacer(),
+              Expanded(
+                child: Text(
+                  '${camp.date} • ${camp.time}',
+                  style: const TextStyle(color: VColor.textLow, fontSize: 11.5),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: () async {
                   final uri = Uri.parse('tel:${camp.contact}');
