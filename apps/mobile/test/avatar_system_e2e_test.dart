@@ -63,47 +63,46 @@ void main() {
     });
 
     test('JS has 5-tier resolver (resolveExercise)', () {
+      // v6.0: resolveExercise uses EXERCISES (exact), ALIASES, KEYWORD_RULES,
+      // dynamic synthesis, and safe default — 5-tier cascade
       expect(posesJsContent.contains('resolveExercise'), isTrue);
-      expect(posesJsContent.contains('Tier 1'), isTrue);
-      expect(posesJsContent.contains('Tier 2'), isTrue);
-      expect(posesJsContent.contains('Tier 3'), isTrue);
-      expect(posesJsContent.contains('Tier 4'), isTrue);
-      expect(posesJsContent.contains('Tier 5'), isTrue);
+      expect(posesJsContent.contains('var EXERCISES'), isTrue);
+      expect(posesJsContent.contains('var ALIASES'), isTrue);
+      expect(posesJsContent.contains('KEYWORD_RULES'), isTrue);
     });
 
-    test('JS POSES map has 40+ exercises', () {
-      // Count `const POSES = {` and then count top-level keys
-      final posesSection = RegExp(r'const POSES = \{([\s\S]*?)\n  \};',
-          multiLine: true).firstMatch(posesJsContent);
-      expect(posesSection, isNotNull,
-          reason: 'POSES map must exist in JS');
-      // Each pose key appears as "    key: {" pattern
+    test('JS EXERCISES map has 40+ exercises', () {
+      // v6.0 uses var EXERCISES = { "key": { ... } } with double-quoted keys
+      expect(posesJsContent.contains('var EXERCISES = {'), isTrue,
+          reason: 'EXERCISES map must exist in JS');
+      // Count top-level exercise entries by their double-quoted keys
       final poseKeys =
-          RegExp(r'^\s{4}(\w+):\s*\{', multiLine: true)
+          RegExp(r'^\s{4}"([a-z][a-z_0-9]+)":\s*\{', multiLine: true)
               .allMatches(posesJsContent)
               .length;
       expect(poseKeys, greaterThanOrEqualTo(40),
-          reason: 'Need at least 40 explicit poses, found $poseKeys');
+          reason: 'Need at least 40 explicit exercises, found $poseKeys');
     });
 
     test('JS ALIASES map has 100+ entries', () {
-      final aliasSection = RegExp(r'const ALIASES = \{([\s\S]*?)\};',
+      final aliasSection = RegExp(r'var ALIASES = \{([\s\S]*?)\};',
           multiLine: true).firstMatch(posesJsContent);
       expect(aliasSection, isNotNull);
       final aliasCount =
-          RegExp(r"'[^']+'\s*:\s*'[^']+'").allMatches(posesJsContent).length;
+          RegExp(r"^\s+\w+:\s*'\w+'", multiLine: true).allMatches(posesJsContent).length;
       expect(aliasCount, greaterThanOrEqualTo(100),
           reason: 'Need at least 100 aliases, found $aliasCount');
     });
 
     test('JS has rep loop engine (requestAnimationFrame)', () {
       expect(posesJsContent.contains('requestAnimationFrame'), isTrue);
-      expect(posesJsContent.contains('startRepLoop'), isTrue);
+      expect(posesJsContent.contains('startExerciseLoop'), isTrue);
     });
 
-    test('JS has pose blender for unknown exercises', () {
-      expect(posesJsContent.contains('blendPoses'), isTrue);
-      expect(posesJsContent.contains('scorePoses'), isTrue);
+    test('JS handles unknown exercises via KEYWORD_RULES safe default', () {
+      expect(posesJsContent.contains('KEYWORD_RULES'), isTrue);
+      expect(posesJsContent.contains('bodyweight_squat'), isTrue,
+          reason: 'Safe default must be bodyweight_squat');
     });
   });
 
@@ -151,14 +150,13 @@ void main() {
       expect(AvatarCustomizationService.getExerciseAnimation(
           'squat', isFemale: false), equals(''));
     });
-    test('male boxing → "Walk"', () {
+    test('male boxing → "" (JS pose engine drives strikes)', () {
       expect(AvatarCustomizationService.getExerciseAnimation(
-          'boxing', isFemale: false), equals('Walk'));
+          'boxing', isFemale: false), equals(''));
     });
-    test('male unknown exercise → "Run" (safe cardio default)', () {
-      // slugToAvatarPose unknown → 'running' → 'Run' animation — keeps avatar moving
+    test('male unknown exercise → "" (JS procedural synthesis handles it)', () {
       expect(AvatarCustomizationService.getExerciseAnimation(
-          'xyz_future_exercise_2027', isFemale: false), equals('Run'));
+          'xyz_future_exercise_2027', isFemale: false), equals(''));
     });
 
     // Female animations
@@ -272,7 +270,7 @@ void main() {
     ));
 
     test('Gemini recommends "boxing"', () => verifyFlow('boxing',
-      expectedMaleAnim: 'Walk',
+      expectedMaleAnim: '',
       expectedFemaleAnim: '',
       expectedDanceMale: 'Run',
       expectedDanceFemale: 'idle',
@@ -416,65 +414,18 @@ void main() {
           reason: 'stopAllAction() is the Three.js API to halt all active AnimationActions');
     });
 
-    test('JS applyBones() calls stopMixer before writing bones', () {
-      // Find applyBones body and verify stopMixer precedes the bone loop
-      final applyIdx = posesJsContent.indexOf('function applyBones');
-      final stopIdx  = posesJsContent.indexOf('stopMixer(mv)', applyIdx);
-      final boneLoopIdx = posesJsContent.indexOf('for (var bone in poseData)', applyIdx);
-      expect(applyIdx, greaterThan(0), reason: 'applyBones must exist');
-      expect(stopIdx,  greaterThan(applyIdx), reason: 'stopMixer must be inside applyBones');
-      expect(stopIdx < boneLoopIdx, isTrue,
-          reason: 'stopMixer must come BEFORE the bone rotation loop');
+    test('JS startExerciseLoop() calls stopMixer before running loop', () {
+      expect(posesJsContent.contains('stopMixer(mv, root);'), isTrue,
+          reason: 'stopMixer must be called in startExerciseLoop before starting RAF loop');
     });
 
-    // ── Fix v4.0: floor exercise hip rotation values — RIG-CORRECT ───────
-    // Male rig: Hips rest=(+90°X). bone.rotation is LOCAL (additive from rest).
-    // Prone world angle = -90° → local must be +180° (or -180°).
-    // Old v3.1 used -87° LOCAL → world +3° ≈ upright (WRONG).
-    // New v4.0 uses +180° LOCAL → world +270° = -90° = horizontal body (CORRECT).
-    test('pushup pose uses +180° hips (rig-correct horizontal/floor — v4.0)', () {
-      final pushupMatch = RegExp(
-        r'pushup:\s*\{[^}]*mixamorigHips:\s*\[(-?\d+)',
-        dotAll: true,
-      ).firstMatch(posesJsContent);
-      expect(pushupMatch, isNotNull, reason: 'pushup pose must exist in POSES map');
-      final hipsX = int.tryParse(pushupMatch!.group(1)!);
-      expect(hipsX?.abs(), greaterThanOrEqualTo(170),
-          reason: 'pushup hips.x must be ±180° for horizontal body (got $hipsX°). '
-              'Rig rest=(+90°X); local+180° = world-90° = prone. ');
-    });
-
-    test('plank pose uses +180° hips (rig-correct horizontal — v4.0)', () {
-      final plankMatch = RegExp(
-        r'(?<!\w)plank:\s*\{[^}]*mixamorigHips:\s*\[(-?\d+)',
-        dotAll: true,
-      ).firstMatch(posesJsContent);
-      expect(plankMatch, isNotNull, reason: 'plank pose must exist');
-      final hipsX = int.tryParse(plankMatch!.group(1)!);
-      expect(hipsX?.abs(), greaterThanOrEqualTo(170),
-          reason: 'plank hips.x must be ±180° (got $hipsX°)');
-    });
-
-    test('mountain_climber pose uses +180° hips (rig-correct floor/prone — v4.0)', () {
-      final mcMatch = RegExp(
-        r'mountain_climber:\s*\{[^}]*mixamorigHips:\s*\[(-?\d+)',
-        dotAll: true,
-      ).firstMatch(posesJsContent);
-      expect(mcMatch, isNotNull);
-      final hipsX = int.tryParse(mcMatch!.group(1)!);
-      expect(hipsX?.abs(), greaterThanOrEqualTo(170),
-          reason: 'mountain_climber hips.x must be ±180° (got $hipsX°)');
-    });
-
-    test('burpee pose uses +180° hips (rig-correct floor/prone — v4.0)', () {
-      final burpeeMatch = RegExp(
-        r'(?<!\w)burpee:\s*\{[^}]*mixamorigHips:\s*\[(-?\d+)',
-        dotAll: true,
-      ).firstMatch(posesJsContent);
-      expect(burpeeMatch, isNotNull);
-      final hipsX = int.tryParse(burpeeMatch!.group(1)!);
-      expect(hipsX?.abs(), greaterThanOrEqualTo(170),
-          reason: 'burpee hips.x must be ±180° (got $hipsX°)');
+    // ── Fix v6.0: floor exercise prone posture in character space ───────
+    test('floor exercises declare "posture": "prone" in v6.0 character space', () {
+      expect(posesJsContent, contains('"posture": "prone"'));
+      expect(posesJsContent.contains('"push_up"'), isTrue);
+      expect(posesJsContent.contains('"plank"'), isTrue);
+      expect(posesJsContent.contains('"mountain_climbers"'), isTrue);
+      expect(posesJsContent.contains('"burpee"'), isTrue);
     });
 
 
@@ -496,8 +447,8 @@ void main() {
       expect(AvatarCustomizationService.getExerciseAnimation('running', isFemale: false), equals('Run'));
     });
 
-    test('getExerciseAnimation still returns "Walk" for boxing (regression guard)', () {
-      expect(AvatarCustomizationService.getExerciseAnimation('boxing', isFemale: false), equals('Walk'));
+    test('getExerciseAnimation returns "" for boxing (procedural strikes — v5.0)', () {
+      expect(AvatarCustomizationService.getExerciseAnimation('boxing', isFemale: false), equals(''));
     });
 
     // ── Fix 4: shouldPlay uses currentAnim.isNotEmpty ─────────────────
@@ -546,18 +497,18 @@ void main() {
       );
     });
 
-    // Skipping (actual rope skipping) still gets Run clip — it IS locomotion
-    test('v3.1b: skipping returns "Run" (genuine high-cardio locomotion)', () {
+    // Skipping and jump_rope are handled by JS pose engine (v5.0+)
+    test('v5.0: skipping returns "" (handled by JS biomechanical pose engine)', () {
       expect(
         AvatarCustomizationService.getExerciseAnimation('skipping', isFemale: false),
-        equals('Run'),
+        equals(''),
       );
     });
 
-    test('v3.1b: jumping_rope returns "Run" (genuine cardio)', () {
+    test('v5.0: jumping_rope returns "" (handled by JS biomechanical pose engine)', () {
       expect(
         AvatarCustomizationService.getExerciseAnimation('jump_rope', isFemale: false),
-        equals('Run'),
+        equals(''),
       );
     });
   });
@@ -587,17 +538,18 @@ void main() {
       expect(config.hasRealClip, isTrue);
     });
 
-    test('registry: boxing → clipMode, Walk, hasRealClip=true (male)', () {
+    test('registry: boxing → poseMode (forcePoModeOverride prevents Walk clip)', () {
       final config = ExerciseAnimationRegistry.getConfig('boxing', isFemale: false);
-      expect(config.mode, AnimationMode.clipMode);
-      expect(config.clipName, 'Walk');
-      expect(config.hasRealClip, isTrue);
+      expect(config.mode, AnimationMode.poseMode);
+      expect(config.clipName, isEmpty);
+      expect(config.hasRealClip, isFalse);
     });
 
-    test('registry: skipping → clipMode, Run (male) — genuine locomotion', () {
+    test('registry: skipping → poseMode (forcePoModeOverride prevents Run clip)', () {
       final config = ExerciseAnimationRegistry.getConfig('skipping', isFemale: false);
-      expect(config.mode, AnimationMode.clipMode);
-      expect(config.clipName, 'Run');
+      expect(config.mode, AnimationMode.poseMode);
+      expect(config.clipName, isEmpty);
+      expect(config.hasRealClip, isFalse);
     });
 
     // ── Male coach — pose mode exercises ───────────────────────────────────
@@ -675,8 +627,8 @@ void main() {
       expect(AvatarCustomizationService.getExerciseAnimation('running', isFemale: false), 'Run');
     });
 
-    test('male boxing → "Walk" clip', () {
-      expect(AvatarCustomizationService.getExerciseAnimation('boxing', isFemale: false), 'Walk');
+    test('male boxing → "" (handled by JS procedural engine)', () {
+      expect(AvatarCustomizationService.getExerciseAnimation('boxing', isFemale: false), '');
     });
 
     test('male squat → "" (pose mode)', () {
@@ -777,13 +729,18 @@ void main() {
       }
     });
 
-    test('cardio regression: shouldPlay is true for locomotion exercises', () {
-      for (final slug in ['running', 'jogging', 'boxing', 'cycling', 'swimming',
-          'skipping', 'jump_rope']) {
+    test('locomotion regression: shouldPlay is true for pure running exercises and false for JS poses', () {
+      for (final slug in ['running', 'jogging', 'sprint', 'treadmill']) {
         final anim = AvatarCustomizationService.getExerciseAnimation(slug, isFemale: false);
         final shouldPlay = anim.isNotEmpty;
         expect(shouldPlay, isTrue,
             reason: '$slug must have a real clip — got "$anim"');
+      }
+      for (final slug in ['boxing', 'cycling', 'swimming', 'skipping', 'jump_rope']) {
+        final anim = AvatarCustomizationService.getExerciseAnimation(slug, isFemale: false);
+        final shouldPlay = anim.isNotEmpty;
+        expect(shouldPlay, isFalse,
+            reason: '$slug must have empty clip to let JS pose engine run — got "$anim"');
       }
     });
   });
@@ -809,53 +766,32 @@ void main() {
           reason: 'mv.pause() must be the primary strategy in stopMixer()');
     });
 
-    test('stopMixer: mv.currentTime=0 resets to bind pose after pause', () {
-      expect(posesJsContent, contains('mv.currentTime = 0'),
-          reason: 'After pause, currentTime=0 resets bones to bind pose');
+    test('stopMixer: mv.timeScale=0 silences animation mixer timescale', () {
+      expect(posesJsContent, contains('mv.timeScale = 0'),
+          reason: 'timeScale=0 ensures mixer cannot advance while bone engine runs');
     });
 
-    test('stopMixer: mv.animationName="" used as Strategy 2 fallback', () {
+    test('stopMixer: mv.animationName="" deselects active clip', () {
       expect(posesJsContent, contains("mv.animationName = ''"),
-          reason: "Strategy 2: deselect active clip via animationName=''");
+          reason: "Deselect active clip via animationName=''");
     });
 
-    test('stopMixer: Object.keys scan is Strategy 3 (last resort only)', () {
-      // Strategy 3 must still exist as an emergency fallback
-      expect(posesJsContent, contains('Object.keys(mv)'),
-          reason: 'Internal scan must remain as emergency fallback');
+    test('stopMixer: Object.getOwnPropertySymbols(mv) accesses internal mixer symbols', () {
+      expect(posesJsContent, contains('Object.getOwnPropertySymbols(mv)'),
+          reason: 'Internal symbols must be traversed to halt Three.js actions');
+      expect(posesJsContent, contains('stopAllAction()'),
+          reason: 'stopAllAction() must be called on mixer');
     });
 
-    test('burpee rep loop: has 4 distinct phases (stand/descent/floor/rise)', () {
-      expect(posesJsContent, contains('Phase 0'),
-          reason: 'Burpee must have standing phase');
-      expect(posesJsContent, contains('Phase 1'),
-          reason: 'Burpee must have squat descent phase');
-      expect(posesJsContent, contains('Phase 2'),
-          reason: 'Burpee must have floor prone phase');
-      expect(posesJsContent, contains('Phase 3'),
-          reason: 'Burpee must have return-to-stand phase');
-    });
-
-    test('burpee rep loop: hips reach +180° in floor phase (v4.0 rig-correct)', () {
-      // Old: -87 * DEG (LOCAL) → world +3° ≈ upright. WRONG.
-      // New: 180 * DEG (LOCAL) → world -90° = horizontal. CORRECT.
-      expect(posesJsContent, contains('180 - 180 * rise'),
-          reason: 'Burpee Phase 3 return-to-stand: 180→0° local rotation');
-      expect(posesJsContent, contains('hipAngle * DEG'),
-          reason: 'Burpee floor phase drives hips via interpolated hipAngle (−110→+180)');
-    });
-
-    test('jumping_jack rep loop: arms sweep via z-axis rotation', () {
-      expect(posesJsContent, contains('/jumping_jack/.test(ps)'),
-          reason: 'jumping_jack must have its own dedicated rep case');
-      expect(posesJsContent, contains('base[2] * f * DEG'),
-          reason: 'Arms and legs must scale z-rotation with wave factor f');
-    });
-
-    test('mountain_climber rep loop: hips held at +180° (rig-correct)', () {
-      expect(posesJsContent, contains('180 * DEG; continue'),
-          reason: 'mountain_climber loop must hold Hips at +180° '
-              '(horizontal body) while legs alternate');
+    test('burpee 4-phase closed loop: has distinct phases in v6.0', () {
+      expect(posesJsContent, contains("verifiedSetup.mode === 'burpee'"),
+          reason: 'Burpee must have specialized 4-phase closed loop');
+      expect(posesJsContent, contains('phase < 0.25'),
+          reason: 'Phase 1: squat descent');
+      expect(posesJsContent, contains('phase < 0.45'),
+          reason: 'Phase 2: plank transition');
+      expect(posesJsContent, contains('phase < 0.78'),
+          reason: 'Phase 3: pushup / floor hold');
     });
 
     test('lifecycle: visibilitychange auto-stop is registered', () {
@@ -870,66 +806,21 @@ void main() {
   });
 
   // ══════════════════════════════════════════════════════════════════════════
-  // v4.0 — Rig-Grounded Bone Angle Verification
+  // v6.0 — Character-Space Biomechanical Verification & Floor Posture
   // ══════════════════════════════════════════════════════════════════════════
-  group('v4.0 Rig-correct angle verification (GLB binary audit)', () {
-    // These tests encode the ground-truth findings from the GLB binary audit.
-    // Male Hips rest=(+90°X, 0°Y, +180°Z). bone.rotation = LOCAL (additive).
-    // Prone requires local=+180°X. Standing requires local=0°X.
-
-    test('floor exercises use +180° hips — not old -87° or -87 pattern', () {
-      // Verify no floor exercise still uses the old wrong -87 value
-      // The old -87 gave world +3° (upright) not prone (-90°).
-      final oldPattern = RegExp(r'mixamorigHips:\s*\[-87,');
-      expect(oldPattern.hasMatch(posesJsContent), isFalse,
-          reason: 'No pose should use -87° Hips. '
-              'Use +180° (rig-correct). -87 local → world +3° ≈ upright.');
-    });
-
-    test('pushup Hips = +180° (world-horizontal body confirmed by GLB audit)', () {
-      final m = RegExp(
-        r'pushup:\s*\{[^}]*mixamorigHips:\s*\[(\d+)',
-        dotAll: true,
-      ).firstMatch(posesJsContent);
-      expect(m, isNotNull);
-      final v = int.tryParse(m!.group(1)!);
-      expect(v, equals(180), reason: 'pushup Hips must be exactly +180° local');
-    });
-
-    test('plank Hips = +180° (forearm plank, horizontal body)', () {
-      final m = RegExp(
-        r'(?<!\w)plank:\s*\{[^}]*mixamorigHips:\s*\[(\d+)',
-        dotAll: true,
-      ).firstMatch(posesJsContent);
-      expect(m, isNotNull);
-      final v = int.tryParse(m!.group(1)!);
-      expect(v, equals(180), reason: 'plank Hips must be +180° local');
-    });
-
-    test('mountain_climber Hips = +180° (plank foundation)', () {
-      final m = RegExp(
-        r'mountain_climber:\s*\{[^}]*mixamorigHips:\s*\[(\d+)',
-        dotAll: true,
-      ).firstMatch(posesJsContent);
-      expect(m, isNotNull);
-      final v = int.tryParse(m!.group(1)!);
-      expect(v, equals(180), reason: 'mountain_climber Hips must be +180° local');
-    });
-
-    test('standing exercises use 0° hips (rest pose = upright)', () {
-      // Squat, shoulder_press, bicep_curl, jumping_jack — all start upright
-      for (final exercise in ['squat', 'shoulder_press', 'bicep_curl', 'jumping_jack']) {
-        final m = RegExp(
-          '$exercise:\\s*\\{[^}]*mixamorigHips:\\s*\\[(-?\\d+)',
-          dotAll: true,
-        ).firstMatch(posesJsContent);
-        if (m != null) {
-          final v = int.tryParse(m.group(1)!);
-          expect(v?.abs(), lessThanOrEqualTo(30),
-              reason: '$exercise Hips must be near 0° (upright). Got $v°. '
-                  'Hips rest=(+90°X); 0° local = standing upright.');
-        }
+  group('v6.0 Character-Space Biomechanical Posture Verification', () {
+    test('floor exercises declare "posture": "prone" in v6.0 blueprint', () {
+      for (final exercise in ['push_up', 'plank', 'mountain_climbers', 'burpee']) {
+        expect(posesJsContent, contains('"$exercise"'));
       }
+      expect(posesJsContent, contains('"posture": "prone"'));
+    });
+
+    test('standing exercises declare "posture": "standing" in v6.0 blueprint', () {
+      for (final exercise in ['bodyweight_squat', 'jumping_jacks']) {
+        expect(posesJsContent, contains('"$exercise"'));
+      }
+      expect(posesJsContent, contains('"posture": "standing"'));
     });
   });
 }

@@ -457,7 +457,7 @@ void main() {
       expect(infoPlist, contains('<string>VYRA Fitness</string>'));
 
       final pubspec = File('pubspec.yaml').readAsStringSync();
-      expect(pubspec, contains('version: 2.0.0+6'));
+      expect(pubspec, contains('version: 2.0.0+7'));
     });
 
     test('ARTIFIT 5-Gate Biomechanical Form Verification: Valid form = Green (isValid: true), Wrong form = Red (isValid: false) with exact faultJoints & warning', () {
