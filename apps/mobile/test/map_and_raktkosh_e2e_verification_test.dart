@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
 
 import 'package:vyra/screens/blood_donation.dart';
