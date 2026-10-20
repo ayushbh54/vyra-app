@@ -2,7 +2,7 @@
 
 > **Last Updated:** October 20, 2026  
 > **Status:** Production-Ready • Smart India Hackathon (SIH 2026 — Problem ID: `26196`)  
-> **Mobile Application:** `VYRA Fitness` (`com.ayush.vyra.fitness` • Version `2.0.0+7`)  
+> **Mobile Application:** `VYRA Fitness` (`com.ayush.vyra.fitness` • Version `2.0.0+8`)  
 > **Static Analysis:** `flutter analyze` → Clean (`0` Errors, `0` Warnings)  
 > **Test Suites:** `431 / 431` Flutter Tests Passed • `175 / 175` Backend Tests Passed  
 > **Live Web Portal:** `https://vyra-app-api-ten.vercel.app`  
