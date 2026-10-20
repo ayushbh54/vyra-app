@@ -1,6 +1,6 @@
 # ⚡ VYRA Ecosystem — System Architecture & Technical State Manifesto
 
-> **Last Updated:** October 19, 2026  
+> **Last Updated:** October 20, 2026  
 > **Status:** Production-Ready • Smart India Hackathon (SIH 2026 — Problem ID: `26196`)  
 > **Mobile Application:** `VYRA Fitness` (`com.ayush.vyra.fitness` • Version `2.0.0+7`)  
 > **Static Analysis:** `flutter analyze` → Clean (`0` Errors, `0` Warnings)  
@@ -249,5 +249,8 @@ cd apps/mobile && flutter test
 | **Android Cleartext Whitelist & Deterministic Keystore** | Whitelisted 127.0.0.1 loopback HTTP in AndroidManifest & network_security_config.xml; bundled deterministic keystore for 1-tap in-place updates; upgraded to version 2.0.0+7 | **VERIFIED & PASS** |
 | **e-RaktKosh API Setu & Universal Map Engine** | CartoDB Voyager tiles with 2x retina clarity + OSM fallback; dark slate container placeholder (zero white flashing); live GPS dynamic acquisition + real-time API Setu fetch (`/v1/eraktkosh/nearby`); authentic Haversine nearest distance calculation & sorting across Indian metros | **6 / 6 PASS** |
 | **Universal iOS/Android Responsive Auto-Fit** | Root `MaterialApp` builder textScaler clamp (`0.85` - `1.15`); `Expanded`/`Flexible` and ellipsis wrapping across narrow iOS displays (iPhone SE/Mini to Pro Max); zero RenderFlex overflow crashes | **VERIFIED & PASS** |
+| **OpenStreetMap & Clean Map Tile Migration** | Migrated all tile layers to clean OpenStreetMap (`tile.openstreetmap.org`) with OpenTopoMap fallback; eliminated third-party "API KEY REQUIRED" raster watermark | **VERIFIED & DEPLOYED** |
+| **e-RaktKosh 1-Tap Live GPS Recenter & Sync** | Added high-visibility interactive GPS card and floating map overlay button (`Recenter Live GPS`); dynamic Haversine distance and regional lifeline synthesis; instant live coordinates lock | **VERIFIED & DEPLOYED** |
+| **Zero-Lingering Task Protocol** | Added Section 7 to `AGENTS.md` & `GEMINI.md`; eliminates idle zombie CLI tasks (e.g. `flutter run`) after build/install completion | **MERGED & ACTIVE** |
 
 
