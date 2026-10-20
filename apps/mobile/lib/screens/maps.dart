@@ -84,9 +84,9 @@ class _MapsScreenState extends State<MapsScreen> {
               ),
               children: [
                 TileLayer(
-                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-                  fallbackUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  subdomains: const ['a', 'b', 'c', 'd'],
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  fallbackUrl: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+                  subdomains: const ['a', 'b', 'c'],
                   userAgentPackageName: 'com.ayush.vyra.fitness',
                 ),
                 for (final activity in routes)

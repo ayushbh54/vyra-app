@@ -395,11 +395,11 @@ class _RecordScreenState extends State<RecordScreen> {
           },
         ),
         children: [
-          // High-performance CartoDB Voyager tiles with OSM fallback & verified User-Agent
+          // Clean OpenStreetMap tiles with verified User-Agent & OpenTopoMap fallback
           TileLayer(
-            urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-            fallbackUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            subdomains: const ['a', 'b', 'c', 'd'],
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            fallbackUrl: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+            subdomains: const ['a', 'b', 'c'],
             userAgentPackageName: 'com.ayush.vyra.fitness',
           ),
           // START marker (green dot)
