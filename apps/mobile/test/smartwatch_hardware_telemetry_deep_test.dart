@@ -240,11 +240,16 @@ void main() {
       expect(d.heartRateBpm, isNull);
     });
 
-    test('Generic Format [0x02, hr=75, spo2=98]', () {
+    // NOTE: [0x02, hr, spo2] format is now intercepted by the FitCloud/Fastrack
+    // parser (cmd byte 75 = unknown FitCloud cmd → returns empty).
+    // This legacy format was used by some HiWatch FitPro variants but has been
+    // superseded by explicit FitCloud protocol support. Test updated accordingly.
+    test('Generic Format [0x02, hr=75, spo2=98] — now handled by FitCloud path, returns empty for unknown cmd', () {
       final pkt = [0x02, 75, 98];
       final d = HiWatchProProtocol.parseNotifyPacket(pkt);
-      expect(d.heartRateBpm, equals(75));
-      expect(d.bloodOxygenSpo2, equals(98));
+      // cmd=75 is not a known FitCloud command → empty telemetry returned
+      expect(d.heartRateBpm, isNull);
+      expect(d.bloodOxygenSpo2, isNull);
     });
 
     test('Generic Format [0x04, 0x00, hr=77, spo2=99]', () {

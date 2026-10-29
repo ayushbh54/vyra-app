@@ -763,6 +763,24 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         // Wear OS / Samsung Galaxy Watch / Encrypted Companion GATT Bridge
         debugPrint('[VYRA-BLE] ⚡ Wear OS / Encrypted Companion GATT Bridge active for $_pairedWatchName');
         await _pollWearOsCompanionBridge(includeVitals: true);
+      } else if (_activeProfile?.protocolType == WatchProtocolType.fitCloudFastrack) {
+        // Fastrack / Titan FitCloud Protocol (0x27F0 service, 0x27F6 write, 0x27F7 notify)
+        // Verified ground-truth handshake from hardware probe on FT_38112_FDAB
+        debugPrint('[VYRA-BLE] ⚡ FitCloud Fastrack Protocol active for $_pairedWatchName');
+        // Step 1: Handshake — establishes session, watch replies with device info
+        await broadcastWatchCommands([const [0x02, 0x01, 0x00, 0x00]]);
+        await Future.delayed(const Duration(milliseconds: 300));
+        // Step 2: Query today steps + daily summary
+        await broadcastWatchCommands([const [0x02, 0x05, 0x00, 0x00]]);
+        await Future.delayed(const Duration(milliseconds: 250));
+        // Step 3: Query today health (HR avg, steps, calories)
+        await broadcastWatchCommands([const [0x02, 0x02, 0x00, 0x00]]);
+        await Future.delayed(const Duration(milliseconds: 250));
+        // Step 4: Trigger live HR measurement
+        await broadcastWatchCommands([const [0x02, 0x20, 0x01, 0x00, 0x01]]);
+        await Future.delayed(const Duration(milliseconds: 250));
+        // Step 5: Trigger live SpO2 measurement
+        await broadcastWatchCommands([const [0x02, 0x21, 0x01, 0x00, 0x01]]);
       } else if (_activeProfile?.protocolType == WatchProtocolType.dafitAb) {
         // DaFit / MoYoung Protocol (0xAB) — Fire-Boltt, Noise, boAt, DaFit
         await broadcastWatchCommands([
@@ -959,6 +977,18 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
       if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
         await _pollWearOsCompanionBridge(includeVitals: telemetryTick % 2 == 0);
+      } else if (_activeProfile?.protocolType == WatchProtocolType.fitCloudFastrack) {
+        // FitCloud / Fastrack: watch sends autonomous keepalive pings [0x07, 0x01, bat%].
+        // We only need to re-query steps + trigger vitals periodically.
+        await broadcastWatchCommands([const [0x02, 0x05, 0x00, 0x00]]); // steps
+        if (telemetryTick % 3 == 0) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          await broadcastWatchCommands([const [0x02, 0x20, 0x01, 0x00, 0x01]]); // HR
+        }
+        if (telemetryTick % 5 == 0) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          await broadcastWatchCommands([const [0x02, 0x21, 0x01, 0x00, 0x01]]); // SpO2
+        }
       } else if (_activeProfile?.protocolType == WatchProtocolType.dafitAb) {
         // DaFit 0xAB Keepalive & Sport Summary Poll (both direct 0x51 and length-prefixed 0xFF 0x51)
         await broadcastWatchCommands([
@@ -1410,6 +1440,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           broadcastWatchCommands([
             [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x09, 0x00],
           ]);
+        } else if (_activeProfile?.protocolType == WatchProtocolType.fitCloudFastrack) {
+          // FitCloud: stop HR by sending trigger with 0x00 (off)
+          broadcastWatchCommands([const [0x02, 0x20, 0x01, 0x00, 0x00]]);
         } else if (_activeProfile?.protocolType != WatchProtocolType.wearOsCompanion &&
             _activeProfile?.protocolType != WatchProtocolType.bleSig) {
           broadcastWatchCommands([
@@ -1426,6 +1459,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       await broadcastWatchCommands([
         [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x09, 0x01],
       ]);
+    } else if (_activeProfile?.protocolType == WatchProtocolType.fitCloudFastrack) {
+      // FitCloud HR measurement trigger
+      await broadcastWatchCommands([const [0x02, 0x20, 0x01, 0x00, 0x01]]);
     } else if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
       Future.delayed(const Duration(milliseconds: 2800), () {
         if (mounted && _isRealBleConnected && _isMeasuringHr) {
@@ -1470,6 +1506,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           broadcastWatchCommands([
             [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x12, 0x00],
           ]);
+        } else if (_activeProfile?.protocolType == WatchProtocolType.fitCloudFastrack) {
+          broadcastWatchCommands([const [0x02, 0x21, 0x01, 0x00, 0x00]]); // SpO2 off
         } else if (_activeProfile?.protocolType != WatchProtocolType.wearOsCompanion &&
             _activeProfile?.protocolType != WatchProtocolType.bleSig) {
           broadcastWatchCommands([
@@ -1486,6 +1524,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       await broadcastWatchCommands([
         [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x12, 0x01],
       ]);
+    } else if (_activeProfile?.protocolType == WatchProtocolType.fitCloudFastrack) {
+      await broadcastWatchCommands([const [0x02, 0x21, 0x01, 0x00, 0x01]]); // SpO2 on
     } else if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
       Future.delayed(const Duration(milliseconds: 3000), () {
         if (mounted && _isRealBleConnected && _isMeasuringSpo2) {
@@ -1531,6 +1571,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           broadcastWatchCommands([
             [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x21, 0x00],
           ]);
+        } else if (_activeProfile?.protocolType == WatchProtocolType.fitCloudFastrack) {
+          // FitCloud has no dedicated BP stop; re-query steps to resume normal mode
+          broadcastWatchCommands([const [0x02, 0x05, 0x00, 0x00]]);
         } else if (_activeProfile?.protocolType != WatchProtocolType.wearOsCompanion &&
             _activeProfile?.protocolType != WatchProtocolType.bleSig) {
           broadcastWatchCommands([
@@ -1547,6 +1590,11 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       await broadcastWatchCommands([
         [0xAB, 0x00, 0x04, 0xFF, 0x31, 0x21, 0x01],
       ]);
+    } else if (_activeProfile?.protocolType == WatchProtocolType.fitCloudFastrack) {
+      // FitCloud: trigger HR + SpO2 simultaneously (closest to BP measurement available)
+      await broadcastWatchCommands([const [0x02, 0x20, 0x01, 0x00, 0x01]]);
+      await Future.delayed(const Duration(milliseconds: 200));
+      await broadcastWatchCommands([const [0x02, 0x21, 0x01, 0x00, 0x01]]);
     } else if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
       Future.delayed(const Duration(milliseconds: 3000), () {
         if (mounted && _isRealBleConnected && _isMeasuringBp) {
@@ -1590,6 +1638,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           broadcastWatchCommands([
             [0xAB, 0x00, 0x04, 0xFF, 0x32, 0x80, 0x00],
           ]);
+        } else if (_activeProfile?.protocolType == WatchProtocolType.fitCloudFastrack) {
+          // FitCloud: stop all active measurements
+          broadcastWatchCommands([const [0x02, 0x20, 0x01, 0x00, 0x00]]);
+          broadcastWatchCommands([const [0x02, 0x21, 0x01, 0x00, 0x00]]);
         } else if (_activeProfile?.protocolType != WatchProtocolType.wearOsCompanion &&
             _activeProfile?.protocolType != WatchProtocolType.bleSig) {
           broadcastWatchCommands([
@@ -1606,6 +1658,13 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       await broadcastWatchCommands([
         [0xAB, 0x00, 0x04, 0xFF, 0x32, 0x80, 0x01],
       ]);
+    } else if (_activeProfile?.protocolType == WatchProtocolType.fitCloudFastrack) {
+      // FitCloud: trigger HR + SpO2 simultaneously (combined all-vitals mode)
+      await broadcastWatchCommands([const [0x02, 0x05, 0x00, 0x00]]); // steps first
+      await Future.delayed(const Duration(milliseconds: 150));
+      await broadcastWatchCommands([const [0x02, 0x20, 0x01, 0x00, 0x01]]); // HR on
+      await Future.delayed(const Duration(milliseconds: 200));
+      await broadcastWatchCommands([const [0x02, 0x21, 0x01, 0x00, 0x01]]); // SpO2 on
     } else if (_activeProfile?.protocolType == WatchProtocolType.wearOsCompanion) {
       Future.delayed(const Duration(milliseconds: 3200), () {
         if (mounted && _isRealBleConnected && _isMeasuringAll) {

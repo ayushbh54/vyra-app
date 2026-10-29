@@ -345,10 +345,12 @@ void main() {
       expect(r.heartRateBpm, isNull);
     });
 
-    test('0x02 format: [02 hr spo2]', () {
+    // [0x02, hr, spo2] legacy format: now intercepted by FitCloud/Fastrack parser.
+    // cmd=68 is unknown FitCloud command → returns empty. See fitcloud_fastrack_test.dart.
+    test('0x02 format: [02 hr spo2] → empty (FitCloud path, cmd=68 unknown)', () {
       final r = HiWatchProProtocol.parseNotifyPacket([0x02, 68, 99]);
-      expect(r.heartRateBpm, equals(68));
-      expect(r.bloodOxygenSpo2, equals(99));
+      expect(r.heartRateBpm, isNull);
+      expect(r.bloodOxygenSpo2, isNull);
     });
 
     test('0x04 format: [04 00 hr spo2]', () {

@@ -948,15 +948,93 @@ class HiWatchProProtocol {
       }
     }
 
-    // 4. Format [0x02, hr, spo2, ...] — used by some HiWatch FitPro variants
+    // 4. Fastrack / Titan FitCloud Protocol (Service 0x27F0 / 0x2760)
+    //    Verified ground-truth from FT_38112_FDAB hardware probe.
+    //    Header 0x02, cmd byte at [1] determines packet type.
+    //    MUST come BEFORE the legacy "0x02 = HiWatch FitPro variant" handler below,
+    //    otherwise steps packet [0x02, 0x05, ...] is misread as hr=5, spo2=0.
     if (header == 0x02 && bytes.length >= 3) {
-      final hr = bytes[1];
-      final spo2 = bytes[2];
+      final cmd = bytes[1];
+
+      // Steps response: [0x02, 0x05, 0x00, steps_lo, steps_hi, 0x00, yr_lo, yr_hi, month, day, hr, min]
+      // Verified: 0xA6 0x0E = 3750 steps (little-endian uint16)
+      if (cmd == 0x05 && bytes.length >= 5) {
+        final rawSteps = bytes[3] | (bytes[4] << 8);
+        final steps = (rawSteps > 0 && rawSteps <= 100000) ? rawSteps : null;
+        // Optional calories at bytes[5..6] (little-endian uint16)
+        int? kcal;
+        if (bytes.length >= 7) {
+          final rawKcal = bytes[5] | (bytes[6] << 8);
+          kcal = (rawKcal > 0 && rawKcal <= 15000) ? rawKcal : null;
+        }
+        // ignore: avoid_print
+        print('[FITCLOUD] Steps: $steps, Kcal: $kcal');
+        return HiWatchTelemetryData(steps: steps, calories: kcal);
+      }
+
+      // Today health summary: [0x02, 0x02, 0xFF, field, 0xFF, hr_avg, ...]
+      // bytes[5] = avg HR from today's session
+      if (cmd == 0x02 && bytes.length >= 6) {
+        final hr = bytes[5];
+        // ignore: avoid_print
+        print('[FITCLOUD] Today Health HR avg: $hr');
+        return HiWatchTelemetryData(
+          heartRateBpm: (hr >= 40 && hr <= 200) ? hr : null,
+        );
+      }
+
+      // Live HR response: [0x02, 0x20, hr, spo2?, ...]
+      // Also handles cmd 0x10 (some FitCloud variants)
+      if ((cmd == 0x20 || cmd == 0x10) && bytes.length >= 3) {
+        final hr = bytes[2];
+        final spo2 = bytes.length >= 4 ? bytes[3] : null;
+        // ignore: avoid_print
+        print('[FITCLOUD] Live HR: $hr, SpO2: $spo2');
+        return HiWatchTelemetryData(
+          heartRateBpm: (hr >= 40 && hr <= 200) ? hr : null,
+          bloodOxygenSpo2:
+              (spo2 != null && spo2 >= 70 && spo2 <= 100) ? spo2 : null,
+        );
+      }
+
+      // Live SpO2 response: [0x02, 0x21, spo2, ...]
+      if (cmd == 0x21 && bytes.length >= 3) {
+        final spo2 = bytes[2];
+        // ignore: avoid_print
+        print('[FITCLOUD] Live SpO2: $spo2');
+        return HiWatchTelemetryData(
+          bloodOxygenSpo2: (spo2 >= 70 && spo2 <= 100) ? spo2 : null,
+        );
+      }
+
+      // Handshake ACK: [0x02, 0x01, ...] — ignore, return empty
+      if (cmd == 0x01) {
+        // ignore: avoid_print
+        print('[FITCLOUD] Handshake ACK received');
+        return HiWatchTelemetryData.empty();
+      }
+
+      // Unknown FitCloud 0x02 subcommand — log & skip
+      // ignore: avoid_print
+      print('[FITCLOUD] Unknown cmd=0x${cmd.toRadixString(16)} len=${bytes.length}');
+      return HiWatchTelemetryData.empty();
+    }
+
+    // 4B. FitCloud autonomous keepalive / battery packet: [0x07, 0x01, bat%]
+    if (header == 0x07 && bytes.length >= 3) {
+      final bat = bytes[2];
+      // ignore: avoid_print
+      print('[FITCLOUD] Battery: $bat%');
       return HiWatchTelemetryData(
-        heartRateBpm: (hr >= 35 && hr <= 220) ? hr : null,
-        bloodOxygenSpo2: (spo2 >= 70 && spo2 <= 100) ? spo2 : null,
+        batteryLevel: (bat > 0 && bat <= 100) ? bat : null,
       );
     }
+
+    // 4C. Legacy Format [0x02, hr, spo2, ...] — used by some HiWatch FitPro variants
+    //     This block is now unreachable for FitCloud (handled above), but kept
+    //     as safety net for any non-FitCloud device that sends raw [0x02, hr, spo2]
+    //     — in practice this path is dead since we return early above.
+    // (Intentionally removed — FitCloud 0x02 branch handles all 0x02 packets above.)
 
     // 5. Format [0x04, 0x00, hr, spo2] — HiWatch Ultra / Watch 8 Ultra variants
     if (header == 0x04 && bytes.length >= 4) {

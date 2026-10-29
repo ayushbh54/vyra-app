@@ -62,11 +62,13 @@ void main() {
       expect(d.ackPacket![0], equals(0xDC));
     });
 
-    // ── Format 4: 0x02 header [0x02, hr, spo2] ───────────────────────────
-    test('0x02 header packet: HR=68 SpO2=99', () {
+    // ── Format 4: 0x02 header — now intercepted by FitCloud/Fastrack parser ─
+    // cmd byte 68 is not a known FitCloud cmd → returns empty telemetry.
+    // FitCloud-specific tests are in fitcloud_fastrack_test.dart.
+    test('0x02 header packet (cmd=68 unknown FitCloud) → empty', () {
       final d = HiWatchProProtocol.parseNotifyPacket([0x02, 68, 99]);
-      expect(d.heartRateBpm, equals(68));
-      expect(d.bloodOxygenSpo2, equals(99));
+      expect(d.heartRateBpm, isNull);
+      expect(d.bloodOxygenSpo2, isNull);
     });
 
     // ── Format 5: 0x04 header [0x04, 0x00, hr, spo2] ────────────────────

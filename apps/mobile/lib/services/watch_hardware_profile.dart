@@ -20,6 +20,11 @@ enum WatchProtocolType {
 
   /// Generic Custom UART stream
   genericUart,
+
+  /// Fastrack / Titan FitCloud protocol (Service 0x27F0, Write 0x27F6, Notify 0x27F7)
+  /// Verified from FT_38112_FDAB ground-truth probe (Mac: CB:4E:FD:F7:FD:AB)
+  /// Packet format: [0x02, cmd, lenLow, lenHigh, payload...]
+  fitCloudFastrack,
 }
 
 /// Universal Hardware Profile for any Smartwatch discovered by VYRA Prober.
@@ -188,6 +193,10 @@ class WatchHardwareProfile {
     bool hasJerry = false;
     bool hasDaFit = false;
     bool hasBleSig = false;
+    bool hasFitCloud = false;
+    String fitCloudServiceUuid = '';
+    String fitCloudWriteCharUuid = '';
+    String fitCloudNotifyCharUuid = '';
 
     // Scan all services & characteristics without cross-overwriting between families
     for (final s in services) {
@@ -292,6 +301,35 @@ class WatchHardwareProfile {
           }
         }
       }
+
+      // 3B. Check for Fastrack / Titan FitCloud protocol (Service 0x2760 / 0x27F0)
+      // Verified from hardware probe on FT_38112_FDAB (Fastrack Reflex)
+      if (sUuid.contains('000027f0') || sUuid.contains('00002760')) {
+        hasFitCloud = true;
+        if (fitCloudServiceUuid.isEmpty || sUuid.contains('000027f0')) {
+          fitCloudServiceUuid = s.uuid.toString();
+        }
+        for (final c in s.characteristics) {
+          final cUuid = c.uuid.toString().toLowerCase();
+          final canWrite = c.properties.write || c.properties.writeWithoutResponse;
+          final canNotify = c.properties.notify || c.properties.indicate;
+          // 0x27F6 / 0x2761 / 0x2763 are write chars
+          if (cUuid.contains('000027f6') || cUuid.contains('00002761') ||
+              (cUuid.contains('00002763') && canWrite)) {
+            if (fitCloudWriteCharUuid.isEmpty || cUuid.contains('000027f6')) {
+              fitCloudWriteCharUuid = c.uuid.toString();
+            }
+          }
+          // 0x27F7 / 0x2762 / 0x2764 are notify chars
+          if (cUuid.contains('000027f7') || cUuid.contains('00002762') ||
+              cUuid.contains('00002764') ||
+              (cUuid.contains('00002763') && canNotify)) {
+            if (fitCloudNotifyCharUuid.isEmpty || cUuid.contains('000027f7')) {
+              fitCloudNotifyCharUuid = c.uuid.toString();
+            }
+          }
+        }
+      }
     }
 
     String wearOsServiceUuid = '';
@@ -355,9 +393,40 @@ class WatchHardwareProfile {
         lowerName.contains('xtend') ||
         lowerName.contains('wave') ||
         lowerName.contains('storm');
+    // Fastrack / Titan FitCloud name patterns: FT_XXXXX_XXXX, "Reflex", "Reflex Beat", "Titan", "EROS"
+    final nameSuggestsFitCloud = lowerName.startsWith('ft_') ||
+        lowerName.contains('fastrack') ||
+        lowerName.contains('titan') ||
+        lowerName.contains('reflex') ||
+        lowerName.contains('eros');
 
-    // Select protocol priority without losing vendor notify characteristics
-    if ((hasWearOs || nameSuggestsWearOs) && !hasJerry && !hasDaFit && !hasBleSig) {
+    // Select protocol priority: FitCloud first (highest specificity), then WearOS, DaFit, BLE SIG, Jerry
+    if (hasFitCloud || nameSuggestsFitCloud) {
+      return WatchHardwareProfile(
+        profileId: 'fitcloud_${remoteId.replaceAll(":", "_")}',
+        deviceName: deviceName.isNotEmpty ? deviceName : 'Fastrack Watch',
+        remoteId: remoteId,
+        protocolType: WatchProtocolType.fitCloudFastrack,
+        serviceUuid: fitCloudServiceUuid.isNotEmpty
+            ? fitCloudServiceUuid
+            : '000027f0-0000-1000-8000-00805f9b34fb',
+        writeCharUuid: fitCloudWriteCharUuid.isNotEmpty
+            ? fitCloudWriteCharUuid
+            : '000027f6-0000-1000-8000-00805f9b34fb',
+        notifyCharUuid: fitCloudNotifyCharUuid.isNotEmpty
+            ? fitCloudNotifyCharUuid
+            : '000027f7-0000-1000-8000-00805f9b34fb',
+        // Verified ground-truth packets from FT_38112_FDAB probe:
+        handshakePacket: const [0x02, 0x01, 0x00, 0x00],
+        rtcSyncPacket: const [0x01, 0x01, 0x04, 0x00, 0x1A, 0x0A, 0x1B, 0x0C],
+        stepQueryPacket: const [0x02, 0x05, 0x00, 0x00],
+        hrTriggerPacket: const [0x02, 0x20, 0x01, 0x00, 0x01],
+        bpTriggerPacket: const [0x02, 0x21, 0x01, 0x00, 0x01],
+        requiresAck: false,
+        keepaliveIntervalMs: 5000,
+        createdAt: DateTime.now(),
+      );
+    } else if ((hasWearOs || nameSuggestsWearOs) && !hasJerry && !hasDaFit && !hasBleSig) {
       return WatchHardwareProfile.wearOsCompanionProfile(
         deviceName: deviceName.isNotEmpty ? deviceName : 'Galaxy Watch (Wear OS)',
         remoteId: remoteId,
