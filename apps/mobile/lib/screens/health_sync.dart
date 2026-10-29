@@ -855,25 +855,63 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x15, 0x01, 0x14, 0x00, 0x01, 0x01]]);
       }
 
-      // Adaptive Multi-Protocol Auto-Fallback:
-      // If a watch uses non-standard GATT UUIDs and hasn't emitted any packet after 2.2s,
-      // automatically probe DaFit (0xAB), HiWatch (0xCD), and Ultra2 (0xBC) wake-up frames,
-      // and fall back to GATT Read / Companion Telemetry Bridge if encrypted!
-      if (_activeProfile?.protocolType == WatchProtocolType.genericUart) {
+      // Sequential Multi-Protocol Auto-Probe:
+      // Triggers for genericUart (no GATT match) AND for hiwatchCd/dafitAb (possible GATT misdetect).
+      // Each protocol is probed individually with a wait window — the first one that triggers
+      // a response packet causes processIncomingWatchData to upgrade the profile automatically.
+      // FitCloud & WearOs are excluded (already confirmed by GATT scan).
+      final probeTypes = const [
+        WatchProtocolType.genericUart,
+        WatchProtocolType.hiwatchCd,
+        WatchProtocolType.dafitAb,
+      ];
+      if (probeTypes.contains(_activeProfile?.protocolType)) {
         Future.delayed(const Duration(milliseconds: 2200), () async {
           if (!mounted || !_isRealBleConnected) return;
           if (_packetsReceived == 0) {
-            debugPrint('[VYRA-BLE] 🔄 0 packets after primary handshake — firing Universal Multi-Protocol Wakeup!');
+            debugPrint('[VYRA-PROBE] 🔬 0 packets — starting Sequential Multi-Protocol Probe...');
+
+            // Step 1: Try DaFit / Fire-Boltt / boAt / Noise (0xAB protocol)
             await broadcastWatchCommands([
-              const [0xAB, 0x00, 0x04, 0xFF, 0x00, 0x00, 0xAB],
-              const [0xAB, 0x51, 0x00, 0x0A, 0x00, 0x00, 0x64],
-              const [0xAB, 0x00, 0x04, 0xFF, 0x51, 0x80, 0x01],
-              const [0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01],
-              const [0xBC, 0x51, 0x01],
+              const [0xAB, 0x00, 0x04, 0xFF, 0x00, 0x00, 0xAB], // DaFit handshake
+              const [0xAB, 0x00, 0x04, 0xFF, 0x91, 0x80, 0x01], // DaFit battery query
             ]);
-            await Future.delayed(const Duration(milliseconds: 900));
+            await Future.delayed(const Duration(milliseconds: 650));
+            if (!mounted || !_isRealBleConnected) return;
+
+            if (_packetsReceived == 0) {
+              // Step 2: Try HiWatch / Ultra2 / FitPro / Jerry (0xCD protocol)
+              debugPrint('[VYRA-PROBE] 🔬 DaFit no response — trying HiWatch 0xCD...');
+              await broadcastWatchCommands([
+                const [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0A, 0x00, 0x01, 0x02], // HiWatch pair
+                const [0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01], // Day summary
+              ]);
+              await Future.delayed(const Duration(milliseconds: 650));
+              if (!mounted || !_isRealBleConnected) return;
+            }
+
+            if (_packetsReceived == 0) {
+              // Step 3: Try FitCloud / Fastrack (0x02 protocol)
+              debugPrint('[VYRA-PROBE] 🔬 HiWatch no response — trying FitCloud 0x02...');
+              await broadcastWatchCommands([
+                const [0x02, 0x01, 0x00, 0x00], // FitCloud handshake
+                const [0x02, 0x05, 0x00, 0x00], // FitCloud steps query
+              ]);
+              await Future.delayed(const Duration(milliseconds: 650));
+              if (!mounted || !_isRealBleConnected) return;
+            }
+
+            if (_packetsReceived == 0) {
+              // Step 4: Try Ultra2 alternative wake-up (0xBC)
+              debugPrint('[VYRA-PROBE] 🔬 FitCloud no response — trying Ultra2 0xBC...');
+              await broadcastWatchCommands([const [0xBC, 0x51, 0x01]]);
+              await Future.delayed(const Duration(milliseconds: 650));
+              if (!mounted || !_isRealBleConnected) return;
+            }
+
+            // Step 5: If still 0 packets → encrypted/companion watch → GATT Read Bridge
             if (mounted && _isRealBleConnected && _packetsReceived == 0) {
-              debugPrint('[VYRA-BLE] 🛡️ Encrypted / Companion GATT watch detected — activating GATT Read Bridge!');
+              debugPrint('[VYRA-PROBE] 🛡️ All probes failed — activating GATT Read Bridge (encrypted companion)');
               _activeProfile = WatchHardwareProfile.wearOsCompanionProfile(
                 deviceName: _pairedWatchName ?? 'Smartwatch',
                 remoteId: device.remoteId.str,
@@ -1098,14 +1136,20 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     if (assembled == null) return;
 
     // Dynamically adapt active profile protocol family if incoming frame header proves a specific chipset
-    // (Preserve wearOsCompanion profile when bridged packets are processed)
+    // This runs even for non-genericUart profiles so GATT-misdetected watches get upgraded correctly.
+    // (Preserve wearOsCompanion / miBandMifit / fitCloudFastrack profiles — those are already confirmed)
     if (_activeProfile != null &&
         _activeProfile!.protocolType != WatchProtocolType.wearOsCompanion &&
+        _activeProfile!.protocolType != WatchProtocolType.miBandMifit &&
+        _activeProfile!.protocolType != WatchProtocolType.fitCloudFastrack &&
         assembled.isNotEmpty) {
       final hdr = assembled[0];
+      final currentProtocol = _activeProfile!.protocolType;
+      WatchHardwareProfile? upgraded;
+
       if ((hdr == 0xAB || hdr == 0xAA) &&
-          _activeProfile!.protocolType != WatchProtocolType.dafitAb) {
-        _activeProfile = WatchHardwareProfile.fromProberFindings(
+          currentProtocol != WatchProtocolType.dafitAb) {
+        upgraded = WatchHardwareProfile.fromProberFindings(
           deviceName: _activeProfile!.deviceName,
           remoteId: _activeProfile!.remoteId,
           writeCharUuid: _activeProfile!.writeCharUuid,
@@ -1114,10 +1158,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           isHiWatchPassed: false,
           isBleSig: false,
         );
-        unawaited(_activeProfile!.saveToPrefs());
+        debugPrint('[VYRA-AUTO] 🔄 Protocol upgraded: $currentProtocol → dafitAb (0xAB header)');
       } else if ((hdr == 0xCD || hdr == 0xDC) &&
-          _activeProfile!.protocolType != WatchProtocolType.hiwatchCd) {
-        _activeProfile = WatchHardwareProfile.fromProberFindings(
+          currentProtocol != WatchProtocolType.hiwatchCd) {
+        upgraded = WatchHardwareProfile.fromProberFindings(
           deviceName: _activeProfile!.deviceName,
           remoteId: _activeProfile!.remoteId,
           writeCharUuid: _activeProfile!.writeCharUuid,
@@ -1126,7 +1170,36 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           isHiWatchPassed: true,
           isBleSig: false,
         );
-        unawaited(_activeProfile!.saveToPrefs());
+        debugPrint('[VYRA-AUTO] 🔄 Protocol upgraded: $currentProtocol → hiwatchCd (0xCD/0xDC header)');
+      } else if (hdr == 0x02 &&
+          currentProtocol != WatchProtocolType.fitCloudFastrack &&
+          assembled.length >= 3) {
+        // FitCloud response detected — upgrade to FitCloud profile
+        upgraded = WatchHardwareProfile(
+          profileId: 'probed_fitcloud_${_activeProfile!.remoteId.replaceAll(":", "_")}',
+          deviceName: _activeProfile!.deviceName,
+          remoteId: _activeProfile!.remoteId,
+          protocolType: WatchProtocolType.fitCloudFastrack,
+          serviceUuid: _activeProfile!.serviceUuid,
+          writeCharUuid: _activeProfile!.writeCharUuid,
+          notifyCharUuid: _activeProfile!.notifyCharUuid,
+          handshakePacket: const [0x02, 0x01, 0x00, 0x00],
+          rtcSyncPacket: const [],
+          stepQueryPacket: const [0x02, 0x05, 0x00, 0x00],
+          hrTriggerPacket: const [0x02, 0x20, 0x01, 0x00, 0x01],
+          bpTriggerPacket: const [0x02, 0x21, 0x01, 0x00, 0x01],
+          requiresAck: false,
+          keepaliveIntervalMs: 5000,
+          createdAt: DateTime.now(),
+        );
+        debugPrint('[VYRA-AUTO] 🔄 Protocol upgraded: $currentProtocol → fitCloudFastrack (0x02 header)');
+      }
+
+      if (upgraded != null) {
+        _activeProfile = upgraded;
+        unawaited(
+          _getCurrentUserId().then((uid) => _activeProfile!.saveToUserWatchList(uid)),
+        );
       }
     }
 
