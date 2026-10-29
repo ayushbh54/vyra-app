@@ -148,6 +148,17 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
     super.dispose();
   }
 
+  /// Returns a stable per-user identifier for watch-list isolation.
+  /// Uses the VYRA access token (JWT prefix or local_guest_xxx) as the unique user key
+  /// so each account's watch list is stored separately in SharedPreferences.
+  Future<String> _getCurrentUserId() async {
+    final p = _cachedPrefs ?? await SharedPreferences.getInstance();
+    final token = p.getString('vyra.accessToken') ?? '';
+    if (token.isEmpty) return 'guest';
+    // Use only first 32 chars of token as stable user key (avoid key length explosion)
+    return token.length > 32 ? token.substring(0, 32) : token;
+  }
+
   Future<void> _bootstrap() async {
     await restoreLastSyncInfo();
     try {
@@ -157,8 +168,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       var savedWatchName = prefs.getString(_prefsBleWatchNameKey);
       final granted = await _healthService.hasPermissions();
 
-      // Load persistent active smartwatch hardware profile
-      _activeProfile = await WatchHardwareProfile.loadFromPrefs(prefs: prefs);
+      // Load persistent active smartwatch hardware profile (per-user multi-watch system)
+      final uid = await _getCurrentUserId();
+      _activeProfile = await WatchHardwareProfile.loadActiveWatchForUser(uid, prefs: prefs);
 
       // Purge any stale test dummy profiles so real watches connect cleanly
       if (_activeProfile != null &&
@@ -591,15 +603,16 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
       // Dynamic Smartwatch Hardware Profile Auto-Adaptation:
       // Always inspect discovered services when connecting to a different watch or if no profile exists.
-      _activeProfile = await WatchHardwareProfile.loadFromPrefs();
+      final uid2 = await _getCurrentUserId();
+      _activeProfile = await WatchHardwareProfile.loadActiveWatchForUser(uid2);
       if (_activeProfile == null || _activeProfile!.remoteId != device.remoteId.str) {
         _activeProfile = WatchHardwareProfile.fromDiscoveredServices(
           deviceName: device.platformName.isNotEmpty ? device.platformName : "Smartwatch",
           remoteId: device.remoteId.str,
           services: services,
         );
-        await _activeProfile!.saveToPrefs();
-        debugPrint('[VYRA-PROFILE] ⚡ Auto-generated & saved profile: ${_activeProfile!.profileId} (${_activeProfile!.protocolType.name})');
+        await _activeProfile!.saveToUserWatchList(uid2);
+        debugPrint('[VYRA-PROFILE] ⚡ Auto-generated & saved profile: ${_activeProfile!.profileId} (${_activeProfile!.protocolType.name}) for user $uid2');
       }
 
       // Isolate vendor command characteristics to prevent writing invalid packets to system services
@@ -781,6 +794,21 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         await Future.delayed(const Duration(milliseconds: 250));
         // Step 5: Trigger live SpO2 measurement
         await broadcastWatchCommands([const [0x02, 0x21, 0x01, 0x00, 0x01]]);
+      } else if (_activeProfile?.protocolType == WatchProtocolType.miBandMifit) {
+        // Mi Band / Xiaomi Smart Band — requires encrypted Mi Fitness app auth
+        // VYRA detects + stores the profile, but cannot stream vitals without proprietary auth.
+        debugPrint('[VYRA-BLE] ⚠️ Mi Band / Xiaomi detected — showing pairing guidance.');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+              '⚠️ Mi Band / Xiaomi Watch detected!\n'
+              'Vitals require Mi Fitness app pairing. '
+              'Pair there first, then reconnect here for step & notification sync.',
+            ),
+            duration: Duration(seconds: 8),
+            backgroundColor: Color(0xFFE65100),
+          ));
+        }
       } else if (_activeProfile?.protocolType == WatchProtocolType.dafitAb) {
         // DaFit / MoYoung Protocol (0xAB) — Fire-Boltt, Noise, boAt, DaFit
         await broadcastWatchCommands([
@@ -852,7 +880,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
                 writeCharUuid: _activeWriteChar?.uuid.toString() ?? '2fb6a5aa-1219-4129-bc97-dd4df70613cd',
                 notifyCharUuid: _activeNotifyChar?.uuid.toString() ?? '2fb6a5aa-1219-4129-bc97-dd4df70613cd',
               );
-              unawaited(_activeProfile!.saveToPrefs());
+              final uid3 = await _getCurrentUserId();
+              unawaited(_activeProfile!.saveToUserWatchList(uid3));
               await _pollWearOsCompanionBridge(includeVitals: true);
             }
           }
@@ -989,6 +1018,10 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           await Future.delayed(const Duration(milliseconds: 100));
           await broadcastWatchCommands([const [0x02, 0x21, 0x01, 0x00, 0x01]]); // SpO2
         }
+      } else if (_activeProfile?.protocolType == WatchProtocolType.miBandMifit) {
+        // Mi Band / Xiaomi Smart Band — skip all polling (vitals require encrypted Mi Fitness auth)
+        // Snackbar was already shown at connection time; no repeated popups here.
+        debugPrint('[VYRA-BLE] Mi Band polling skipped — encrypted protocol, no vitals available.');
       } else if (_activeProfile?.protocolType == WatchProtocolType.dafitAb) {
         // DaFit 0xAB Keepalive & Sport Summary Poll (both direct 0x51 and length-prefixed 0xFF 0x51)
         await broadcastWatchCommands([

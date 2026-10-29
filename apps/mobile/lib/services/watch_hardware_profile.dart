@@ -9,16 +9,24 @@ enum WatchProtocolType {
   hiwatchCd,
 
   /// DaFit / Shenzhen MoYoung / NRF52832 (0xAB, UUID 0xFEE7 / 0xFEE1 / 0xFEE2)
+  /// Covers: Fire-Boltt, boAt, Noise ColorFit, CMF Watch, Realme Watch, Dizo
   dafitAb,
 
   /// Standard Bluetooth SIG Heart Rate Profile (Service 0x180D, Notify 0x2A37)
+  /// Covers: Polar, Garmin, Amazfit (partial), generic BLE HR bands
   bleSig,
 
   /// Samsung Galaxy Watch / Google Wear OS / Encrypted Companion GATT Bridge
   /// (Services: eed6d5cc / e73e0001 / 180a, Char: 2fb6a5aa / e73e0002)
+  /// Covers: Galaxy Watch 4/5/6, Pixel Watch, TicWatch, Fossil, Mobvoi
   wearOsCompanion,
 
-  /// Generic Custom UART stream
+  /// Mi Band / Xiaomi Smart Band — requires encrypted Mi Fitness companion auth.
+  /// VYRA detects the device but cannot stream vitals without the Xiaomi auth key.
+  /// User is guided to pair via Mi Fitness app first.
+  miBandMifit,
+
+  /// Generic Custom UART stream — used during auto-probe phase
   genericUart,
 
   /// Fastrack / Titan FitCloud protocol (Service 0x27F0, Write 0x27F6, Notify 0x27F7)
@@ -332,6 +340,34 @@ class WatchHardwareProfile {
       }
     }
 
+    // 3C. Mi Band / Xiaomi Smart Band (0xFEE0 / 0xFEE1 + 0xFEE2)
+    // Requires encrypted Mi Fitness auth — VYRA detects but cannot stream vitals
+    bool hasMiBand = false;
+    String miBandServiceUuid = '';
+    String miBandWriteCharUuid = '';
+    String miBandNotifyCharUuid = '';
+    for (final s in services) {
+      final sUuid = s.uuid.toString().toLowerCase();
+      if (sUuid.contains('0000fee0') || sUuid.contains('0000fee1') || sUuid.contains('0000fee2')) {
+        // Make sure this is NOT a DaFit service (fee7/feea already handled above)
+        // fee0/fee1/fee2 appearing together strongly indicate Mi Band
+        hasMiBand = true;
+        if (miBandServiceUuid.isEmpty) miBandServiceUuid = s.uuid.toString();
+        for (final c in s.characteristics) {
+          final cUuid = c.uuid.toString().toLowerCase();
+          final canWrite = c.properties.write || c.properties.writeWithoutResponse;
+          final canNotify = c.properties.notify || c.properties.indicate;
+          // Mi Band write chars: 00000009, 00000010, fee3, fee4
+          if (canWrite && miBandWriteCharUuid.isEmpty) {
+            miBandWriteCharUuid = c.uuid.toString();
+          }
+          if (canNotify && miBandNotifyCharUuid.isEmpty) {
+            miBandNotifyCharUuid = c.uuid.toString();
+          }
+        }
+      }
+    }
+
     String wearOsServiceUuid = '';
     String wearOsWriteCharUuid = '';
     String wearOsNotifyCharUuid = '';
@@ -383,7 +419,10 @@ class WatchHardwareProfile {
         lowerName.contains('pixel watch') ||
         lowerName.contains('wear os') ||
         lowerName.contains('ticwatch') ||
-        lowerName.contains('fossil');
+        lowerName.contains('fossil') ||
+        lowerName.contains('mobvoi') ||
+        lowerName.contains('oppo watch') ||
+        lowerName.contains('oneplus watch');
     final nameSuggestsDaFit = lowerName.contains('dafit') ||
         lowerName.contains('fire') ||
         lowerName.contains('boltt') ||
@@ -392,7 +431,28 @@ class WatchHardwareProfile {
         lowerName.contains('boat') ||
         lowerName.contains('xtend') ||
         lowerName.contains('wave') ||
-        lowerName.contains('storm');
+        lowerName.contains('storm') ||
+        lowerName.contains('cmf') ||
+        lowerName.contains('nothing watch') ||
+        lowerName.contains('realme') ||
+        lowerName.contains('dizo') ||
+        lowerName.contains('rma2') ||
+        lowerName.contains('ring3') ||
+        lowerName.contains('phoenix') ||
+        lowerName.contains('ninja') ||
+        lowerName.contains('beast') ||
+        lowerName.contains('infinity') ||
+        lowerName.contains('hammer') ||
+        lowerName.contains('pledge') ||
+        lowerName.contains('nuband');
+    // Mi Band / Xiaomi Smart Band — encrypted, needs companion app
+    final nameSuggestsMiBand = lowerName.startsWith('mi band') ||
+        lowerName.startsWith('mi smart') ||
+        lowerName.startsWith('xiaomi smart') ||
+        lowerName == 'mi' ||
+        lowerName.startsWith('amazfit') ||
+        lowerName.contains('mi_band') ||
+        lowerName.contains('huami');
     // Fastrack / Titan FitCloud name patterns: FT_XXXXX_XXXX, "Reflex", "Reflex Beat", "Titan", "EROS"
     final nameSuggestsFitCloud = lowerName.startsWith('ft_') ||
         lowerName.contains('fastrack') ||
@@ -424,6 +484,32 @@ class WatchHardwareProfile {
         bpTriggerPacket: const [0x02, 0x21, 0x01, 0x00, 0x01],
         requiresAck: false,
         keepaliveIntervalMs: 5000,
+        createdAt: DateTime.now(),
+      );
+    } else if ((hasMiBand && !hasDaFit && !hasJerry && !hasFitCloud) || nameSuggestsMiBand) {
+      // Mi Band / Xiaomi Smart Band — detected but cannot stream vitals without encrypted auth
+      // VYRA will show a friendly message to pair via Mi Fitness app instead
+      return WatchHardwareProfile(
+        profileId: 'miband_${remoteId.replaceAll(":", "_")}',
+        deviceName: deviceName.isNotEmpty ? deviceName : 'Mi Band / Xiaomi Watch',
+        remoteId: remoteId,
+        protocolType: WatchProtocolType.miBandMifit,
+        serviceUuid: miBandServiceUuid.isNotEmpty
+            ? miBandServiceUuid
+            : '0000fee0-0000-1000-8000-00805f9b34fb',
+        writeCharUuid: miBandWriteCharUuid.isNotEmpty
+            ? miBandWriteCharUuid
+            : '00000009-0000-3512-2118-0009af100700',
+        notifyCharUuid: miBandNotifyCharUuid.isNotEmpty
+            ? miBandNotifyCharUuid
+            : '00000010-0000-3512-2118-0009af100700',
+        handshakePacket: const [],
+        rtcSyncPacket: const [],
+        stepQueryPacket: const [],
+        hrTriggerPacket: const [],
+        bpTriggerPacket: const [],
+        requiresAck: false,
+        keepaliveIntervalMs: 0,
         createdAt: DateTime.now(),
       );
     } else if ((hasWearOs || nameSuggestsWearOs) && !hasJerry && !hasDaFit && !hasBleSig) {
@@ -679,5 +765,120 @@ class WatchHardwareProfile {
   static Future<void> clearFromPrefs({SharedPreferences? prefs}) async {
     final p = prefs ?? await SharedPreferences.getInstance();
     await p.remove(prefsActiveProfileKey);
+  }
+
+  // ─── Per-User Multi-Watch Persistence ──────────────────────────────────────
+
+  /// SharedPreferences key: list of all saved watches for a user.
+  static String watchListKey(String userId) => 'vyra_watches_$userId';
+
+  /// SharedPreferences key: currently active watch for a user.
+  static String activeWatchKey(String userId) => 'vyra_active_watch_$userId';
+
+  /// Saves this watch to the user's personal watch list AND sets it as active.
+  /// If a watch with the same [remoteId] already exists it is replaced (upsert).
+  /// Also keeps legacy global keys for backward compatibility.
+  Future<void> saveToUserWatchList(String userId, {SharedPreferences? prefs}) async {
+    assert(userId.isNotEmpty, 'userId must not be empty');
+    final p = prefs ?? await SharedPreferences.getInstance();
+    // Load existing list
+    final listJson = p.getString(watchListKey(userId)) ?? '[]';
+    List<Map<String, dynamic>> list;
+    try {
+      list = (jsonDecode(listJson) as List).cast<Map<String, dynamic>>();
+    } catch (_) {
+      list = [];
+    }
+    // Remove existing entry for same remoteId (upsert semantics)
+    list.removeWhere((w) => (w['remoteId'] as String?) == remoteId);
+    // Add updated profile (always at end for chronological order)
+    list.add(toJson());
+    await p.setString(watchListKey(userId), jsonEncode(list));
+    // Set as active watch for this user
+    await p.setString(activeWatchKey(userId), jsonEncode(toJson()));
+    // Legacy global keys for seamless backward compatibility
+    await p.setString('ble_watch_name', deviceName);
+    await p.setString('ble_watch_remote_id', remoteId);
+    await saveToPrefs(prefs: p);
+  }
+
+  /// Loads all saved watches for a specific user.
+  static Future<List<WatchHardwareProfile>> loadUserWatchList(
+    String userId, {
+    SharedPreferences? prefs,
+  }) async {
+    if (userId.isEmpty) return [];
+    final p = prefs ?? await SharedPreferences.getInstance();
+    final listJson = p.getString(watchListKey(userId)) ?? '[]';
+    try {
+      final list = (jsonDecode(listJson) as List).cast<Map<String, dynamic>>();
+      return list.map(WatchHardwareProfile.fromJson).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Loads the currently active watch for a specific user.
+  /// Falls back to the global active profile if user-specific one is missing.
+  static Future<WatchHardwareProfile?> loadActiveWatchForUser(
+    String userId, {
+    SharedPreferences? prefs,
+  }) async {
+    final p = prefs ?? await SharedPreferences.getInstance();
+    if (userId.isNotEmpty) {
+      final json = p.getString(activeWatchKey(userId));
+      if (json != null && json.isNotEmpty) {
+        try {
+          return WatchHardwareProfile.fromJson(
+              jsonDecode(json) as Map<String, dynamic>);
+        } catch (_) {}
+      }
+    }
+    // Fallback to legacy global key
+    return WatchHardwareProfile.loadFromPrefs(prefs: p);
+  }
+
+  /// Sets a different watch (by [remoteId]) as active for a user without
+  /// changing the watch list itself.
+  static Future<void> setActiveWatchForUser(
+    String userId,
+    String remoteId, {
+    SharedPreferences? prefs,
+  }) async {
+    if (userId.isEmpty) return;
+    final p = prefs ?? await SharedPreferences.getInstance();
+    final list = await loadUserWatchList(userId, prefs: p);
+    final target = list.cast<WatchHardwareProfile?>().firstWhere(
+          (w) => w?.remoteId == remoteId,
+          orElse: () => null,
+        );
+    if (target == null) return;
+    await p.setString(activeWatchKey(userId), jsonEncode(target.toJson()));
+    await target.saveToPrefs(prefs: p);
+  }
+
+  /// Removes a specific watch from a user's saved list.
+  /// If the removed watch was active, active is cleared.
+  static Future<void> removeWatchFromUserList(
+    String userId,
+    String remoteIdToRemove, {
+    SharedPreferences? prefs,
+  }) async {
+    if (userId.isEmpty) return;
+    final p = prefs ?? await SharedPreferences.getInstance();
+    final listJson = p.getString(watchListKey(userId)) ?? '[]';
+    List<Map<String, dynamic>> list;
+    try {
+      list = (jsonDecode(listJson) as List).cast<Map<String, dynamic>>();
+    } catch (_) {
+      list = [];
+    }
+    list.removeWhere((w) => (w['remoteId'] as String?) == remoteIdToRemove);
+    await p.setString(watchListKey(userId), jsonEncode(list));
+    // If removed was active, clear active key
+    final activeJson = p.getString(activeWatchKey(userId));
+    if (activeJson != null && activeJson.contains(remoteIdToRemove)) {
+      await p.remove(activeWatchKey(userId));
+    }
   }
 }

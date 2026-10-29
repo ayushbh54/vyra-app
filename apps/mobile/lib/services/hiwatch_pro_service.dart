@@ -797,7 +797,7 @@ class HiWatchProProtocol {
     }
 
     // 3. DaFit / Shenzhen / MoYoung protocol (0xAB or 0xAA)
-    if ((header == 0xAB || header == 0xAA) && bytes.length >= 4) {
+    if ((header == 0xAB || header == 0xAA) && bytes.length >= 3) {
       final cmd = bytes[1];
       if ((cmd == 0x51 || cmd == 0x07 || cmd == 0x08) && bytes.length >= 5) {
         final rawSteps = (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
@@ -819,7 +819,7 @@ class HiWatchProProtocol {
           heartRateBpm: (hr >= 40 && hr <= 200) ? hr : null,
           bloodOxygenSpo2: (spo2 != null && spo2 >= 70 && spo2 <= 100) ? spo2 : null,
         );
-      } else if (cmd == 0x91 && bytes.length >= 4) {
+      } else if (cmd == 0x91 && bytes.length >= 3) {
         final bat = bytes.lastWhere((b) => b >= 1 && b <= 100, orElse: () => 0);
         if (bat > 0) return HiWatchTelemetryData(batteryLevel: bat);
       } else if (cmd == 0x00 && bytes.length >= 6) {
@@ -904,6 +904,13 @@ class HiWatchProProtocol {
               return HiWatchTelemetryData(batteryLevel: bytes[i]);
             }
           }
+        } else if ((subCmd == 0x50 || subCmd == 0x53) && bytes.length >= pOffset + 3) {
+          // boAt / Noise ColorFit step response variant: cmd 0x50 = steps (big-endian 3 bytes)
+          // cmd 0x53 = weekly step summary (same encoding)
+          final rawSteps =
+              (bytes[pOffset] << 16) | (bytes[pOffset + 1] << 8) | bytes[pOffset + 2];
+          final steps = (rawSteps > 0 && rawSteps <= 100000) ? rawSteps : null;
+          return HiWatchTelemetryData(steps: steps);
         }
       }
       // If specific 0xAB patterns did not match, fall through to broad scan
