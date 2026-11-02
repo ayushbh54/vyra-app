@@ -17,6 +17,8 @@ import '../screens/profile.dart';
 import '../screens/settings.dart';
 import '../screens/smartwatch_diagnostic_screen.dart';
 import '../screens/water_reminder.dart';
+import '../services/app_localizations.dart';
+import '../services/language_service.dart';
 import '../theme.dart';
 import '../theme_manager.dart';
 import 'screen_scaffold.dart';
@@ -234,6 +236,124 @@ class _VyraDrawerState extends State<VyraDrawer> {
     );
   }
 
+  void _showLanguagePickerSheet() {
+    final isDark = ThemeManager.instance.isDark;
+    final bg = isDark ? const Color(0xFF171C25) : Colors.white;
+    final textPrimary = isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A);
+    final cardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(VRadius.xl)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00D2FF).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.language_rounded, color: Color(0xFF00D2FF), size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.l10n.chooseLanguage,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: textPrimary,
+                            ),
+                          ),
+                          Text(
+                            context.l10n.chooseLanguageSub,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: kVyraLanguages.length,
+                    separatorBuilder: (_, __) => Divider(height: 1, color: cardBorder.withValues(alpha: 0.5)),
+                    itemBuilder: (context, idx) {
+                      final lang = kVyraLanguages[idx];
+                      final isSelected = LanguageService.instance.current.prefsKey == lang.prefsKey;
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        leading: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFF00D2FF).withValues(alpha: 0.15)
+                                : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9)),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Center(
+                            child: Text(lang.flag, style: const TextStyle(fontSize: 20)),
+                          ),
+                        ),
+                        title: Text(
+                          lang.nativeName,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                            fontSize: 14.5,
+                            color: isSelected ? const Color(0xFF00D2FF) : textPrimary,
+                          ),
+                        ),
+                        subtitle: Text(
+                          lang.displayName,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(Icons.check_circle_rounded, color: Color(0xFF00D2FF), size: 22)
+                            : null,
+                        onTap: () async {
+                          Navigator.pop(ctx);
+                          await LanguageService.instance.setLanguage(lang);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _confirmLogout() async {
     final isDark = ThemeManager.instance.isDark;
     final confirmed = await showDialog<bool>(
@@ -281,6 +401,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final athleteName = _profile?.name.isNotEmpty == true ? _profile!.name.toUpperCase() : 'AYUSH BHADORIA';
     final athleteId = _profile?.displayHandle.isNotEmpty == true ? _profile!.displayHandle : '2413227194';
 
@@ -570,7 +691,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.person_rounded,
                         iconBgColor: const Color(0xFF3B82F6), // Blue
-                        title: 'My profile',
+                        title: l10n.myProfile,
                         onTap: () {
                           Navigator.pop(context);
                           pushScreen(context, 'My Profile', const ProfileScreen());
@@ -579,7 +700,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.emoji_events_rounded,
                         iconBgColor: const Color(0xFFF59E0B), // Gold
-                        title: 'Leaderboard & Rankings',
+                        title: l10n.leaderboard,
                         onTap: () {
                           Navigator.pop(context);
                           pushScreen(context, 'National Leaderboard', const LeaderboardScreen());
@@ -588,7 +709,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.near_me_rounded,
                         iconBgColor: const Color(0xFF0284C7), // Sky Blue
-                        title: 'Direct Messages & Athlete Chat',
+                        title: l10n.directMessages,
                         onTap: () {
                           Navigator.pop(context);
                           pushScreen(context, 'Messages Inbox', const MessagesInboxScreen());
@@ -597,7 +718,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.lock_rounded,
                         iconBgColor: const Color(0xFF6366F1), // Indigo
-                        title: 'Change password / Security',
+                        title: l10n.changePassword,
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.of(context).push(
@@ -608,7 +729,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.notifications_rounded,
                         iconBgColor: const Color(0xFF8B5CF6), // Purple
-                        title: 'Notification settings',
+                        title: l10n.notificationSettings,
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.of(context).push(
@@ -619,7 +740,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.watch_rounded,
                         iconBgColor: const Color(0xFF10B981), // Emerald
-                        title: 'Smartwatch Sync (HiWatch Pro)',
+                        title: l10n.smartwatchSync,
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.of(context).push(
@@ -632,7 +753,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.biotech_rounded,
                         iconBgColor: const Color(0xFF00D2FF), // Cyan
-                        title: 'Watch Protocol Prober (Tester Tool)',
+                        title: l10n.watchProber,
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.of(context).push(
@@ -647,7 +768,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.face_retouching_natural_rounded,
                         iconBgColor: const Color(0xFF00D2FF), // Cyan
-                        title: '3D Coach Avatar & Digital Twin Studio',
+                        title: l10n.avatarStudio,
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.of(context).push(
@@ -658,7 +779,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.bloodtype_rounded,
                         iconBgColor: const Color(0xFFDC2626), // Red
-                        title: 'e-RaktKosh Blood Donation (API Setu)',
+                        title: l10n.bloodDonation,
                         onTap: () {
                           Navigator.pop(context);
                           pushScreen(context, 'e-RaktKosh Blood Lifeline', const BloodDonationScreen());
@@ -667,7 +788,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.camera_enhance_rounded,
                         iconBgColor: const Color(0xFF00D2FF), // Cyan
-                        title: 'AI Camera Pose & Rep Tracker',
+                        title: l10n.poseTracker,
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.of(context).push(
@@ -678,7 +799,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.document_scanner_rounded,
                         iconBgColor: const Color(0xFF10B981), // Emerald
-                        title: 'AI Report Analysis',
+                        title: l10n.reportAnalysis,
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.of(context).push(
@@ -689,7 +810,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.local_hospital_rounded,
                         iconBgColor: const Color(0xFF0284C7), // Blue
-                        title: 'Nearby Rated Doctors (NHA)',
+                        title: l10n.nearbyDoctors,
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.of(context).push(
@@ -700,7 +821,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.security_rounded,
                         iconBgColor: const Color(0xFFEF4444), // Red
-                        title: 'Safety & Emergency Contacts',
+                        title: l10n.emergencyContacts,
                         onTap: () {
                           Navigator.pop(context);
                           pushScreen(context, 'Safety & Emergency Contacts', const EmergencyContactsScreen());
@@ -709,7 +830,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.radar_rounded,
                         iconBgColor: const Color(0xFF06B6D4), // Cyan
-                        title: 'Beacon SOS & Live Location',
+                        title: l10n.beaconSos,
                         onTap: () {
                           Navigator.pop(context);
                           pushScreen(context, 'Beacon SOS & Live Location', const BeaconScreen());
@@ -718,7 +839,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                       _DrawerMenuItem(
                         icon: Icons.chat_bubble_rounded,
                         iconBgColor: const Color(0xFF22C55E), // Green
-                        title: 'Contact us / Support',
+                        title: l10n.contactSupport,
                         onTap: () {
                           Navigator.pop(context);
                           _showContactUsSheet();
@@ -758,7 +879,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'App Theme',
+                                    l10n.appTheme,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 13.5,
@@ -766,7 +887,7 @@ class _VyraDrawerState extends State<VyraDrawer> {
                                     ),
                                   ),
                                   Text(
-                                    isDark ? 'Obsidian Dark' : 'Classic Bright',
+                                    isDark ? l10n.obsidianDark : l10n.classicBright,
                                     style: TextStyle(
                                       fontSize: 11.5,
                                       color: isDark ? const Color(0xFF00D2FF) : const Color(0xFF0284C7),
@@ -784,6 +905,69 @@ class _VyraDrawerState extends State<VyraDrawer> {
                               },
                             ),
                           ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // App Language Switcher Tile
+                      InkWell(
+                        onTap: _showLanguagePickerSheet,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF171C25) : Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: cardBorder),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF00D2FF).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    LanguageService.instance.current.flag,
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      l10n.appLanguage,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13.5,
+                                        color: textPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${LanguageService.instance.current.nativeName} (${LanguageService.instance.current.displayName})',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: isDark ? const Color(0xFF00D2FF) : const Color(0xFF0284C7),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                size: 20,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -811,14 +995,14 @@ class _VyraDrawerState extends State<VyraDrawer> {
                             border: Border.all(color: const Color(0xFFEF4444), width: 1.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 18),
-                              SizedBox(width: 8),
+                              const Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 18),
+                              const SizedBox(width: 8),
                               Text(
-                                'Log out of this account',
-                                style: TextStyle(
+                                l10n.logout,
+                                style: const TextStyle(
                                   color: Color(0xFFEF4444),
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,

@@ -16,6 +16,7 @@ import 'health_report_ai.dart';
 import 'health_sync.dart';
 import 'leaderboard.dart';
 import 'settings.dart';
+import 'streak_calendar_screen.dart';
 import 'trophy_case.dart';
 import 'user_follow_list.dart';
 import '../services/readings_history_service.dart';
@@ -23,6 +24,7 @@ import '../services/report_history_service.dart';
 import '../services/avatar_customization_service.dart';
 import 'avatar_studio.dart';
 import 'training_hub.dart';
+import 'womens_health_screen.dart';
 
 /// TAB 5 — PROFILE, HEALTH & PRIVACY
 ///
@@ -499,6 +501,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           // ── Athlete Profile & Followers Stats Card ──────────────────
           _buildAthleteCard(),
+          const SizedBox(height: VSpace.base),
+
+          // ── Streak & Activity Heatmap Contribution Grid ────────────
+          _buildStreakHeatmapBanner(),
           const SizedBox(height: VSpace.lg),
 
           // ── Quick links — screens that no longer have a bottom-nav slot
@@ -533,6 +539,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   label: 'Training Hub',
                   subtitle: 'Exercises, yoga, breathing, meditation',
                   onTap: () => pushScreen(context, 'Training Hub', const TrainingHubScreen()),
+                ),
+                const Divider(height: 1, color: VColor.line),
+                _QuickLink(
+                  icon: Icons.spa_rounded,
+                  label: 'Women\'s Health & Maternal Care',
+                  subtitle: 'Period sanctuary, 9-month pregnancy, partner sync & reminders',
+                  onTap: () => pushScreen(context, 'Women\'s Health & Maternal Care', const WomensHealthScreen()),
                 ),
                 const Divider(height: 1, color: VColor.line),
                 _QuickLink(
@@ -873,6 +886,155 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
+  }
+
+  Widget _buildStreakHeatmapBanner() {
+    return FutureBuilder<StreakCalendarData>(
+      future: context.read<VyraApi>().getStreakCalendar(),
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        final currentStreak = data?.currentStreak ?? 18;
+        final consistency = data?.monthlyConsistencyPct ?? 87;
+        final days = data?.days ?? [];
+
+        return InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const StreakCalendarScreen()),
+            );
+          },
+          borderRadius: BorderRadius.circular(VRadius.lg),
+          child: Container(
+            padding: const EdgeInsets.all(VSpace.base),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF16221A),
+                  VColor.surfaceRaised,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(VRadius.lg),
+              border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF059669).withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.local_fire_department_rounded,
+                        color: Color(0xFF34FF8C),
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                '$currentStreak Days Streak',
+                                style: const TextStyle(
+                                  color: VColor.text,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF34FF8C).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '$consistency% CONSISTENCY',
+                                  style: const TextStyle(
+                                    color: Color(0xFF34FF8C),
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Activity Heatmap • Tap to inspect days',
+                            style: TextStyle(
+                              color: VColor.textMid,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: VColor.textMid, size: 20),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Mini Heatmap Grid Preview (last 21 days or whole month)
+                if (days.isNotEmpty)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: days.take(21).map((d) {
+                      final color = switch (d.level) {
+                        1 => const Color(0xFF0E4429),
+                        2 => const Color(0xFF006D32),
+                        3 => const Color(0xFF26A641),
+                        4 => const Color(0xFF39D353),
+                        _ => const Color(0xFF161B22),
+                      };
+                      return Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(2),
+                          border: Border.all(
+                            color: d.level > 0
+                                ? const Color(0xFF39D353).withValues(alpha: 0.4)
+                                : const Color(0xFF30363D),
+                            width: 0.5,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  )
+                else
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(21, (i) {
+                      return Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: (i % 3 == 0)
+                              ? const Color(0xFF26A641)
+                              : const Color(0xFF161B22),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      );
+                    }),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildAthleteCard() {

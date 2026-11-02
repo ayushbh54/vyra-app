@@ -5,11 +5,12 @@ import 'package:share_plus/share_plus.dart';
 import '../api/client.dart';
 import '../theme.dart';
 import '../models/models.dart';
+import 'streak_calendar_screen.dart';
 
-/// LEADERBOARD — global and friends tier rankings.
+/// LEADERBOARD — global, friends and streak titan rankings.
 ///
 /// Shows Bronze → Silver → Gold → Platinum → Diamond tiers based on
-/// activity points earned. Real data from /v1/leaderboard.
+/// activity points earned, plus dedicated Streak Titans ranking.
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
 
@@ -20,29 +21,45 @@ class LeaderboardScreen extends StatefulWidget {
 class _LeaderboardScreenState extends State<LeaderboardScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabs;
-  final _scopes = ['world', 'friends'];
+  final _scopes = ['world', 'friends', 'streaks'];
   bool _loading = true;
   String? _error;
 
   // Loaded data per scope
   final Map<String, _BoardData> _data = {};
 
+  StreakLeaderboardData? _streakData;
+  bool _streakLoading = false;
+  String? _streakError;
+
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 2, vsync: this);
-    _tabs.addListener(() { _load(_scopes[_tabs.index]); });
+    _tabs = TabController(length: 3, vsync: this);
+    _tabs.addListener(() {
+      _load(_scopes[_tabs.index]);
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _load('world');
     });
   }
 
   @override
-  void dispose() { _tabs.dispose(); super.dispose(); }
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
 
   Future<void> _load(String scope) async {
+    if (scope == 'streaks') {
+      await _loadStreaks();
+      return;
+    }
     if (_data.containsKey(scope)) return; // already cached
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final lb = await context.read<VyraApi>().leaderboard(scope: scope);
       if (!mounted) return;
@@ -55,7 +72,46 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     }
   }
 
+  Future<void> _loadStreaks() async {
+    if (_streakData != null) return;
+    setState(() {
+      _streakLoading = true;
+      _streakError = null;
+    });
+    try {
+      final data = await context.read<VyraApi>().getStreakLeaderboard();
+      if (!mounted) return;
+      setState(() => _streakData = data);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _streakError = e.message);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _streakError = e.toString());
+    } finally {
+      if (mounted) setState(() => _streakLoading = false);
+    }
+  }
+
   void _shareToInstagramStory(String scope) {
+    if (scope == 'streaks') {
+      final self = _streakData?.self;
+      final rankText = self != null ? '#${self.rank}' : 'Streak Titan';
+      final streak = self?.streakDays ?? 18;
+      final consistency = self?.consistencyPct ?? 87;
+      final shareMsg = '''🔥 VYRA STREAK TITAN RANKING 🔥
+🏆 Rank: $rankText
+🔥 Current Streak: $streak Days
+⚡ Monthly Consistency: $consistency%
+🌐 Scope: Streak Titans Leaderboard
+
+Consistency is key! Challenge me on VYRA — the AI-Powered Biometric Fitness Network!
+#VYRA #Streak #Consistency #Athlete''';
+      // ignore: deprecated_member_use
+      Share.share(shareMsg, subject: 'My VYRA Streak Ranking');
+      return;
+    }
+
     final data = _data[scope];
     final rankText = data?.self?.rank != null ? '#${data!.self!.rank}' : 'Top Athlete';
     final tier = data?.self?.tier.toUpperCase() ?? 'WARRIOR';
@@ -84,6 +140,15 @@ Think you can beat my score? Challenge me on VYRA — the AI-Powered Biometric F
             style: TextStyle(color: VColor.text, fontWeight: FontWeight.w700)),
         actions: [
           IconButton(
+            icon: const Icon(Icons.calendar_month_rounded, color: Colors.orangeAccent),
+            tooltip: 'Activity & Streak Calendar',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const StreakCalendarScreen()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.share_rounded, color: VColor.accent),
             tooltip: 'Share to Instagram Story',
             onPressed: () => _shareToInstagramStory(_scopes[_tabs.index]),
@@ -95,18 +160,40 @@ Think you can beat my score? Challenge me on VYRA — the AI-Powered Biometric F
           labelColor: VColor.accent,
           unselectedLabelColor: VColor.textLow,
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          tabs: const [Tab(text: 'GLOBAL'), Tab(text: 'FRIENDS')],
+          tabs: const [
+            Tab(text: 'GLOBAL'),
+            Tab(text: 'FRIENDS'),
+            Tab(text: '🔥 STREAKS'),
+          ],
         ),
       ),
       body: TabBarView(
         controller: _tabs,
-        children: _scopes.map((scope) => _BoardTab(
-          scope: scope,
-          loading: _loading && !_data.containsKey(scope),
-          error: _error,
-          data: _data[scope],
-          onRetry: () => _load(scope),
-        )).toList(),
+        children: [
+          _BoardTab(
+            scope: 'world',
+            loading: _loading && !_data.containsKey('world'),
+            error: _error,
+            data: _data['world'],
+            onRetry: () => _load('world'),
+          ),
+          _BoardTab(
+            scope: 'friends',
+            loading: _loading && !_data.containsKey('friends'),
+            error: _error,
+            data: _data['friends'],
+            onRetry: () => _load('friends'),
+          ),
+          _StreakTitansTab(
+            data: _streakData,
+            loading: _streakLoading,
+            error: _streakError,
+            onRetry: () {
+              setState(() => _streakData = null);
+              _loadStreaks();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -448,3 +535,503 @@ String _tierIcon(String tier) => switch (tier.toLowerCase()) {
   'silver'   => '🥈',
   _          => '🥉',
 };
+
+// ── STREAK TITANS TAB & PODIUM ───────────────────────────────────────────────
+
+class _StreakTitansTab extends StatelessWidget {
+  final StreakLeaderboardData? data;
+  final bool loading;
+  final String? error;
+  final VoidCallback onRetry;
+
+  const _StreakTitansTab({
+    required this.data,
+    required this.loading,
+    this.error,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.orangeAccent),
+      );
+    }
+
+    if (error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orangeAccent),
+              const SizedBox(height: 12),
+              Text(
+                error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: VColor.textMid, fontSize: 14),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Retry'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orangeAccent,
+                      foregroundColor: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const StreakCalendarScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.calendar_month_rounded),
+                    label: const Text('View Calendar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E293B),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final d = data;
+    if (d == null || d.allRanks.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.local_fire_department_rounded,
+                color: Colors.orangeAccent, size: 52),
+            const SizedBox(height: 12),
+            const Text(
+              'No active streak titans recorded yet.',
+              style: TextStyle(color: VColor.textMid, fontSize: 14),
+            ),
+            const SizedBox(height: 14),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const StreakCalendarScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orangeAccent,
+                foregroundColor: Colors.black,
+              ),
+              child: const Text('View My Streak Calendar'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return CustomScrollView(
+      slivers: [
+        // ── Heatmap Action Banner ──────────────────────────────────────────
+        SliverToBoxAdapter(
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2E1A00), Color(0xFF1F1200)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.orangeAccent.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orangeAccent.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: Colors.orangeAccent,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Consistency Heatmap',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'GitHub & LeetCode style daily activity log',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const StreakCalendarScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orangeAccent,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Open Matrix',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Self Streak Card ───────────────────────────────────────────────
+        SliverToBoxAdapter(
+          child: _StreakSelfCard(self: d.self),
+        ),
+
+        // ── Top 3 Streak Podium ───────────────────────────────────────────
+        if (d.podium.length >= 3)
+          SliverToBoxAdapter(
+            child: _StreakPodium(top3: d.podium),
+          ),
+
+        // ── Ranked Streak Titans List ─────────────────────────────────────
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (ctx, i) {
+                final entry = d.allRanks[i];
+                return _StreakRowCard(entry: entry);
+              },
+              childCount: d.allRanks.length,
+            ),
+          ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+      ],
+    );
+  }
+}
+
+class _StreakSelfCard extends StatelessWidget {
+  final StreakLeaderboardEntry self;
+
+  const _StreakSelfCard({required this.self});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.orangeAccent.withValues(alpha: 0.15),
+            VColor.surface,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.orangeAccent.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orangeAccent.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Text('🔥', style: TextStyle(fontSize: 24)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your Standing · #${self.rank}',
+                  style: const TextStyle(color: VColor.textMid, fontSize: 12),
+                ),
+                Text(
+                  '${self.streakDays} Days Streak',
+                  style: const TextStyle(
+                    color: Colors.orangeAccent,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  'Best: ${self.longestStreak}d • Consistency: ${self.consistencyPct}%',
+                  style: const TextStyle(color: VColor.textLow, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${self.consistencyPct}%',
+                style: const TextStyle(
+                  color: Color(0xFF39D353),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Text(
+                'Monthly Rate',
+                style: TextStyle(color: VColor.textLow, fontSize: 10),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StreakPodium extends StatelessWidget {
+  final List<StreakLeaderboardEntry> top3;
+
+  const _StreakPodium({required this.top3});
+
+  @override
+  Widget build(BuildContext context) {
+    // Arrange 2nd, 1st, 3rd
+    final order = [top3[1], top3[0], top3[2]];
+    final heights = [90.0, 120.0, 70.0];
+    final positions = [2, 1, 3];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (var i = 0; i < 3; i++) ...[
+            Expanded(
+              child: _StreakPodiumSlot(
+                entry: order[i],
+                podiumH: heights[i],
+                position: positions[i],
+              ),
+            ),
+            if (i < 2) const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StreakPodiumSlot extends StatelessWidget {
+  final StreakLeaderboardEntry entry;
+  final double podiumH;
+  final int position;
+
+  const _StreakPodiumSlot({
+    required this.entry,
+    required this.podiumH,
+    required this.position,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isFirst = position == 1;
+    final badgeEmoji = isFirst ? '🥇' : (position == 2 ? '🥈' : '🥉');
+    final accentColor = isFirst
+        ? const Color(0xFFFFD700)
+        : (position == 2 ? const Color(0xFFC0C0C0) : const Color(0xFFCD7F32));
+
+    return Column(
+      children: [
+        if (isFirst) const Text('👑', style: TextStyle(fontSize: 22)),
+        Text(badgeEmoji, style: TextStyle(fontSize: isFirst ? 28 : 22)),
+        const SizedBox(height: 4),
+        Text(
+          entry.displayHandle.length > 10
+              ? '${entry.displayHandle.substring(0, 9)}…'
+              : entry.displayHandle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: entry.isSelf ? VColor.accent : VColor.text,
+            fontSize: isFirst ? 13 : 11,
+            fontWeight: FontWeight.w600,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        Text(
+          '${entry.streakDays}d 🔥',
+          style: TextStyle(
+            color: accentColor,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          height: podiumH,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                accentColor.withValues(alpha: 0.5),
+                accentColor.withValues(alpha: 0.15),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            border: Border.all(color: accentColor.withValues(alpha: 0.4)),
+          ),
+          alignment: Alignment.topCenter,
+          padding: const EdgeInsets.only(top: 10),
+          child: Text(
+            '#$position',
+            style: TextStyle(
+              color: accentColor,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StreakRowCard extends StatelessWidget {
+  final StreakLeaderboardEntry entry;
+
+  const _StreakRowCard({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final isTop3 = entry.rank <= 3;
+    final badgeColor = switch (entry.badge) {
+      'crown_gold' => const Color(0xFFFFD700),
+      'crown_silver' => const Color(0xFFC0C0C0),
+      'crown_bronze' => const Color(0xFFCD7F32),
+      _ => Colors.orangeAccent,
+    };
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: entry.isSelf
+            ? Colors.orangeAccent.withValues(alpha: 0.12)
+            : VColor.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: entry.isSelf
+              ? Colors.orangeAccent.withValues(alpha: 0.5)
+              : VColor.line,
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 32,
+            child: Text(
+              '#${entry.rank}',
+              style: TextStyle(
+                color: isTop3 ? badgeColor : VColor.textLow,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Text(
+            isTop3 ? (entry.rank == 1 ? '🥇' : (entry.rank == 2 ? '🥈' : '🥉')) : '🔥',
+            style: const TextStyle(fontSize: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.displayHandle,
+                  style: TextStyle(
+                    color: entry.isSelf ? Colors.orangeAccent : VColor.text,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  'Best: ${entry.longestStreak}d • ${entry.totalActiveDays} active days',
+                  style: const TextStyle(color: VColor.textLow, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${entry.streakDays} Days',
+                style: TextStyle(
+                  color: badgeColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                '${entry.consistencyPct}% consistency',
+                style: const TextStyle(
+                  color: Color(0xFF39D353),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

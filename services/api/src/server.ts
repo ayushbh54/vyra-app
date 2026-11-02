@@ -38,6 +38,32 @@ import { tryCreateGeminiClient } from './ai/gemini';
 import { eRaktKoshClient } from './ai/eraktkosh_apisetu';
 import { EXERCISES, LIBRARY_STATS, mediaFor } from './content/exercises';
 import { EXERCISE_DATASET, findExerciseInDataset } from './content/exercise_dataset';
+import {
+  evaluateMetabolicProfile,
+  analyzeMuscleHistory,
+  buildWeeklyPeriodizedMatrix,
+  synthesizeNeuroSyncPool,
+  type TrainingModality,
+  type NeuroSyncBrainOutput,
+} from './domain/neurosync';
+import {
+  buildStreakCalendar,
+  getDaySummary,
+  buildStreakLeaderboard,
+  formatDuration,
+  type DailyStreakItem,
+  type StreakCalendarData,
+  type DayDetailedBreakdown,
+  type StreakLeaderboardEntry,
+} from './domain/streaks';
+import {
+  FeminaCycleEngine,
+  MaternalCareEngine,
+  type CycleEntry,
+  type MenstrualSymptom,
+  type FlowIntensity,
+  type DoctorInstruction,
+} from './domain/womens_health';
 import { registerAdminPortalRoutes } from './admin/admin_routes';
 import { registerAthletePortalRoutes } from './athlete/athlete_routes';
 import { rateLimiter } from './rateLimit';
@@ -375,27 +401,44 @@ export function buildRouter(deps: ServerDeps): Router {
     return admin;
   }
 
-  /** Recomputes windows, capacity and the plan for one date. */
-  async function buildPlanFor(userId: string, date: string): Promise<StoredPlan> {
+  /** Recomputes windows, capacity, metabolic adaptation and the plan for one date with NeuroSync. */
+  async function buildPlanFor(
+    userId: string,
+    date: string,
+    modality: TrainingModality = 'gym',
+    loggedCaloriesToday?: number,
+  ): Promise<StoredPlan> {
     const user = await store.getUser(userId);
     if (!user) throw HttpError.notFound('User not found.');
 
     const blocks = expandBlocks(await store.getSchedule(userId));
     const windows = detectFreeWindows(blocks, weekdayOf(date));
-    const isAdaptive = Boolean(
-      user.accessibilityMode ||
-      user.disabilityFlag ||
-      (user.disabilityType && user.disabilityType.toLowerCase() !== 'none'),
-    );
     const capacity = assessCapacity(windows, user.fitnessGoal);
-    // Dynamic ChronoConfig allowing 5 to 15 exercises daily matching user capacity
+
+    // Dynamic ChronoConfig allowing up to 12 exercises daily matching user capacity
     const dynamicConfig: ChronoConfig = {
       ...DEFAULT_CHRONO_CONFIG,
       maxExercisesPerSession: 12,
     };
+
+    // Scan past 3 days of stored plans to detect 48h active recovery and missed muscle groups
+    const pastPlans: StoredPlan[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const p = await store.getPlan(userId, daysAgo(i));
+      if (p) pastPlans.push(p);
+    }
+    const recovery = analyzeMuscleHistory(pastPlans);
+
+    // Evaluate metabolic profile from clinical biomarkers (TSH, Glucose, Lipids, Uric Acid, Hb) & caloric flux
+    const metabolic = evaluateMetabolicProfile(user, loggedCaloriesToday);
+
+    // Synthesize personalized NeuroSync exercise pool
+    const effectiveModality = modality ?? (user.trainingModality as TrainingModality | undefined) ?? 'gym';
+    const neuroSync = synthesizeNeuroSyncPool(user, effectiveModality, metabolic, recovery, date);
+
     const sessions = placeSessions(
       windows,
-      poolForAthlete(user, date),
+      neuroSync.pool,
       capacity.dailyGoalMin,
       dynamicConfig,
     );
@@ -405,12 +448,34 @@ export function buildRouter(deps: ServerDeps): Router {
       (existing?.entries ?? []).filter((e) => e.isCompleted).map((e) => e.exerciseSlug),
     );
 
+    const weeklyMatrix = buildWeeklyPeriodizedMatrix(user.fitnessGoal, effectiveModality, metabolic.archetype);
+
+    const neuroSyncBrain: NeuroSyncBrainOutput = {
+      modality: effectiveModality,
+      metabolicArchetype: metabolic.archetype,
+      metabolismSummary: metabolic.summary,
+      caloricStatusSummary: metabolic.metrics.caloricState === 'surplus'
+        ? `Surplus (+${metabolic.metrics.caloricDeltaKcal} kcal): Fueling muscle hypertrophy & glycogen replenishment.`
+        : metabolic.metrics.caloricState === 'deficit'
+        ? `Deficit (${metabolic.metrics.caloricDeltaKcal} kcal): Preserving lean mass while targeting visceral fat oxidation.`
+        : `Balanced intake: Sustaining metabolic homeostasis.`,
+      muscleRecoverySummary: recovery.priorityFocusMuscles.length > 0
+        ? `Targeting neglected groups: ${recovery.priorityFocusMuscles.join(', ')}. Resting recently trained: ${recovery.recentMusclesTrained.join(', ') || 'None'}.`
+        : `Optimal muscular balance. All primary movement vectors ready for activation.`,
+      clinicalSafetyNotes: metabolic.safetyNotes,
+      aiReasoning: neuroSync.reasoning,
+      metrics: metabolic.metrics,
+      weeklyPeriodizedMatrix: weeklyMatrix,
+      recommendedPool: neuroSync.pool.slice(0, 12),
+    };
+
     return store.upsertPlan({
       userId,
       planDate: date,
       goalMin: capacity.dailyGoalMin,
       capacityMin: capacity.capacityMin,
       achievedMin: existing?.achievedMin ?? 0,
+      neuroSyncBrain,
       entries: sessions.flatMap((s) =>
         s.exercises.map((e) => ({
           exerciseSlug: e.id,
@@ -929,7 +994,14 @@ export function buildRouter(deps: ServerDeps): Router {
   router.get('/v1/today', async (ctx) => {
     const user = await requireUser(ctx);
     const date = ctx.query.get('date') ?? today();
-    const plan = (await store.getPlan(user.id, date)) ?? (await buildPlanFor(user.id, date));
+    const modality = (ctx.query.get('modality') as TrainingModality | null) ?? (user.trainingModality as TrainingModality | undefined) ?? 'gym';
+    const loggedCalories = ctx.query.get('loggedCalories') ? parseInt(ctx.query.get('loggedCalories')!, 10) : undefined;
+    const replan = ctx.query.get('replan') === 'true';
+
+    let plan = await store.getPlan(user.id, date);
+    if (!plan || replan || (plan.neuroSyncBrain && plan.neuroSyncBrain.modality !== modality)) {
+      plan = await buildPlanFor(user.id, date, modality, loggedCalories);
+    }
 
     const blocks = expandBlocks(await store.getSchedule(user.id));
     const windows = detectFreeWindows(blocks, weekdayOf(date));
@@ -944,10 +1016,47 @@ export function buildRouter(deps: ServerDeps): Router {
       capacity,
       effort,
       coins: computeBalance(ledger),
+      neuroSyncBrain: plan.neuroSyncBrain,
       // Omitted entirely, not sent as null — the client must not render a
       // placeholder for a module the user switched off.
       ...(user.dietToggle ? { dietEnabled: true } : {}),
       disclaimer: DISCLAIMERS.general,
+    };
+  });
+
+  router.get('/v1/ai/smart-routine', async (ctx) => {
+    const user = await requireUser(ctx);
+    const date = ctx.query.get('date') ?? today();
+    const modality = (ctx.query.get('modality') as TrainingModality | null) ?? (user.trainingModality as TrainingModality | undefined) ?? 'gym';
+    const loggedCalories = ctx.query.get('loggedCalories') ? parseInt(ctx.query.get('loggedCalories')!, 10) : undefined;
+
+    const pastPlans: StoredPlan[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const p = await store.getPlan(user.id, daysAgo(i));
+      if (p) pastPlans.push(p);
+    }
+    const recovery = analyzeMuscleHistory(pastPlans);
+    const metabolic = evaluateMetabolicProfile(user, loggedCalories);
+    const neuroSync = synthesizeNeuroSyncPool(user, modality, metabolic, recovery, date);
+    const weeklyMatrix = buildWeeklyPeriodizedMatrix(user.fitnessGoal, modality, metabolic.archetype);
+
+    return {
+      modality,
+      metabolicArchetype: metabolic.archetype,
+      metabolismSummary: metabolic.summary,
+      caloricStatusSummary: metabolic.metrics.caloricState === 'surplus'
+        ? `Surplus (+${metabolic.metrics.caloricDeltaKcal} kcal): Fueling muscle hypertrophy & glycogen replenishment.`
+        : metabolic.metrics.caloricState === 'deficit'
+        ? `Deficit (${metabolic.metrics.caloricDeltaKcal} kcal): Preserving lean mass while targeting visceral fat oxidation.`
+        : `Balanced intake: Sustaining metabolic homeostasis.`,
+      muscleRecoverySummary: recovery.priorityFocusMuscles.length > 0
+        ? `Targeting neglected groups: ${recovery.priorityFocusMuscles.join(', ')}. Resting recently trained: ${recovery.recentMusclesTrained.join(', ') || 'None'}.`
+        : `Optimal muscular balance. All primary movement vectors ready for activation.`,
+      clinicalSafetyNotes: metabolic.safetyNotes,
+      aiReasoning: neuroSync.reasoning,
+      metrics: metabolic.metrics,
+      weeklyPeriodizedMatrix: weeklyMatrix,
+      recommendedPool: neuroSync.pool.slice(0, 15),
     };
   });
 
@@ -1300,6 +1409,91 @@ export function buildRouter(deps: ServerDeps): Router {
       })(),
       totalParticipants: rows.length,
     };
+  });
+
+  // ---------------------------------------------------------------------------
+  // STREAKMATRIX™ & ACTIVITY HEATMAP CALENDAR
+  // ---------------------------------------------------------------------------
+
+  router.post('/v1/activity/checkin', async (ctx) => {
+    const user = await requireUser(ctx);
+    const date = today();
+    const nowIso = new Date().toISOString();
+
+    const record = await store.recordCheckin(user.id, date, nowIso);
+
+    // Calculate updated streak
+    let streak = 0;
+    for (let i = 0; i < 400; i++) {
+      const d = daysAgo(i);
+      const c = await store.getDailyCheckin(user.id, d);
+      const p = await store.getPlan(user.id, d);
+      if (c || (p && p.achievedMin > 0) || d === date) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    return {
+      ok: true,
+      streak: Math.max(1, streak),
+      checkedInAt: record.checkedInAt,
+      date,
+    };
+  });
+
+  router.post('/v1/activity/heartbeat', async (ctx) => {
+    const user = await requireUser(ctx);
+    const date = today();
+    const b = requireObject(ctx.body);
+    const usageSec = num(b, 'usageSec', { min: 1, max: 86400 });
+
+    const record = await store.recordAppUsage(user.id, date, usageSec);
+    return {
+      ok: true,
+      totalUsageSecToday: record.appUsageSec,
+      formatted: formatDuration(record.appUsageSec),
+      date,
+    };
+  });
+
+  router.get('/v1/activity/calendar', async (ctx) => {
+    const user = await requireUser(ctx);
+    const now = new Date();
+    const year = ctx.query.get('year') ? parseInt(ctx.query.get('year')!, 10) : now.getFullYear();
+    const month = ctx.query.get('month') ? parseInt(ctx.query.get('month')!, 10) : (now.getMonth() + 1);
+
+    const data = await buildStreakCalendar(user, year, month, store, today());
+    return data;
+  });
+
+  router.get('/v1/activity/day-summary', async (ctx) => {
+    const user = await requireUser(ctx);
+    const date = ctx.query.get('date') ?? today();
+
+    const summary = await getDaySummary(user, date, store);
+    return summary;
+  });
+
+  router.get('/v1/leaderboard/streaks', async (ctx) => {
+    const user = await requireUser(ctx);
+
+    // Calculate current user streak
+    let streak = 0;
+    for (let i = 0; i < 400; i++) {
+      const d = daysAgo(i);
+      const c = await store.getDailyCheckin(user.id, d);
+      const p = await store.getPlan(user.id, d);
+      if (c || (p && p.achievedMin > 0) || d === today()) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    const leaderboard = buildStreakLeaderboard(user.id, user.displayHandle, streak);
+    return leaderboard;
   });
 
   // ===========================================================================
@@ -2155,33 +2349,57 @@ Respond in this exact JSON format:
       disclaimer: 'This analysis provides supportive dietary and lifestyle insights based on visible markers. It is not medical advice. Consult your physician for clinical diagnosis.',
     };
 
+    let analysisResult: Record<string, unknown> = fallbackAnalysis;
+
     if (!geminiLab) {
       if (user.id.startsWith('demo-') || user.email?.includes('guest') || imageBase64.length > 20) {
-        return fallbackAnalysis;
+        analysisResult = fallbackAnalysis;
+      } else {
+        throw HttpError.badRequest('AI lab report analysis is not configured. Set GEMINI_LAB_API_KEY or GEMINI_API_KEY.');
       }
-      throw HttpError.badRequest('AI lab report analysis is not configured. Set GEMINI_LAB_API_KEY or GEMINI_API_KEY.');
+    } else {
+      try {
+        const raw = await geminiLab.generateJson<Record<string, unknown>>({
+          prompt,
+          image: { mimeType, dataBase64: imageBase64 },
+          temperature: 0.2,
+          responseSchema: {
+            type: 'object',
+            properties: {
+              findings:    { type: 'array' },
+              adjustments: { type: 'array' },
+              nextStep:    { type: 'string' },
+              disclaimer:  { type: 'string' },
+            },
+          } as Record<string, unknown>,
+        });
+        analysisResult = { userId: user.id, ...raw };
+      } catch (_err: unknown) {
+        // Graceful fallback rather than blocking the athlete with 503
+        analysisResult = fallbackAnalysis;
+      }
     }
 
-    try {
-      const raw = await geminiLab.generateJson<Record<string, unknown>>({
-        prompt,
-        image: { mimeType, dataBase64: imageBase64 },
-        temperature: 0.2,
-        responseSchema: {
-          type: 'object',
-          properties: {
-            findings:    { type: 'array' },
-            adjustments: { type: 'array' },
-            nextStep:    { type: 'string' },
-            disclaimer:  { type: 'string' },
-          },
-        } as Record<string, unknown>,
-      });
-      return { userId: user.id, ...raw };
-    } catch (_err: unknown) {
-      // Graceful fallback rather than blocking the athlete with 503
-      return fallbackAnalysis;
+    // Synchronize parsed clinical markers into user's metabolic profile
+    const markerMap: Record<string, number> = { ...(user.latestLabMarkers ?? {}) };
+    const insights: string[] = [];
+    const findingsList = Array.isArray(analysisResult.findings) ? analysisResult.findings : [];
+    for (const f of findingsList as Array<{ marker?: string; value?: string; status?: string; summary?: string }>) {
+      if (f.marker && f.value) {
+        const numMatch = String(f.value).match(/([0-9]+(?:\.[0-9]+)?)/);
+        if (numMatch) {
+          const key = f.marker.toLowerCase().replace(/[\s-]/g, '_');
+          markerMap[key] = parseFloat(numMatch[1]);
+        }
+        if (f.summary) insights.push(f.summary);
+      }
     }
+    await store.updateUser(user.id, {
+      latestLabMarkers: markerMap,
+      labInsights: insights.slice(0, 5),
+    });
+
+    return analysisResult;
   });
 
   // ===========================================================================
@@ -2673,6 +2891,73 @@ Respond in this exact JSON format:
     };
     const result = await eRaktKoshClient.submitThalassemiaRequest(req);
     return result;
+  });
+
+  // ===========================================================================
+  // VYRA FeminaHealth™ Endpoints: Menstrual Cycle & 9-Month Maternal Care
+  // ===========================================================================
+
+  router.get('/v1/womens-health/cycle-profile', async (ctx) => {
+    const today = ctx.query.get('date') ?? new Date().toISOString().split('T')[0];
+    const defaultHistory: CycleEntry[] = [
+      {
+        startDate: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0],
+        durationDays: 5,
+        cycleLengthDays: 28,
+      },
+      {
+        startDate: new Date(Date.now() - 42 * 86400000).toISOString().split('T')[0],
+        durationDays: 5,
+        cycleLengthDays: 28,
+      },
+    ];
+    const prediction = FeminaCycleEngine.analyzeCycle({
+      cycleHistory: defaultHistory,
+      todayDateStr: today,
+    });
+    const carePlan = FeminaCycleEngine.getAdaptiveCarePlan({
+      currentPhase: prediction.currentPhase,
+      crampSeverity: 1,
+    });
+    return { success: true, prediction, carePlan };
+  });
+
+  router.post('/v1/womens-health/cycle-relief', async (ctx) => {
+    const b = (ctx.body && typeof ctx.body === 'object') ? ctx.body as Record<string, unknown> : {};
+    const phase = (b.currentPhase as any) || 'menstrual';
+    const crampSeverity = Number(b.crampSeverity || 0);
+    const symptoms = Array.isArray(b.symptoms) ? (b.symptoms as MenstrualSymptom[]) : [];
+    const carePlan = FeminaCycleEngine.getAdaptiveCarePlan({
+      currentPhase: phase,
+      crampSeverity,
+      symptoms,
+    });
+    return { success: true, carePlan };
+  });
+
+  router.get('/v1/womens-health/pregnancy-profile', async (ctx) => {
+    const lmp = ctx.query.get('lmp') || undefined;
+    const edd = ctx.query.get('edd') || undefined;
+    const today = ctx.query.get('date') ?? new Date().toISOString().split('T')[0];
+    const profile = MaternalCareEngine.analyzePregnancy({
+      lastMenstrualPeriod: lmp,
+      estimatedDueDate: edd,
+      todayDateStr: today,
+    });
+    return { success: true, profile };
+  });
+
+  router.post('/v1/womens-health/pregnancy-setup', async (ctx) => {
+    const b = (ctx.body && typeof ctx.body === 'object') ? ctx.body as Record<string, unknown> : {};
+    const lmp = b.lastMenstrualPeriod ? String(b.lastMenstrualPeriod) : undefined;
+    const edd = b.estimatedDueDate ? String(b.estimatedDueDate) : undefined;
+    const custom = Array.isArray(b.customInstructions) ? (b.customInstructions as DoctorInstruction[]) : [];
+    const profile = MaternalCareEngine.analyzePregnancy({
+      lastMenstrualPeriod: lmp,
+      estimatedDueDate: edd,
+      customInstructions: custom,
+    });
+    return { success: true, profile };
   });
 
   // Register Enterprise Web Admin Portal & Management Endpoints

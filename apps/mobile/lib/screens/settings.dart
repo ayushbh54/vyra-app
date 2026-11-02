@@ -4,7 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/client.dart';
 import '../models/models.dart';
+import '../services/app_localizations.dart';
+import '../services/language_service.dart';
 import '../theme.dart';
+import '../theme_manager.dart';
 import '../widgets/common.dart';
 import '../widgets/screen_scaffold.dart';
 import 'beacon.dart';
@@ -76,6 +79,125 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SnackBar(content: Text('App cache cleared successfully.')),
       );
     }
+  }
+
+  void _showLanguagePickerSheet() {
+    final isDark = ThemeManager.instance.isDark;
+    final bg = isDark ? const Color(0xFF171C25) : Colors.white;
+    final textPrimary = isDark ? const Color(0xFFDFE2F0) : const Color(0xFF0F172A);
+    final cardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(VRadius.xl)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00D2FF).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.language_rounded, color: Color(0xFF00D2FF), size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.l10n.chooseLanguage,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: textPrimary,
+                            ),
+                          ),
+                          Text(
+                            context.l10n.chooseLanguageSub,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: kVyraLanguages.length,
+                    separatorBuilder: (_, __) => Divider(height: 1, color: cardBorder.withValues(alpha: 0.5)),
+                    itemBuilder: (context, idx) {
+                      final lang = kVyraLanguages[idx];
+                      final isSelected = LanguageService.instance.current.prefsKey == lang.prefsKey;
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        leading: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFF00D2FF).withValues(alpha: 0.15)
+                                : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9)),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Center(
+                            child: Text(lang.flag, style: const TextStyle(fontSize: 20)),
+                          ),
+                        ),
+                        title: Text(
+                          lang.nativeName,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                            fontSize: 14.5,
+                            color: isSelected ? const Color(0xFF00D2FF) : textPrimary,
+                          ),
+                        ),
+                        subtitle: Text(
+                          lang.displayName,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(Icons.check_circle_rounded, color: Color(0xFF00D2FF), size: 22)
+                            : null,
+                        onTap: () async {
+                          Navigator.pop(ctx);
+                          await LanguageService.instance.setLanguage(lang);
+                          if (mounted) setState(() {});
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _logout() async {
@@ -348,6 +470,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(color: VColor.textMid, fontSize: 12)),
                   trailing: const Icon(Icons.chevron_right, color: VColor.textLow),
                   onTap: () => pushScreen(context, 'Emergency Contacts', const EmergencyContactsScreen()),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: VSpace.base),
+
+          // ── Preferences & Language ──
+          VLabel(context.l10n.preferencesAndLanguage),
+          const SizedBox(height: VSpace.xs),
+          VCard(
+            tone: CardTone.raised,
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.language_rounded, color: VColor.accent),
+                  title: Text(context.l10n.appLanguage,
+                      style: const TextStyle(color: VColor.text, fontWeight: FontWeight.w600)),
+                  subtitle: Text(
+                    '${LanguageService.instance.current.flag}  ${LanguageService.instance.current.nativeName} (${LanguageService.instance.current.displayName})',
+                    style: const TextStyle(color: VColor.accent, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  trailing: const Icon(Icons.chevron_right, color: VColor.textLow),
+                  onTap: _showLanguagePickerSheet,
                 ),
               ],
             ),

@@ -11,6 +11,7 @@ import '../widgets/screen_scaffold.dart';
 import 'exercise_detail.dart';
 import 'face_hair_yoga.dart';
 import 'global_search.dart';
+import 'womens_health_screen.dart';
 
 const _categories = [
   (null, 'All'),
@@ -119,6 +120,34 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           ),
                         ),
                         Icon(Icons.chevron_right, color: VColor.accent, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => pushScreen(context, 'Women\'s Health & Maternal Care', const WomensHealthScreen()),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: VSpace.xs),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [const Color(0xFFF43F5E).withValues(alpha: 0.12), const Color(0xFF8B5CF6).withValues(alpha: 0.12)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFF43F5E).withValues(alpha: 0.25)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.spa_rounded, color: Color(0xFFF43F5E), size: 20),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '🌸 FeminaHealth™: Periods, Maternal & Partner Care',
+                            style: TextStyle(color: VColor.text, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: Color(0xFFF43F5E), size: 18),
                       ],
                     ),
                   ),

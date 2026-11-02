@@ -354,7 +354,6 @@ class WatchHardwareProfile {
         hasMiBand = true;
         if (miBandServiceUuid.isEmpty) miBandServiceUuid = s.uuid.toString();
         for (final c in s.characteristics) {
-          final cUuid = c.uuid.toString().toLowerCase();
           final canWrite = c.properties.write || c.properties.writeWithoutResponse;
           final canNotify = c.properties.notify || c.properties.indicate;
           // Mi Band write chars: 00000009, 00000010, fee3, fee4

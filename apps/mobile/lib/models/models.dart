@@ -219,6 +219,109 @@ class CoinBalance {
       );
 }
 
+class WeeklyScheduleDayData {
+  final String day;
+  final String dayShort;
+  final String theme;
+  final List<String> targetMuscles;
+  final String intensity;
+  final List<String> sampleExercises;
+  final String dietaryStrategy;
+  final String metabolicFocus;
+
+  const WeeklyScheduleDayData({
+    required this.day,
+    required this.dayShort,
+    required this.theme,
+    required this.targetMuscles,
+    required this.intensity,
+    required this.sampleExercises,
+    required this.dietaryStrategy,
+    required this.metabolicFocus,
+  });
+
+  factory WeeklyScheduleDayData.fromJson(Map<String, dynamic> j) => WeeklyScheduleDayData(
+        day: _s(j['day']),
+        dayShort: _s(j['dayShort']),
+        theme: _s(j['theme']),
+        targetMuscles: (j['targetMuscles'] as List? ?? []).map((e) => '$e').toList(),
+        intensity: _s(j['intensity']),
+        sampleExercises: (j['sampleExercises'] as List? ?? []).map((e) => '$e').toList(),
+        dietaryStrategy: _s(j['dietaryStrategy']),
+        metabolicFocus: _s(j['metabolicFocus']),
+      );
+}
+
+class BmrTdeeMetricsData {
+  final int bmrKcal;
+  final int tdeeKcal;
+  final double bmi;
+  final String bmiCategory;
+  final int targetCaloricBudget;
+  final int caloricDeltaKcal;
+  final String caloricState;
+
+  const BmrTdeeMetricsData({
+    required this.bmrKcal,
+    required this.tdeeKcal,
+    required this.bmi,
+    required this.bmiCategory,
+    required this.targetCaloricBudget,
+    required this.caloricDeltaKcal,
+    required this.caloricState,
+  });
+
+  factory BmrTdeeMetricsData.fromJson(Map<String, dynamic> j) => BmrTdeeMetricsData(
+        bmrKcal: _i(j['bmrKcal']),
+        tdeeKcal: _i(j['tdeeKcal']),
+        bmi: _d(j['bmi']),
+        bmiCategory: _s(j['bmiCategory']),
+        targetCaloricBudget: _i(j['targetCaloricBudget']),
+        caloricDeltaKcal: _i(j['caloricDeltaKcal']),
+        caloricState: _s(j['caloricState']),
+      );
+}
+
+class NeuroSyncBrainData {
+  final String modality;
+  final String metabolicArchetype;
+  final String metabolismSummary;
+  final String caloricStatusSummary;
+  final String muscleRecoverySummary;
+  final List<String> clinicalSafetyNotes;
+  final String aiReasoning;
+  final BmrTdeeMetricsData? metrics;
+  final List<WeeklyScheduleDayData> weeklyPeriodizedMatrix;
+
+  const NeuroSyncBrainData({
+    required this.modality,
+    required this.metabolicArchetype,
+    required this.metabolismSummary,
+    required this.caloricStatusSummary,
+    required this.muscleRecoverySummary,
+    required this.clinicalSafetyNotes,
+    required this.aiReasoning,
+    this.metrics,
+    required this.weeklyPeriodizedMatrix,
+  });
+
+  factory NeuroSyncBrainData.fromJson(Map<String, dynamic> j) => NeuroSyncBrainData(
+        modality: _s(j['modality'], 'gym'),
+        metabolicArchetype: _s(j['metabolicArchetype'], 'balanced_athletic'),
+        metabolismSummary: _s(j['metabolismSummary']),
+        caloricStatusSummary: _s(j['caloricStatusSummary']),
+        muscleRecoverySummary: _s(j['muscleRecoverySummary']),
+        clinicalSafetyNotes: (j['clinicalSafetyNotes'] as List? ?? []).map((e) => '$e').toList(),
+        aiReasoning: _s(j['aiReasoning']),
+        metrics: j['metrics'] is Map<String, dynamic>
+            ? BmrTdeeMetricsData.fromJson(j['metrics'] as Map<String, dynamic>)
+            : null,
+        weeklyPeriodizedMatrix: (j['weeklyPeriodizedMatrix'] as List? ?? [])
+            .map((e) => WeeklyScheduleDayData.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
 class TodayData {
   final String date;
   final WorkoutPlan plan;
@@ -228,6 +331,7 @@ class TodayData {
   final CoinBalance coins;
   final bool dietEnabled;
   final String disclaimer;
+  final NeuroSyncBrainData? neuroSyncBrain;
 
   const TodayData({
     required this.date,
@@ -238,9 +342,10 @@ class TodayData {
     required this.coins,
     required this.dietEnabled,
     required this.disclaimer,
+    this.neuroSyncBrain,
   });
 
-  TodayData copyWith({WorkoutPlan? plan}) => TodayData(
+  TodayData copyWith({WorkoutPlan? plan, NeuroSyncBrainData? neuroSyncBrain}) => TodayData(
         date: date,
         plan: plan ?? this.plan,
         windows: windows,
@@ -249,6 +354,7 @@ class TodayData {
         coins: coins,
         dietEnabled: dietEnabled,
         disclaimer: disclaimer,
+        neuroSyncBrain: neuroSyncBrain ?? this.neuroSyncBrain,
       );
 
   factory TodayData.fromJson(Map<String, dynamic> j) => TodayData(
@@ -264,6 +370,11 @@ class TodayData {
         // server rather than sent as null, and the app must render nothing.
         dietEnabled: _b(j['dietEnabled']),
         disclaimer: _s(j['disclaimer']),
+        neuroSyncBrain: j['neuroSyncBrain'] is Map<String, dynamic>
+            ? NeuroSyncBrainData.fromJson(j['neuroSyncBrain'] as Map<String, dynamic>)
+            : (j['plan'] is Map<String, dynamic> && (j['plan'] as Map<String, dynamic>)['neuroSyncBrain'] is Map<String, dynamic>
+                ? NeuroSyncBrainData.fromJson((j['plan'] as Map<String, dynamic>)['neuroSyncBrain'] as Map<String, dynamic>)
+                : null),
       );
 }
 
@@ -1572,5 +1683,267 @@ class WaterReminderConfig {
         endTime: '22:00',
         soundEnabled: true,
       );
+}
+
+// ============================================================================
+// STREAKS & ACTIVITY HEATMAP DOMAIN MODELS (GitHub / LeetCode Style)
+// ============================================================================
+
+class StreakDayItem {
+  final String date;
+  final String dayOfWeek;
+  final int level; // 0 to 4
+  final bool checkedIn;
+  final String? checkedInAt;
+  final int appUsageSec;
+  final String appUsageFormatted;
+  final int exercisesCompleted;
+  final int workoutDurationMin;
+  final int caloriesBurned;
+  final int caloriesConsumed;
+  final int netCalories;
+  final int waterMl;
+  final int steps;
+  final int coinsEarned;
+  final bool metGoal;
+
+  const StreakDayItem({
+    required this.date,
+    required this.dayOfWeek,
+    required this.level,
+    required this.checkedIn,
+    this.checkedInAt,
+    required this.appUsageSec,
+    required this.appUsageFormatted,
+    required this.exercisesCompleted,
+    required this.workoutDurationMin,
+    required this.caloriesBurned,
+    required this.caloriesConsumed,
+    required this.netCalories,
+    required this.waterMl,
+    required this.steps,
+    required this.coinsEarned,
+    required this.metGoal,
+  });
+
+  factory StreakDayItem.fromJson(Map<String, dynamic> j) => StreakDayItem(
+        date: j['date'] as String? ?? '',
+        dayOfWeek: j['dayOfWeek'] as String? ?? '',
+        level: _i(j['level']),
+        checkedIn: j['checkedIn'] as bool? ?? false,
+        checkedInAt: j['checkedInAt'] as String?,
+        appUsageSec: _i(j['appUsageSec']),
+        appUsageFormatted: j['appUsageFormatted'] as String? ?? '0h 0m',
+        exercisesCompleted: _i(j['exercisesCompleted']),
+        workoutDurationMin: _i(j['workoutDurationMin']),
+        caloriesBurned: _i(j['caloriesBurned']),
+        caloriesConsumed: _i(j['caloriesConsumed']),
+        netCalories: _i(j['netCalories']),
+        waterMl: _i(j['waterMl']),
+        steps: _i(j['steps']),
+        coinsEarned: _i(j['coinsEarned']),
+        metGoal: j['metGoal'] as bool? ?? false,
+      );
+}
+
+class StreakCalendarData {
+  final int year;
+  final int month;
+  final String monthName;
+  final int currentStreak;
+  final int longestStreak;
+  final int totalActiveDaysInMonth;
+  final int monthlyConsistencyPct;
+  final List<StreakDayItem> days;
+
+  const StreakCalendarData({
+    required this.year,
+    required this.month,
+    required this.monthName,
+    required this.currentStreak,
+    required this.longestStreak,
+    required this.totalActiveDaysInMonth,
+    required this.monthlyConsistencyPct,
+    required this.days,
+  });
+
+  factory StreakCalendarData.fromJson(Map<String, dynamic> j) {
+    final rawDays = j['days'] as List<dynamic>? ?? [];
+    return StreakCalendarData(
+      year: _i(j['year']),
+      month: _i(j['month']),
+      monthName: j['monthName'] as String? ?? '',
+      currentStreak: _i(j['currentStreak']),
+      longestStreak: _i(j['longestStreak']),
+      totalActiveDaysInMonth: _i(j['totalActiveDaysInMonth']),
+      monthlyConsistencyPct: _i(j['monthlyConsistencyPct']),
+      days: rawDays
+          .map((d) => StreakDayItem.fromJson(d as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class DayExerciseDetailItem {
+  final String exerciseSlug;
+  final String name;
+  final int durationSec;
+  final String durationFormatted;
+  final bool isCompleted;
+  final int reps;
+  final int sets;
+
+  const DayExerciseDetailItem({
+    required this.exerciseSlug,
+    required this.name,
+    required this.durationSec,
+    required this.durationFormatted,
+    required this.isCompleted,
+    required this.reps,
+    required this.sets,
+  });
+
+  factory DayExerciseDetailItem.fromJson(Map<String, dynamic> j) =>
+      DayExerciseDetailItem(
+        exerciseSlug: j['exerciseSlug'] as String? ?? '',
+        name: j['name'] as String? ?? 'Workout',
+        durationSec: _i(j['durationSec']),
+        durationFormatted: j['durationFormatted'] as String? ?? '0m',
+        isCompleted: j['isCompleted'] as bool? ?? false,
+        reps: _i(j['reps'], 10),
+        sets: _i(j['sets'], 3),
+      );
+}
+
+class DayDetailedBreakdown {
+  final String date;
+  final String formattedDate;
+  final int level;
+  final bool checkedIn;
+  final String? checkedInAt;
+  final int appUsageSec;
+  final String appUsageFormatted;
+  final List<DayExerciseDetailItem> exercisesCompleted;
+  final int totalExercisesCompleted;
+  final int workoutDurationMin;
+  final int caloriesBurned;
+  final int caloriesConsumed;
+  final int netCalories;
+  final int waterMl;
+  final int steps;
+  final int coinsEarned;
+  final String summaryNote;
+
+  const DayDetailedBreakdown({
+    required this.date,
+    required this.formattedDate,
+    required this.level,
+    required this.checkedIn,
+    this.checkedInAt,
+    required this.appUsageSec,
+    required this.appUsageFormatted,
+    required this.exercisesCompleted,
+    required this.totalExercisesCompleted,
+    required this.workoutDurationMin,
+    required this.caloriesBurned,
+    required this.caloriesConsumed,
+    required this.netCalories,
+    required this.waterMl,
+    required this.steps,
+    required this.coinsEarned,
+    required this.summaryNote,
+  });
+
+  factory DayDetailedBreakdown.fromJson(Map<String, dynamic> j) {
+    final rawEx = j['exercisesCompleted'] as List<dynamic>? ?? [];
+    return DayDetailedBreakdown(
+      date: j['date'] as String? ?? '',
+      formattedDate: j['formattedDate'] as String? ?? '',
+      level: _i(j['level']),
+      checkedIn: j['checkedIn'] as bool? ?? false,
+      checkedInAt: j['checkedInAt'] as String?,
+      appUsageSec: _i(j['appUsageSec']),
+      appUsageFormatted: j['appUsageFormatted'] as String? ?? '0h 0m',
+      exercisesCompleted: rawEx
+          .map((e) => DayExerciseDetailItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      totalExercisesCompleted: _i(j['totalExercisesCompleted']),
+      workoutDurationMin: _i(j['workoutDurationMin']),
+      caloriesBurned: _i(j['caloriesBurned']),
+      caloriesConsumed: _i(j['caloriesConsumed']),
+      netCalories: _i(j['netCalories']),
+      waterMl: _i(j['waterMl']),
+      steps: _i(j['steps']),
+      coinsEarned: _i(j['coinsEarned']),
+      summaryNote: j['summaryNote'] as String? ?? '',
+    );
+  }
+}
+
+class StreakLeaderboardEntry {
+  final int rank;
+  final String userId;
+  final String displayHandle;
+  final int streakDays;
+  final int longestStreak;
+  final int consistencyPct;
+  final int totalActiveDays;
+  final String badge;
+  final bool isSelf;
+
+  const StreakLeaderboardEntry({
+    required this.rank,
+    required this.userId,
+    required this.displayHandle,
+    required this.streakDays,
+    required this.longestStreak,
+    required this.consistencyPct,
+    required this.totalActiveDays,
+    required this.badge,
+    required this.isSelf,
+  });
+
+  factory StreakLeaderboardEntry.fromJson(Map<String, dynamic> j) =>
+      StreakLeaderboardEntry(
+        rank: _i(j['rank']),
+        userId: j['userId'] as String? ?? '',
+        displayHandle: j['displayHandle'] as String? ?? 'Athlete',
+        streakDays: _i(j['streakDays']),
+        longestStreak: _i(j['longestStreak']),
+        consistencyPct: _i(j['consistencyPct']),
+        totalActiveDays: _i(j['totalActiveDays']),
+        badge: j['badge'] as String? ?? 'spark',
+        isSelf: j['isSelf'] as bool? ?? false,
+      );
+}
+
+class StreakLeaderboardData {
+  final List<StreakLeaderboardEntry> podium;
+  final List<StreakLeaderboardEntry> allRanks;
+  final StreakLeaderboardEntry self;
+
+  const StreakLeaderboardData({
+    required this.podium,
+    required this.allRanks,
+    required this.self,
+  });
+
+  factory StreakLeaderboardData.fromJson(Map<String, dynamic> j) {
+    final rawPodium = j['podium'] as List<dynamic>? ?? [];
+    final rawAll = j['allRanks'] as List<dynamic>? ?? [];
+    final rawSelf = j['self'] as Map<String, dynamic>? ?? {};
+
+    return StreakLeaderboardData(
+      podium: rawPodium
+          .map((p) =>
+              StreakLeaderboardEntry.fromJson(p as Map<String, dynamic>))
+          .toList(),
+      allRanks: rawAll
+          .map((a) =>
+              StreakLeaderboardEntry.fromJson(a as Map<String, dynamic>))
+          .toList(),
+      self: StreakLeaderboardEntry.fromJson(rawSelf),
+    );
+  }
 }
 

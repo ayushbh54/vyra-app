@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../api/client.dart';
+import '../services/app_localizations.dart';
+import '../services/language_service.dart';
 import '../theme.dart';
 
 /// AUTH — Create Account / Sign In, one screen with a segmented switch,
@@ -289,6 +291,118 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  void _showLanguagePickerSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: VColor.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(VRadius.xl)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: VColor.accentGlow,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.language_rounded, color: VColor.accent, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.l10n.chooseLanguage,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: VColor.text,
+                            ),
+                          ),
+                          Text(
+                            context.l10n.chooseLanguageSub,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: VColor.textMid,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Divider(height: 1, color: VColor.line),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: kVyraLanguages.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1, color: VColor.line),
+                    itemBuilder: (context, idx) {
+                      final lang = kVyraLanguages[idx];
+                      final isSelected = LanguageService.instance.current.prefsKey == lang.prefsKey;
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        leading: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: isSelected ? VColor.accentGlow : VColor.bg,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Center(
+                            child: Text(lang.flag, style: const TextStyle(fontSize: 20)),
+                          ),
+                        ),
+                        title: Text(
+                          lang.nativeName,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                            fontSize: 14.5,
+                            color: isSelected ? VColor.accent : VColor.text,
+                          ),
+                        ),
+                        subtitle: Text(
+                          lang.displayName,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: VColor.textMid,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(Icons.check_circle_rounded, color: VColor.accent, size: 22)
+                            : null,
+                        onTap: () async {
+                          Navigator.pop(ctx);
+                          await LanguageService.instance.setLanguage(lang);
+                          if (mounted) setState(() {});
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isCreate = _mode == _Mode.create;
@@ -306,8 +420,37 @@ class _AuthScreenState extends State<AuthScreen> {
           ],
         ),
         centerTitle: true,
-        actions: const [
-          Padding(
+        actions: [
+          InkWell(
+            onTap: _showLanguagePickerSheet,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: VColor.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: VColor.line),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(LanguageService.instance.current.flag, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(width: 4),
+                  Text(
+                    LanguageService.instance.current.languageCode.toUpperCase(),
+                    style: const TextStyle(
+                      color: VColor.text,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Icon(Icons.arrow_drop_down, color: VColor.textMid, size: 16),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Padding(
             padding: EdgeInsets.only(right: VSpace.base),
             child: Icon(Icons.shield_outlined, color: VColor.textMid, size: 20),
           ),

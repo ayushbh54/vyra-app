@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../api/client.dart';
+import '../../services/app_localizations.dart';
 import '../../services/language_service.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
@@ -41,6 +42,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   bool _saving = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedLanguage = LanguageService.instance.current;
+  }
 
   @override
   void dispose() {
@@ -187,7 +194,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                             child: _saving
                                 ? const SizedBox(width: 20, height: 20,
                                     child: CircularProgressIndicator(strokeWidth: 2, color: VColor.textOnAccent))
-                                : Text(_step == _totalSteps - 1 ? 'Build my plan' : 'Continue',
+                                : Text(_step == _totalSteps - 1 ? context.l10n.buildMyPlan : context.l10n.continueButton,
                                     style: TextStyle(
                                         fontSize: 16, fontWeight: FontWeight.w700,
                                         color: (_canContinue) ? VColor.textOnAccent : VColor.textLow)),
@@ -227,9 +234,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   // ── Step 0 — Language Selection ───────────────────────────────────────────
   Widget _stepLanguage() {
+    final l10n = context.l10n;
     return _stepShell(
-      title: 'Choose your language',
-      subtitle: 'VYRA speaks your language — pick one to personalise every screen.',
+      title: l10n.chooseLanguage,
+      subtitle: l10n.chooseLanguageSub,
       child: Column(
         children: [
           // Search / quick-pick the 4 most common at top
@@ -261,7 +269,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
     final selected = _selectedLanguage?.prefsKey == lang.prefsKey;
     return GestureDetector(
-      onTap: () => setState(() => _selectedLanguage = lang),
+      onTap: () async {
+        setState(() => _selectedLanguage = lang);
+        await LanguageService.instance.setLanguage(lang);
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -299,7 +310,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     return Padding(
       padding: const EdgeInsets.only(bottom: VSpace.sm),
       child: InkWell(
-        onTap: () => setState(() => _selectedLanguage = lang),
+        onTap: () async {
+          setState(() => _selectedLanguage = lang);
+          await LanguageService.instance.setLanguage(lang);
+        },
         borderRadius: BorderRadius.circular(VRadius.lg),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),

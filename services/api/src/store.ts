@@ -43,6 +43,7 @@ export interface StoredUser {
   fitnessGoal: FitnessGoal;
   fitnessLevel?: string;
   bodyType?: string;
+  trainingModality?: 'gym' | 'home' | 'light' | 'shred';
   latestLabMarkers?: Record<string, number>;
   labInsights?: string[];
   dietToggle: boolean;
@@ -80,6 +81,14 @@ export interface StoredPlan {
   capacityMin: number;
   entries: StoredPlanEntry[];
   achievedMin: number;
+  neuroSyncBrain?: any;
+}
+
+export interface StoredDailyCheckin {
+  userId: string;
+  date: ISODate;
+  checkedInAt: string;
+  appUsageSec: number;
 }
 
 /** One GPS fix. `t` is seconds elapsed since the activity started. */
@@ -256,6 +265,11 @@ export interface Store {
   listLedger(userId: string): Promise<LedgerRow[]>;
   listLedgerForDate(userId: string, date: ISODate): Promise<LedgerRow[]>;
 
+  recordCheckin(userId: string, date: ISODate, timestamp?: string): Promise<StoredDailyCheckin>;
+  recordAppUsage(userId: string, date: ISODate, additionalSec: number): Promise<StoredDailyCheckin>;
+  getDailyCheckin(userId: string, date: ISODate): Promise<StoredDailyCheckin | null>;
+  listDailyCheckins(userId: string, fromDate: ISODate, toDate: ISODate): Promise<StoredDailyCheckin[]>;
+
   recordConsent(userId: string, type: string, granted: boolean, ipHash: string, policyVersion: string): Promise<void>;
   currentConsents(userId: string): Promise<Array<{ consentType: string; granted: boolean; updatedAt: string }>>;
 
@@ -375,6 +389,7 @@ export class MemoryStore implements Store {
   private tracking = new Map<string, StoredTracking>();
   private sugar = new Map<string, number>();
   private ledgers = new Map<string, LedgerRow[]>();
+  private checkins = new Map<string, StoredDailyCheckin>();
   private consents = new Map<string, Array<{ consentType: string; granted: boolean; updatedAt: string; ipHash: string; policyVersion: string }>>();
   private scores = new Map<string, Map<string, number>>();  // period -> userId -> points
 
@@ -674,6 +689,44 @@ export class MemoryStore implements Store {
 
   async listLedgerForDate(userId: string, date: ISODate) {
     return (this.ledgers.get(userId) ?? []).filter((r) => r.createdAt.slice(0, 10) === date);
+  }
+
+  async recordCheckin(userId: string, date: ISODate, timestamp?: string): Promise<StoredDailyCheckin> {
+    const key = this.key(userId, date);
+    const existing = this.checkins.get(key);
+    const record: StoredDailyCheckin = {
+      userId,
+      date,
+      checkedInAt: existing?.checkedInAt ?? timestamp ?? new Date().toISOString(),
+      appUsageSec: existing?.appUsageSec ?? 0,
+    };
+    this.checkins.set(key, record);
+    this.persistDebounced();
+    return record;
+  }
+
+  async recordAppUsage(userId: string, date: ISODate, additionalSec: number): Promise<StoredDailyCheckin> {
+    const key = this.key(userId, date);
+    const existing = this.checkins.get(key);
+    const record: StoredDailyCheckin = {
+      userId,
+      date,
+      checkedInAt: existing?.checkedInAt ?? new Date().toISOString(),
+      appUsageSec: (existing?.appUsageSec ?? 0) + additionalSec,
+    };
+    this.checkins.set(key, record);
+    this.persistDebounced();
+    return record;
+  }
+
+  async getDailyCheckin(userId: string, date: ISODate): Promise<StoredDailyCheckin | null> {
+    return this.checkins.get(this.key(userId, date)) ?? null;
+  }
+
+  async listDailyCheckins(userId: string, fromDate: ISODate, toDate: ISODate): Promise<StoredDailyCheckin[]> {
+    return [...this.checkins.values()]
+      .filter((c) => c.userId === userId && c.date >= fromDate && c.date <= toDate)
+      .sort((a, b) => a.date.localeCompare(b.date));
   }
 
   async recordConsent(userId: string, consentType: string, granted: boolean, ipHash: string, policyVersion: string) {

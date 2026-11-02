@@ -26,7 +26,7 @@ import type {
   AccountStatus, AuditEntry, BeaconContact, DmPrivacy, MovementDefinition, ReportReason,
   ReportStatus, ReportTargetType, Store, StoredActivity, StoredAdmin, StoredClub, StoredClubPost,
   StoredChatMessage, StoredComment, StoredConversation, StoredEvent, StoredMessage, StoredPlan,
-  StoredReport, StoredTracking, StoredUser,
+  StoredReport, StoredTracking, StoredUser, StoredDailyCheckin,
 } from './store';
 
 // Minimal structural types for `pg`, so this file compiles without the package
@@ -43,6 +43,7 @@ interface Pool {
 }
 
 export class PgStore implements Store {
+  private memCheckins = new Map<string, StoredDailyCheckin>();
   private constructor(private readonly pool: Pool) {}
 
   /**
@@ -479,6 +480,42 @@ export class PgStore implements Store {
       idempotencyKey: r.idempotency_key ? String(r.idempotency_key) : undefined,
       createdAt: this.toIso(r.created_at),
     };
+  }
+
+  async recordCheckin(userId: string, date: ISODate, timestamp?: string): Promise<StoredDailyCheckin> {
+    const key = `${userId}:${date}`;
+    const existing = this.memCheckins.get(key);
+    const record: StoredDailyCheckin = {
+      userId,
+      date,
+      checkedInAt: existing?.checkedInAt ?? timestamp ?? new Date().toISOString(),
+      appUsageSec: existing?.appUsageSec ?? 0,
+    };
+    this.memCheckins.set(key, record);
+    return record;
+  }
+
+  async recordAppUsage(userId: string, date: ISODate, additionalSec: number): Promise<StoredDailyCheckin> {
+    const key = `${userId}:${date}`;
+    const existing = this.memCheckins.get(key);
+    const record: StoredDailyCheckin = {
+      userId,
+      date,
+      checkedInAt: existing?.checkedInAt ?? new Date().toISOString(),
+      appUsageSec: (existing?.appUsageSec ?? 0) + additionalSec,
+    };
+    this.memCheckins.set(key, record);
+    return record;
+  }
+
+  async getDailyCheckin(userId: string, date: ISODate): Promise<StoredDailyCheckin | null> {
+    return this.memCheckins.get(`${userId}:${date}`) ?? null;
+  }
+
+  async listDailyCheckins(userId: string, fromDate: ISODate, toDate: ISODate): Promise<StoredDailyCheckin[]> {
+    return [...this.memCheckins.values()]
+      .filter((c) => c.userId === userId && c.date >= fromDate && c.date <= toDate)
+      .sort((a, b) => a.date.localeCompare(b.date));
   }
 
   // ---------------------------------------------------------------------------

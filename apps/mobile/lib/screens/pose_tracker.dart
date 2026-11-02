@@ -7,8 +7,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../api/client.dart';
+import '../services/activity_usage_service.dart';
+import '../services/kinetic_coach_brain.dart';
+import '../services/language_service.dart';
 import '../theme.dart';
 
 /// Biomechanical configuration for any VYRA exercise (Rep-based or Isometric Hold).
@@ -1268,6 +1273,11 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
   int _consecutiveGoodReps = 0;
   DateTime _lastFrameTime = DateTime.now();
 
+  // Kinetic Coach Brain & Physiotherapy Rep Gate State
+  final KineticCoachBrain _coachBrain = KineticCoachBrain();
+  int _rejectedReps = 0;
+  DateTime _sessionStartTime = DateTime.now();
+
   // ARTIFIT Strict Real-Time Biomechanical Verification State (Green = Valid, Red = Fault)
   bool _isFormValid = true;
   Set<int> _faultJoints = const <int>{};
@@ -1310,6 +1320,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
   @override
   void initState() {
     super.initState();
+    ActivityUsageService.instance.beginActiveSession('pose_tracker');
     _initExercise();
     _initTts();
     _initPoseDetector();
@@ -1773,25 +1784,54 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
       rightTripletConf: rConf,
     );
 
+    // Run Kinetic Coach Brain deep fault diagnostics
+    final kineticReport = _coachBrain.diagnoseKineticFaults(
+      auraPattern: _currentExercise.auraPattern,
+      framingMode: _currentExercise.framingMode,
+      exerciseName: _currentExercise.name,
+      humanLandmarks: _landmarks,
+      humanConf: _landmarkConf,
+      currentAngle: smoothed,
+      spineTiltDeg: _spineTiltDeg,
+      symmetryDiff: symmetryDiff,
+      leftTripletConf: lConf,
+      rightTripletConf: rConf,
+      phase: _currentPhase,
+      decreaseToPeak: _currentExercise.decreaseToPeak,
+      peakAngleDeg: _currentExercise.peakAngleDeg,
+    );
+
+    final bool hasAnyFault = !verification.isValid || kineticReport.hasFault;
+    final Set<int> combinedFaults = {
+      if (!verification.isValid) ...verification.faultJoints,
+      if (kineticReport.hasFault) ...kineticReport.faultJoints,
+    };
+    final String? activeWarning = kineticReport.hasFault && kineticReport.primaryInstruction.isNotEmpty
+        ? kineticReport.primaryInstruction
+        : verification.warningMessage;
+
     setState(() {
       _currentJointAngle = smoothed;
 
-      if (!verification.isValid) {
+      if (hasAnyFault) {
         _isFormValid = false;
-        _faultJoints = verification.faultJoints;
-        _formWarning = verification.warningMessage;
+        _faultJoints = combinedFaults;
+        _formWarning = activeWarning;
         _repColor = VColor.crit;
         if (_isTrackingActive && !_isPaused) {
           _feedbackMessage =
-              verification.warningMessage ?? '⚠️ Incorrect form — please do it correctly!';
-          if (!_currentExercise.isHold) {
+              activeWarning ?? '⚠️ Incorrect form — please do it correctly!';
+          if (!_currentExercise.isHold && kineticReport.isSevereCheat) {
             _repInvalidatedByFault = true;
             _consecutiveValidPeakFrames = 0;
           }
-          if (now.difference(_lastWarningVoiceTime).inMilliseconds >= 4200) {
+          if (_coachBrain.shouldVoiceCue(report: kineticReport, cooldown: const Duration(milliseconds: 3200))) {
             _lastWarningVoiceTime = now;
             HapticFeedback.heavyImpact();
-            _speak('Please do it correctly. ${_currentExercise.formHint}');
+            _speakIntelligent(
+              kineticReport.spokenInstructionEn,
+              kineticReport.spokenInstructionHi,
+            );
           }
         }
         return;
@@ -1862,6 +1902,12 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
     final romSpan = math.max(25.0, (spec.startAngleDeg - spec.peakAngleDeg).abs());
     final achievedRom = (_cycleMaxAngle - _cycleMinAngle).clamp(0.0, 180.0);
 
+    _coachBrain.recordFrame(
+      isFormValid: _isFormValid && !_repInvalidatedByFault,
+      currentAngle: angle,
+      reachedDepth: _hasReachedInflection,
+    );
+
     if (spec.decreaseToPeak) {
       if (angle <= spec.peakAngleDeg + tol) {
         _consecutiveValidPeakFrames++;
@@ -1872,6 +1918,11 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
             (_aiAssistedMode || _consecutiveValidPeakFrames >= 2) &&
             !_repInvalidatedByFault) {
           _hasReachedInflection = true;
+          _coachBrain.recordFrame(
+            isFormValid: true,
+            currentAngle: angle,
+            reachedDepth: true,
+          );
           _isFormValid = true;
           _faultJoints = const <int>{};
           _formWarning = null;
@@ -1880,15 +1931,38 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
         }
       } else if (angle >= spec.startAngleDeg - tol) {
         _consecutiveValidPeakFrames = 0;
-        if (_hasReachedInflection &&
-            !_repInvalidatedByFault &&
-            (_aiAssistedMode || achievedRom >= romSpan * 0.62)) {
-          _hasReachedInflection = false;
-          _eccentricExtremeAngle = null;
-          _currentPhase = 'CONCENTRIC';
-          _cycleMinAngle = angle;
-          _cycleMaxAngle = angle;
-          _onRepVerified(symmetryDiff: symmetryDiff);
+        if (_hasReachedInflection) {
+          final repVerdict = _coachBrain.evaluateRepCompletion(
+            currentRepCount: _repCount,
+            targetReps: _targetReps,
+            startAngleDeg: spec.startAngleDeg,
+            peakAngleDeg: spec.peakAngleDeg,
+            decreaseToPeak: spec.decreaseToPeak,
+            reachedDepth: true,
+            isAssistedMode: _aiAssistedMode,
+          );
+
+          if (repVerdict.isApproved &&
+              !_repInvalidatedByFault &&
+              (_aiAssistedMode || achievedRom >= romSpan * 0.62)) {
+            _hasReachedInflection = false;
+            _eccentricExtremeAngle = null;
+            _currentPhase = 'CONCENTRIC';
+            _cycleMinAngle = angle;
+            _cycleMaxAngle = angle;
+            _onRepVerified(symmetryDiff: symmetryDiff);
+            _coachBrain.startRepCycle(angle);
+            _speakIntelligent(repVerdict.voiceMessageEn, repVerdict.voiceMessageHi);
+          } else {
+            _onRepRejected(repVerdict, activeTripletSet);
+            _hasReachedInflection = false;
+            _repInvalidatedByFault = false;
+            _eccentricExtremeAngle = null;
+            _cycleMinAngle = angle;
+            _cycleMaxAngle = angle;
+            _currentPhase = 'IDLE';
+            _coachBrain.startRepCycle(angle);
+          }
         } else {
           if (_eccentricExtremeAngle != null &&
               (spec.startAngleDeg - _eccentricExtremeAngle!) >= 18.0) {
@@ -1905,7 +1979,10 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
             final now = DateTime.now();
             if (now.difference(_lastWarningVoiceTime).inMilliseconds >= 3800) {
               _lastWarningVoiceTime = now;
-              _speak('Incomplete rep. Please go full depth so it counts.');
+              _speakIntelligent(
+                'Incomplete rep. Please go full depth so it counts.',
+                'Adha rep count nahi hoga. Poori depth lo tabhi count hoga.',
+              );
             }
           }
           _hasReachedInflection = false;
@@ -1914,6 +1991,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
           _cycleMinAngle = angle;
           _cycleMaxAngle = angle;
           _currentPhase = 'IDLE';
+          _coachBrain.startRepCycle(angle);
         }
       } else {
         _currentPhase = _hasReachedInflection ? 'CONCENTRIC' : 'ECCENTRIC';
@@ -1937,6 +2015,11 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
             (_aiAssistedMode || _consecutiveValidPeakFrames >= 2) &&
             !_repInvalidatedByFault) {
           _hasReachedInflection = true;
+          _coachBrain.recordFrame(
+            isFormValid: true,
+            currentAngle: angle,
+            reachedDepth: true,
+          );
           _isFormValid = true;
           _faultJoints = const <int>{};
           _formWarning = null;
@@ -1945,15 +2028,38 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
         }
       } else if (angle <= spec.startAngleDeg + tol) {
         _consecutiveValidPeakFrames = 0;
-        if (_hasReachedInflection &&
-            !_repInvalidatedByFault &&
-            (_aiAssistedMode || achievedRom >= romSpan * 0.62)) {
-          _hasReachedInflection = false;
-          _eccentricExtremeAngle = null;
-          _currentPhase = 'CONCENTRIC';
-          _cycleMinAngle = angle;
-          _cycleMaxAngle = angle;
-          _onRepVerified(symmetryDiff: symmetryDiff);
+        if (_hasReachedInflection) {
+          final repVerdict = _coachBrain.evaluateRepCompletion(
+            currentRepCount: _repCount,
+            targetReps: _targetReps,
+            startAngleDeg: spec.startAngleDeg,
+            peakAngleDeg: spec.peakAngleDeg,
+            decreaseToPeak: spec.decreaseToPeak,
+            reachedDepth: true,
+            isAssistedMode: _aiAssistedMode,
+          );
+
+          if (repVerdict.isApproved &&
+              !_repInvalidatedByFault &&
+              (_aiAssistedMode || achievedRom >= romSpan * 0.62)) {
+            _hasReachedInflection = false;
+            _eccentricExtremeAngle = null;
+            _currentPhase = 'CONCENTRIC';
+            _cycleMinAngle = angle;
+            _cycleMaxAngle = angle;
+            _onRepVerified(symmetryDiff: symmetryDiff);
+            _coachBrain.startRepCycle(angle);
+            _speakIntelligent(repVerdict.voiceMessageEn, repVerdict.voiceMessageHi);
+          } else {
+            _onRepRejected(repVerdict, activeTripletSet);
+            _hasReachedInflection = false;
+            _repInvalidatedByFault = false;
+            _eccentricExtremeAngle = null;
+            _cycleMinAngle = angle;
+            _cycleMaxAngle = angle;
+            _currentPhase = 'IDLE';
+            _coachBrain.startRepCycle(angle);
+          }
         } else {
           if (_eccentricExtremeAngle != null &&
               (_eccentricExtremeAngle! - spec.startAngleDeg) >= 18.0) {
@@ -1970,7 +2076,10 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
             final now = DateTime.now();
             if (now.difference(_lastWarningVoiceTime).inMilliseconds >= 3800) {
               _lastWarningVoiceTime = now;
-              _speak('Incomplete rep. Please perform full range of motion.');
+              _speakIntelligent(
+                'Incomplete rep. Please perform full range of motion.',
+                'Adha rep count nahi hoga. Poora range of motion lagao.',
+              );
             }
           }
           _hasReachedInflection = false;
@@ -1979,6 +2088,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
           _cycleMinAngle = angle;
           _cycleMaxAngle = angle;
           _currentPhase = 'IDLE';
+          _coachBrain.startRepCycle(angle);
         }
       } else {
         _currentPhase = _hasReachedInflection ? 'ECCENTRIC' : 'CONCENTRIC';
@@ -2022,6 +2132,19 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
     }
   }
 
+  void _onRepRejected(RepEvaluationResult verdict, Set<int> activeTripletSet) {
+    _rejectedReps++;
+    _isFormValid = false;
+    _repColor = VColor.crit;
+    _faultJoints = activeTripletSet;
+    _shallowWarningUntil = DateTime.now().add(const Duration(milliseconds: 1800));
+    _formWarning = '⚠️ Rep Rejected — ${verdict.reason}';
+    _feedbackMessage = _formWarning!;
+    _consecutiveGoodReps = 0;
+    HapticFeedback.heavyImpact();
+    _speakIntelligent(verdict.voiceMessageEn, verdict.voiceMessageHi);
+  }
+
   void _switchCamera() async {
     if (_cameras.length < 2) return;
     setState(() => _isCameraReady = false);
@@ -2035,6 +2158,17 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
     } catch (_) {}
   }
 
+  Future<void> _speakIntelligent(String textEn, String textHi) async {
+    try {
+      final lang = LanguageService.instance.locale.languageCode;
+      final isHindi = lang == 'hi' || lang == 'hi_en';
+      final text = isHindi && textHi.isNotEmpty ? textHi : textEn;
+      if (text.isNotEmpty) {
+        await _flutterTts.speak(text);
+      }
+    } catch (_) {}
+  }
+
   void _startTracking() {
     setState(() {
       _isTrackingActive = true;
@@ -2042,6 +2176,10 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
       _cycleHumanMotion = 0.0;
       _repInvalidatedByFault = false;
       _consecutiveValidPeakFrames = 0;
+      _sessionStartTime = DateTime.now();
+      _rejectedReps = 0;
+      _coachBrain.resetWorkout();
+      _coachBrain.startRepCycle(_currentJointAngle);
       if (_repCount >= _targetReps) {
         _repCount = 0;
         _holdSeconds = 0.0;
@@ -2186,14 +2324,37 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
   void _completeWorkout() {
     _assistedTimer?.cancel();
     _persistOfflineVerification();
+
+    final elapsedSec =
+        DateTime.now().difference(_sessionStartTime).inSeconds.clamp(10, 3600);
+    final scorecard = _coachBrain.finalizeScorecard(
+      exerciseId: _currentExercise.id,
+      exerciseName: _currentExercise.name,
+      completedReps: _repCount,
+      targetReps: _targetReps,
+      liveFormScore: _formScore,
+      liveSymmetryScore: _symmetryScore,
+      durationSec: elapsedSec,
+      rejectedReps: _rejectedReps,
+    );
+
     setState(() {
       _isTrackingActive = false;
       _feedbackMessage =
           '🎉 Target reached! $_targetReps ${_currentExercise.isHold ? "sec" : "reps"} of ${_currentExercise.name} verified!';
     });
-    _speak(
-      'Congratulations! You completed $_targetReps ${_currentExercise.isHold ? "seconds" : "repetitions"} of ${_currentExercise.name} with ${_formScore.toInt()} percent form accuracy!',
+
+    _speakIntelligent(
+      'Workout complete! You completed $_repCount reps with ${scorecard.overallFormAccuracy.toInt()} percent form accuracy.',
+      'Workout poora hua! $_repCount reps verify ho gaye hain ${scorecard.overallFormAccuracy.toInt()} percent accuracy ke sath.',
     );
+
+    // E-ecosystem sync with NeuroSync™ & Activity Usage
+    try {
+      final api = context.read<VyraApi>();
+      unawaited(api.completeExercise(_currentExercise.id, elapsedSec));
+      unawaited(ActivityUsageService.instance.forceFlush());
+    } catch (_) {}
 
     if (widget.isChallengeVerification) {
       Future.delayed(const Duration(milliseconds: 1400), () {
@@ -2207,62 +2368,422 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => _buildBiomechanicalScorecardDialog(ctx, scorecard, elapsedSec),
+    );
+  }
+
+  Widget _buildBiomechanicalScorecardDialog(
+    BuildContext dialogCtx,
+    WorkoutBiomechanicalScorecard scorecard,
+    int elapsedSec,
+  ) {
+    final mediaQuery = MediaQuery.of(dialogCtx);
+    final clampedTextScaler = mediaQuery.textScaler.clamp(minScaleFactor: 0.85, maxScaleFactor: 1.2);
+
+    return MediaQuery(
+      data: mediaQuery.copyWith(textScaler: clampedTextScaler),
+      child: Dialog(
         backgroundColor: VColor.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.verified_rounded, color: VColor.accentGreen, size: 28),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Workout AI Verified!',
-                style: TextStyle(color: VColor.text, fontWeight: FontWeight.w800),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Exercise: ${_currentExercise.name}',
-              style: const TextStyle(color: VColor.textMid, fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _currentExercise.isHold
-                  ? 'Duration Verified: $_repCount / $_targetReps sec'
-                  : 'Repetitions Verified: $_repCount / $_targetReps',
-              style: const TextStyle(color: VColor.text, fontSize: 16, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Biomechanical Form Accuracy: ${_formScore.toStringAsFixed(1)}%',
-              style: const TextStyle(color: VColor.accentGreen, fontSize: 15, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _resetTracking();
-            },
-            child: const Text('Train Again', style: TextStyle(color: VColor.accent)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(
+            color: VColor.accentGreen.withValues(alpha: 0.25),
+            width: 1.5,
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: VColor.accentGreen,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 680),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top Header with Medal/Audit Icon
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: VColor.accentGreen.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: VColor.accentGreen.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.verified_rounded,
+                        color: VColor.accentGreen,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'AI KINETIC AUDIT',
+                            style: TextStyle(
+                              color: VColor.accentGreen,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          Text(
+                            scorecard.exerciseName,
+                            style: const TextStyle(
+                              color: VColor.text,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Divider(height: 1, color: VColor.line),
+                const SizedBox(height: 16),
+
+                // Scrollable Body for all screen sizes
+                Flexible(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 4-Card Hero Stat Grid
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildScorecardStatCard(
+                                title: 'FORM ACCURACY',
+                                value:
+                                    '${scorecard.overallFormAccuracy.toStringAsFixed(1)}%',
+                                icon: Icons.auto_awesome_rounded,
+                                valueColor: scorecard.overallFormAccuracy >= 85.0
+                                    ? VColor.accentGreen
+                                    : VColor.gold,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _buildScorecardStatCard(
+                                title: 'CLEAN REPS',
+                                value:
+                                    '${scorecard.completedReps}/${scorecard.targetReps}',
+                                icon: Icons.check_circle_outline_rounded,
+                                valueColor: VColor.accentGreen,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildScorecardStatCard(
+                                title: 'FILTERED CHEATS',
+                                value: '${scorecard.rejectedReps} discarded',
+                                icon: Icons.filter_alt_off_rounded,
+                                valueColor: scorecard.rejectedReps > 0
+                                    ? VColor.crit
+                                    : VColor.textMuted,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _buildScorecardStatCard(
+                                title: 'CALORIC BURN',
+                                value: '~${scorecard.caloriesBurned} kcal',
+                                icon: Icons.local_fire_department_rounded,
+                                valueColor: const Color(0xFFFF7A00),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Biomechanical Telemetry Row
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: VColor.surfaceRaised,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: VColor.line),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.speed_rounded,
+                                    size: 18,
+                                    color: VColor.accent,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'AVERAGE TEMPO',
+                                        style: TextStyle(
+                                          color: VColor.textMuted,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${scorecard.averageCadenceSec.toStringAsFixed(1)}s / rep',
+                                        style: const TextStyle(
+                                          color: VColor.text,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Container(
+                                height: 28,
+                                width: 1,
+                                color: VColor.line,
+                              ),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.balance_rounded,
+                                    size: 18,
+                                    color: VColor.accentGreen,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'BILATERAL BALANCE',
+                                        style: TextStyle(
+                                          color: VColor.textMuted,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${scorecard.bilateralSymmetry.toStringAsFixed(1)}% sym',
+                                        style: const TextStyle(
+                                          color: VColor.text,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Target Muscles Section
+                        const Text(
+                          'ACTIVATED MUSCLE GROUPS',
+                          style: TextStyle(
+                            color: VColor.textMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: scorecard.primaryMuscleGroups.map((muscle) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: VColor.accent.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: VColor.accent.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Text(
+                                muscle,
+                                style: const TextStyle(
+                                  color: VColor.accent,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Real-Time Coaching Feedback
+                        const Text(
+                          'PHYSIOTHERAPY BRAIN INSIGHTS',
+                          style: TextStyle(
+                            color: VColor.textMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...scorecard.coachingFeedbackList.map((tip) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '• ',
+                                  style: TextStyle(
+                                    color: VColor.accentGreen,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    tip,
+                                    style: const TextStyle(
+                                      color: VColor.textMid,
+                                      fontSize: 12,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Divider(height: 1, color: VColor.line),
+                const SizedBox(height: 16),
+
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: VColor.textMid,
+                          side: const BorderSide(color: VColor.line),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.of(dialogCtx).pop();
+                          _resetTracking();
+                        },
+                        child: const Text(
+                          'Train Again',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.cloud_done_rounded, size: 18),
+                        label: const Text(
+                          'Done & Sync to Brain',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: VColor.accentGreen,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          Navigator.of(dialogCtx).pop();
+                          Navigator.of(context).pop(true);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              Navigator.of(context).pop(true);
-            },
-            child: const Text('Done & Save', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScorecardStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color valueColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: VColor.surfaceRaised,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: VColor.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: VColor.textMuted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: VColor.textMuted,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ],
       ),
@@ -2274,6 +2795,8 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
       _currentExercise = ex;
       _targetReps = ex.defaultReps;
       _repCount = 0;
+      _rejectedReps = 0;
+      _coachBrain.resetWorkout();
       _holdSeconds = 0.0;
       _isTrackingActive = false;
       _isPaused = false;
@@ -2299,6 +2822,7 @@ class _PoseTrackerScreenState extends State<PoseTrackerScreen> with TickerProvid
 
   @override
   void dispose() {
+    ActivityUsageService.instance.endActiveSession('pose_tracker');
     _assistedTimer?.cancel();
     _pulseController.dispose();
     _flutterTts.stop();

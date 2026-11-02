@@ -18,6 +18,8 @@ import 'screens/onboarding/onboarding_flow.dart';
 import 'screens/profile.dart';
 import 'screens/social_hub.dart';
 import 'screens/training_hub.dart';
+import 'services/activity_usage_service.dart';
+import 'services/app_localizations.dart';
 import 'services/language_service.dart';
 import 'theme.dart';
 import 'theme_manager.dart';
@@ -45,7 +47,11 @@ class VyraApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Provider<VyraApi>(
-      create: (_) => VyraApi(),
+      create: (_) {
+        final api = VyraApi();
+        ActivityUsageService.instance.initialize(api);
+        return api;
+      },
       child: ValueListenableBuilder<ThemeMode>(
         valueListenable: ThemeManager.instance.themeModeNotifier,
         builder: (context, themeMode, _) {
@@ -62,6 +68,7 @@ class VyraApp extends StatelessWidget {
                 locale: LanguageService.instance.locale,
                 supportedLocales: kVyraLanguages.map((l) => l.locale).toList(),
                 localizationsDelegates: const [
+                  AppLocalizations.delegate,
                   GlobalMaterialLocalizations.delegate,
                   GlobalWidgetsLocalizations.delegate,
                   GlobalCupertinoLocalizations.delegate,
@@ -75,7 +82,14 @@ class VyraApp extends StatelessWidget {
                         maxScaleFactor: 1.15,
                       ),
                     ),
-                    child: child ?? const SizedBox.shrink(),
+                    child: Listener(
+                      behavior: HitTestBehavior.translucent,
+                      onPointerDown: (_) =>
+                          ActivityUsageService.instance.notifyUserInteraction(),
+                      onPointerMove: (_) =>
+                          ActivityUsageService.instance.notifyUserInteraction(),
+                      child: child ?? const SizedBox.shrink(),
+                    ),
                   );
                 },
                 home: const _Bootstrap(),
@@ -299,16 +313,17 @@ class _HomeShellState extends State<HomeShell> {
     ProfileScreen(),
   ];
 
-  static const _titles = [
-    'Training',
-    'Food & Nutrition',
-    'Athlete Social',
-    'Challenges & Cups',
-    'My Profile',
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final titles = [
+      l10n.titleTrainingHub,
+      l10n.titleFoodNutrition,
+      l10n.titleAthleteSocial,
+      l10n.titleChallengesCups,
+      l10n.titleMyProfile,
+    ];
+
     return Scaffold(
       drawer: const VyraDrawer(),
       appBar: _index == 0
@@ -351,7 +366,7 @@ class _HomeShellState extends State<HomeShell> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      _titles[_index],
+                      titles[_index],
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -422,23 +437,32 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
+        destinations: [
           NavigationDestination(
-              icon: Icon(Icons.bolt_outlined), selectedIcon: Icon(Icons.bolt), label: 'Training'),
+            icon: const Icon(Icons.bolt_outlined),
+            selectedIcon: const Icon(Icons.bolt),
+            label: l10n.training,
+          ),
           NavigationDestination(
-              icon: Icon(Icons.restaurant_outlined),
-              selectedIcon: Icon(Icons.restaurant),
-              label: 'Food'),
+            icon: const Icon(Icons.restaurant_outlined),
+            selectedIcon: const Icon(Icons.restaurant),
+            label: l10n.food,
+          ),
           NavigationDestination(
-              icon: Icon(Icons.groups_outlined),
-              selectedIcon: Icon(Icons.groups),
-              label: 'Social'),
+            icon: const Icon(Icons.groups_outlined),
+            selectedIcon: const Icon(Icons.groups),
+            label: l10n.social,
+          ),
           NavigationDestination(
-              icon: Icon(Icons.emoji_events_outlined),
-              selectedIcon: Icon(Icons.emoji_events),
-              label: 'Challenges'),
+            icon: const Icon(Icons.emoji_events_outlined),
+            selectedIcon: const Icon(Icons.emoji_events),
+            label: l10n.challenges,
+          ),
           NavigationDestination(
-              icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+            icon: const Icon(Icons.person_outline),
+            selectedIcon: const Icon(Icons.person),
+            label: l10n.profile,
+          ),
         ],
       ),
       floatingActionButton: _index == 0 ? const _FloatingAnimatedCoachBot() : null,

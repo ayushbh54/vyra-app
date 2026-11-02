@@ -860,7 +860,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       // Each protocol is probed individually with a wait window — the first one that triggers
       // a response packet causes processIncomingWatchData to upgrade the profile automatically.
       // FitCloud & WearOs are excluded (already confirmed by GATT scan).
-      final probeTypes = const [
+      const probeTypes = [
         WatchProtocolType.genericUart,
         WatchProtocolType.hiwatchCd,
         WatchProtocolType.dafitAb,

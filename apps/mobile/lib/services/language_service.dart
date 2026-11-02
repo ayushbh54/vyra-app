@@ -5,21 +5,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// Each entry: (languageCode, countryCode?, nativeName, displayName, flagEmoji)
 const List<VyraLanguage> kVyraLanguages = [
-  VyraLanguage('hi', null,   'हिन्दी',         'Hindi',             '🇮🇳'),
   VyraLanguage('en', 'IN',   'English (India)', 'English (India)',   '🇮🇳'),
-  VyraLanguage('en', 'GB',   'English (UK)',    'English (British)', '🇬🇧'),
+  VyraLanguage('hi', null,   'हिन्दी',         'Hindi',             '🇮🇳'),
+  VyraLanguage('hi', 'LATN', 'Hinglish',       'Hinglish (Conversational)', '🇮🇳'),
   VyraLanguage('en', 'US',   'English (US)',    'English (American)','🇺🇸'),
+  VyraLanguage('en', 'GB',   'English (UK)',    'English (British)', '🇬🇧'),
   VyraLanguage('ta', null,   'தமிழ்',           'Tamil',             '🇮🇳'),
   VyraLanguage('te', null,   'తెలుగు',          'Telugu',            '🇮🇳'),
-  VyraLanguage('ml', null,   'മലയാളം',          'Malayalam',         '🇮🇳'),
-  VyraLanguage('pa', null,   'ਪੰਜਾਬੀ',          'Punjabi',           '🇮🇳'),
-  VyraLanguage('kn', null,   'ಕನ್ನಡ',           'Kannada',           '🇮🇳'),
   VyraLanguage('mr', null,   'मराठी',           'Marathi',           '🇮🇳'),
   VyraLanguage('bn', null,   'বাংলা',           'Bengali',           '🇮🇳'),
+  VyraLanguage('pa', null,   'ਪੰਜਾਬੀ',          'Punjabi',           '🇮🇳'),
   VyraLanguage('gu', null,   'ગુજરાતી',         'Gujarati',          '🇮🇳'),
+  VyraLanguage('kn', null,   'ಕನ್ನಡ',           'Kannada',           '🇮🇳'),
+  VyraLanguage('ml', null,   'മലയാളം',          'Malayalam',         '🇮🇳'),
+  VyraLanguage('es', null,   'Español',         'Spanish',           '🇪🇸'),
   VyraLanguage('fr', null,   'Français',        'French',            '🇫🇷'),
   VyraLanguage('de', null,   'Deutsch',         'German',            '🇩🇪'),
-  VyraLanguage('es', null,   'Español',         'Spanish',           '🇪🇸'),
   VyraLanguage('pt', null,   'Português',       'Portuguese',        '🇧🇷'),
   VyraLanguage('nl', null,   'Nederlands',      'Dutch',             '🇳🇱'),
 ];

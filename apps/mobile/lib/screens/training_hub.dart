@@ -27,7 +27,9 @@ import 'messages_inbox.dart';
 import 'nearby_doctors.dart';
 import 'pose_tracker.dart';
 import 'record.dart';
+import 'streak_calendar_screen.dart';
 import 'water_reminder.dart';
+import 'womens_health_screen.dart';
 
 /// TAB 1 — TRAINING HUB
 ///
@@ -56,6 +58,8 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
   String? _busySlug;
   String? _customWindowStart;
   String? _customWindowEnd;
+  String _selectedModality = 'gym';
+  bool _isRecomputing = false;
 
   @override
   void initState() {
@@ -76,16 +80,32 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
     } catch (_) {}
   }
 
-  Future<void> _load() async {
+  Future<void> _load({String? modality, bool replan = false}) async {
     try {
+      if (replan && mounted) {
+        setState(() => _isRecomputing = true);
+      }
+      final prefs = await SharedPreferences.getInstance();
+      final dateKey = DateTime.now().toIso8601String().split('T').first;
+      final loggedCal = prefs.getInt('logged_cal_$dateKey');
+      final activeModality = modality ?? prefs.getString('preferred_modality') ?? _selectedModality;
+      _selectedModality = activeModality;
+      if (modality != null) {
+        await prefs.setString('preferred_modality', modality);
+      }
+      if (!mounted) return;
+
       final api = context.read<VyraApi>();
-      final data = await api.today();
+      final data = await api.today(
+        modality: activeModality,
+        loggedCalories: loggedCal,
+        replan: replan,
+      );
       try {
         _profile = await api.getProfile();
       } catch (_) {}
 
       // Retrieve locally completed exercises for this date to guarantee 0-loss of history
-      final prefs = await SharedPreferences.getInstance();
       final localDone = prefs.getStringList('completed_exercises_${data.date}') ?? [];
       _customWindowStart = prefs.getString('custom_window_start');
       _customWindowEnd = prefs.getString('custom_window_end');
@@ -108,6 +128,7 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
       setState(() {
         _data = data.copyWith(plan: mergedPlan);
         _error = null;
+        _isRecomputing = false;
       });
 
       // Show motivational slogan banner
@@ -123,7 +144,13 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
       });
     } on ApiException catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.message);
+      setState(() {
+        _error = e.message;
+        _isRecomputing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isRecomputing = false);
     }
   }
 
@@ -481,6 +508,10 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
 
               // 2b. VYRA Gemini Daily Readiness Briefing Card
               _buildGeminiDailyBriefingCard(context),
+              const SizedBox(height: 16),
+
+              // 2c. VYRA NeuroSync™ Biocognitive AI Brain Card (v7.0)
+              _buildNeuroSyncBiocognitiveCard(context, data),
               const SizedBox(height: 20),
 
               // 3. Today's Routine Section with Hero & Up-Next Cards
@@ -869,28 +900,54 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
               ),
             ),
             VerticalDivider(color: dividerColor, thickness: 1, indent: 4, endIndent: 4),
-            // Column 3: Streak
+            // Column 3: Interactive Streak Matrix Card
             Expanded(
-              child: Column(
-                children: [
-                  const Text(
-                    '18 Days',
-                    style: TextStyle(
-                      fontSize: 23,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF059669), // Green
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const StreakCalendarScreen(),
                     ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Column(
+                    children: [
+                      const Text(
+                        '18 Days',
+                        style: TextStyle(
+                          fontSize: 23,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF059669), // Green
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Streak',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: labelColor,
+                            ),
+                          ),
+                          const SizedBox(width: 3),
+                          const Icon(
+                            Icons.calendar_month_rounded,
+                            size: 11,
+                            color: Color(0xFF059669),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Streak',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: labelColor,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -1061,6 +1118,690 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2c. VYRA NEUROSYNC™ BIOCOGNITIVE AI BRAIN CARD (v7.0)
+  // ---------------------------------------------------------------------------
+  Widget _buildNeuroSyncBiocognitiveCard(BuildContext context, TodayData data) {
+    final isDark = ThemeManager.instance.isDark;
+    final brain = data.neuroSyncBrain;
+    final modality = brain?.modality ?? _selectedModality;
+    final archetype = brain?.metabolicArchetype ?? 'balanced_athletic';
+    final metrics = brain?.metrics;
+
+    // Archetype color & display label mapping
+    final (archetypeLabel, archetypeColor) = switch (archetype) {
+      'sluggish_hypothyroid' => ('🐢 Hypo-Metabolic (TSH Elevated)', const Color(0xFFF59E0B)),
+      'hyper_metabolic' => ('⚡ Hyper-Metabolic Turnover', const Color(0xFFEC4899)),
+      'glycemic_insulin_resistant' => ('🧬 Glycemic Sink / Insulin Sensitive', const Color(0xFF10B981)),
+      'hyperlipidemic' => ('🩸 Beta-Oxidation / Lipid Clearance', const Color(0xFFEF4444)),
+      'hyperuricemic' => ('🛡️ Low-Purine Joint Guard', const Color(0xFF8B5CF6)),
+      'hypoxic_anemic' => ('🫁 Hypoxia Safety Shield', const Color(0xFF38BDF8)),
+      _ => ('⚡ Balanced Homeostasis', const Color(0xFF06B6D4)),
+    };
+
+    const modalities = [
+      ('gym', '🏋️ Gym Iron', 'Barbells, dumbbells & cables'),
+      ('home', '🏠 Home Calisthenics', 'Functional bodyweight movements'),
+      ('light', '🌿 Light Mobility', 'Joint-friendly, low impact'),
+      ('shred', '⚡ Fat Shred', 'High-MET cardiovascular conditioning'),
+    ];
+
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131722) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF8B5CF6).withValues(alpha: isDark ? 0.4 : 0.25),
+          width: 1.4,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF8B5CF6).withValues(alpha: isDark ? 0.18 : 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF8B5CF6), Color(0xFF06B6D4)],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 16),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'NEUROSYNC™ BIOCOGNITIVE BRAIN',
+                      style: TextStyle(
+                        color: Color(0xFF8B5CF6),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    Text(
+                      'Metabolism & Recovery Synthesizer',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.circle,
+                      color: _isRecomputing ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                      size: 6,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _isRecomputing ? 'ADAPTING...' : 'v7.0 ACTIVE',
+                      style: TextStyle(
+                        color: _isRecomputing ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Modality Switcher Row
+          Text(
+            'TRAINING MODALITY',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: modalities.map((m) {
+                final isSelected = modality == m.$1;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: InkWell(
+                    onTap: () {
+                      if (!isSelected) {
+                        HapticFeedback.selectionClick();
+                        setState(() => _selectedModality = m.$1);
+                        _load(modality: m.$1, replan: true);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: isSelected
+                            ? const LinearGradient(
+                                colors: [Color(0xFF8B5CF6), Color(0xFF0284C7)],
+                              )
+                            : null,
+                        color: isSelected
+                            ? null
+                            : (isDark ? const Color(0xFF1E2533) : const Color(0xFFF1F5F9)),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? Colors.transparent
+                              : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                        ),
+                      ),
+                      child: Text(
+                        m.$2,
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155)),
+                          fontSize: 11.5,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Telemetry Status Badges
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              // Archetype Pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: archetypeColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: archetypeColor.withValues(alpha: 0.35)),
+                ),
+                child: Text(
+                  archetypeLabel,
+                  style: TextStyle(
+                    color: archetypeColor,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+
+              // BMR / TDEE Pill
+              if (metrics != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    'BMR ${metrics.bmrKcal} kcal • TDEE ${metrics.tdeeKcal} kcal',
+                    style: const TextStyle(
+                      color: Color(0xFF0284C7),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+
+              // Caloric Flux Pill
+              if (metrics != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: metrics.caloricState == 'surplus'
+                        ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                        : (metrics.caloricState == 'deficit'
+                            ? const Color(0xFFF59E0B).withValues(alpha: 0.12)
+                            : const Color(0xFF64748B).withValues(alpha: 0.12)),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: metrics.caloricState == 'surplus'
+                          ? const Color(0xFF10B981).withValues(alpha: 0.35)
+                          : (metrics.caloricState == 'deficit'
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.35)
+                              : const Color(0xFF64748B).withValues(alpha: 0.35)),
+                    ),
+                  ),
+                  child: Text(
+                    metrics.caloricState == 'surplus'
+                        ? '🟢 Surplus (+${metrics.caloricDeltaKcal} kcal) • Hypertrophy'
+                        : (metrics.caloricState == 'deficit'
+                            ? '🟠 Deficit (${metrics.caloricDeltaKcal} kcal) • Fat Oxidation'
+                            : '🔵 Balanced Caloric State'),
+                    style: TextStyle(
+                      color: metrics.caloricState == 'surplus'
+                          ? const Color(0xFF10B981)
+                          : (metrics.caloricState == 'deficit'
+                              ? const Color(0xFFF59E0B)
+                              : const Color(0xFF64748B)),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Metabolism & Recovery Summary Prose
+          if (brain?.metabolismSummary != null && brain!.metabolismSummary.isNotEmpty) ...[
+            Text(
+              brain.metabolismSummary,
+              style: TextStyle(
+                color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                fontSize: 11.5,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+          if (brain?.muscleRecoverySummary != null && brain!.muscleRecoverySummary.isNotEmpty) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.fitness_center_rounded, size: 14, color: Color(0xFF8B5CF6)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    brain.muscleRecoverySummary,
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Clinical Safety Warnings (if any)
+          if (brain?.clinicalSafetyNotes != null && brain!.clinicalSafetyNotes.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.shield_rounded, color: Color(0xFFEF4444), size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      brain.clinicalSafetyNotes.first,
+                      style: const TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // CTA to Open 7-Day Matrix & Diet Schedule
+          InkWell(
+            onTap: () => _showWeeklyPeriodizedMatrixSheet(context, brain),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.3)),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.calendar_month_rounded, color: Color(0xFF8B5CF6), size: 15),
+                  SizedBox(width: 8),
+                  Text(
+                    '📅 View 7-Day Synced Matrix & Diet Chart',
+                    style: TextStyle(
+                      color: Color(0xFF8B5CF6),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showWeeklyPeriodizedMatrixSheet(BuildContext context, NeuroSyncBrainData? brain) {
+    HapticFeedback.selectionClick();
+    final isDark = ThemeManager.instance.isDark;
+    final schedule = brain?.weeklyPeriodizedMatrix ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: isDark ? const Color(0xFF0F131D) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (_, scrollController) {
+            return Column(
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 10, bottom: 12),
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                // Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF8B5CF6), Color(0xFF06B6D4)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.date_range_rounded, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '7-DAY SYNCHRONIZED MATRIX',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            Text(
+                              'Targeted Workout Splits + Synchronized Nutrition',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 24),
+                // Days List
+                Expanded(
+                  child: schedule.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Loading 7-Day Periodized Matrix...',
+                            style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                          ),
+                        )
+                      : ListView.separated(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          itemCount: schedule.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 14),
+                          itemBuilder: (_, index) {
+                            final day = schedule[index];
+                            final intensityColor = switch (day.intensity) {
+                              'High' => const Color(0xFFEF4444),
+                              'Moderate' => const Color(0xFFF59E0B),
+                              'Light' => const Color(0xFF10B981),
+                              _ => const Color(0xFF64748B),
+                            };
+
+                            return Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF161C27) : const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDark ? const Color(0xFF263042) : const Color(0xFFE2E8F0),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Day Header & Intensity Badge
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          day.dayShort,
+                                          style: const TextStyle(
+                                            color: Color(0xFF8B5CF6),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        day.day,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: intensityColor.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: intensityColor.withValues(alpha: 0.3)),
+                                        ),
+                                        child: Text(
+                                          day.intensity.toUpperCase(),
+                                          style: TextStyle(
+                                            color: intensityColor,
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+
+                                  // Split Theme
+                                  Text(
+                                    day.theme,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+
+                                  // Target Muscles
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 4,
+                                    children: day.targetMuscles.map((tm) {
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? const Color(0xFF1E2636) : const Color(0xFFEFF6FF),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          tm,
+                                          style: TextStyle(
+                                            color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                  const SizedBox(height: 10),
+
+                                  // Prescribed Compound Exercises
+                                  if (day.sampleExercises.isNotEmpty) ...[
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      children: day.sampleExercises.map((se) {
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: isDark ? const Color(0xFF1F2430) : const Color(0xFFF1F5F9),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(
+                                              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                                              width: 0.7,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '• $se',
+                                            style: TextStyle(
+                                              color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                    const SizedBox(height: 10),
+                                  ],
+
+                                  // Synchronized Dietary Strategy Box
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.2)),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.restaurant_menu_rounded, color: Color(0xFF10B981), size: 14),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'SYNCHRONIZED DIETARY STRATEGY',
+                                                style: TextStyle(
+                                                  color: Color(0xFF10B981),
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                day.dietaryStrategy,
+                                                style: TextStyle(
+                                                  color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+
+                                  // Metabolic Focus Box
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.2)),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.bolt_rounded, color: Color(0xFFF59E0B), size: 14),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'METABOLIC & PHYSIOLOGICAL FOCUS',
+                                                style: TextStyle(
+                                                  color: Color(0xFFF59E0B),
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                day.metabolicFocus,
+                                                style: TextStyle(
+                                                  color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1584,6 +2325,13 @@ class _TrainingHubScreenState extends State<TrainingHubScreen> {
         const Color(0xFFFFEDD5), // Peach bg
         const Color(0xFFEA580C), // Orange icon
         () => pushScreen(context, 'Face & Scalp Yoga', const FaceHairYogaScreen()),
+      ),
+      (
+        'Women\'s Health',
+        Icons.spa_rounded,
+        const Color(0xFFFCE7F3), // Rose/Pink bg
+        const Color(0xFFDB2777), // Rose icon
+        () => pushScreen(context, 'Women\'s Health & Maternal Care', const WomensHealthScreen()),
       ),
     ];
 
