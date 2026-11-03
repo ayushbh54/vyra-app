@@ -458,9 +458,48 @@ class WatchHardwareProfile {
         lowerName.contains('titan') ||
         lowerName.contains('reflex') ||
         lowerName.contains('eros');
+    // Ultra2 / HiWatch / FitPro / Jerry JL7012 name patterns
+    final nameSuggestsUltra = lowerName.contains('ultra') ||
+        lowerName.contains('hiwatch') ||
+        lowerName.contains('fitpro') ||
+        lowerName.contains('t800') ||
+        lowerName.contains('t900') ||
+        lowerName.contains('z59') ||
+        lowerName.contains('s8') ||
+        lowerName.contains('hryfine') ||
+        lowerName.contains('watch8') ||
+        lowerName.contains('watch9');
 
-    // Select protocol priority: FitCloud first (highest specificity), then WearOS, DaFit, BLE SIG, Jerry
-    if (hasFitCloud || nameSuggestsFitCloud) {
+    // Select protocol priority: Ultra/Jerry & FitCloud first (highest specificity), then WearOS, DaFit, BLE SIG
+    if (nameSuggestsUltra || (hasJerry && !hasFitCloud && !hasDaFit)) {
+      final resolvedService = jerryServiceUuid.isNotEmpty
+          ? jerryServiceUuid
+          : (fallbackServiceUuid.isNotEmpty ? fallbackServiceUuid : HiWatchProProtocol.uartServiceUuid2);
+      final resolvedWrite = jerryWriteCharUuid.isNotEmpty
+          ? jerryWriteCharUuid
+          : (fallbackWriteCharUuid.isNotEmpty ? fallbackWriteCharUuid : HiWatchProProtocol.uartWriteCharacteristicUuid);
+      final resolvedNotify = jerryNotifyCharUuid.isNotEmpty
+          ? jerryNotifyCharUuid
+          : (fallbackNotifyCharUuid.isNotEmpty ? fallbackNotifyCharUuid : HiWatchProProtocol.uartNotifyCharacteristicUuid);
+
+      return WatchHardwareProfile(
+        profileId: 'auto_ultra_${remoteId.replaceAll(":", "_")}',
+        deviceName: deviceName.isNotEmpty ? deviceName : 'Ultra2',
+        remoteId: remoteId,
+        protocolType: WatchProtocolType.hiwatchCd,
+        serviceUuid: resolvedService,
+        writeCharUuid: resolvedWrite,
+        notifyCharUuid: resolvedNotify,
+        handshakePacket: const [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0A, 0x00, 0x01, 0x02],
+        rtcSyncPacket: HiWatchProProtocol.buildHiWatchTimeSyncCommand(),
+        stepQueryPacket: const [0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01],
+        hrTriggerPacket: const [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0D, 0x00, 0x01, 0x01],
+        bpTriggerPacket: const [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0E, 0x00, 0x01, 0x01],
+        requiresAck: true,
+        keepaliveIntervalMs: 3500,
+        createdAt: DateTime.now(),
+      );
+    } else if (hasFitCloud || nameSuggestsFitCloud) {
       return WatchHardwareProfile(
         profileId: 'fitcloud_${remoteId.replaceAll(":", "_")}',
         deviceName: deviceName.isNotEmpty ? deviceName : 'Fastrack Watch',

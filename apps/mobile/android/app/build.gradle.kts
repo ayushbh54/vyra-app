@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace     = "com.vyra.app"
-    compileSdk    = flutter.compileSdkVersion
+    compileSdk    = 35
     ndkVersion    = flutter.ndkVersion
 
     compileOptions {
@@ -28,7 +28,7 @@ android {
     defaultConfig {
         applicationId  = "com.ayush.vyra.fitness"
         minSdk         = 26       // Health Connect requires API 26+
-        targetSdk      = flutter.targetSdkVersion
+        targetSdk      = 35
         versionCode    = flutter.versionCode
         versionName    = flutter.versionName
 
@@ -43,6 +43,8 @@ android {
                 keyPassword    = keystoreProperties["keyPassword"] as String
                 storeFile      = file(keystoreProperties["storeFile"] as String)
                 storePassword  = keystoreProperties["storePassword"] as String
+                enableV1Signing = true
+                enableV2Signing = true
             }
         }
         val bundledKeystore = file("debug.keystore")
@@ -52,7 +54,13 @@ android {
                 keyPassword   = "android"
                 storeFile     = bundledKeystore
                 storePassword = "android"
+                enableV1Signing = true
+                enableV2Signing = true
             }
+        }
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = true
         }
     }
 

@@ -1907,8 +1907,11 @@ class StreakLeaderboardEntry {
       StreakLeaderboardEntry(
         rank: _i(j['rank']),
         userId: j['userId'] as String? ?? '',
-        displayHandle: j['displayHandle'] as String? ?? 'Athlete',
-        streakDays: _i(j['streakDays']),
+        displayHandle: j['displayHandle'] as String? ??
+            j['name'] as String? ??
+            j['handle'] as String? ??
+            'Athlete',
+        streakDays: _i(j['streakDays'] ?? j['currentStreak']),
         longestStreak: _i(j['longestStreak']),
         consistencyPct: _i(j['consistencyPct']),
         totalActiveDays: _i(j['totalActiveDays']),

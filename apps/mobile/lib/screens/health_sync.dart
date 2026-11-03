@@ -176,7 +176,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       if (_activeProfile != null &&
           (_activeProfile!.remoteId.toUpperCase().contains('C41BDCB4') ||
               _activeProfile!.remoteId == "71:7E:FB:00:03:CB" ||
-              _activeProfile!.remoteId == "CC12D46C-4F33-7E3A-2E34-F8777DE988D2")) {
+              _activeProfile!.remoteId == "CC12D46C-4F33-7E3A-2E34-F8777DE988D2" ||
+              (_activeProfile!.protocolType == WatchProtocolType.wearOsCompanion &&
+                  (_activeProfile!.deviceName.toLowerCase().contains('ultra') ||
+                      _activeProfile!.deviceName.toLowerCase().contains('hiwatch') ||
+                      _activeProfile!.deviceName.toLowerCase().contains('fitpro') ||
+                      _activeProfile!.deviceName.toLowerCase().contains('t800'))))) {
         _activeProfile = null;
         await prefs.remove(WatchHardwareProfile.prefsActiveProfileKey);
         await prefs.remove(_prefsBleWatchRemoteIdKey);
@@ -605,7 +610,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       // Always inspect discovered services when connecting to a different watch or if no profile exists.
       final uid2 = await _getCurrentUserId();
       _activeProfile = await WatchHardwareProfile.loadActiveWatchForUser(uid2);
-      if (_activeProfile == null || _activeProfile!.remoteId != device.remoteId.str) {
+      if (_activeProfile == null ||
+          _activeProfile!.remoteId != device.remoteId.str ||
+          (_activeProfile!.protocolType == WatchProtocolType.wearOsCompanion &&
+              (device.platformName.toLowerCase().contains('ultra') ||
+                  device.platformName.toLowerCase().contains('hiwatch') ||
+                  device.platformName.toLowerCase().contains('fitpro')))) {
         _activeProfile = WatchHardwareProfile.fromDiscoveredServices(
           deviceName: device.platformName.isNotEmpty ? device.platformName : "Smartwatch",
           remoteId: device.remoteId.str,
@@ -739,14 +749,12 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
           break;
         }
       }
-      if (_activeProfile?.protocolType != WatchProtocolType.hiwatchCd) {
-        for (final c in _notifyCharacteristics) {
-          if (targetNotifyList.length >= 2) break;
-          final u = c.uuid.toString().toLowerCase();
-          if (!subscribedUuids.contains(u)) {
-            targetNotifyList.add(c);
-            subscribedUuids.add(u);
-          }
+      for (final c in _notifyCharacteristics) {
+        if (targetNotifyList.length >= 4) break;
+        final u = c.uuid.toString().toLowerCase();
+        if (!subscribedUuids.contains(u)) {
+          targetNotifyList.add(c);
+          subscribedUuids.add(u);
         }
       }
 
@@ -829,29 +837,33 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
         // Default: Ultra 2 / Jerry JL7012 / HiWatch Pro / FitPro full sequence
         // Step 1: Pair Handshake (Ultra2 MCU acknowledges this with DC 00 05 12 0A ...)
         await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x12, 0x01, 0x0A, 0x00, 0x01, 0x02]]);
-        await Future.delayed(const Duration(milliseconds: 250));
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        // Step 1B: Direct Ultra2 Hardware Wake-up & Handshake (0xBC 0x51 0x01)
+        await broadcastWatchCommands([const [0xBC, 0x51, 0x01]]);
+        await Future.delayed(const Duration(milliseconds: 150));
 
         // Step 2: RTC Time Sync (Activates MCU day step counters)
         await broadcastWatchCommands([HiWatchProProtocol.buildHiWatchTimeSyncCommand()]);
-        await Future.delayed(const Duration(milliseconds: 250));
+        await Future.delayed(const Duration(milliseconds: 200));
 
         // Step 3: Query Authentic Device Battery Level (Avoids hardcoded 54% in GATT 0x2A19)
         await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x12, 0x01, 0x02, 0x00, 0x01, 0x01]]);
-        await Future.delayed(const Duration(milliseconds: 250));
+        await Future.delayed(const Duration(milliseconds: 200));
 
         // Step 4: Enable Real-Time Steps (Ultra2 MCU acknowledges with DC 00 05 15 06 ...)
         await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x15, 0x01, 0x06, 0x00, 0x01, 0x01]]);
-        await Future.delayed(const Duration(milliseconds: 250));
+        await Future.delayed(const Duration(milliseconds: 200));
 
         // Step 5: Query Day Sport Summary (Delivers authentic Steps, Dist & Calories in 1 packet!)
         await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01]]);
-        await Future.delayed(const Duration(milliseconds: 300));
+        await Future.delayed(const Duration(milliseconds: 250));
 
         // Step 6: Query Flash Historical Vitals (Fetches previously recorded vitals from watch memory)
         await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x15, 0x01, 0x04, 0x00, 0x01, 0x01]]);
-        await Future.delayed(const Duration(milliseconds: 250));
+        await Future.delayed(const Duration(milliseconds: 200));
         await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x15, 0x01, 0x05, 0x00, 0x01, 0x01]]);
-        await Future.delayed(const Duration(milliseconds: 250));
+        await Future.delayed(const Duration(milliseconds: 200));
         await broadcastWatchCommands([[0xCD, 0x00, 0x06, 0x15, 0x01, 0x14, 0x00, 0x01, 0x01]]);
       }
 
@@ -909,9 +921,19 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               if (!mounted || !_isRealBleConnected) return;
             }
 
-            // Step 5: If still 0 packets → encrypted/companion watch → GATT Read Bridge
-            if (mounted && _isRealBleConnected && _packetsReceived == 0) {
-              debugPrint('[VYRA-PROBE] 🛡️ All probes failed — activating GATT Read Bridge (encrypted companion)');
+            // Step 5: Guard against misclassifying known vendor watches (Ultra2, HiWatch, DaFit, FitCloud)
+            final watchLower = (_pairedWatchName ?? '').toLowerCase();
+            final isKnownVendor = watchLower.contains('ultra') ||
+                watchLower.contains('hiwatch') ||
+                watchLower.contains('fitpro') ||
+                watchLower.contains('dafit') ||
+                watchLower.contains('fastrack') ||
+                watchLower.contains('titan') ||
+                watchLower.contains('reflex');
+
+            if (mounted && _isRealBleConnected && _packetsReceived == 0 && !isKnownVendor) {
+              // Only truly unknown unbranded companion devices fall back to Wear OS GATT read
+              debugPrint('[VYRA-PROBE] 🛡️ All probes failed on unbranded companion — activating GATT Read Bridge');
               _activeProfile = WatchHardwareProfile.wearOsCompanionProfile(
                 deviceName: _pairedWatchName ?? 'Smartwatch',
                 remoteId: device.remoteId.str,
@@ -921,6 +943,14 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
               final uid3 = await _getCurrentUserId();
               unawaited(_activeProfile!.saveToUserWatchList(uid3));
               await _pollWearOsCompanionBridge(includeVitals: true);
+            } else if (mounted && _isRealBleConnected && _packetsReceived == 0) {
+              // Re-ignite HiWatch / Ultra2 wake-up directly
+              debugPrint('[VYRA-PROBE] ⚡ Known vendor watch $_pairedWatchName — re-igniting Ultra2/HiWatch handshake');
+              await broadcastWatchCommands([
+                [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0A, 0x00, 0x01, 0x02],
+                const [0xBC, 0x51, 0x01],
+                [0xCD, 0x00, 0x06, 0x15, 0x01, 0x0D, 0x00, 0x01, 0x01],
+              ]);
             }
           }
         });
@@ -989,39 +1019,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
 
       if (!mounted || !_isRealBleConnected) return;
 
-      final seed = gattReadBytes.isNotEmpty
-          ? gattReadBytes.fold<int>(0, (a, b) => (a + b) & 0xFF)
-          : DateTime.now().second;
-      final nowSec = DateTime.now().second;
-
-      // Increment steps smoothly while connected
-      final currentSteps = _liveSteps > 0 ? _liveSteps + (telemetryTick % 3 == 0 ? 2 : 0) : 1420 + (seed % 180);
-      final stepHi = (currentSteps >> 16) & 0xFF;
-      final stepMid = (currentSteps >> 8) & 0xFF;
-      final stepLo = currentSteps & 0xFF;
-      final kcal = (currentSteps * 0.04).round();
-      final dist = (currentSteps * 0.75).round();
-
-      // Emit bridged sport + battery packet
-      processIncomingWatchData([
-        0xAB, 0x00, 0x0E, 0xFF, 0x51, 0x08,
-        stepHi, stepMid, stepLo,
-        0x00, (kcal >> 8) & 0xFF, kcal & 0xFF,
-        0x00, (dist >> 8) & 0xFF, dist & 0xFF,
-        0x00, 0x00,
-      ]);
-      if (_batteryNotifier.value == null || telemetryTick % 6 == 0) {
-        processIncomingWatchData([0xAB, 0x00, 0x05, 0xFF, 0x91, 0x80, 0x00, 86]);
-      }
-
-      if (includeVitals || _liveHeartRate == 0 || telemetryTick % 3 == 0) {
-        final hr = 73 + ((seed + nowSec) % 8);
-        final spo2 = 97 + ((seed + nowSec) % 3);
-        final sys = 117 + ((seed + nowSec) % 5);
-        final dia = 76 + ((seed + nowSec) % 4);
-        processIncomingWatchData([
-          0xAB, 0x00, 0x07, 0xFF, 0x32, 0x80, hr, spo2, sys, dia,
-        ]);
+      // Only pass authentic telemetry bytes to the decoder (zero dummy data)
+      if (gattReadBytes.isNotEmpty) {
+        processIncomingWatchData(gattReadBytes);
       }
     } catch (_) {}
   }
@@ -1450,19 +1450,28 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   }
 
   Future<void> broadcastWatchCommands(List<List<int>> commandList) async {
-    final target = _activeWriteChar ?? (_writeCharacteristics.isNotEmpty ? _writeCharacteristics.first : null);
-    if (target == null) return;
+    final targets = <BluetoothCharacteristic>[];
+    if (_activeWriteChar != null) targets.add(_activeWriteChar!);
+    for (final c in _writeCharacteristics) {
+      if (!targets.any((t) => t.uuid == c.uuid)) {
+        targets.add(c);
+        if (targets.length >= 2) break;
+      }
+    }
+    if (targets.isEmpty) return;
 
     for (final cmd in commandList) {
-      try {
-        if (target.properties.writeWithoutResponse) {
-          await target.write(cmd, withoutResponse: true);
-        } else if (target.properties.write) {
-          await target.write(cmd, withoutResponse: false);
-        }
-      } catch (_) {}
+      for (final target in targets) {
+        try {
+          if (target.properties.writeWithoutResponse) {
+            await target.write(cmd, withoutResponse: true);
+          } else if (target.properties.write) {
+            await target.write(cmd, withoutResponse: false);
+          }
+        } catch (_) {}
+      }
       if (commandList.length > 1) {
-        await Future.delayed(const Duration(milliseconds: 120));
+        await Future.delayed(const Duration(milliseconds: 100));
       }
     }
   }
@@ -1470,16 +1479,26 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
   /// Sends an ACK packet back to the watch immediately (fire-and-forget) to keep
   /// the real-time streaming session alive. ACKs must not block data processing.
   void sendWatchAck(List<int> ackBytes) {
-    final target = _activeWriteChar ?? (_writeCharacteristics.isNotEmpty ? _writeCharacteristics.first : null);
-    if (target == null) return;
+    final targets = <BluetoothCharacteristic>[];
+    if (_activeWriteChar != null) targets.add(_activeWriteChar!);
+    for (final c in _writeCharacteristics) {
+      if (!targets.any((t) => t.uuid == c.uuid)) {
+        targets.add(c);
+        if (targets.length >= 2) break;
+      }
+    }
+    if (targets.isEmpty) return;
+
     unawaited(() async {
-      try {
-        if (target.properties.writeWithoutResponse) {
-          await target.write(ackBytes, withoutResponse: true);
-        } else if (target.properties.write) {
-          await target.write(ackBytes, withoutResponse: false);
-        }
-      } catch (_) {}
+      for (final target in targets) {
+        try {
+          if (target.properties.writeWithoutResponse) {
+            await target.write(ackBytes, withoutResponse: true);
+          } else if (target.properties.write) {
+            await target.write(ackBytes, withoutResponse: false);
+          }
+        } catch (_) {}
+      }
     }());
   }
 
@@ -1553,6 +1572,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             _activeProfile?.protocolType != WatchProtocolType.bleSig) {
           broadcastWatchCommands([
             [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0D, 0x00, 0x01, 0x00],
+            const [0xBC, 0x60, 0x00],
           ]);
         }
       } else {
@@ -1578,6 +1598,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       // Default: HiWatch Pro / Ultra2
       await broadcastWatchCommands([
         [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0D, 0x00, 0x01, 0x01],
+        const [0xBC, 0x60, 0x01],
       ]);
     }
 
@@ -1618,6 +1639,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             _activeProfile?.protocolType != WatchProtocolType.bleSig) {
           broadcastWatchCommands([
             [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x02, 0x00],
+            const [0xBC, 0x62, 0x00],
           ]);
         }
       } else {
@@ -1643,6 +1665,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       await broadcastWatchCommands([
         [0xCD, 0x00, 0x07, 0x12, 0x01, 0x24, 0x00, 0x02, 0x02, 0x01],
         [0xCD, 0x00, 0x06, 0x12, 0x01, 0x14, 0x00, 0x01, 0x01],
+        const [0xBC, 0x62, 0x01],
       ]);
     }
 
@@ -1684,6 +1707,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             _activeProfile?.protocolType != WatchProtocolType.bleSig) {
           broadcastWatchCommands([
             [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0E, 0x00, 0x01, 0x00],
+            const [0xBC, 0x61, 0x00],
           ]);
         }
       } else {
@@ -1711,6 +1735,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       // Default: HiWatch Pro / Ultra2 BP ignition
       await broadcastWatchCommands([
         [0xCD, 0x00, 0x06, 0x12, 0x01, 0x0E, 0x00, 0x01, 0x01],
+        const [0xBC, 0x61, 0x01],
       ]);
     }
 
@@ -1752,6 +1777,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
             _activeProfile?.protocolType != WatchProtocolType.bleSig) {
           broadcastWatchCommands([
             [0xCD, 0x00, 0x06, 0x12, 0x01, 0x18, 0x00, 0x01, 0x00],
+            const [0xBC, 0x60, 0x00],
+            const [0xBC, 0x61, 0x00],
+            const [0xBC, 0x62, 0x00],
           ]);
         }
       } else {
@@ -1781,6 +1809,9 @@ class _HealthSyncScreenState extends State<HealthSyncScreen>
       // Default: HiWatch Pro / Ultra2 multi-vital ignition
       await broadcastWatchCommands([
         [0xCD, 0x00, 0x06, 0x12, 0x01, 0x18, 0x00, 0x01, 0x01],
+        const [0xBC, 0x60, 0x01],
+        const [0xBC, 0x61, 0x01],
+        const [0xBC, 0x62, 0x01],
       ]);
     }
 
